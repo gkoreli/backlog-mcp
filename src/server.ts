@@ -24,12 +24,14 @@ const storageOptions: StorageOptions = {
 // Tools
 // ============================================================================
 
-server.tool(
+server.registerTool(
   'backlog_list',
-  'List tasks, optionally filtered by status. Use summary=true for counts.',
   {
-    status: z.array(z.enum(STATUSES)).optional().describe('Filter by status'),
-    summary: z.boolean().optional().describe('Return counts instead of list'),
+    description: 'List tasks, optionally filtered by status. Use summary=true for counts.',
+    inputSchema: {
+      status: z.array(z.enum(STATUSES)).optional().describe('Filter by status'),
+      summary: z.boolean().optional().describe('Return counts instead of list'),
+    },
   },
   async ({ status, summary }) => {
     const tasks = listTasks(status ? { status } : undefined, storageOptions);
@@ -44,10 +46,12 @@ server.tool(
   }
 );
 
-server.tool(
+server.registerTool(
   'backlog_get',
-  'Get a task by ID',
-  { id: z.string().describe('Task ID') },
+  {
+    description: 'Get a task by ID',
+    inputSchema: { id: z.string().describe('Task ID') },
+  },
   async ({ id }) => {
     const task = getTask(id, storageOptions);
     if (!task) {
@@ -57,12 +61,14 @@ server.tool(
   }
 );
 
-server.tool(
+server.registerTool(
   'backlog_create',
-  'Create a new task',
   {
-    title: z.string().describe('Task title'),
-    description: z.string().optional().describe('Task description'),
+    description: 'Create a new task',
+    inputSchema: {
+      title: z.string().describe('Task title'),
+      description: z.string().optional().describe('Task description'),
+    },
   },
   async ({ title, description }) => {
     const backlog = loadBacklog(storageOptions);
@@ -72,16 +78,18 @@ server.tool(
   }
 );
 
-server.tool(
+server.registerTool(
   'backlog_update',
-  'Update a task (any field)',
   {
-    id: z.string().describe('Task ID'),
-    title: z.string().optional(),
-    description: z.string().optional(),
-    status: z.enum(STATUSES).optional(),
-    blocked_reason: z.string().optional(),
-    evidence: z.array(z.string()).optional(),
+    description: 'Update a task (any field)',
+    inputSchema: {
+      id: z.string().describe('Task ID'),
+      title: z.string().optional(),
+      description: z.string().optional(),
+      status: z.enum(STATUSES).optional(),
+      blocked_reason: z.string().optional(),
+      evidence: z.array(z.string()).optional(),
+    },
   },
   async ({ id, ...updates }) => {
     const task = getTask(id, storageOptions);
