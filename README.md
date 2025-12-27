@@ -50,22 +50,11 @@ npm install && npm run build
 npm start
 ```
 
-Claude Desktop config:
-
-```json
-{
-  "mcpServers": {
-    "backlog": {
-      "command": "node",
-      "args": ["/path/to/backlog-mcp/dist/server.js"]
-    }
-  }
-}
-```
-
 ## Storage
 
-Single file: `data/backlog.json` (atomic writes via temp + rename)
+- Active tasks: `data/backlog.json`
+- Completed/cancelled tasks: `data/archive.json` (auto-archived)
+- Atomic writes via temp + rename
 
 ## License
 
