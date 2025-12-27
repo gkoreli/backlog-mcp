@@ -1,6 +1,8 @@
 # backlog-mcp
 
-Minimal task backlog as an MCP server. Records state, doesn't enforce workflow.
+Minimal task backlog MCP server for Claude and AI agents.
+
+> **Quick start**: Tell your LLM: `Add backlog-mcp to .mcp.json and use it to track tasks`
 
 ## Task Schema
 
