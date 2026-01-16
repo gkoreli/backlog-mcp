@@ -164,18 +164,38 @@ export function getTask(id: string, options: StorageOptions = {}): Task | undefi
 
 /**
  * List all tasks. Optionally filter by status.
+ * If status includes 'done' or 'cancelled', includes archived tasks (limited to most recent).
  */
 export function listTasks(
-  filter?: { status?: Task['status'][] },
+  filter?: { status?: Task['status'][]; archivedLimit?: number },
   options: StorageOptions = {}
 ): Task[] {
   const backlog = loadBacklog(options);
+  let tasks = [...backlog.tasks];
 
-  if (filter?.status && filter.status.length > 0) {
-    return backlog.tasks.filter((t) => filter.status!.includes(t.status));
+  // Check if we need archived tasks (when filtering for done/cancelled)
+  const needsArchive = filter?.status?.some(s => s === 'done' || s === 'cancelled');
+  
+  if (needsArchive) {
+    const archive = loadArchive(options);
+    // Sort archived by updated_at descending (most recent first)
+    const sortedArchive = [...archive.tasks].sort((a, b) => 
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
+    
+    // Apply limit to archived tasks (default 10)
+    const archiveLimit = filter?.archivedLimit ?? 10;
+    const limitedArchive = sortedArchive.slice(0, archiveLimit);
+    
+    tasks = [...tasks, ...limitedArchive];
   }
 
-  return backlog.tasks;
+  // Filter by status if specified
+  if (filter?.status && filter.status.length > 0) {
+    tasks = tasks.filter((t) => filter.status!.includes(t.status));
+  }
+
+  return tasks;
 }
 
 /**

@@ -24,9 +24,11 @@ Minimal task backlog MCP server for Claude and AI agents.
 Single unified tool with action parameter:
 
 ```
-backlog action="list"                         # List all tasks
+backlog action="list"                         # List all active tasks
 backlog action="list" summary=true            # Get counts by status
 backlog action="list" status=["open"]         # Filter by status
+backlog action="list" status=["done"]         # Show completed tasks (last 10)
+backlog action="list" status=["done"] archived_limit=20  # Show last 20 completed
 backlog action="get" id="TASK-0001"           # Get task details
 backlog action="create" title="Fix bug"       # Create task
 backlog action="update" id="TASK-0001" set_status="done"  # Update task
