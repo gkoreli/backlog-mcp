@@ -49,9 +49,15 @@ export async function startViewer(dataDir: string, port: number = 3030): Promise
       return;
     }
     
-    // Serve static files from viewer directory
-    if (req.url?.startsWith('/viewer/') || req.url?.match(/\.(css|js|ts|svg)$/)) {
-      const filePath = join(__dirname, '..', 'viewer', req.url.replace('/viewer/', ''));
+    // Serve static files
+    if (req.url?.match(/\.(css|js|svg)$/)) {
+      const urlPath = req.url.startsWith('/') ? req.url.slice(1) : req.url;
+      // Try dist/viewer (compiled JS), then viewer/ (source assets like css, svg, md-block.js)
+      let filePath = join(__dirname, 'viewer', urlPath);
+      if (!existsSync(filePath)) {
+        filePath = join(__dirname, '..', 'viewer', urlPath);
+      }
+      
       try {
         const content = readFileSync(filePath, 'utf-8');
         const contentType = req.url.endsWith('.css') ? 'text/css' :
