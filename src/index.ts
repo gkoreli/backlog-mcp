@@ -26,3 +26,6 @@ export {
   getTaskCounts,
   getTaskMarkdown,
 } from './storage.js';
+
+// Viewer
+export { startViewer } from './viewer.js';

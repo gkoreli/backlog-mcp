@@ -4,6 +4,21 @@ Minimal task backlog MCP server for Claude and AI agents.
 
 > **Quick start**: Tell your LLM: `Add backlog-mcp to .mcp.json and use it to track tasks`
 
+## Web Viewer
+
+Start the server and open `http://localhost:3030/viewer/` for a visual task browser.
+
+```bash
+npm run dev  # Starts MCP server + web viewer with hot reload
+```
+
+Features:
+- Split pane layout with task list and detail view
+- Filter by Active/Completed/All
+- GitHub-style markdown rendering
+- Click file path to open in editor
+- URL state persistence
+
 ## Task Schema
 
 Tasks are stored as individual markdown files with YAML frontmatter:
@@ -73,10 +88,9 @@ npm start
 
 ## Storage
 
-- Default: `data/backlog.json` (local to project)
+- Default: `data/tasks/` and `data/archive/` (local to project)
 - Global: Set `BACKLOG_DATA_DIR=~/.backlog` for cross-project persistence
-- Completed/cancelled tasks auto-archive to `archive.json`
-- Atomic writes via temp + rename
+- Completed/cancelled tasks auto-archive to `archive/`
 
 ## License
 
