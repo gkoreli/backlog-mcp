@@ -51,6 +51,8 @@ jobs:
 
       - name: Publish to npm
         if: steps.version.outputs.changed == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           npm ci
           npm run build
