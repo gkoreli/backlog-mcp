@@ -34,8 +34,9 @@ server.registerTool(
     inputSchema: {
       action: z.enum(ACTIONS).describe('Action to perform'),
       // list options
-      status: z.array(z.enum(STATUSES)).optional().describe('Filter by status (list)'),
+      status: z.array(z.enum(STATUSES)).optional().describe('Filter by status (list). Include "done" or "cancelled" to see archived tasks'),
       summary: z.boolean().optional().describe('Return counts instead of list (list)'),
+      archived_limit: z.number().optional().describe('Max archived tasks when status includes done/cancelled (list). Default: 10'),
       // get/update options
       id: z.string().optional().describe('Task ID (get, update)'),
       // create/update options
@@ -47,10 +48,11 @@ server.registerTool(
       evidence: z.array(z.string()).optional().describe('Evidence of completion (update)'),
     },
   },
-  async ({ action, status, summary, id, title, description, set_status, blocked_reason, evidence }) => {
+  async ({ action, status, summary, archived_limit, id, title, description, set_status, blocked_reason, evidence }) => {
     switch (action) {
       case 'list': {
-        const tasks = listTasks(status ? { status } : undefined, storageOptions);
+        const filter = status || archived_limit ? { status, archivedLimit: archived_limit } : undefined;
+        const tasks = listTasks(filter, storageOptions);
         if (summary) {
           const counts = status ? countTasks(tasks) : getTaskCounts(storageOptions);
           return { content: [{ type: 'text' as const, text: JSON.stringify(counts, null, 2) }] };
