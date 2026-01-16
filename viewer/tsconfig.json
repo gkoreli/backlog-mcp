@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "types": [],
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "outDir": "../dist/viewer",
+    "rootDir": ".",
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": ["**/*.ts"],
+  "exclude": []
+}

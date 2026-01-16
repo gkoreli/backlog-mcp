@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backlog</title>
+  <link rel="icon" href="./logo.svg">
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./github-markdown.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Pane: Task List -->
+    <div class="left-pane">
+      <div class="pane-header">
+        <div class="pane-title">
+          <img src="./logo.svg" class="logo" alt="">
+          Backlog
+        </div>
+      </div>
+      <div class="pane-content">
+        <task-filter-bar></task-filter-bar>
+        <task-list></task-list>
+      </div>
+    </div>
+    
+    <!-- Right Pane: Task Detail -->
+    <div class="right-pane">
+      <div class="pane-header">
+        <div class="pane-title">Task Detail</div>
+      </div>
+      <div class="pane-content">
+        <task-detail></task-detail>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./md-block.js"></script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

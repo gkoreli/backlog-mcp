@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { createTask, STATUSES, type Task } from './schema.js';
 import { countTasks } from './summary.js';
 import { loadBacklog, getTask, getTaskMarkdown, listTasks, addTask, saveTask, getTaskCounts, type StorageOptions } from './storage.js';
+import { startViewer } from './viewer.js';
 
 // ============================================================================
 // Server
@@ -108,6 +109,11 @@ server.registerTool(
 // ============================================================================
 
 async function main() {
+  // Start HTTP viewer in background
+  const dataDir = storageOptions.dataDir ?? 'data';
+  const viewerPort = parseInt(process.env.BACKLOG_VIEWER_PORT || '3030');
+  startViewer(dataDir, viewerPort);
+  
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
