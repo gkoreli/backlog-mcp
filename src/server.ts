@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import 'dotenv/config';
+try { await import('dotenv/config'); } catch {}
+
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
