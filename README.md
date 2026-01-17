@@ -1,6 +1,6 @@
 # backlog-mcp
 
-Minimal task backlog MCP server for Claude and AI agents.
+Minimal task backlog MCP server. Works with any LLM agent or CLI editor that supports MCP integration (Claude, Kiro, Cursor, Codex, etc).
 
 > **Quick start**: Tell your LLM: `Add backlog-mcp to .mcp.json and use it to track tasks`
 
@@ -64,7 +64,7 @@ backlog action="update" id="TASK-0001" set_status="done"  # Update task
 
 ## Installation
 
-Add to your MCP config (`.mcp.json` or Claude Desktop config):
+Add to your MCP config (`.mcp.json` or your MCP client config):
 
 ```json
 {
