@@ -63,10 +63,8 @@ jobs:
 
       - name: Publish to npm
         if: steps.version.outputs.changed == 'true'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           pnpm install --frozen-lockfile
           pnpm build
           pnpm test || true
-          pnpm publish --no-git-checks
+          pnpm publish --no-git-checks --provenance --access public
