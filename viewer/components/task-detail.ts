@@ -57,10 +57,6 @@ export class TaskDetail extends HTMLElement {
               <ul>${task.references.map((r: any) => {
                 const url = typeof r === 'string' ? r : r.url;
                 const title = typeof r === 'string' ? r : (r.title || r.url);
-                if (url.startsWith('file://')) {
-                  const filePath = url.replace('file://', '');
-                  return `<li><a href="#" class="file-link" data-path="${filePath}">${title}</a></li>`;
-                }
                 return `<li><a href="${url}" target="_blank" rel="noopener">${title}</a></li>`;
               }).join('')}</ul>
             </div>
@@ -98,12 +94,12 @@ export class TaskDetail extends HTMLElement {
         });
       }
       
-      // Bind file links to open via server
-      this.querySelectorAll('.file-link').forEach(link => {
+      // Bind file:// links to open via server
+      this.querySelectorAll('a[href^="file://"]').forEach(link => {
+        const path = link.getAttribute('href')!.replace('file://', '');
         link.addEventListener('click', (e) => {
           e.preventDefault();
-          const path = (link as HTMLElement).dataset.path;
-          if (path) fetch(`/open-file?path=${encodeURIComponent(path)}`);
+          fetch(`/open-file?path=${encodeURIComponent(path)}`);
         });
       });
       

@@ -34,13 +34,13 @@ server.registerTool(
   'backlog_list',
   {
     description: 'List tasks from backlog. Shows open/in_progress/blocked by default. Use status=["done"] to see completed tasks.',
-    inputSchema: {
+    inputSchema: z.object({
       status: z.array(z.enum(STATUSES)).optional().describe('Filter: open, in_progress, blocked, done, cancelled. Default: open, in_progress, blocked'),
       type: z.enum(TASK_TYPES).optional().describe('Filter by type: task, epic, or omit for all'),
       epic_id: z.string().optional().describe('Filter tasks belonging to a specific epic'),
       counts: z.boolean().optional().describe('Return counts per status instead of task list'),
       limit: z.number().optional().describe('Max tasks to return. Default: 20'),
-    },
+    }),
   },
   async ({ status, type, epic_id, counts, limit }) => {
     let tasks = storage.list({ status, limit });
@@ -58,9 +58,9 @@ server.registerTool(
   'backlog_get',
   {
     description: 'Get full task details by ID. Works for any task regardless of status.',
-    inputSchema: {
+    inputSchema: z.object({
       id: z.union([z.string(), z.array(z.string())]).describe('Task ID like TASK-0001, or array for batch fetch'),
-    },
+    }),
   },
   async ({ id }) => {
     const taskIds = Array.isArray(id) ? id : [id];
@@ -76,13 +76,13 @@ server.registerTool(
   'backlog_create',
   {
     description: 'Create a new task in the backlog.',
-    inputSchema: {
+    inputSchema: z.object({
       title: z.string().describe('Task title'),
       description: z.string().optional().describe('Task description in markdown'),
       type: z.enum(TASK_TYPES).optional().describe('Type: task (default) or epic'),
       epic_id: z.string().optional().describe('Parent epic ID to link this task to'),
       references: z.array(z.object({ url: z.string(), title: z.string().optional() })).optional().describe('Reference links with optional titles'),
-    },
+    }),
   },
   async ({ title, description, type, epic_id, references }) => {
     const task = createTask({ title, description, type, epic_id, references }, storage.list());
@@ -95,7 +95,7 @@ server.registerTool(
   'backlog_update',
   {
     description: 'Update an existing task.',
-    inputSchema: {
+    inputSchema: z.object({
       id: z.string().describe('Task ID to update'),
       title: z.string().optional().describe('New title'),
       description: z.string().optional().describe('New description'),
@@ -104,7 +104,7 @@ server.registerTool(
       references: z.array(z.object({ url: z.string(), title: z.string().optional() })).optional().describe('Reference links with optional titles'),
       blocked_reason: z.string().optional().describe('Reason if status is blocked'),
       evidence: z.array(z.string()).optional().describe('Proof of completion when marking done - links to PRs, docs, or notes'),
-    },
+    }),
   },
   async ({ id, title, description, status, epic_id, references, blocked_reason, evidence }) => {
     const task = storage.get(id);
@@ -129,9 +129,9 @@ server.registerTool(
   'backlog_delete',
   {
     description: 'Permanently delete a task from the backlog.',
-    inputSchema: {
+    inputSchema: z.object({
       id: z.string().describe('Task ID to delete'),
-    },
+    }),
   },
   async ({ id }) => {
     const deleted = storage.delete(id);
