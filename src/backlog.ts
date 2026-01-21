@@ -182,6 +182,24 @@ class BacklogStorage {
 
     return counts;
   }
+
+  getAllIds(): string[] {
+    const ids: string[] = [];
+
+    if (existsSync(this.tasksPath)) {
+      for (const file of readdirSync(this.tasksPath).filter(f => f.endsWith('.md'))) {
+        ids.push(file.replace(/\.md$/, ''));
+      }
+    }
+
+    if (existsSync(this.archivePath)) {
+      for (const file of readdirSync(this.archivePath).filter(f => f.endsWith('.md'))) {
+        ids.push(file.replace(/\.md$/, ''));
+      }
+    }
+
+    return ids;
+  }
 }
 
 export const storage = BacklogStorage.getInstance();
