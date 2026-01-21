@@ -1,35 +1,36 @@
 /**
  * <md-block> custom element
  * @author Lea Verou
+ * Modified: bundled deps, file:// link support
  */
 
-let marked = window.marked;
-let DOMPurify = window.DOMPurify;
-let Prism = window.Prism;
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
-export const URLs = {
-	marked: "https://cdn.jsdelivr.net/npm/marked/src/marked.min.js",
-	DOMPurify: "https://cdn.jsdelivr.net/npm/dompurify@2.3.3/dist/purify.es.min.js"
-}
+let Prism: any = null;
 
 // Fix indentation
-function deIndent(text) {
+function deIndent(text: string) {
 	let indent = text.match(/^[\r\n]*([\t ]+)/);
 
 	if (indent) {
-		indent = indent[1];
-
-		text = text.replace(RegExp("^" + indent, "gm"), "");
+		text = text.replace(RegExp("^" + indent[1], "gm"), "");
 	}
 
 	return text;
 }
 
 export class MarkdownElement extends HTMLElement {
+	_mdContent: string | undefined;
+	_contentFromHTML = false;
+	untrusted = false;
+	renderer: Record<string, any>;
+	static renderer: Record<string, any> = {};
+
 	constructor() {
 		super();
 
-		this.renderer = Object.assign({}, this.constructor.renderer);
+		this.renderer = Object.assign({}, (this.constructor as typeof MarkdownElement).renderer);
 
 		for (let property in this.renderer) {
 			this.renderer[property] = this.renderer[property].bind(this);
@@ -40,11 +41,11 @@ export class MarkdownElement extends HTMLElement {
 		return this.getAttribute("rendered");
 	}
 
-	get mdContent () {
+	get mdContent() {
 		return this._mdContent;
 	}
 
-	set mdContent (html) {
+	set mdContent(html: string | undefined) {
 		this._mdContent = html;
 		this._contentFromHTML = false;
 
@@ -72,39 +73,35 @@ export class MarkdownElement extends HTMLElement {
 		this.render();
 	}
 
-	async render () {
+	_parse(): string {
+		return '';
+	}
+
+	async render() {
 		if (!this.isConnected || this._mdContent === undefined) {
 			return;
 		}
 
-		if (!marked) {
-			marked = import(URLs.marked).then(m => m.marked);
-		}
-
-		marked = await marked;
-
 		marked.setOptions({
 			gfm: true,
-			smartypants: true,
-			langPrefix: "language-",
 			breaks: true,
 		});
 
-		marked.use({renderer: this.renderer});
+		marked.use({ renderer: this.renderer });
 
 		// Auto-linkify plain URLs
 		marked.use({
 			extensions: [{
 				name: 'autolink',
 				level: 'inline',
-				start(src) { return src.match(/https?:\/\//)?.index; },
-				tokenizer(src) {
-					const match = src.match(/^https?:\/\/[^\s<>"']+/);
+				start(src: string) { return src.match(/(https?|file):\/\//)?.index; },
+				tokenizer(src: string) {
+					const match = src.match(/^(https?|file):\/\/[^\s<>"']+/);
 					if (match) {
 						return { type: 'autolink', raw: match[0], href: match[0] };
 					}
 				},
-				renderer(token) {
+				renderer(token: any) {
 					return `<a href="${token.href}">${token.href}</a>`;
 				}
 			}]
@@ -114,41 +111,29 @@ export class MarkdownElement extends HTMLElement {
 
 		if (this.untrusted) {
 			let mdContent = this._mdContent;
-			html = await MarkdownElement.sanitize(html);
+			html = DOMPurify.sanitize(html);
 			if (this._mdContent !== mdContent) {
 				// While we were running this async call, the content changed
-				// We don’t want to overwrite with old data. Abort mission!
+				// We don't want to overwrite with old data. Abort mission!
 				return;
 			}
 		}
 
 		this.innerHTML = html;
 
-		if (!Prism && URLs.Prism && this.querySelector("code")) {
-			Prism = import(URLs.Prism);
-
-			if (URLs.PrismCSS) {
-				let link = document.createElement("link");
-				link.rel = "stylesheet";
-				link.href = URLs.PrismCSS;
-				document.head.appendChild(link);
-			}
-		}
-
 		if (Prism) {
-			await Prism; // in case it's still loading
 			Prism.highlightAllUnder(this);
 		}
 
-		if (this.src) {
-			this.setAttribute("rendered", this._contentFromHTML? "fallback" : "remote");
+		if ((this as any).src) {
+			this.setAttribute("rendered", this._contentFromHTML ? "fallback" : "remote");
 		}
 		else {
-			this.setAttribute("rendered", this._contentFromHTML? "content" : "property");
+			this.setAttribute("rendered", this._contentFromHTML ? "content" : "property");
 		}
 
 		// Fire event
-		let event = new CustomEvent("md-render", {bubbles: true, composed: true});
+		let event = new CustomEvent("md-render", { bubbles: true, composed: true });
 		this.dispatchEvent(event);
 
 		// Make external links open in new tab
@@ -156,82 +141,84 @@ export class MarkdownElement extends HTMLElement {
 			a.setAttribute('target', '_blank');
 			a.setAttribute('rel', 'noopener');
 		});
+
+		// Convert file:// links to use server endpoint
+		this.querySelectorAll('a[href^="file://"]').forEach(a => {
+			const path = a.getAttribute('href')!.replace('file://', '');
+			(a as HTMLElement).onclick = (e) => { 
+				e.preventDefault(); 
+				fetch(`/open-file?path=${encodeURIComponent(path)}`); 
+			};
+		});
 	}
-
-	static async sanitize(html) {
-		if (!DOMPurify) {
-			DOMPurify = import(URLs.DOMPurify).then(m => m.default);
-		}
-
-		DOMPurify = await DOMPurify; // in case it's still loading
-
-		return DOMPurify.sanitize(html);
-	}
-};
+}
 
 export class MarkdownSpan extends MarkdownElement {
 	constructor() {
 		super();
 	}
 
-	_parse () {
-		return marked.parseInline(this._mdContent);
+	_parse() {
+		return marked.parseInline(this._mdContent || '') as string;
 	}
 
 	static renderer = {
-		codespan (code) {
+		codespan(this: MarkdownSpan, token: { text: string }) {
+			let code = token.text;
 			if (this._contentFromHTML) {
-				// Inline HTML code needs to be escaped to not be parsed as HTML by the browser
-				// This results in marked double-escaping it, so we need to unescape it
 				code = code.replace(/&amp;(?=[lg]t;)/g, "&");
 			}
 			else {
-				// Remote code may include characters that need to be escaped to be visible in HTML
 				code = code.replace(/</g, "&lt;");
 			}
 
 			return `<code>${code}</code>`;
 		}
-	}
+	};
 }
 
 export class MarkdownBlock extends MarkdownElement {
+	_src: URL | undefined;
+	_hmin: number | undefined;
+	_hlinks: string | undefined;
+
 	constructor() {
 		super();
 	}
 
-	get src() {
+	get src(): URL | undefined {
 		return this._src;
 	}
 
-	set src(value) {
-		this.setAttribute("src", value);
+	set src(value: string | URL | undefined) {
+		if (value) this.setAttribute("src", String(value));
 	}
 
-	get hmin() {
+	get hmin(): number {
 		return this._hmin || 1;
 	}
 
-	set hmin(value) {
-		this.setAttribute("hmin", value);
+	set hmin(value: string | number) {
+		this.setAttribute("hmin", String(value));
 	}
 
-	get hlinks() {
+	get hlinks(): string | null {
 		return this._hlinks ?? null;
 	}
 
-	set hlinks(value) {
-		this.setAttribute("hlinks", value);
+	set hlinks(value: string | null) {
+		if (value) this.setAttribute("hlinks", value);
 	}
 
-	_parse () {
-		return marked.parse(this._mdContent);
+	_parse() {
+		return marked.parse(this._mdContent || '') as string;
 	}
 
 	static renderer = Object.assign({
-		heading (text, level, _raw, slugger) {
-			level = Math.min(6, level + (this.hmin - 1));
-			const id = slugger.slug(text);
+		heading(this: MarkdownBlock, token: { text: string; depth: number }) {
+			const text = token.text;
+			let level = Math.min(6, token.depth + (this.hmin - 1));
+			const id = text.toLowerCase().replace(/[^\w]+/g, '-');
 			const hlinks = this.hlinks;
 
 			let content;
@@ -253,20 +240,16 @@ export class MarkdownBlock extends MarkdownElement {
 				}
 			}
 
-			return `
-				<h${level} id="${id}">
-					${content}
-				</h${level}>`;
+			return `<h${level} id="${id}">${content}</h${level}>`;
 		},
 
-		code (code, language, escaped) {
+		code(this: MarkdownBlock, token: { text: string; lang?: string }) {
+			let code = token.text;
+			const language = token.lang || '';
 			if (this._contentFromHTML) {
-				// Inline HTML code needs to be escaped to not be parsed as HTML by the browser
-				// This results in marked double-escaping it, so we need to unescape it
 				code = code.replace(/&amp;(?=[lg]t;)/g, "&");
 			}
 			else {
-				// Remote code may include characters that need to be escaped to be visible in HTML
 				code = code.replace(/</g, "&lt;");
 			}
 
@@ -278,7 +261,7 @@ export class MarkdownBlock extends MarkdownElement {
 		return ["src", "hmin", "hlinks"];
 	}
 
-	attributeChangedCallback(name, oldValue, newValue) {
+	attributeChangedCallback(name: string, oldValue: string, newValue: string) {
 		if (oldValue === newValue) {
 			return;
 		}
@@ -287,7 +270,7 @@ export class MarkdownBlock extends MarkdownElement {
 			case "src":
 				let url;
 				try {
-					url = new URL(newValue, location);
+					url = new URL(newValue, location.href);
 				}
 				catch (e) {
 					return;
@@ -298,22 +281,22 @@ export class MarkdownBlock extends MarkdownElement {
 
 				if (this.src !== prevSrc) {
 					fetch(this.src)
-					.then(response => {
-						if (!response.ok) {
-							throw new Error(`Failed to fetch ${this.src}: ${response.status} ${response.statusText}`);
-						}
+						.then(response => {
+							if (!response.ok) {
+								throw new Error(`Failed to fetch ${this.src}: ${response.status} ${response.statusText}`);
+							}
 
-						return response.text();
-					})
-					.then(text => {
-						this.mdContent = text;
-					})
-					.catch(e => {});
+							return response.text();
+						})
+						.then(text => {
+							this.mdContent = text;
+						})
+						.catch(_e => { });
 				}
 
 				break;
 			case "hmin":
-				if (newValue > 0) {
+				if (Number(newValue) > 0) {
 					this._hmin = +newValue;
 
 					this.render();

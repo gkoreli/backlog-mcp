@@ -94,6 +94,15 @@ export class TaskDetail extends HTMLElement {
         });
       }
       
+      // Bind file:// links to open via server
+      this.querySelectorAll('a[href^="file://"]').forEach(link => {
+        const path = link.getAttribute('href')!.replace('file://', '');
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          fetch(`/open-file?path=${encodeURIComponent(path)}`);
+        });
+      });
+      
       // Bind copy raw button (in pane header)
       const copyRawBtn = paneHeader?.querySelector('.copy-raw');
       if (copyRawBtn && task.raw) {

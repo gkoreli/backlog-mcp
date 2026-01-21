@@ -9,7 +9,7 @@ Minimal task backlog MCP server. Works with any LLM agent or CLI editor that sup
 Start the server and open `http://localhost:3030` for a visual task browser.
 
 ```bash
-npm run dev  # Starts MCP server + web viewer with hot reload
+pnpm dev  # Starts MCP server + web viewer with hot reload
 ```
 
 Features:
@@ -88,8 +88,8 @@ Or build from source:
 ```bash
 git clone https://github.com/gkoreli/backlog-mcp.git
 cd backlog-mcp
-npm install && npm run build
-npm start
+pnpm install && pnpm build
+pnpm start
 ```
 
 ## Storage
