@@ -73,23 +73,10 @@ class BacklogStorage {
     return null;
   }
 
-  list(filter?: { status?: Status[]; type?: TaskType; epic_id?: string; limit?: number; counts?: boolean }): Task[] | { filtered: number; total: number; total_tasks: number; total_epics: number } {
-    const { status, type, epic_id, limit = 20, counts = false } = filter ?? {};
+  list(filter?: { status?: Status[]; type?: TaskType; epic_id?: string; limit?: number }): Task[] {
+    const { status, type, epic_id, limit = 20 } = filter ?? {};
 
     let tasks = Array.from(this.iterateTasks());
-    
-    if (counts) {
-      const allTasks = tasks;
-      const total_tasks = allTasks.filter(t => (t.type ?? 'task') === 'task').length;
-      const total_epics = allTasks.filter(t => (t.type ?? 'task') === 'epic').length;
-      
-      if (status) tasks = tasks.filter(t => status.includes(t.status));
-      if (type) tasks = tasks.filter(t => (t.type ?? 'task') === type);
-      if (epic_id) tasks = tasks.filter(t => t.epic_id === epic_id);
-      
-      const total = type ? (type === 'epic' ? total_epics : total_tasks) : allTasks.length;
-      return { filtered: tasks.length, total, total_tasks, total_epics };
-    }
     
     if (status) tasks = tasks.filter(t => status.includes(t.status));
     if (type) tasks = tasks.filter(t => (t.type ?? 'task') === type);
@@ -121,8 +108,8 @@ class BacklogStorage {
     return false;
   }
 
-  counts(): Record<Status, number> {
-    const counts: Record<Status, number> = {
+  counts(): { total_tasks: number; total_epics: number; by_status: Record<Status, number> } {
+    const by_status: Record<Status, number> = {
       open: 0,
       in_progress: 0,
       blocked: 0,
@@ -130,11 +117,19 @@ class BacklogStorage {
       cancelled: 0,
     };
 
+    let total_tasks = 0;
+    let total_epics = 0;
+
     for (const task of this.iterateTasks()) {
-      counts[task.status]++;
+      by_status[task.status]++;
+      if ((task.type ?? 'task') === 'epic') {
+        total_epics++;
+      } else {
+        total_tasks++;
+      }
     }
 
-    return counts;
+    return { total_tasks, total_epics, by_status };
   }
 
   getMaxId(type?: 'task' | 'epic'): number {
