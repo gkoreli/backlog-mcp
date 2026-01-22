@@ -512,20 +512,11 @@
   color: #c9d1d9;
   font-weight: 600;
 }
-  background: #21262d;
-  padding: 4px 10px;
-  border-radius: 4px;
-  text-decoration: none;
-}
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px;
-  color: #c9d1d9;
-}
+
 #task-pane-header .copy-btn:not(.btn-outline):hover {
   color: #58a6ff;
 }
+
 .task-meta-id {
   font-family: monospace;
   font-size: 12px;
@@ -564,21 +555,8 @@
 .epic-title {
   color: #d4d4d4;
 }
-.task-meta-path .open-link {
-  font-size: 11px;
-  font-family: monospace;
-  color: #8b949e;
-  background: #21262d;
-  padding: 4px 8px;
-  border-radius: 4px;
-  text-decoration: none;
-}
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px;
-  color: #8b949e;
-}
+
+.task-meta-section {
   margin-top: 12px;
   font-size: 13px;
 }
