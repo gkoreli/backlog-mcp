@@ -40,7 +40,6 @@
     .left-pane {
       width: 35%;
       min-width: 200px;
-      border-right: 1px solid #3e3e42;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -78,11 +77,12 @@
 
     .resize-handle {
       width: 4px;
-      background: transparent;
+      background: #3e3e42;
       cursor: col-resize;
       flex-shrink: 0;
       position: relative;
       z-index: 10;
+      transition: background 0.15s;
     }
 
     .resize-handle:hover {
