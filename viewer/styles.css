@@ -657,7 +657,6 @@ task-detail .markdown-body {
 .resource-viewer {
   flex: 1;
   overflow: auto;
-  padding: 20px;
   background: #1e1e1e;
 }
 
