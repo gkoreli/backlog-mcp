@@ -76,16 +76,15 @@ export class TaskDetail extends HTMLElement {
         </div>
       `;
       
-      const article = document.createElement('article');
-      article.className = 'markdown-body';
-      article.innerHTML = metaHtml;
+      const metaDiv = document.createElement('div');
+      metaDiv.innerHTML = metaHtml;
       
-      const mdBlock = document.createElement('md-block');
-      mdBlock.textContent = task.description || '';
-      article.appendChild(mdBlock);
+      const markdownContent = document.createElement('markdown-content') as any;
+      markdownContent.content = task.description || '';
       
       this.innerHTML = '';
-      this.appendChild(article);
+      this.appendChild(metaDiv);
+      this.appendChild(markdownContent);
       
       // Bind epic link click to navigate
       const epicLink = this.querySelector('.epic-link');
