@@ -141,15 +141,6 @@ export class MarkdownElement extends HTMLElement {
 			a.setAttribute('target', '_blank');
 			a.setAttribute('rel', 'noopener');
 		});
-
-		// Convert file:// links to use server endpoint
-		this.querySelectorAll('a[href^="file://"]').forEach(a => {
-			const path = a.getAttribute('href')!.replace('file://', '');
-			(a as HTMLElement).onclick = (e) => { 
-				e.preventDefault(); 
-				fetch(`/open-file?path=${encodeURIComponent(path)}`); 
-			};
-		});
 	}
 }
 
