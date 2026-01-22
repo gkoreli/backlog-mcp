@@ -6,8 +6,7 @@ import './components/task-detail.js';
 import './components/task-badge.js';
 import './components/resource-viewer.js';
 import { urlState } from './utils/url-state.js';
-
-let splitActive = false;
+import { splitPane } from './utils/split-pane.js';
 
 // Subscribe components to URL state changes - single source of truth
 urlState.subscribe((state) => {
@@ -26,11 +25,12 @@ urlState.subscribe((state) => {
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
   urlState.init();
+  splitPane.init();
   
   // Restore resource from localStorage
   const savedResource = localStorage.getItem('openResource');
   if (savedResource) {
-    openSplitPane(savedResource);
+    splitPane.open(savedResource);
   }
 });
 
@@ -49,43 +49,10 @@ document.addEventListener('epic-pin', ((e: CustomEvent) => {
 
 document.addEventListener('resource-open', ((e: CustomEvent) => {
   localStorage.setItem('openResource', e.detail.path);
-  openSplitPane(e.detail.path);
+  splitPane.open(e.detail.path);
 }) as EventListener);
 
 document.addEventListener('resource-close', () => {
   localStorage.removeItem('openResource');
-  closeSplitPane();
+  splitPane.close();
 });
-
-function openSplitPane(path: string) {
-  const taskPane = document.getElementById('task-pane');
-  if (!taskPane) return;
-  
-  // Check if split pane viewer already exists
-  let viewer = taskPane.querySelector('resource-viewer.split-pane-viewer') as any;
-  
-  if (viewer) {
-    // Reload existing viewer
-    viewer.loadResource(path);
-  } else {
-    // Create new split pane viewer
-    taskPane.classList.add('split-active');
-    viewer = document.createElement('resource-viewer') as any;
-    viewer.className = 'resource-viewer split-pane-viewer';
-    taskPane.appendChild(viewer);
-    viewer.loadResource(path);
-    splitActive = true;
-  }
-}
-
-function closeSplitPane() {
-  const taskPane = document.getElementById('task-pane');
-  const viewer = taskPane?.querySelector('resource-viewer.split-pane-viewer');
-  
-  if (viewer) {
-    viewer.remove();
-  }
-  
-  taskPane?.classList.remove('split-active');
-  splitActive = false;
-}
