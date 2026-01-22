@@ -771,3 +771,44 @@ task-detail .markdown-body {
   font-size: 12px;
   overflow-x: auto;
 }
+
+
+/* URI Section Styles */
+.uri-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.uri-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.uri-label {
+  color: #8b949e;
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.uri-value {
+  flex: 1;
+  background: #0d1117;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 11px;
+  color: #79c0ff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-uri-btn {
+  padding: 4px 12px;
+  font-size: 11px;
+  min-width: 50px;
+}

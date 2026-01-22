@@ -34,7 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restore resource from localStorage
   const savedResource = localStorage.getItem('openResource');
   if (savedResource) {
-    splitPane.open(savedResource);
+    if (savedResource.startsWith('mcp://')) {
+      splitPane.openMcp(savedResource);
+    } else {
+      splitPane.open(savedResource);
+    }
   }
 });
 
@@ -52,11 +56,27 @@ document.addEventListener('epic-pin', ((e: CustomEvent) => {
 }) as EventListener);
 
 document.addEventListener('resource-open', ((e: CustomEvent) => {
-  localStorage.setItem('openResource', e.detail.path);
-  splitPane.open(e.detail.path);
+  if (e.detail.uri) {
+    // MCP URI
+    localStorage.setItem('openResource', e.detail.uri);
+    splitPane.openMcp(e.detail.uri);
+  } else if (e.detail.path) {
+    // File path
+    localStorage.setItem('openResource', e.detail.path);
+    splitPane.open(e.detail.path);
+  }
 }) as EventListener);
 
 document.addEventListener('resource-close', () => {
   localStorage.removeItem('openResource');
   splitPane.close();
 });
+
+document.addEventListener('resource-loaded', ((e: CustomEvent) => {
+  const { title, fileUri, mcpUri } = e.detail;
+  if (fileUri && mcpUri) {
+    splitPane.setHeaderWithUris(title, fileUri, mcpUri);
+  } else if (fileUri) {
+    splitPane.setHeaderTitle(title, fileUri);
+  }
+}) as EventListener);
