@@ -45,10 +45,13 @@ export class ResourceViewer extends HTMLElement {
       if (!contentDiv) return;
 
       if (data.ext === 'md') {
+        const article = document.createElement('article');
+        article.className = 'markdown-body';
         const mdBlock = document.createElement('md-block');
         mdBlock.textContent = data.content;
+        article.appendChild(mdBlock);
         contentDiv.innerHTML = '';
-        contentDiv.appendChild(mdBlock);
+        contentDiv.appendChild(article);
       } else if (['ts', 'js', 'json', 'txt'].includes(data.ext)) {
         const pre = document.createElement('pre');
         const code = document.createElement('code');
