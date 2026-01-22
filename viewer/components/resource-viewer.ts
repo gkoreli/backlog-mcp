@@ -74,38 +74,19 @@ export class ResourceViewer extends HTMLElement {
   private render() {
     if (!this.data) return;
 
-    const container = document.createElement('div');
-    
-    // Header (for split pane use case)
-    if (this._showHeader && this.data.path) {
-      const filename = this.data.path.split('/').pop() || this.data.path;
-      const header = document.createElement('div');
-      header.className = 'resource-header';
-      header.innerHTML = `
-        <span class="resource-filename" title="${this.data.path}">${filename}</span>
-        <button class="resource-close" title="Close (Cmd+W)">✕</button>
-      `;
-      header.querySelector('.resource-close')?.addEventListener('click', () => {
-        this.dispatchEvent(new CustomEvent('resource-close', { bubbles: true }));
-      });
-      container.appendChild(header);
-    }
-
-    const content = document.createElement('div');
-    content.className = 'resource-content';
+    this.innerHTML = '';
+    this.className = 'resource-viewer';
 
     // Render based on file type
     if (this.data.ext === 'md' || this.data.frontmatter) {
-      content.appendChild(this.renderMarkdownDocument());
+      this.appendChild(this.renderMarkdownDocument());
     } else if (this.data.ext && ['ts', 'js', 'json', 'txt'].includes(this.data.ext)) {
-      content.appendChild(this.renderCode());
+      this.appendChild(this.renderCode());
     } else {
-      content.innerHTML = `<pre>${this.data.content}</pre>`;
+      const pre = document.createElement('pre');
+      pre.textContent = this.data.content;
+      this.appendChild(pre);
     }
-
-    container.appendChild(content);
-    this.innerHTML = '';
-    this.appendChild(container);
   }
 
   private renderMarkdownDocument(): HTMLElement {

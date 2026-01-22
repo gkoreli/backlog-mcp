@@ -655,19 +655,13 @@ task-detail .markdown-body {
 
 /* Resource Viewer */
 .resource-viewer {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: #1e1e1e;
-}
-
-.resource-content {
   flex: 1;
   overflow: auto;
   padding: 20px;
+  background: #1e1e1e;
 }
 
-.resource-content pre {
+.resource-viewer pre {
   background: #1e1e1e;
   border: 1px solid #3e3e42;
   border-radius: 6px;
@@ -677,7 +671,7 @@ task-detail .markdown-body {
   line-height: 1.6;
 }
 
-.resource-content code {
+.resource-viewer code {
   font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
   color: #d4d4d4;
 }
