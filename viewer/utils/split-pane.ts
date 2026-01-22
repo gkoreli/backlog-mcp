@@ -13,7 +13,9 @@ class SplitPaneService {
   open(path: string) {
     if (!this.rightPane) return;
 
-    if (this.viewer) {
+    if (this.pane) {
+      // Pane already exists, just show it and reload
+      this.pane.style.display = 'flex';
       this.viewer.loadResource(path);
       this.setHeaderTitle(path.split('/').pop() || path, path);
     } else {
@@ -29,7 +31,7 @@ class SplitPaneService {
         }
       }
       
-      // Add resize handle
+      // Add resize handle (only once)
       const handle = resizeService.createHandle(this.rightPane, taskPane, 'taskPaneWidth');
       handle.dataset.storageKey = 'taskPaneWidth';
       handle.classList.add('split-resize-handle');
@@ -74,19 +76,12 @@ class SplitPaneService {
 
   close() {
     if (this.pane) {
-      this.pane.remove();
-      this.pane = null;
-      this.viewer = null;
-      this.headerContent = null;
+      // Hide instead of remove
+      this.pane.style.display = 'none';
     }
     
-    // Remove split pane resize handle only
-    const handle = this.rightPane?.querySelector('.split-resize-handle');
-    if (handle) {
-      handle.remove();
-    }
-    
-    this.rightPane?.classList.remove('split-active');
+    // Keep resize handle and split-active class
+    // This allows resizing even when resource pane is hidden
   }
 
   isOpen(): boolean {

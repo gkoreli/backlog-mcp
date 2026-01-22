@@ -81,7 +81,7 @@
 
     .resize-handle {
       width: 8px;
-      background: rgba(9, 105, 218, 0.1);
+      background: transparent;
       cursor: col-resize;
       flex-shrink: 0;
       position: relative;
