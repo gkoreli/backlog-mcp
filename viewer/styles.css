@@ -76,7 +76,7 @@
     }
 
     .resize-handle {
-      width: 4px;
+      width: 1px;
       background: #3e3e42;
       cursor: col-resize;
       flex-shrink: 0;
@@ -86,10 +86,12 @@
     }
 
     .resize-handle:hover {
+      width: 3px;
       background: #0969da;
     }
 
     .resize-handle:active {
+      width: 3px;
       background: #0969da;
     }
     
