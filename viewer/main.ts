@@ -8,6 +8,7 @@ import './components/resource-viewer.js';
 import { urlState } from './utils/url-state.js';
 import { splitPane } from './utils/split-pane.js';
 import { resizeService } from './utils/resize.js';
+import { layoutService } from './utils/layout.js';
 
 // Subscribe components to URL state changes - single source of truth
 urlState.subscribe((state) => {
@@ -26,18 +27,9 @@ urlState.subscribe((state) => {
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
   urlState.init();
-  splitPane.init();
   resizeService.init();
-  
-  // Add resize handle between left and right panes
-  const appContainer = document.getElementById('app-container');
-  const leftPane = document.getElementById('left-pane');
-  if (appContainer && leftPane) {
-    const handle = resizeService.createHandle(appContainer, leftPane, 'leftPaneWidth');
-    handle.dataset.storageKey = 'leftPaneWidth';
-    handle.classList.add('main-resize-handle');
-    appContainer.insertBefore(handle, leftPane.nextSibling);
-  }
+  layoutService.init();
+  splitPane.init();
   
   // Restore resource from localStorage
   const savedResource = localStorage.getItem('openResource');
