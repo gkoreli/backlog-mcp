@@ -2,7 +2,7 @@
 
 try { await import('dotenv/config'); } catch {}
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -35,24 +35,23 @@ const server = new McpServer({
 server.registerTool(
   'backlog_list',
   {
-    description: 'List tasks from backlog. Shows open/in_progress/blocked by default. Use status=["done"] to see completed tasks.',
+    description: 'List tasks from backlog. Returns most recently updated items first. Default: shows only active work (open/in_progress/blocked), limited to 20 items. Use counts=true to check if more items exist beyond the limit.',
     inputSchema: z.object({
-      status: z.array(z.enum(STATUSES)).optional().describe('Filter: open, in_progress, blocked, done, cancelled. Default: open, in_progress, blocked'),
-      type: z.enum(TASK_TYPES).optional().describe('Filter by type: task, epic, or omit for all'),
-      epic_id: z.string().optional().describe('Filter tasks belonging to a specific epic'),
-      counts: z.boolean().optional().describe('Return counts per status instead of task list'),
-      limit: z.number().optional().describe('Max tasks to return. Default: 20'),
+      status: z.array(z.enum(STATUSES)).optional().describe('Filter by status. Options: open, in_progress, blocked, done, cancelled. Default: [open, in_progress, blocked]. Pass ["done"] to see completed work.'),
+      type: z.enum(TASK_TYPES).optional().describe('Filter by type. Options: task, epic. Default: returns both. Use type="epic" to list only epics.'),
+      epic_id: z.string().optional().describe('Filter tasks belonging to a specific epic. Example: epic_id="EPIC-0001"'),
+      counts: z.boolean().optional().describe('Include global counts { total_tasks, total_epics, by_status } alongside results. Use this to detect if more items exist beyond the limit. Default: false'),
+      limit: z.number().optional().describe('Max items to return. Default: 20. Increase if you need to see more items (e.g., limit=100 to list all epics).'),
     }),
   },
   async ({ status, type, epic_id, counts, limit }) => {
-    let tasks = storage.list({ status, limit });
-    if (type) tasks = tasks.filter(t => (t.type ?? 'task') === type);
-    if (epic_id) tasks = tasks.filter(t => t.epic_id === epic_id);
-    if (counts) {
-      return { content: [{ type: 'text' as const, text: JSON.stringify(storage.counts(), null, 2) }] };
-    }
+    const tasks = storage.list({ status, type, epic_id, limit });
     const list = tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, type: t.type ?? 'task', epic_id: t.epic_id }));
-    return { content: [{ type: 'text' as const, text: JSON.stringify(list, null, 2) }] };
+    const result: any = { tasks: list };
+    if (counts) {
+      result.counts = storage.counts();
+    }
+    return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
   }
 );
 
@@ -183,6 +182,83 @@ server.registerTool(
     }
     
     return { content: [{ type: 'text' as const, text: result.message }] };
+  }
+);
+
+// ============================================================================
+// Resources
+// ============================================================================
+
+// Helper to resolve MCP URIs to file paths
+function resolveMcpUri(uri: string | URL): string {
+  const url = typeof uri === 'string' ? new URL(uri) : uri;
+  
+  if (url.protocol !== 'mcp:' || url.hostname !== 'backlog') {
+    throw new Error(`Invalid MCP URI: ${url.toString()}`);
+  }
+  
+  const path = url.pathname.substring(1); // Remove leading /
+  
+  if (path.startsWith('tasks/')) {
+    const match = path.match(/^tasks\/([^/]+)(\/file)?$/);
+    if (!match || !match[1]) throw new Error(`Invalid task URI: ${url.toString()}`);
+    
+    const taskId = match[1];
+    const filePath = storage.getFilePath(taskId);
+    if (!filePath) throw new Error(`Task not found: ${taskId}`);
+    return filePath;
+  }
+  
+  if (path.startsWith('resources/')) {
+    const relativePath = path.substring('resources/'.length);
+    const repoRoot = join(__dirname, '..');
+    return join(repoRoot, relativePath);
+  }
+  
+  if (path.startsWith('artifacts/')) {
+    const relativePath = path.substring('artifacts/'.length);
+    const home = process.env.HOME || process.env.USERPROFILE || '~';
+    const backlogDataDir = process.env.BACKLOG_DATA_DIR ?? join(home, '.backlog');
+    return join(backlogDataDir, '..', relativePath);
+  }
+  
+  throw new Error(`Unknown MCP URI pattern: ${url.toString()}`);
+}
+
+// Register resource templates for dynamic task resources
+server.registerResource(
+  'Task File',
+  'mcp://backlog/tasks/{taskId}/file',
+  { mimeType: 'text/markdown', description: 'Task markdown file' },
+  async (uri: URL) => {
+    const filePath = resolveMcpUri(uri);
+    if (!existsSync(filePath)) {
+      throw new Error(`Resource not found: ${uri.toString()}`);
+    }
+    const content = readFileSync(filePath, 'utf-8');
+    return { contents: [{ uri: uri.toString(), mimeType: 'text/markdown', text: content }] };
+  }
+);
+
+server.registerResource(
+  'Repository Resource',
+  'mcp://backlog/resources/{path}',
+  { description: 'Repository files (ADRs, source code, etc.)' },
+  async (uri: URL) => {
+    const filePath = resolveMcpUri(uri);
+    if (!existsSync(filePath)) {
+      throw new Error(`Resource not found: ${uri.toString()}`);
+    }
+    const content = readFileSync(filePath, 'utf-8');
+    const ext = filePath.split('.').pop()?.toLowerCase() || 'txt';
+    const mimeMap: Record<string, string> = {
+      md: 'text/markdown',
+      json: 'application/json',
+      ts: 'text/typescript',
+      js: 'application/javascript',
+      txt: 'text/plain'
+    };
+    return { contents: [{ uri: uri.toString(), mimeType: mimeMap[ext] || 'text/plain', text: content }] };
   }
 );
 

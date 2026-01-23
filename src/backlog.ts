@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import matter from 'gray-matter';
-import type { Task, Status } from './schema.js';
+import type { Task, Status, TaskType } from './schema.js';
 
 const TASKS_DIR = 'tasks';
 
@@ -73,12 +73,14 @@ class BacklogStorage {
     return null;
   }
 
-  list(filter?: { status?: Status[]; limit?: number }): Task[] {
-    const statusFilter = filter?.status;
-    const limit = filter?.limit ?? 20;
+  list(filter?: { status?: Status[]; type?: TaskType; epic_id?: string; limit?: number }): Task[] {
+    const { status, type, epic_id, limit = 20 } = filter ?? {};
 
-    const tasks = Array.from(this.iterateTasks())
-      .filter(t => !statusFilter || statusFilter.includes(t.status));
+    let tasks = Array.from(this.iterateTasks());
+    
+    if (status) tasks = tasks.filter(t => status.includes(t.status));
+    if (type) tasks = tasks.filter(t => (t.type ?? 'task') === type);
+    if (epic_id) tasks = tasks.filter(t => t.epic_id === epic_id);
 
     return tasks
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
@@ -106,8 +108,8 @@ class BacklogStorage {
     return false;
   }
 
-  counts(): Record<Status, number> {
-    const counts: Record<Status, number> = {
+  counts(): { total_tasks: number; total_epics: number; by_status: Record<Status, number> } {
+    const by_status: Record<Status, number> = {
       open: 0,
       in_progress: 0,
       blocked: 0,
@@ -115,18 +117,19 @@ class BacklogStorage {
       cancelled: 0,
     };
 
+    let total_tasks = 0;
+    let total_epics = 0;
+
     for (const task of this.iterateTasks()) {
-      counts[task.status]++;
+      by_status[task.status]++;
+      if ((task.type ?? 'task') === 'epic') {
+        total_epics++;
+      } else {
+        total_tasks++;
+      }
     }
 
-    return counts;
-  }
-
-  getAllIds(): string[] {
-    if (!existsSync(this.tasksPath)) return [];
-    return readdirSync(this.tasksPath)
-      .filter(f => f.endsWith('.md'))
-      .map(f => f.replace(/\.md$/, ''));
+    return { total_tasks, total_epics, by_status };
   }
 
   getMaxId(type?: 'task' | 'epic'): number {

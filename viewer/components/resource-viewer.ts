@@ -27,9 +27,21 @@ export class ResourceViewer extends HTMLElement {
     this._showHeader = show;
   }
 
-  loadData(data: { frontmatter?: any; content: string; path?: string; ext?: string }) {
+  loadData(data: { frontmatter?: any; content: string; path?: string; ext?: string; fileUri?: string; mcpUri?: string | null }) {
     this.data = data;
     this.render();
+    
+    // Dispatch event with URI info for header update
+    if (data.fileUri || data.mcpUri) {
+      this.dispatchEvent(new CustomEvent('resource-loaded', {
+        detail: {
+          title: data.path?.split('/').pop() || 'Resource',
+          fileUri: data.fileUri,
+          mcpUri: data.mcpUri
+        },
+        bubbles: true
+      }));
+    }
   }
 
   async loadResource(path: string) {
@@ -64,6 +76,45 @@ export class ResourceViewer extends HTMLElement {
         contentDiv.innerHTML = `
           <div class="resource-error">
             <div>Failed to load file</div>
+            <div class="resource-error-detail">${(error as Error).message}</div>
+          </div>
+        `;
+      }
+    }
+  }
+
+  async loadMcpResource(uri: string) {
+    const filename = uri.split('/').pop() || uri;
+    
+    this.innerHTML = `
+      <div class="resource-header">
+        <span class="resource-filename" title="${uri}">${filename}</span>
+        <button class="resource-close" title="Close (Cmd+W)">✕</button>
+      </div>
+      <div class="resource-content">
+        <div class="resource-loading">Loading...</div>
+      </div>
+    `;
+
+    this.querySelector('.resource-close')?.addEventListener('click', () => {
+      this.dispatchEvent(new CustomEvent('resource-close', { bubbles: true }));
+    });
+
+    try {
+      const res = await fetch(`/mcp/resource?uri=${encodeURIComponent(uri)}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to load resource');
+      }
+
+      this.loadData(data);
+    } catch (error) {
+      const contentDiv = this.querySelector('.resource-content');
+      if (contentDiv) {
+        contentDiv.innerHTML = `
+          <div class="resource-error">
+            <div>Failed to load MCP resource</div>
             <div class="resource-error-detail">${(error as Error).message}</div>
           </div>
         `;
@@ -107,16 +158,24 @@ export class ResourceViewer extends HTMLElement {
     mdBlock.textContent = this.data!.content;
     article.appendChild(mdBlock);
 
-    // Intercept file:// links
+    // Intercept file:// and mcp:// links
     setTimeout(() => {
-      article.querySelectorAll('a[href^="file://"]').forEach(link => {
-        const path = link.getAttribute('href')!.replace('file://', '');
+      article.querySelectorAll('a[href^="file://"], a[href^="mcp://"]').forEach(link => {
+        const href = link.getAttribute('href')!;
         link.addEventListener('click', (e) => {
           e.preventDefault();
-          this.dispatchEvent(new CustomEvent('resource-open', { 
-            detail: { path },
-            bubbles: true 
-          }));
+          if (href.startsWith('file://')) {
+            const path = href.replace('file://', '');
+            this.dispatchEvent(new CustomEvent('resource-open', { 
+              detail: { path },
+              bubbles: true 
+            }));
+          } else if (href.startsWith('mcp://')) {
+            this.dispatchEvent(new CustomEvent('resource-open', { 
+              detail: { uri: href },
+              bubbles: true 
+            }));
+          }
         });
       });
     }, 0);

@@ -602,7 +602,7 @@ task-detail .markdown-body {
 
 
 /* External links */
-.markdown-body a[href^="http"] {
+.markdown-body a[href^="http"]::after {
   display: inline;
 }
 .markdown-body a[href^="http"]::after {
@@ -615,8 +615,8 @@ task-detail .markdown-body {
   margin-bottom: 0.2em;
   background: currentColor;
   opacity: 0.7;
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.75 2h3.5a.75.75 0 010 1.5H4.5v9h9V9.75a.75.75 0 011.5 0v3.5A1.75 1.75 0 0113.25 15H3.75A1.75 1.75 0 012 13.25V3.75C2 2.784 2.784 2 3.75 2zm6.5 0h3a.75.75 0 01.75.75v3a.75.75 0 01-1.5 0V4.06l-4.72 4.72a.75.75 0 01-1.06-1.06L11.44 3H10.25a.75.75 0 010-1.5z'/%3E%3C/svg%3E");
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.75 2h3.5a.75.75 0 010 1.5H4.5v9h9V9.75a.75.75 0 011.5 0v3.5A1.75 1.75 0 0113.25 15H3.75A1.75 1.75 0 012 13.25V3.75C2 2.784 2.784 2 3.75 2zm6.5 0h3a.75.75 0 01.75.75v3a.75.75 0 01-1.5 0V4.06l-4.72 4.72a.75.75 0 01-1.06-1.06L11.44 3H10.25a.75.75 0 010-1.5z'/%3E%3C/svg%3E");
+  mask-image: url('./icons/external-link.svg');
+  -webkit-mask-image: url('./icons/external-link.svg');
 }
 
 /* Local file links */
@@ -630,8 +630,22 @@ task-detail .markdown-body {
   margin-bottom: 0.2em;
   background: currentColor;
   opacity: 0.7;
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.75 1.5a.25.25 0 00-.25.25v11.5c0 .138.112.25.25.25h8.5a.25.25 0 00.25-.25V6H9.75A1.75 1.75 0 018 4.25V1.5H3.75zm5.75.56v2.19c0 .138.112.25.25.25h2.19L9.5 2.06zM2 1.75C2 .784 2.784 0 3.75 0h5.086c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v8.086A1.75 1.75 0 0112.25 15h-8.5A1.75 1.75 0 012 13.25V1.75z'/%3E%3C/svg%3E");
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.75 1.5a.25.25 0 00-.25.25v11.5c0 .138.112.25.25.25h8.5a.25.25 0 00.25-.25V6H9.75A1.75 1.75 0 018 4.25V1.5H3.75zm5.75.56v2.19c0 .138.112.25.25.25h2.19L9.5 2.06zM2 1.75C2 .784 2.784 0 3.75 0h5.086c.464 0 .909.184 1.237.513l3.414 3.414c.329.328.513.773.513 1.237v8.086A1.75 1.75 0 0112.25 15h-8.5A1.75 1.75 0 012 13.25V1.75z'/%3E%3C/svg%3E");
+  mask-image: url('./icons/file.svg');
+  -webkit-mask-image: url('./icons/file.svg');
+}
+
+/* MCP resource links - gradient lightning bolt */
+.markdown-body a[href^="mcp://"]::after {
+  content: "";
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  margin-left: 0.3em;
+  vertical-align: middle;
+  margin-bottom: 0.2em;
+  background: linear-gradient(135deg, #00d4ff 0%, #7b2dff 50%, #ff2d7b 100%);
+  mask-image: url('./icons/lightning-bolt.svg');
+  -webkit-mask-image: url('./icons/lightning-bolt.svg');
 }
 
 
@@ -770,4 +784,45 @@ task-detail .markdown-body {
   border-radius: 4px;
   font-size: 12px;
   overflow-x: auto;
+}
+
+
+/* URI Section Styles */
+.uri-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.uri-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.uri-label {
+  color: #8b949e;
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.uri-value {
+  flex: 1;
+  background: #0d1117;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 11px;
+  color: #79c0ff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-uri-btn {
+  padding: 4px 12px;
+  font-size: 11px;
+  min-width: 50px;
 }

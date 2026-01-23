@@ -70,6 +70,51 @@ class SplitPaneService {
     }
   }
 
+  openMcp(uri: string) {
+    if (!this.rightPane) return;
+
+    if (this.viewer) {
+      this.viewer.loadMcpResource(uri);
+      this.setHeaderTitle(uri.split('/').pop() || uri, uri);
+    } else {
+      this.rightPane.classList.add('split-active');
+      
+      this.pane = document.createElement('div');
+      this.pane.className = 'resource-pane';
+      
+      const header = document.createElement('div');
+      header.className = 'pane-header';
+      
+      this.headerContent = document.createElement('div');
+      this.headerContent.className = 'pane-header-content';
+      
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'btn-outline resource-close-btn';
+      closeBtn.title = 'Close (Cmd+W)';
+      closeBtn.textContent = '✕';
+      closeBtn.addEventListener('click', () => {
+        document.dispatchEvent(new CustomEvent('resource-close'));
+      });
+      
+      header.appendChild(this.headerContent);
+      header.appendChild(closeBtn);
+      
+      const content = document.createElement('div');
+      content.className = 'pane-content';
+      
+      this.viewer = document.createElement('resource-viewer');
+      this.viewer.setShowHeader(false);
+      content.appendChild(this.viewer);
+      
+      this.pane.appendChild(header);
+      this.pane.appendChild(content);
+      this.rightPane.appendChild(this.pane);
+      
+      this.viewer.loadMcpResource(uri);
+      this.setHeaderTitle(uri.split('/').pop() || uri, uri);
+    }
+  }
+
   close() {
     if (this.pane) {
       this.pane.remove();
@@ -93,6 +138,60 @@ class SplitPaneService {
       <div class="pane-title">${title}</div>
       ${subtitle ? `<div class="pane-subtitle">${subtitle}</div>` : ''}
     `;
+  }
+
+  setHeaderWithUris(title: string, fileUri: string, mcpUri?: string) {
+    if (!this.headerContent) return;
+    
+    const uriSection = document.createElement('div');
+    uriSection.className = 'uri-section';
+    
+    const titleEl = document.createElement('div');
+    titleEl.className = 'pane-title';
+    titleEl.textContent = title;
+    uriSection.appendChild(titleEl);
+    
+    // File URI row
+    const fileRow = this.createUriRow(fileUri, 'file://');
+    uriSection.appendChild(fileRow);
+    
+    // MCP URI row (if available)
+    if (mcpUri) {
+      const mcpRow = this.createUriRow(mcpUri, 'mcp://');
+      uriSection.appendChild(mcpRow);
+    }
+    
+    this.headerContent.innerHTML = '';
+    this.headerContent.appendChild(uriSection);
+  }
+
+  private createUriRow(uri: string, label: string): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'uri-row';
+    
+    const labelEl = document.createElement('span');
+    labelEl.className = 'uri-label';
+    labelEl.textContent = label;
+    
+    const uriEl = document.createElement('code');
+    uriEl.className = 'uri-value';
+    uriEl.textContent = uri;
+    uriEl.title = uri;
+    
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn-outline btn-sm copy-uri-btn';
+    copyBtn.textContent = 'Copy';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(uri);
+      copyBtn.textContent = '✓';
+      setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+    };
+    
+    row.appendChild(labelEl);
+    row.appendChild(uriEl);
+    row.appendChild(copyBtn);
+    
+    return row;
   }
 
   setHeaderContent(element: HTMLElement) {

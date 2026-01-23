@@ -8,6 +8,8 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0008. Personal Knowledge Graph with Organic Decay](./0008-task-labels-and-sprint-management.md) - Hybrid graph model with health scores, constraints, and auto-archival for focused agentic collaboration - 2026-01-22
+- [0007. MCP Resource URI Implementation](./0007-mcp-resource-uri-implementation.md) - Shared URI resolver module for MCP and HTTP clients - 2026-01-22
 - [0006. MCP Resource URI Architecture](./0006-mcp-resource-uri-architecture.md) - Hybrid file:// and mcp:// URI support for portable resource references - 2026-01-22
 - [0005. Reusable Markdown Content Component](./0005-reusable-markdown-content-component.md) - Extract shared markdown rendering logic into reusable component for consistency - 2026-01-22
 - [0004. MCP Resource Viewer Integration - In-Browser File Viewing](./0004-mcp-resource-viewer-integration.md) - Adaptive split pane for viewing file:// references in web viewer with MCP resource support - 2026-01-22
