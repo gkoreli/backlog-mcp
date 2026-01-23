@@ -1,4 +1,6 @@
-export const API_URL = 'http://localhost:3030';
+export const API_URL = typeof window !== 'undefined' && window.location.port 
+  ? `http://localhost:${window.location.port}` 
+  : 'http://localhost:3030';
 
 export interface Reference {
   url: string;
