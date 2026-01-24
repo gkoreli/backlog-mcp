@@ -176,6 +176,8 @@ Expect: "old_str not found" error
 
 ### 8. Test Task-Attached Resources (NEW FEATURE)
 
+This tests the new task-attached resources feature that allows ADRs, design docs, and other artifacts to be permanently attached to tasks.
+
 **Create ADR for task**
 ```
 write_resource
@@ -184,9 +186,16 @@ write_resource
   content="# ADR 001: Test Decision\n\n## Context\nTesting task-attached resources.\n\n## Decision\nUse separate resources directory."
 ```
 
-**Verify resource created**
-Resources are stored at `/Users/gkoreli/Documents/goga/.backlog/resources/TASK-XXXX/`
-Check that file exists using the full path.
+**Verify via MCP resources protocol**
+Use MCP's built-in resource reading (NOT direct file access):
+- The resource should be readable via MCP protocol
+- Content should match what was written
+- MimeType should be text/markdown
+
+**Verify via direct file access**
+Also verify the file exists on disk:
+- File should exist at `/Users/gkoreli/Documents/goga/.backlog/resources/TASK-XXXX/adr-001.md`
+- This confirms write_resource actually created the file
 
 **Modify resource**
 ```
@@ -196,12 +205,19 @@ write_resource
   content="\n\n## Consequences\nResources are permanently attached to tasks."
 ```
 
+Verify the modification worked (via both MCP and file access).
+
 **Create multiple resources**
 ```
 write_resource
   uri="mcp://backlog/resources/TASK-XXXX/design.md"
   command="insert"
   content="# Design Document\n\nDesign details here."
+
+write_resource
+  uri="mcp://backlog/resources/TASK-XXXX/notes.md"
+  command="insert"
+  content="# Notes\n\nImplementation notes."
 ```
 
 **Link resources to task**
@@ -214,20 +230,30 @@ backlog_update
   }, {
     "url": "mcp://backlog/resources/TASK-XXXX/design.md",
     "title": "Design Document"
+  }, {
+    "url": "mcp://backlog/resources/TASK-XXXX/notes.md",
+    "title": "Notes"
   }]
 ```
 
-**Verify lifecycle management**
-- Delete the test task
-- Verify resources directory is also deleted
-- Confirm no orphaned files remain
+Verify task has all 3 references.
+
+**Test lifecycle management**
+Delete the task and verify resources are automatically deleted:
+```
+backlog_delete id="TASK-XXXX"
+```
 
 Check:
-- ✅ Resources created in correct location
-- ✅ Multiple resources per task supported
-- ✅ Resources can be modified
-- ✅ Resources linked to task via references
-- ✅ Resources deleted when task deleted (lifecycle management)
+- ✅ Task is deleted
+- ✅ Resources directory is deleted
+- ✅ No orphaned files remain
+
+**Report findings**:
+- Both MCP protocol reading and direct file access work
+- Resources are properly created, modified, and linked
+- Lifecycle management works (cascade delete)
+- Token efficiency vs traditional backlog_update
 
 ### 9. Measure Efficiency
 
