@@ -164,7 +164,61 @@ write_resource uri="mcp://backlog/tasks/TASK-XXXX/description"
 ```
 Expect: "old_str not found" error
 
-### 8. Measure Efficiency
+### 8. Test Task-Attached Resources (NEW FEATURE)
+
+**Create ADR for task**
+```
+write_resource
+  uri="mcp://backlog/resources/TASK-XXXX/adr-001.md"
+  command="insert"
+  content="# ADR 001: Test Decision\n\n## Context\nTesting task-attached resources.\n\n## Decision\nUse separate resources directory."
+```
+
+**Verify resource created**
+Check that file exists at `~/.backlog/resources/TASK-XXXX/adr-001.md`
+
+**Modify resource**
+```
+write_resource
+  uri="mcp://backlog/resources/TASK-XXXX/adr-001.md"
+  command="insert"
+  content="\n\n## Consequences\nResources are permanently attached to tasks."
+```
+
+**Create multiple resources**
+```
+write_resource
+  uri="mcp://backlog/resources/TASK-XXXX/design.md"
+  command="insert"
+  content="# Design Document\n\nDesign details here."
+```
+
+**Link resources to task**
+```
+backlog_update
+  id="TASK-XXXX"
+  references=[{
+    "url": "mcp://backlog/resources/TASK-XXXX/adr-001.md",
+    "title": "ADR 001"
+  }, {
+    "url": "mcp://backlog/resources/TASK-XXXX/design.md",
+    "title": "Design Document"
+  }]
+```
+
+**Verify lifecycle management**
+- Delete the test task
+- Verify resources directory is also deleted
+- Confirm no orphaned files remain
+
+Check:
+- ✅ Resources created in correct location
+- ✅ Multiple resources per task supported
+- ✅ Resources can be modified
+- ✅ Resources linked to task via references
+- ✅ Resources deleted when task deleted (lifecycle management)
+
+### 9. Measure Efficiency
 
 Compare token usage for MCP operations:
 
@@ -179,7 +233,7 @@ Compare token usage for MCP operations:
 
 **Efficiency gain**: 8-13x for small tasks, 10-100x for large tasks
 
-### 9. Final Report
+### 10. Final Report
 
 Provide comprehensive validation:
 
@@ -201,6 +255,8 @@ Provide comprehensive validation:
 - ✅ MCP frontmatter preserved
 - ✅ File content correct
 - ✅ No corruption in either domain
+- ✅ Task-attached resources created correctly
+- ✅ Resources lifecycle managed properly
 
 **Error Handling**:
 - ✅ Clear, helpful error messages
