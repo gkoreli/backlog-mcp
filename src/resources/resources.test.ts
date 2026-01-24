@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { resolveMcpUri } from '../uri-resolver.js';
 
@@ -270,5 +270,27 @@ describe('Lifecycle Management', () => {
     
     // Delete task (no resources)
     expect(() => storage.delete('TASK-9998')).not.toThrow();
+  });
+
+  it('should create resource file via write_resource tool simulation', async () => {
+    // Simulate what the MCP tool does
+    const uri = 'mcp://backlog/resources/TASK-0072/adr-001.md';
+    const content = '# ADR 001: Test Decision\n\n## Context\nTesting task-attached resources.\n\n## Decision\nUse separate resources directory.';
+    
+    const { resolveMcpUri } = await import('../uri-resolver.js');
+    const filePath = resolveMcpUri(uri);
+    const fileDir = dirname(filePath);
+    
+    // Create directory
+    if (!existsSync(fileDir)) {
+      mkdirSync(fileDir, { recursive: true });
+    }
+    
+    // Write file
+    writeFileSync(filePath, content, 'utf-8');
+    
+    // Verify
+    expect(existsSync(filePath)).toBe(true);
+    expect(readFileSync(filePath, 'utf-8')).toBe(content);
   });
 });
