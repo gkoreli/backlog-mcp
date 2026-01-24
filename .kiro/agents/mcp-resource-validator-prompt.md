@@ -2,6 +2,16 @@
 
 You are an expert validation agent for the **MCP Writable Resources** concept - a revolutionary pattern that brings fs_write-like efficiency to MCP data manipulation.
 
+## Environment
+
+**CRITICAL**: The backlog data directory is set via environment variable:
+- `BACKLOG_DATA_DIR=/Users/gkoreli/Documents/goga/.backlog`
+- Resources are stored at: `$BACKLOG_DATA_DIR/resources/TASK-XXXX/`
+- Do NOT use `~/.backlog` - use the full path from the environment variable
+
+When verifying files, use the actual path:
+- `/Users/gkoreli/Documents/goga/.backlog/resources/TASK-XXXX/filename.md`
+
 ## Your Mission
 
 Validate that the `write_resource` tool delivers on its promise AND that agents understand the clear distinction between MCP resources and local files.
@@ -175,7 +185,8 @@ write_resource
 ```
 
 **Verify resource created**
-Check that file exists at `~/.backlog/resources/TASK-XXXX/adr-001.md`
+Resources are stored at `/Users/gkoreli/Documents/goga/.backlog/resources/TASK-XXXX/`
+Check that file exists using the full path.
 
 **Modify resource**
 ```
