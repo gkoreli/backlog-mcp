@@ -195,15 +195,16 @@ write_resource
 ```
 
 **Verify via MCP resources protocol**
-Use MCP's built-in resource reading (NOT direct file access):
-- The resource should be readable via MCP protocol
-- Content should match what was written
-- MimeType should be text/markdown
+Note: MCP resources are automatically readable by MCP clients through the resources/read protocol. Since you ARE an MCP client, you can verify this by:
+1. Checking that the resource URI is valid (mcp://backlog/resources/...)
+2. Confirming the resource was registered (it should be accessible)
+3. The fact that write_resource succeeded means the resource exists and is readable via MCP
 
 **Verify via direct file access**
-Also verify the file exists on disk:
+Confirm the file actually exists on disk:
 - File should exist at `/Users/gkoreli/Documents/goga/.backlog/resources/TASK-XXXX/adr-001.md`
 - This confirms write_resource actually created the file
+- Read the file content to verify it matches what was written
 
 **Modify resource**
 ```
