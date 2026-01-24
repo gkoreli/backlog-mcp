@@ -15,6 +15,7 @@ import { storage } from './backlog.js';
 import { startViewer } from './viewer.js';
 import { writeResource } from './resources/index.js';
 import { readMcpResource } from './resource-reader.js';
+import { resolveMcpUri } from './uri-resolver.js';
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -195,7 +196,7 @@ server.registerTool(
       }
       
       // General file operation (resources, artifacts, etc.)
-      const filePath = resolveMcpUri(url);
+      const filePath = resolveMcpUri(url.toString());
       const fileDir = dirname(filePath);
       
       // Ensure directory exists
@@ -257,53 +258,6 @@ server.registerTool(
 // ============================================================================
 // Resources
 // ============================================================================
-
-// Helper to resolve MCP URIs to file paths
-function resolveMcpUri(uri: string | URL): string {
-  const url = typeof uri === 'string' ? new URL(uri) : uri;
-  
-  if (url.protocol !== 'mcp:' || url.hostname !== 'backlog') {
-    throw new Error(`Invalid MCP URI: ${url.toString()}`);
-  }
-  
-  const path = url.pathname.substring(1); // Remove leading /
-  
-  if (path.startsWith('tasks/')) {
-    const match = path.match(/^tasks\/([^/]+)(\/file)?$/);
-    if (!match || !match[1]) throw new Error(`Invalid task URI: ${url.toString()}`);
-    
-    const taskId = match[1];
-    const filePath = storage.getFilePath(taskId);
-    if (!filePath) throw new Error(`Task not found: ${taskId}`);
-    return filePath;
-  }
-  
-  if (path.startsWith('resources/')) {
-    const relativePath = path.substring('resources/'.length);
-    
-    // Check if it's a task-attached resource: resources/TASK-XXXX/filename
-    const taskResourceMatch = relativePath.match(/^(TASK-\d{4,}|EPIC-\d{4,})\//);
-    if (taskResourceMatch) {
-      // Task-attached resource: ~/.backlog/resources/TASK-XXXX/filename
-      const home = process.env.HOME || process.env.USERPROFILE || '~';
-      const backlogDataDir = process.env.BACKLOG_DATA_DIR ?? join(home, '.backlog');
-      return join(backlogDataDir, 'resources', relativePath);
-    }
-    
-    // Repository resource: backlog-mcp/src/...
-    const repoRoot = join(__dirname, '..');
-    return join(repoRoot, relativePath);
-  }
-  
-  if (path.startsWith('artifacts/')) {
-    const relativePath = path.substring('artifacts/'.length);
-    const home = process.env.HOME || process.env.USERPROFILE || '~';
-    const backlogDataDir = process.env.BACKLOG_DATA_DIR ?? join(home, '.backlog');
-    return join(backlogDataDir, '..', relativePath);
-  }
-  
-  throw new Error(`Unknown MCP URI pattern: ${url.toString()}`);
-}
 
 // Register resource templates for dynamic task resources
 server.registerResource(
