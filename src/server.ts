@@ -14,6 +14,7 @@ import { createTask, STATUSES, TASK_TYPES, type Task } from './schema.js';
 import { storage } from './backlog.js';
 import { startViewer } from './viewer.js';
 import { writeResource } from './resources/index.js';
+import { readMcpResource } from './resource-reader.js';
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -310,12 +311,8 @@ server.registerResource(
   'mcp://backlog/tasks/{taskId}/file',
   { mimeType: 'text/markdown', description: 'Task markdown file' },
   async (uri: URL) => {
-    const filePath = resolveMcpUri(uri);
-    if (!existsSync(filePath)) {
-      throw new Error(`Resource not found: ${uri.toString()}`);
-    }
-    const content = readFileSync(filePath, 'utf-8');
-    return { contents: [{ uri: uri.toString(), mimeType: 'text/markdown', text: content }] };
+    const { content, mimeType } = readMcpResource(uri.toString());
+    return { contents: [{ uri: uri.toString(), mimeType, text: content }] };
   }
 );
 
@@ -324,18 +321,8 @@ server.registerResource(
   'mcp://backlog/resources/{taskId}/{filename}',
   { description: 'Task-attached resources (ADRs, design docs, etc.)' },
   async (uri: URL) => {
-    const filePath = resolveMcpUri(uri);
-    if (!existsSync(filePath)) {
-      throw new Error(`Resource not found: ${uri.toString()}`);
-    }
-    const content = readFileSync(filePath, 'utf-8');
-    const ext = filePath.split('.').pop()?.toLowerCase() || 'txt';
-    const mimeMap: Record<string, string> = {
-      md: 'text/markdown',
-      json: 'application/json',
-      txt: 'text/plain'
-    };
-    return { contents: [{ uri: uri.toString(), mimeType: mimeMap[ext] || 'text/plain', text: content }] };
+    const { content, mimeType } = readMcpResource(uri.toString());
+    return { contents: [{ uri: uri.toString(), mimeType, text: content }] };
   }
 );
 
@@ -344,20 +331,8 @@ server.registerResource(
   'mcp://backlog/resources/{path}',
   { description: 'Repository files (ADRs, source code, etc.)' },
   async (uri: URL) => {
-    const filePath = resolveMcpUri(uri);
-    if (!existsSync(filePath)) {
-      throw new Error(`Resource not found: ${uri.toString()}`);
-    }
-    const content = readFileSync(filePath, 'utf-8');
-    const ext = filePath.split('.').pop()?.toLowerCase() || 'txt';
-    const mimeMap: Record<string, string> = {
-      md: 'text/markdown',
-      json: 'application/json',
-      ts: 'text/typescript',
-      js: 'application/javascript',
-      txt: 'text/plain'
-    };
-    return { contents: [{ uri: uri.toString(), mimeType: mimeMap[ext] || 'text/plain', text: content }] };
+    const { content, mimeType } = readMcpResource(uri.toString());
+    return { contents: [{ uri: uri.toString(), mimeType, text: content }] };
   }
 );
 
