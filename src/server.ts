@@ -2,7 +2,7 @@
 
 try { await import('dotenv/config'); } catch {}
 
-import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -13,7 +13,7 @@ import { nextTaskId } from './schema.js';
 import { createTask, STATUSES, TASK_TYPES, type Task } from './schema.js';
 import { storage } from './backlog.js';
 import { startViewer } from './viewer.js';
-import { writeResource } from './resources/index.js';
+import { writeResource, type Operation } from './resources/index.js';
 import { readMcpResource } from './resource-reader.js';
 import { resolveMcpUri } from './uri-resolver.js';
 
@@ -161,91 +161,29 @@ server.registerTool(
   },
   async ({ uri, command, oldStr, newStr, content, insertLine }) => {
     try {
-      const url = new URL(uri);
-      const path = url.pathname.substring(1);
-      
-      // Check if this is a task field edit (description/file) or general file operation
-      const isTaskFieldEdit = path.match(/^tasks\/[^/]+\/(description|file)$/);
-      
-      if (isTaskFieldEdit) {
-        // Use existing writeResource for task field edits
-        let operation;
-        if (command === 'strReplace') {
-          operation = { type: 'str_replace', old_str: oldStr!, new_str: newStr! };
-        } else if (command === 'insert') {
-          if (insertLine !== undefined) {
-            operation = { type: 'insert', line: insertLine, content: content || newStr || '' };
-          } else {
-            operation = { type: 'append', content: content || newStr || '' };
-          }
-        }
-        
-        const result = writeResource(
-          { uri, operation: operation as any },
-          (taskId) => storage.getFilePath(taskId)
-        );
-        
-        if (!result.success) {
-          return { 
-            content: [{ type: 'text' as const, text: `${result.message}\n${result.error || ''}` }], 
-            isError: true 
-          };
-        }
-        
-        return { content: [{ type: 'text' as const, text: result.message }] };
-      }
-      
-      // General file operation (resources, artifacts, etc.)
-      const filePath = resolveMcpUri(url.toString());
-      const fileDir = dirname(filePath);
-      
-      // Ensure directory exists
-      if (!existsSync(fileDir)) {
-        mkdirSync(fileDir, { recursive: true });
-      }
-      
-      // Handle operations
+      let operation: Operation;
       if (command === 'strReplace') {
-        if (!existsSync(filePath)) {
-          return {
-            content: [{ type: 'text' as const, text: `File not found: ${uri}` }],
-            isError: true
-          };
-        }
-        const fileContent = readFileSync(filePath, 'utf-8');
-        const newContent = fileContent.replace(oldStr!, newStr!);
-        writeFileSync(filePath, newContent, 'utf-8');
-        return { content: [{ type: 'text' as const, text: `Successfully replaced text in ${uri}` }] };
+        operation = { type: 'str_replace', old_str: oldStr!, new_str: newStr! };
+      } else if (insertLine !== undefined) {
+        operation = { type: 'insert', line: insertLine, content: content || newStr || '' };
+      } else {
+        operation = { type: 'append', content: content || newStr || '' };
       }
       
-      if (command === 'insert') {
-        const insertContent = content || newStr || '';
-        
-        if (!existsSync(filePath)) {
-          // Create new file
-          writeFileSync(filePath, insertContent, 'utf-8');
-          return { content: [{ type: 'text' as const, text: `Created ${uri}` }] };
-        }
-        
-        // Insert into existing file
-        const fileContent = readFileSync(filePath, 'utf-8');
-        const lines = fileContent.split('\n');
-        
-        if (insertLine !== undefined) {
-          lines.splice(insertLine, 0, insertContent);
-        } else {
-          lines.push(insertContent);
-        }
-        
-        writeFileSync(filePath, lines.join('\n'), 'utf-8');
-        return { content: [{ type: 'text' as const, text: `Successfully inserted content into ${uri}` }] };
+      const result = writeResource(
+        { uri, operation },
+        (taskId) => storage.getFilePath(taskId),
+        (uri) => resolveMcpUri(uri)
+      );
+      
+      if (!result.success) {
+        return { 
+          content: [{ type: 'text' as const, text: `${result.message}\n${result.error || ''}` }], 
+          isError: true 
+        };
       }
       
-      return {
-        content: [{ type: 'text' as const, text: `Unknown command: ${command}` }],
-        isError: true
-      };
-      
+      return { content: [{ type: 'text' as const, text: result.message }] };
     } catch (error) {
       return {
         content: [{ type: 'text' as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }],

@@ -25,47 +25,22 @@ export function resolveMcpUri(uri: string): string {
   
   const path = url.pathname.substring(1); // Remove leading /
   
-  // mcp://backlog/tasks/{id} or mcp://backlog/tasks/{id}/file
+  if (path.includes('..')) {
+    throw new Error(`Path traversal not allowed: ${uri}`);
+  }
+  
+  const dataDir = getBacklogDataDir();
+  
+  // Special case: tasks/{id}, tasks/{id}/file, tasks/{id}/description -> tasks/{id}.md
   if (path.startsWith('tasks/')) {
-    const match = path.match(/^tasks\/([^/]+)(\/file)?$/);
-    if (!match) throw new Error(`Invalid task URI: ${uri}`);
-    
-    const taskId = match[1];
-    const dataDir = getBacklogDataDir();
-    return join(dataDir, 'tasks', `${taskId}.md`);
+    const match = path.match(/^tasks\/([^/]+)(\/(?:file|description))?$/);
+    if (match) {
+      return join(dataDir, 'tasks', `${match[1]}.md`);
+    }
   }
   
-  // mcp://backlog/resources/{relativePath}
-  if (path.startsWith('resources/')) {
-    const relativePath = path.substring('resources/'.length);
-    if (relativePath.includes('..')) {
-      throw new Error(`Path traversal not allowed: ${uri}`);
-    }
-    
-    // Check if it's a task-attached resource: resources/TASK-XXXX/filename
-    const taskResourceMatch = relativePath.match(/^(TASK-\d{4,}|EPIC-\d{4,})\//);
-    if (taskResourceMatch) {
-      // Task-attached resource: ~/.backlog/resources/TASK-XXXX/filename
-      const home = process.env.HOME || process.env.USERPROFILE || '~';
-      const backlogDataDir = process.env.BACKLOG_DATA_DIR ?? join(home, '.backlog');
-      return join(backlogDataDir, 'resources', relativePath);
-    }
-    
-    // Repository resource: backlog-mcp/src/...
-    return join(getRepoRoot(), relativePath);
-  }
-  
-  // mcp://backlog/artifacts/{relativePath}
-  if (path.startsWith('artifacts/')) {
-    const relativePath = path.substring('artifacts/'.length);
-    if (relativePath.includes('..')) {
-      throw new Error(`Path traversal not allowed: ${uri}`);
-    }
-    const dataDir = getBacklogDataDir();
-    return join(dirname(dataDir), relativePath);
-  }
-  
-  throw new Error(`Unknown MCP URI pattern: ${uri}`);
+  // Everything else: direct mapping to dataDir/{path}
+  return join(dataDir, path);
 }
 
 export function filePathToMcpUri(filePath: string): string | null {
