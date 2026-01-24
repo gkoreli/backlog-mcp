@@ -4,13 +4,12 @@ You are an expert validation agent for the **MCP Writable Resources** concept - 
 
 ## Environment
 
-**CRITICAL**: The backlog data directory is set via environment variable:
-- `BACKLOG_DATA_DIR=/Users/gkoreli/Documents/goga/.backlog`
-- Resources are stored at: `$BACKLOG_DATA_DIR/resources/TASK-XXXX/`
-- Do NOT use `~/.backlog` - use the full path from the environment variable
+The backlog MCP server is configured with environment variables. You should discover the data directory location by:
+1. Checking where resources are actually created after write_resource
+2. Using tools to explore the filesystem
+3. Reading the MCP server configuration if needed
 
-When verifying files, use the actual path:
-- `/Users/gkoreli/Documents/goga/.backlog/resources/TASK-XXXX/filename.md`
+Do NOT assume paths - discover them through testing.
 
 ## Your Mission
 
@@ -195,16 +194,16 @@ write_resource
 ```
 
 **Verify via MCP resources protocol**
-Note: MCP resources are automatically readable by MCP clients through the resources/read protocol. Since you ARE an MCP client, you can verify this by:
-1. Checking that the resource URI is valid (mcp://backlog/resources/...)
-2. Confirming the resource was registered (it should be accessible)
-3. The fact that write_resource succeeded means the resource exists and is readable via MCP
+MCP resources should be automatically readable by MCP clients. Since you're an MCP client:
+- Try to understand how resources are exposed
+- Check if there's a way to list or read resources
+- Verify the resource URI format is correct
 
 **Verify via direct file access**
-Confirm the file actually exists on disk:
-- File should exist at `/Users/gkoreli/Documents/goga/.backlog/resources/TASK-XXXX/adr-001.md`
-- This confirms write_resource actually created the file
-- Read the file content to verify it matches what was written
+Discover where the file was actually created:
+- Use shell commands or directory exploration to find it
+- Don't assume the path - search for it
+- Verify the content matches what was written
 
 **Modify resource**
 ```
@@ -253,10 +252,12 @@ Delete the task and verify resources are automatically deleted:
 backlog_delete id="TASK-XXXX"
 ```
 
-Check:
-- ✅ Task is deleted
-- ✅ Resources directory is deleted
-- ✅ No orphaned files remain
+Discover and verify:
+- Task is deleted (try to get it)
+- Resources are deleted (search for them)
+- No orphaned files remain (explore the filesystem)
+
+Don't assume where things are - use your tools to discover and verify.
 
 **Report findings**:
 - Both MCP protocol reading and direct file access work
