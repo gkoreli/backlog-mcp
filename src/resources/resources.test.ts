@@ -148,4 +148,127 @@ describe('Resource Reader - Task-Attached Resources', () => {
     const txtResult = readMcpResource('mcp://backlog/resources/TASK-0068/notes.txt');
     expect(txtResult.mimeType).toBe('text/plain');
   });
+
+  it('should reproduce viewer endpoint failure - file exists but not found', async () => {
+    const { readMcpResource } = await import('../resource-reader.js');
+    
+    // Create the exact file that's failing in production
+    const resourceDir = join(testDir, 'resources', 'TASK-0068');
+    mkdirSync(resourceDir, { recursive: true });
+    writeFileSync(
+      join(resourceDir, 'test-adr.md'),
+      '# Test ADR\n\nThis is a test.',
+      'utf-8'
+    );
+    
+    // Verify file exists
+    expect(existsSync(join(resourceDir, 'test-adr.md'))).toBe(true);
+    
+    // Try to read it via the same URI that's failing
+    const uri = 'mcp://backlog/resources/TASK-0068/test-adr.md';
+    
+    // This should NOT throw - if it does, we reproduced the bug
+    expect(() => readMcpResource(uri)).not.toThrow();
+    
+    const result = readMcpResource(uri);
+    expect(result.content).toContain('Test ADR');
+  });
+
+  it('should work with actual production BACKLOG_DATA_DIR', async () => {
+    // Save original
+    const original = process.env.BACKLOG_DATA_DIR;
+    
+    // Set to production value
+    process.env.BACKLOG_DATA_DIR = '/Users/gkoreli/Documents/goga/.backlog';
+    
+    // Import fresh modules with production env
+    const { resolveMcpUri } = await import('../uri-resolver.js');
+    const { readMcpResource } = await import('../resource-reader.js');
+    
+    const uri = 'mcp://backlog/resources/TASK-0068/test-adr.md';
+    const resolved = resolveMcpUri(uri);
+    
+    expect(resolved).toBe('/Users/gkoreli/Documents/goga/.backlog/resources/TASK-0068/test-adr.md');
+    
+    // Check if file actually exists at production path
+    if (existsSync(resolved)) {
+      const result = readMcpResource(uri);
+      expect(result.content).toBeTruthy();
+    }
+    
+    // Restore
+    if (original) {
+      process.env.BACKLOG_DATA_DIR = original;
+    } else {
+      delete process.env.BACKLOG_DATA_DIR;
+    }
+  });
+});
+
+describe('Lifecycle Management', () => {
+  let testDir: string;
+  let originalEnv: string | undefined;
+
+  beforeEach(() => {
+    testDir = join(tmpdir(), `backlog-test-${Date.now()}`);
+    mkdirSync(testDir, { recursive: true });
+    originalEnv = process.env.BACKLOG_DATA_DIR;
+    process.env.BACKLOG_DATA_DIR = testDir;
+  });
+
+  afterEach(() => {
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+    if (originalEnv) {
+      process.env.BACKLOG_DATA_DIR = originalEnv;
+    } else {
+      delete process.env.BACKLOG_DATA_DIR;
+    }
+  });
+
+  it('should delete resources when task is deleted', async () => {
+    const { storage } = await import('../backlog.js');
+    storage.init(testDir);
+    
+    // Create task
+    const task = {
+      id: 'TASK-9999',
+      title: 'Test Task',
+      status: 'open' as const,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    storage.add(task);
+    
+    // Create resource
+    const resourceDir = join(testDir, 'resources', 'TASK-9999');
+    mkdirSync(resourceDir, { recursive: true });
+    writeFileSync(join(resourceDir, 'test.md'), '# Test', 'utf-8');
+    
+    expect(existsSync(resourceDir)).toBe(true);
+    
+    // Delete task
+    storage.delete('TASK-9999');
+    
+    // Resources should be deleted too
+    expect(existsSync(resourceDir)).toBe(false);
+  });
+
+  it('should handle task deletion when no resources exist', async () => {
+    const { storage } = await import('../backlog.js');
+    storage.init(testDir);
+    
+    const task = {
+      id: 'TASK-9998',
+      title: 'Test Task',
+      status: 'open' as const,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    storage.add(task);
+    
+    // Delete task (no resources)
+    expect(() => storage.delete('TASK-9998')).not.toThrow();
+  });
 });
