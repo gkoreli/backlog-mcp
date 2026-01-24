@@ -52,7 +52,15 @@ class BacklogStorage {
   private *iterateTasks(): Generator<Task> {
     if (existsSync(this.tasksPath)) {
       for (const file of readdirSync(this.tasksPath).filter(f => f.endsWith('.md'))) {
-        yield this.markdownToTask(readFileSync(join(this.tasksPath, file), 'utf-8'));
+        const filePath = join(this.tasksPath, file);
+        try {
+          yield this.markdownToTask(readFileSync(filePath, 'utf-8'));
+        } catch (error) {
+          // Skip files that were deleted between listing and reading
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+            throw error;
+          }
+        }
       }
     }
   }
