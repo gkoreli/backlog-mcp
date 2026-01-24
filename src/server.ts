@@ -320,6 +320,26 @@ server.registerResource(
 );
 
 server.registerResource(
+  'Task-Attached Resource',
+  'mcp://backlog/resources/{taskId}/{filename}',
+  { description: 'Task-attached resources (ADRs, design docs, etc.)' },
+  async (uri: URL) => {
+    const filePath = resolveMcpUri(uri);
+    if (!existsSync(filePath)) {
+      throw new Error(`Resource not found: ${uri.toString()}`);
+    }
+    const content = readFileSync(filePath, 'utf-8');
+    const ext = filePath.split('.').pop()?.toLowerCase() || 'txt';
+    const mimeMap: Record<string, string> = {
+      md: 'text/markdown',
+      json: 'application/json',
+      txt: 'text/plain'
+    };
+    return { contents: [{ uri: uri.toString(), mimeType: mimeMap[ext] || 'text/plain', text: content }] };
+  }
+);
+
+server.registerResource(
   'Repository Resource',
   'mcp://backlog/resources/{path}',
   { description: 'Repository files (ADRs, source code, etc.)' },
