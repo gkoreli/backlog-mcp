@@ -178,6 +178,14 @@ Expect: "old_str not found" error
 
 This tests the new task-attached resources feature that allows ADRs, design docs, and other artifacts to be permanently attached to tasks.
 
+**First, ensure test task exists**
+```
+backlog_create
+  title="Task-Attached Resources Test"
+  description="Testing resource lifecycle management"
+```
+Use the returned task ID (TASK-XXXX) for all subsequent operations.
+
 **Create ADR for task**
 ```
 write_resource
