@@ -41,6 +41,17 @@ export function resolveMcpUri(uri: string): string {
     if (relativePath.includes('..')) {
       throw new Error(`Path traversal not allowed: ${uri}`);
     }
+    
+    // Check if it's a task-attached resource: resources/TASK-XXXX/filename
+    const taskResourceMatch = relativePath.match(/^(TASK-\d{4,}|EPIC-\d{4,})\//);
+    if (taskResourceMatch) {
+      // Task-attached resource: ~/.backlog/resources/TASK-XXXX/filename
+      const home = process.env.HOME || process.env.USERPROFILE || '~';
+      const backlogDataDir = process.env.BACKLOG_DATA_DIR ?? join(home, '.backlog');
+      return join(backlogDataDir, 'resources', relativePath);
+    }
+    
+    // Repository resource: backlog-mcp/src/...
     return join(getRepoRoot(), relativePath);
   }
   
