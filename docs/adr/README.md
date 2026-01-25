@@ -8,6 +8,7 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0015. Ralph Wiggum Loop for Iterative Agent Delegation](./0015-ralph-wiggum-loop-for-delegation.md) - Integrate Ralph Wiggum technique for self-improving agent workflows with fresh context per iteration - 2026-01-24
 - [0014. stdio-to-HTTP Bridge Implementation](./0014-stdio-http-bridge-implementation.md) - MCP Client SDK bridge with auto-spawn and version management - 2026-01-25
 - [0013. HTTP MCP Server Architecture with Built-in stdio Bridge](./0013-http-mcp-server-architecture.md) - HTTP-first architecture with auto-bridge for cloud deployment and persistent viewer - 2026-01-24
 - [0012. Fix Nested Epic Rendering in Viewer](./0012-nested-epic-rendering-fix.md) - Filter root epics only to prevent duplicate rendering of nested epics - 2026-01-24

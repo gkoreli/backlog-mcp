@@ -111,9 +111,33 @@ async function runBridge(port: number): Promise<void> {
       try {
         const message = JSON.parse(line);
         
+        // Handle notifications (messages without id) - don't send response
+        if (!message.id) {
+          // Notifications are fire-and-forget, skip for now
+          // TODO: Forward notifications to server when SDK supports it
+          continue;
+        }
+        
         // Route to appropriate client method based on JSON-RPC method
         let result;
-        if (message.method === 'tools/list') {
+        if (message.method === 'initialize') {
+          // MCP initialization - client is already initialized via connect()
+          // Return server capabilities
+          result = {
+            protocolVersion: '2024-11-05',
+            capabilities: {
+              tools: {},
+              resources: {},
+              prompts: {}
+            },
+            serverInfo: {
+              name: 'backlog-mcp',
+              version: pkg.version
+            }
+          };
+        } else if (message.method === 'ping') {
+          result = {}; // Ping just returns empty object
+        } else if (message.method === 'tools/list') {
           result = await client.listTools(message.params);
         } else if (message.method === 'tools/call') {
           result = await client.callTool(message.params);

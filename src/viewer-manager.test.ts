@@ -9,7 +9,7 @@ describe('viewer-manager', () => {
     it('should return version from package.json', () => {
       const version = getCurrentVersion();
       expect(version).toMatch(/^\d+\.\d+\.\d+$/);
-      expect(version).toBe('0.18.0');
+      expect(version).toBe('0.19.0');
     });
   });
 

@@ -223,8 +223,21 @@ export async function startHttpServer(port: number = 3030): Promise<void> {
         return;
       }
 
+      const MAX_BODY_SIZE = 10 * 1024 * 1024; // 10MB
       let body = '';
-      req.on('data', chunk => body += chunk);
+      let size = 0;
+      
+      req.on('data', chunk => {
+        size += chunk.length;
+        if (size > MAX_BODY_SIZE) {
+          req.destroy();
+          res.writeHead(413, { 'Content-Type': 'text/plain' });
+          res.end('Payload too large');
+          return;
+        }
+        body += chunk;
+      });
+      
       req.on('end', async () => {
         try {
           const message = JSON.parse(body);
