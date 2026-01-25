@@ -316,6 +316,18 @@ export async function startHttpServer(port: number = 3030): Promise<void> {
     console.error(`- MCP endpoint: http://localhost:${port}/mcp`);
     console.error(`- Version: ${pkg.version}`);
   });
+
+  // Graceful shutdown on SIGTERM/SIGINT
+  const shutdown = () => {
+    console.error('Shutting down gracefully...');
+    httpServer.close(() => {
+      console.error('Server closed');
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 // CLI entry point

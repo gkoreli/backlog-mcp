@@ -39,6 +39,19 @@ export function resolveMcpUri(uri: string): string {
     }
   }
   
+  // Special case: resources/{TASK-XXXX} or resources/{EPIC-XXXX} -> task-attached resources
+  if (path.startsWith('resources/')) {
+    const match = path.match(/^resources\/(TASK-\d+|EPIC-\d+)\//);
+    if (match) {
+      // Task-attached resource: dataDir/resources/{taskId}/{file}
+      return join(dataDir, path);
+    } else {
+      // Repository resource: repoRoot/{path after resources/}
+      const repoPath = path.substring('resources/'.length);
+      return join(getRepoRoot(), repoPath);
+    }
+  }
+  
   // Everything else: direct mapping to dataDir/{path}
   return join(dataDir, path);
 }
