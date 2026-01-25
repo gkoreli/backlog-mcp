@@ -41,8 +41,8 @@
   "scripts": {
     "build": "tsc && esbuild viewer/main.ts --bundle --format=esm --outdir=dist/viewer --loader:.svg=text",
     "clean": "rm -rf dist",
-    "start": "node dist/server.js",
-    "inspect": "pnpm build && npx @modelcontextprotocol/inspector dist/server.js",
+    "start": "node dist/cli.js",
+    "inspect": "pnpm build && npx @modelcontextprotocol/inspector dist/cli.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "dev": "pnpm build && concurrently \"tsx watch src/http-server.ts\" \"esbuild viewer/main.ts --bundle --format=esm --outdir=dist/viewer --watch --loader:.svg=text\"",

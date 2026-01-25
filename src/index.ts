@@ -14,5 +14,5 @@ export {
 // Storage
 export { storage } from './backlog.js';
 
-// Viewer
-export { startViewer } from './viewer.js';
+// HTTP Server
+export { startHttpServer } from './http-server.js';
