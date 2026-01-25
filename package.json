@@ -21,7 +21,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "backlog-mcp": "./dist/server.js"
+    "backlog-mcp": "./dist/cli.js"
   },
   "exports": {
     ".": {
