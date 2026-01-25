@@ -33,6 +33,10 @@ An ADR documents an important architectural decision along with its context and 
 
 None yet.
 
+## Rejected ADRs
+
+- [0023. Migrate to StreamableHTTPServerTransport](./0023-migrate-to-streamable-http-transport.md) - Blocked by mcp-remote incompatibility - 2026-01-25
+
 ## Format
 
 Each ADR follows this structure:
