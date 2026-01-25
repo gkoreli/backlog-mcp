@@ -202,7 +202,7 @@ export async function startHttpServer(port: number = 3030): Promise<void> {
         sessions.delete(transport.sessionId);
       };
 
-      await transport.start();
+      // Note: connect() calls transport.start() automatically
       await mcpServer.connect(transport);
       return;
     }
