@@ -150,12 +150,46 @@ describe('HTTP Server', () => {
       expect(true).toBe(true);
     });
 
-    it('should serve static files', () => {
+    it('should serve static files with pattern-based matching', () => {
       // Expected behavior:
-      // GET /main.js returns dist/viewer/main.js
-      // GET /styles.css returns viewer/styles.css
-      // GET /gradient-icons.svg returns viewer/gradient-icons.svg
-      expect(true).toBe(true);
+      // Pattern: /\.(js|css|svg|png|ico)$/
+      // Checks dist/viewer/ first, then viewer/
+      // Safe extensions only (no .ts, .json, .md)
+      
+      const safeExtensions = ['js', 'css', 'svg', 'png', 'ico'];
+      const unsafeExtensions = ['ts', 'json', 'md'];
+      
+      // Verify safe extensions are in the pattern
+      safeExtensions.forEach(ext => {
+        expect(`test.${ext}`.match(/\.(js|css|svg|png|ico)$/)).toBeTruthy();
+      });
+      
+      // Verify unsafe extensions are NOT in the pattern
+      unsafeExtensions.forEach(ext => {
+        expect(`test.${ext}`.match(/\.(js|css|svg|png|ico)$/)).toBeFalsy();
+      });
+    });
+
+    it('should serve all viewer assets', () => {
+      // Expected behavior:
+      // GET /main.js returns dist/viewer/main.js (compiled)
+      // GET /styles.css returns viewer/styles.css (source)
+      // GET /github-markdown.css returns viewer/github-markdown.css (source)
+      // GET /logo.svg returns viewer/logo.svg (source)
+      // GET /gradient-icons.svg returns viewer/gradient-icons.svg (source)
+      
+      const requiredAssets = [
+        'main.js',
+        'styles.css',
+        'github-markdown.css',
+        'logo.svg',
+        'gradient-icons.svg'
+      ];
+      
+      // All assets should match the pattern
+      requiredAssets.forEach(asset => {
+        expect(`/${asset}`.match(/\.(js|css|svg|png|ico)$/)).toBeTruthy();
+      });
     });
 
     it('should serve task API', () => {

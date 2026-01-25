@@ -258,21 +258,29 @@ export async function startHttpServer(port: number = 3030): Promise<void> {
       return;
     }
 
-    // Static files
-    const staticPaths: Record<string, string> = {
-      '/main.js': join(__dirname, 'viewer', 'main.js'),
-      '/styles.css': join(__dirname, '..', 'viewer', 'styles.css'),
-      '/gradient-icons.svg': join(__dirname, '..', 'viewer', 'gradient-icons.svg'),
-    };
-
-    const filePath = staticPaths[req.url || ''];
-    if (filePath && existsSync(filePath)) {
-      const contentType = req.url?.endsWith('.js') ? 'application/javascript' :
-                         req.url?.endsWith('.css') ? 'text/css' :
-                         req.url?.endsWith('.svg') ? 'image/svg+xml' : 'text/plain';
-      res.writeHead(200, { 'Content-Type': contentType });
-      res.end(readFileSync(filePath));
-      return;
+    // Static files - pattern-based serving for viewer assets
+    // Safe extensions: js, css, svg, png, ico (does NOT serve .ts, .json, .md)
+    const projectRoot = join(__dirname, '..');
+    if (req.url?.match(/\.(js|css|svg|png|ico)$/)) {
+      const urlPath = req.url.split('?')[0] || '';
+      let filePath = join(projectRoot, 'dist', 'viewer', urlPath);
+      if (!existsSync(filePath)) {
+        filePath = join(projectRoot, 'viewer', urlPath);
+      }
+      
+      if (existsSync(filePath)) {
+        const ext = urlPath.split('.').pop() || 'txt';
+        const contentTypeMap: Record<string, string> = {
+          js: 'application/javascript',
+          css: 'text/css',
+          svg: 'image/svg+xml',
+          png: 'image/png',
+          ico: 'image/x-icon',
+        };
+        res.writeHead(200, { 'Content-Type': contentTypeMap[ext] || 'text/plain' });
+        res.end(readFileSync(filePath));
+        return;
+      }
     }
 
     // Task API

@@ -8,6 +8,7 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0018. Restore Flexible Static File Serving](./0018-restore-flexible-static-file-serving.md) - Pattern-based static file serving to fix 404 errors and prevent future regressions - 2026-01-24
 - [0017. Agent 4 Production Hardening and Testing](./0017-agent4-production-hardening.md) - Minimal critical path: tests, bug fix, graceful shutdown for production readiness - 2026-01-25
 - [0016. Real-time Agent Log Streaming to Viewer UI](./0016-agent-log-streaming-architecture.md) - File watching + SSE + ANSI parsing for real-time log streaming without agent changes - 2026-01-25
 - [0015. Ralph Wiggum Loop for Iterative Agent Delegation](./0015-ralph-wiggum-loop-for-delegation.md) - Integrate Ralph Wiggum technique for self-improving agent workflows with fresh context per iteration - 2026-01-24
