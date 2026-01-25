@@ -314,6 +314,119 @@ export async function startHttpServer(port: number = 3030): Promise<void> {
       }
     }
 
+    // GET /open/:id - open file in default editor
+    const openMatch = req.url?.match(/^\/open\/([^/]+)$/);
+    if (openMatch && openMatch[1]) {
+      const taskId = openMatch[1];
+      const filePath = storage.getFilePath(taskId);
+      
+      if (!filePath) {
+        res.writeHead(404);
+        res.end('Task not found');
+        return;
+      }
+      
+      const { exec } = await import('node:child_process');
+      exec(`open "${filePath}"`);
+      
+      res.writeHead(200);
+      res.end('Opening...');
+      return;
+    }
+
+    // GET /resource?path=... - read file content for in-browser viewing
+    if (req.url?.startsWith('/resource?')) {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const filePath = url.searchParams.get('path');
+      
+      if (!filePath) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing path parameter' }));
+        return;
+      }
+      
+      if (!existsSync(filePath)) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'File not found', path: filePath }));
+        return;
+      }
+      
+      try {
+        const content = readFileSync(filePath, 'utf-8');
+        const ext = filePath.split('.').pop()?.toLowerCase() || 'txt';
+        const mimeMap: Record<string, string> = {
+          md: 'text/markdown',
+          ts: 'text/typescript',
+          js: 'text/javascript',
+          json: 'application/json',
+          txt: 'text/plain',
+        };
+        
+        let frontmatter = {};
+        let bodyContent = content;
+        
+        // Parse frontmatter for markdown files
+        if (ext === 'md') {
+          const matter = await import('gray-matter');
+          const parsed = matter.default(content);
+          frontmatter = parsed.data;
+          bodyContent = parsed.content;
+        }
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          content: bodyContent,
+          frontmatter,
+          type: mimeMap[ext] || 'text/plain',
+          path: filePath,
+          fileUri: `file://${filePath}`,
+          mcpUri: filePathToMcpUri(filePath),
+          ext 
+        }));
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to read file', message: (error as Error).message }));
+      }
+      return;
+    }
+
+    // GET /mcp/resource?uri=mcp://backlog/... - MCP resource proxy
+    if (req.url?.startsWith('/mcp/resource?')) {
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const uri = url.searchParams.get('uri');
+      
+      if (!uri || !uri.startsWith('mcp://backlog/')) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid MCP URI' }));
+        return;
+      }
+      
+      try {
+        const { content, frontmatter, mimeType } = readMcpResource(uri);
+        const filePath = resolveMcpUri(uri);
+        const ext = filePath.split('.').pop()?.toLowerCase() || 'txt';
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          content,
+          frontmatter: frontmatter || {},
+          type: mimeType,
+          path: filePath,
+          fileUri: `file://${filePath}`,
+          mcpUri: uri,
+          ext 
+        }));
+      } catch (error) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          error: 'Resource not found', 
+          uri,
+          message: (error as Error).message 
+        }));
+      }
+      return;
+    }
+
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not found');
   });
