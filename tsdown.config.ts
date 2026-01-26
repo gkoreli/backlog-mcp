@@ -11,6 +11,12 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   treeshake: true,
-  logLevel: 'info', // Show build progress
-  report: false, // Hide detailed file size report
+  logLevel: 'info',
+  report: false,
+  copy: [
+    { from: 'viewer/*.html', to: 'dist/viewer/' },
+    { from: 'viewer/*.css', to: 'dist/viewer/' },
+    { from: 'viewer/*.svg', to: 'dist/viewer/' },
+    { from: 'viewer/icons/*.svg', to: 'dist/viewer/icons/' },
+  ],
 });
