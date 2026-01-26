@@ -46,7 +46,6 @@ export function registerViewerRoutes(app: FastifyInstance) {
 
   // System status
   app.get('/api/status', async () => {
-    const dataDir = process.env.BACKLOG_DATA_DIR ?? 'data';
     const tasks = storage.list({ limit: 10000 });
     const address = app.server.address();
     const port = typeof address === 'object' && address ? address.port : 3030;
@@ -54,7 +53,7 @@ export function registerViewerRoutes(app: FastifyInstance) {
     return {
       version: paths.getVersion(),
       port,
-      dataDir,
+      dataDir: paths.backlogDataDir,
       taskCount: tasks.length,
       uptime: Math.floor(process.uptime())
     };

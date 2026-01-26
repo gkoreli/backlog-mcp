@@ -105,7 +105,7 @@
       padding: 16px 20px;
       border-bottom: 1px solid #3e3e42;
       background: #252526;
-      min-height: 60px;
+      min-height: 62px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -526,10 +526,6 @@
   font-weight: 600;
 }
 
-#task-pane-header .copy-btn:not(.btn-outline):hover {
-  color: #58a6ff;
-}
-
 .task-meta-id {
   font-family: monospace;
   font-size: 12px;
@@ -686,7 +682,6 @@ task-detail .markdown-body {
   border-color: #58a6ff;
 }
 
-
 .task-id-btn, .epic-id-btn {
   font-family: monospace;
   font-weight: 600;
@@ -838,24 +833,6 @@ task-detail .markdown-body {
 }
 
 /* System Info Modal */
-.gear-icon {
-  background: none;
-  border: none;
-  color: #8b949e;
-  cursor: pointer;
-  padding: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  transition: all 0.2s;
-}
-
-.gear-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #d4d4d4;
-}
-
 .pane-header {
   display: flex;
   justify-content: space-between;
@@ -958,22 +935,6 @@ task-detail .markdown-body {
   font-size: 13px;
   font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
   word-break: break-all;
-}
-
-.copy-btn {
-  background: #0969da;
-  border: none;
-  color: white;
-  padding: 4px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: background 0.2s;
-  white-space: nowrap;
-}
-
-.copy-btn:hover {
-  background: #0860ca;
 }
 
 .loading {

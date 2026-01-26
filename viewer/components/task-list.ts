@@ -1,6 +1,7 @@
 import { fetchTasks, type Task } from '../utils/api.js';
 
-function escapeAttr(text: string): string {
+function escapeAttr(text: string | undefined): string {
+  if (!text) return '';
   return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
