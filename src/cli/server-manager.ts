@@ -81,3 +81,5 @@ export async function ensureServer(port: number): Promise<void> {
     await waitForServer(port, 10000);
   }
 }
+
+export { isServerRunning, getServerVersion, shutdownServer };
