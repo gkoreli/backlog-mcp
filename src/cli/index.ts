@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-try { await import('dotenv/config'); } catch {}
-
 const args = process.argv.slice(2);
 const command = args[0];
 

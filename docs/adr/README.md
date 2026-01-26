@@ -8,6 +8,7 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0026. Build System Modernization and Path Resolution](./0026-build-system-modernization.md) - Migrate to tsdown, centralize path resolution, fix static asset serving - 2026-01-26
 - [0025. Enable StreamableHTTPServerTransport with Current Architecture](./0025-streamable-http-with-current-architecture.md) - Change mcp-remote transport flag to http-only, maintain exact architecture - 2026-01-26
 - [0022. Fix Missing /mcp/message POST Route](./0022-fix-missing-mcp-message-route.md) - Add separate POST route for MCP messages to fix SSE transport - 2026-01-25
 - [0019. Complete HTTP Architecture Migration](./0019-complete-http-architecture-migration.md) - Direct copy of missing endpoints to achieve 100% feature parity and delete old code - 2026-01-25

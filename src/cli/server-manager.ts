@@ -1,11 +1,7 @@
 import { request } from 'node:http';
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf-8'));
+import { join } from 'node:path';
+import { paths } from '@/utils/paths.js';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -36,7 +32,7 @@ async function getServerVersion(port: number): Promise<string | null> {
 }
 
 async function spawnServer(port: number): Promise<void> {
-  const serverPath = join(__dirname, '..', 'server', 'fastify-server.js');
+  const serverPath = join(paths.distRoot, 'server', 'fastify-server.js');
   const child = spawn(process.execPath, [serverPath], {
     detached: true,
     stdio: 'ignore',
@@ -78,7 +74,7 @@ export async function ensureServer(port: number): Promise<void> {
   }
   
   const serverVersion = await getServerVersion(port);
-  if (serverVersion !== pkg.version) {
+  if (serverVersion !== paths.getVersion()) {
     await shutdownServer(port);
     await sleep(1000);
     await spawnServer(port);

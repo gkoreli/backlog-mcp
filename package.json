@@ -18,34 +18,32 @@
     "url": "https://github.com/gkoreli/backlog-mcp.git"
   },
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.mts",
   "bin": {
-    "backlog-mcp": "./dist/cli.js"
+    "backlog-mcp": "./dist/cli/index.mjs"
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
     }
   },
   "files": [
     "dist",
-    "viewer/*.html",
-    "viewer/*.css",
-    "viewer/*.svg",
-    "viewer/*.js",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc && esbuild viewer/main.ts --bundle --format=esm --outdir=dist/viewer --loader:.svg=text",
+    "build": "pnpm typecheck && tsdown && pnpm build:viewer",
+    "typecheck": "tsc --noEmit",
+    "build:viewer": "esbuild viewer/main.ts --bundle --format=esm --outdir=dist/viewer --loader:.svg=text && cp viewer/*.{html,css,svg} dist/viewer",
+    "dev": "node --env-file=.env --watch-path=src --watch-path=viewer tsx watch src/server/fastify-server.ts",
     "clean": "rm -rf dist",
-    "start": "node dist/cli.js",
-    "inspect": "pnpm build && npx @modelcontextprotocol/inspector dist/cli.js",
+    "start": "node dist/cli/index.mjs",
+    "inspect": "pnpm build && npx @modelcontextprotocol/inspector dist/cli/index.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev": "pnpm build && concurrently \"tsx watch src/server/fastify-server.ts\" \"esbuild viewer/main.ts --bundle --format=esm --outdir=dist/viewer --watch --loader:.svg=text\"",
     "test:integration": "pnpm build && kiro-cli chat --agent mcp-resource-validator --trust-all-tools --no-interactive 'Execute the complete validation test plan'",
     "test:integration:resources": "pnpm build && kiro-cli chat --agent mcp-resource-validator --trust-all-tools --no-interactive 'Skip steps 1-7. Only test task-attached resources (step 8): First create a test task, then create ADR, modify it, create multiple resources, link to task, verify lifecycle management.'"
   },
@@ -56,8 +54,8 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "concurrently": "^9.2.1",
-    "dotenv": "^17.2.3",
     "esbuild": "^0.27.2",
+    "tsdown": "^0.20.1",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^2.1.9"
