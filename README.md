@@ -6,10 +6,10 @@ Minimal task backlog MCP server. Works with any LLM agent or CLI editor that sup
 
 ## Web Viewer
 
-Start the server and open `http://localhost:3030` for a visual task browser.
+Start the server and open `http://localhost:3030` (production) or `http://localhost:3040` (dev) for a visual task browser.
 
 ```bash
-pnpm dev  # Starts MCP server + web viewer with hot reload
+pnpm dev  # Starts MCP server + web viewer with hot reload (port 3040)
 ```
 
 Features:
@@ -21,12 +21,14 @@ Features:
 
 ## Task Schema
 
-Tasks are stored as individual markdown files with YAML frontmatter:
+Tasks and epics are stored as individual markdown files with YAML frontmatter:
 
 ```markdown
 ---
 id: TASK-0001
 title: Fix bug in authentication
+type: task
+epic_id: EPIC-0002
 status: open
 created_at: '2024-01-10T10:00:00Z'
 updated_at: '2024-01-10T10:00:00Z'
@@ -34,6 +36,9 @@ blocked_reason: Waiting for API access
 evidence:
   - Fixed in CR-12345
   - Validated in beta
+references:
+  - url: https://github.com/org/repo/issues/123
+    title: Related GitHub issue
 ---
 
 ## Description
@@ -45,13 +50,19 @@ The authentication flow has an issue where...
 This came from Slack thread: https://...
 ```
 
+**ID format:** `TASK-0001` for tasks, `EPIC-0001` for epics  
+**Type values:** `task` (default), `epic`  
 **Status values:** `open`, `in_progress`, `blocked`, `done`, `cancelled`
 
 ## MCP Tools
 
+### Tasks & Epics
+
 ```
 backlog_list                              # List active tasks (open, in_progress, blocked)
 backlog_list status=["done"]              # Show completed tasks
+backlog_list type="epic"                  # List only epics
+backlog_list epic_id="EPIC-0002"          # Tasks in specific epic
 backlog_list counts=true                  # Get counts by status
 backlog_list limit=10                     # Limit results
 
@@ -59,7 +70,8 @@ backlog_get id="TASK-0001"                # Get single task
 backlog_get id=["TASK-0001","TASK-0002"]  # Batch get multiple tasks
 
 backlog_create title="Fix bug"            # Create task
-backlog_create title="Fix bug" description="Details..."
+backlog_create title="Fix bug" description="Details..." epic_id="EPIC-0002"
+backlog_create title="Q1 Goals" type="epic"  # Create epic
 
 backlog_update id="TASK-0001" status="done"                    # Mark done
 backlog_update id="TASK-0001" status="blocked" blocked_reason="Waiting on API"
@@ -67,6 +79,18 @@ backlog_update id="TASK-0001" evidence=["Fixed in CR-12345"]   # Add completion 
 
 backlog_delete id="TASK-0001"             # Permanently delete
 ```
+
+### Resources (MCP Resources Protocol)
+
+Access tasks and resources via MCP resource URIs:
+
+```
+mcp://backlog/tasks                       # All tasks (JSON)
+mcp://backlog/tasks/TASK-0001             # Single task (JSON)
+mcp://backlog/resources/TASK-0001/adr.md  # Task-attached resource
+```
+
+Create/modify resources via `resource://` write operations.
 
 ## Installation
 
