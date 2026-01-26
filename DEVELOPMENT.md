@@ -7,6 +7,25 @@ pnpm install
 pnpm dev  # Starts MCP server + web viewer with hot reload
 ```
 
+## CLI Commands
+
+```bash
+backlog-mcp              # Run as stdio MCP server (default)
+backlog-mcp serve        # Run HTTP server with viewer
+backlog-mcp version      # Show version
+backlog-mcp status       # Check if server is running (port, version, URLs)
+backlog-mcp stop         # Stop the server gracefully
+backlog-mcp --help       # Show help
+```
+
+**Development workflow:**
+```bash
+pnpm dev                 # Start dev server (port 3040, hot reload)
+pnpm build               # Build for production
+node dist/cli/index.mjs status  # Check local build
+node dist/cli/index.mjs stop    # Stop local server
+```
+
 ## Server Architecture
 
 ### Production Mode (Kiro/MCP Clients)

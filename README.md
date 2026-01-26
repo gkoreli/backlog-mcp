@@ -116,6 +116,24 @@ pnpm install && pnpm build
 pnpm start
 ```
 
+## CLI Commands
+
+```bash
+backlog-mcp              # Run as stdio MCP server (default)
+backlog-mcp serve        # Run HTTP server with viewer
+backlog-mcp version      # Show version
+backlog-mcp status       # Check if server is running
+backlog-mcp stop         # Stop the server
+backlog-mcp --help       # Show help
+```
+
+**Troubleshooting:**
+```bash
+npx backlog-mcp status   # Check if server is running
+npx backlog-mcp stop     # Stop misbehaving server
+npx backlog-mcp version  # Check installed version
+```
+
 ## Configuration
 
 Environment variables (create `.env` file for local development):
