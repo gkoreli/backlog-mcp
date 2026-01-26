@@ -14,6 +14,9 @@
 </head>
 <body>
   <div class="app-container" id="app-container">
+    <!-- System Info Modal -->
+    <system-info-modal></system-info-modal>
+    
     <!-- Left Pane: Task List -->
     <div class="left-pane" id="left-pane">
       <div class="pane-header">
@@ -21,6 +24,7 @@
           <img src="./logo.svg" class="logo" alt="">
           Backlog
         </div>
+        <button class="btn-outline" id="system-info-btn" title="System Info"></button>
       </div>
       <div class="pane-content">
         <task-filter-bar></task-filter-bar>

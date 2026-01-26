@@ -8,6 +8,8 @@ import './components/task-item.js';
 import './components/task-detail.js';
 import './components/task-badge.js';
 import './components/resource-viewer.js';
+import './components/system-info-modal.js';
+import { settingsIcon } from './icons/index.js';
 import { urlState } from './utils/url-state.js';
 import { splitPane } from './utils/split-pane.js';
 import { resizeService } from './utils/resize.js';
@@ -33,6 +35,16 @@ document.addEventListener('DOMContentLoaded', () => {
   resizeService.init();
   layoutService.init();
   splitPane.init();
+  
+  // Inject settings icon
+  const systemInfoBtn = document.getElementById('system-info-btn');
+  if (systemInfoBtn) {
+    systemInfoBtn.innerHTML = `<svg-icon src="${settingsIcon}" size="16px"></svg-icon>`;
+  }
+  
+  // Wire up system info button
+  const modal = document.querySelector('system-info-modal') as any;
+  systemInfoBtn?.addEventListener('click', () => modal?.open());
   
   // Restore resource from localStorage
   const savedResource = localStorage.getItem('openResource');

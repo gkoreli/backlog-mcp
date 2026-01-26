@@ -105,7 +105,7 @@
       padding: 16px 20px;
       border-bottom: 1px solid #3e3e42;
       background: #252526;
-      min-height: 60px;
+      min-height: 62px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -526,10 +526,6 @@
   font-weight: 600;
 }
 
-#task-pane-header .copy-btn:not(.btn-outline):hover {
-  color: #58a6ff;
-}
-
 .task-meta-id {
   font-family: monospace;
   font-size: 12px;
@@ -686,7 +682,6 @@ task-detail .markdown-body {
   border-color: #58a6ff;
 }
 
-
 .task-id-btn, .epic-id-btn {
   font-family: monospace;
   font-weight: 600;
@@ -835,4 +830,121 @@ task-detail .markdown-body {
   padding: 4px 12px;
   font-size: 11px;
   min-width: 50px;
+}
+
+/* System Info Modal */
+.pane-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: #2d2d30;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #3e3e42;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #8b949e;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #d4d4d4;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #8b949e;
+  min-width: 120px;
+}
+
+.info-value {
+  flex: 1;
+  text-align: right;
+  color: #d4d4d4;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.info-value code {
+  background: #1e1e1e;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  word-break: break-all;
+}
+
+.loading {
+  text-align: center;
+  color: #8b949e;
+  padding: 20px;
+}
+
+.error {
+  color: #f85149;
+  text-align: center;
+  padding: 20px;
 }

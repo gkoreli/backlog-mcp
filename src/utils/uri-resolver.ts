@@ -25,10 +25,11 @@ export function resolveMcpUri(uri: string): string {
   
   const dataDir = paths.backlogDataDir;
   
-  // Special case: tasks/{id}, tasks/{id}/file, tasks/{id}/description -> tasks/{id}.md
+  // Special case: tasks/{id} or tasks/{id}/file -> tasks/{id}.md
+  // Only applies if path doesn't already have .md extension
   if (path.startsWith('tasks/')) {
     const match = path.match(/^tasks\/([^/]+)(\/(?:file|description))?$/);
-    if (match) {
+    if (match && match[1] && !match[1].endsWith('.md')) {
       return join(dataDir, 'tasks', `${match[1]}.md`);
     }
   }

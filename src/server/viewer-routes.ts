@@ -44,6 +44,21 @@ export function registerViewerRoutes(app: FastifyInstance) {
     return task;
   });
 
+  // System status
+  app.get('/api/status', async () => {
+    const tasks = storage.list({ limit: 10000 });
+    const address = app.server.address();
+    const port = typeof address === 'object' && address ? address.port : 3030;
+    
+    return {
+      version: paths.getVersion(),
+      port,
+      dataDir: paths.backlogDataDir,
+      taskCount: tasks.length,
+      uptime: Math.floor(process.uptime())
+    };
+  });
+
   // Open task in editor
   app.get('/open/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
