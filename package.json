@@ -38,7 +38,7 @@
   "scripts": {
     "build": "pnpm typecheck && tsdown && pnpm build:viewer",
     "typecheck": "tsc --noEmit",
-    "build:viewer": "esbuild viewer/main.ts --bundle --format=esm --outdir=dist/viewer --loader:.svg=text && cp viewer/*.{html,css,svg} dist/viewer",
+    "build:viewer": "esbuild viewer/main.ts --bundle --format=esm --outdir=dist/viewer --loader:.svg=text && cp viewer/index.html viewer/styles.css viewer/github-markdown.css viewer/logo.svg dist/viewer/",
     "dev": "node --env-file=.env --watch-path=src --watch-path=viewer tsx watch src/server/fastify-server.ts",
     "clean": "rm -rf dist",
     "start": "node dist/cli/index.mjs",
