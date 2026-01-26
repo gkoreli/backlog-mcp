@@ -1,20 +1,17 @@
 import type { FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { exec } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import matter from 'gray-matter';
 import { storage } from '../storage/backlog.js';
 import { readMcpResource } from '../resources/resource-reader.js';
 import { resolveMcpUri, filePathToMcpUri } from '../utils/uri-resolver.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { paths } from '../utils/paths.js';
 
 export function registerViewerRoutes(app: FastifyInstance) {
-  // Static files
+  // Static files - serve from dist/viewer (built assets)
   app.register(fastifyStatic, {
-    root: join(__dirname, '..', '..', 'viewer'),
+    root: paths.viewerDist,
     prefix: '/',
   });
 

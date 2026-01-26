@@ -92,6 +92,21 @@ pnpm install && pnpm build
 pnpm start
 ```
 
+## Configuration
+
+Environment variables (create `.env` file for local development):
+
+```bash
+# Copy example config
+cp .env.example .env
+
+# Edit with your values
+BACKLOG_DATA_DIR=/Users/yourname/.backlog  # Where to store tasks
+BACKLOG_VIEWER_PORT=3030                    # HTTP server port
+```
+
+**For agents/LLMs:** Read the actual `.env` file to understand the configured values, not the defaults in code.
+
 ## Storage
 
 - Default: `data/tasks/` and `data/archive/` (local to project)

@@ -1,11 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { paths } from '@/utils/paths.js';
 
 export function getRepoRoot(): string {
-  return join(__dirname, '..');
+  return paths.projectRoot;
 }
 
 export function getBacklogDataDir(): string {

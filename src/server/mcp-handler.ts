@@ -1,18 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { registerTools } from '../tools/index.js';
-import { registerResources } from '../resources/index-resources.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf-8'));
+import { registerTools } from '@/tools/index.js';
+import { registerResources } from '@/resources/index-resources.js';
+import { paths } from '@/utils/paths.js';
 
 export function registerMcpHandler(app: FastifyInstance) {
   app.all('/mcp', async (request, reply) => {
-    const server = new McpServer({ name: 'backlog-mcp', version: pkg.version });
+    const server = new McpServer({ 
+      name: paths.packageJson.name, 
+      version: paths.getVersion() 
+    });
     
     registerTools(server);
     registerResources(server);

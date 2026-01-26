@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 
-try { await import('dotenv/config'); } catch {}
-
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { registerViewerRoutes } from './viewer-routes.js';
 import { registerMcpHandler } from './mcp-handler.js';
-import { authMiddleware } from '../middleware/auth.js';
-import { storage } from '../storage/backlog.js';
+import { authMiddleware } from '@/middleware/auth.js';
+import { storage } from '@/storage/backlog.js';
+import { paths } from '@/utils/paths.js';
 
 const app = Fastify({ logger: false, bodyLimit: 10 * 1024 * 1024 });
 
@@ -29,10 +28,7 @@ registerMcpHandler(app);
 app.get('/health', async () => ({ status: 'ok' }));
 
 // Version endpoint
-app.get('/version', async () => {
-  const pkg = await import('../../package.json', { assert: { type: 'json' } });
-  return pkg.default.version;
-});
+app.get('/version', async () => paths.getVersion());
 
 // Shutdown endpoint
 app.post('/shutdown', async (request, reply) => {
