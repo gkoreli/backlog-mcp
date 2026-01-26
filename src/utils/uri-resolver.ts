@@ -6,10 +6,6 @@ export function getRepoRoot(): string {
   return paths.projectRoot;
 }
 
-export function getBacklogDataDir(): string {
-  return process.env.BACKLOG_DATA_DIR ?? 'data';
-}
-
 export function resolveMcpUri(uri: string): string {
   if (!uri.startsWith('mcp://')) {
     throw new Error(`Not an MCP URI: ${uri}`);
@@ -27,7 +23,7 @@ export function resolveMcpUri(uri: string): string {
     throw new Error(`Path traversal not allowed: ${uri}`);
   }
   
-  const dataDir = getBacklogDataDir();
+  const dataDir = paths.backlogDataDir;
   
   // Special case: tasks/{id}, tasks/{id}/file, tasks/{id}/description -> tasks/{id}.md
   if (path.startsWith('tasks/')) {
@@ -55,7 +51,7 @@ export function resolveMcpUri(uri: string): string {
 }
 
 export function filePathToMcpUri(filePath: string): string | null {
-  const dataDir = getBacklogDataDir();
+  const dataDir = paths.backlogDataDir;
   const repoRoot = getRepoRoot();
   
   // Check if it's a task file

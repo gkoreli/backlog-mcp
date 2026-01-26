@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { storage } from '../storage/backlog.js';
 import { createTask, nextTaskId } from '../storage/schema.js';
+import { paths } from '../utils/paths.js';
 
 describe('Epic ID Generation', () => {
   const testDataDir = join(process.cwd(), 'test-data-epic-ids');
@@ -12,13 +13,16 @@ describe('Epic ID Generation', () => {
       rmSync(testDataDir, { recursive: true });
     }
     mkdirSync(testDataDir, { recursive: true });
-    storage.init(testDataDir);
+    
+    // Mock paths.backlogDataDir getter
+    vi.spyOn(paths, 'backlogDataDir', 'get').mockReturnValue(testDataDir);
   });
 
   afterEach(() => {
     if (existsSync(testDataDir)) {
       rmSync(testDataDir, { recursive: true });
     }
+    vi.restoreAllMocks();
   });
 
   it('should generate unique epic IDs even with 20+ tasks', () => {

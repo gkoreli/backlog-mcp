@@ -1,29 +1,26 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { resolveMcpUri } from '../utils/uri-resolver.js';
+import { paths } from '../utils/paths.js';
 
 describe('URI Resolver - Task-Attached Resources', () => {
   let testDir: string;
-  let originalEnv: string | undefined;
 
   beforeEach(() => {
     testDir = join(tmpdir(), `backlog-test-${Date.now()}`);
     mkdirSync(testDir, { recursive: true });
-    originalEnv = process.env.BACKLOG_DATA_DIR;
-    process.env.BACKLOG_DATA_DIR = testDir;
+    
+    // Mock paths.backlogDataDir getter
+    vi.spyOn(paths, 'backlogDataDir', 'get').mockReturnValue(testDir);
   });
 
   afterEach(() => {
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
-    if (originalEnv) {
-      process.env.BACKLOG_DATA_DIR = originalEnv;
-    } else {
-      delete process.env.BACKLOG_DATA_DIR;
-    }
+    vi.restoreAllMocks();
   });
 
   it('should resolve task-attached resource URI to correct path', () => {
@@ -66,24 +63,20 @@ describe('URI Resolver - Task-Attached Resources', () => {
 
 describe('Resource Reader - Task-Attached Resources', () => {
   let testDir: string;
-  let originalEnv: string | undefined;
 
   beforeEach(() => {
     testDir = join(tmpdir(), `backlog-test-${Date.now()}`);
     mkdirSync(testDir, { recursive: true });
-    originalEnv = process.env.BACKLOG_DATA_DIR;
-    process.env.BACKLOG_DATA_DIR = testDir;
+    
+    // Mock paths.backlogDataDir getter
+    vi.spyOn(paths, 'backlogDataDir', 'get').mockReturnValue(testDir);
   });
 
   afterEach(() => {
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
-    if (originalEnv) {
-      process.env.BACKLOG_DATA_DIR = originalEnv;
-    } else {
-      delete process.env.BACKLOG_DATA_DIR;
-    }
+    vi.restoreAllMocks();
   });
 
   it('should read task-attached markdown resource', async () => {
@@ -175,61 +168,42 @@ describe('Resource Reader - Task-Attached Resources', () => {
   });
 
   it('should work with actual production BACKLOG_DATA_DIR', async () => {
-    // Save original
-    const original = process.env.BACKLOG_DATA_DIR;
+    const productionDir = '/Users/gkoreli/Documents/goga/.backlog';
     
-    // Set to production value
-    process.env.BACKLOG_DATA_DIR = '/Users/gkoreli/Documents/goga/.backlog';
+    // Mock to use production path
+    vi.spyOn(paths, 'backlogDataDir', 'get').mockReturnValue(productionDir);
     
-    // Import fresh modules with production env
     const { resolveMcpUri } = await import('../utils/uri-resolver.js');
-    const { readMcpResource } = await import('../resources/resource-reader.js');
     
     const uri = 'mcp://backlog/resources/TASK-0068/test-adr.md';
     const resolved = resolveMcpUri(uri);
     
-    expect(resolved).toBe('/Users/gkoreli/Documents/goga/.backlog/resources/TASK-0068/test-adr.md');
+    expect(resolved).toBe(join(productionDir, 'resources/TASK-0068/test-adr.md'));
     
-    // Check if file actually exists at production path
-    if (existsSync(resolved)) {
-      const result = readMcpResource(uri);
-      expect(result.content).toBeTruthy();
-    }
-    
-    // Restore
-    if (original) {
-      process.env.BACKLOG_DATA_DIR = original;
-    } else {
-      delete process.env.BACKLOG_DATA_DIR;
-    }
+    vi.restoreAllMocks();
   });
 });
 
 describe('Lifecycle Management', () => {
   let testDir: string;
-  let originalEnv: string | undefined;
 
   beforeEach(() => {
     testDir = join(tmpdir(), `backlog-test-${Date.now()}`);
     mkdirSync(testDir, { recursive: true });
-    originalEnv = process.env.BACKLOG_DATA_DIR;
-    process.env.BACKLOG_DATA_DIR = testDir;
+    
+    // Mock paths.backlogDataDir getter
+    vi.spyOn(paths, 'backlogDataDir', 'get').mockReturnValue(testDir);
   });
 
   afterEach(() => {
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
-    if (originalEnv) {
-      process.env.BACKLOG_DATA_DIR = originalEnv;
-    } else {
-      delete process.env.BACKLOG_DATA_DIR;
-    }
+    vi.restoreAllMocks();
   });
 
   it('should delete resources when task is deleted', async () => {
     const { storage } = await import('../storage/backlog.js');
-    storage.init(testDir);
     
     // Create task
     const task = {
@@ -257,7 +231,6 @@ describe('Lifecycle Management', () => {
 
   it('should handle task deletion when no resources exist', async () => {
     const { storage } = await import('../storage/backlog.js');
-    storage.init(testDir);
     
     const task = {
       id: 'TASK-9998',

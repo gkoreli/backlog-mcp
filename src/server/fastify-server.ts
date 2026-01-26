@@ -5,14 +5,9 @@ import cors from '@fastify/cors';
 import { registerViewerRoutes } from './viewer-routes.js';
 import { registerMcpHandler } from './mcp-handler.js';
 import { authMiddleware } from '@/middleware/auth.js';
-import { storage } from '@/storage/backlog.js';
 import { paths } from '@/utils/paths.js';
 
 const app = Fastify({ logger: false, bodyLimit: 10 * 1024 * 1024 });
-
-// Initialize storage
-const dataDir = process.env.BACKLOG_DATA_DIR ?? 'data';
-storage.init(dataDir);
 
 // CORS
 await app.register(cors, { origin: '*' });
@@ -41,6 +36,7 @@ export async function startHttpServer(port: number = 3030): Promise<void> {
   console.log(`Backlog MCP server running on http://localhost:${port}`);
   console.log(`- Viewer: http://localhost:${port}/`);
   console.log(`- MCP endpoint: http://localhost:${port}/mcp`);
+  console.log(`- Data directory: ${paths.backlogDataDir}`);
 }
 
 // Graceful shutdown

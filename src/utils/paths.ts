@@ -14,7 +14,7 @@ export enum RuntimeEnvironment {
  * Centralized path resolution for the entire application.
  * All file paths and directory references should go through this singleton.
  */
-class PathResolver {
+export class PathResolver {
   private static instance: PathResolver;
   
   /** Current runtime environment */
@@ -60,6 +60,26 @@ class PathResolver {
    */
   public getVersion(): string {
     return this.packageJson.version;
+  }
+  
+  /**
+   * Get backlog data directory path.
+   * 
+   * Reads from BACKLOG_DATA_DIR environment variable, defaults to './data'.
+   * Relative paths are resolved against project root.
+   * Absolute paths (starting with / or ~) are returned as-is.
+   * 
+   * @example
+   * // BACKLOG_DATA_DIR not set → '/path/to/project/data'
+   * // BACKLOG_DATA_DIR='./my-data' → '/path/to/project/my-data'
+   * // BACKLOG_DATA_DIR='/absolute/path' → '/absolute/path'
+   * // BACKLOG_DATA_DIR='~/Documents/data' → '~/Documents/data'
+   */
+  public get backlogDataDir(): string {
+    const dataDir = process.env.BACKLOG_DATA_DIR ?? 'data';
+    const isAbsolutePath = dataDir.startsWith('/') || dataDir.startsWith('~');
+    
+    return isAbsolutePath ? dataDir : join(this.projectRoot, dataDir);
   }
   
   /**

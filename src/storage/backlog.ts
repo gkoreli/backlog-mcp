@@ -2,11 +2,11 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlink
 import { join } from 'node:path';
 import matter from 'gray-matter';
 import type { Task, Status, TaskType } from './schema.js';
+import { paths } from '@/utils/paths.js';
 
 const TASKS_DIR = 'tasks';
 
 class BacklogStorage {
-  private dataDir: string = 'data';
   private static instance: BacklogStorage;
 
   static getInstance(): BacklogStorage {
@@ -16,12 +16,8 @@ class BacklogStorage {
     return BacklogStorage.instance;
   }
 
-  init(dataDir: string): void {
-    this.dataDir = dataDir;
-  }
-
   private get tasksPath(): string {
-    return join(this.dataDir, TASKS_DIR);
+    return join(paths.backlogDataDir, TASKS_DIR);
   }
 
   private ensureDir(dir: string): void {
@@ -113,7 +109,7 @@ class BacklogStorage {
       unlinkSync(path);
       
       // Delete associated resources if they exist
-      const resourcesPath = join(this.dataDir, 'resources', id);
+      const resourcesPath = join(paths.backlogDataDir, 'resources', id);
       if (existsSync(resourcesPath)) {
         rmSync(resourcesPath, { recursive: true, force: true });
       }

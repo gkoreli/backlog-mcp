@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { storage } from '../storage/backlog.js';
 import { createTask } from '../storage/schema.js';
+import { paths } from '../utils/paths.js';
 
 const TEST_DATA_DIR = join(process.cwd(), 'test-data');
 
@@ -12,13 +13,16 @@ describe('Storage', () => {
       rmSync(TEST_DATA_DIR, { recursive: true });
     }
     mkdirSync(TEST_DATA_DIR, { recursive: true });
-    storage.init(TEST_DATA_DIR);
+    
+    // Mock paths.backlogDataDir getter
+    vi.spyOn(paths, 'backlogDataDir', 'get').mockReturnValue(TEST_DATA_DIR);
   });
 
   afterEach(() => {
     if (existsSync(TEST_DATA_DIR)) {
       rmSync(TEST_DATA_DIR, { recursive: true });
     }
+    vi.restoreAllMocks();
   });
 
   describe('add', () => {
