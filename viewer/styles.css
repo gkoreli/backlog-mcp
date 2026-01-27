@@ -956,7 +956,8 @@ task-detail .markdown-body {
   background: #2d2d30;
   color: #fff;
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   font-size: 12px;
   pointer-events: none;
   opacity: 0;
