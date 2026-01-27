@@ -178,14 +178,10 @@ class SplitPaneService {
     uriEl.textContent = uri;
     uriEl.title = uri;
     
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'btn-outline btn-sm copy-uri-btn';
+    const copyBtn = document.createElement('copy-button');
+    copyBtn.id = 'copy-uri-btn';
     copyBtn.textContent = 'Copy';
-    copyBtn.onclick = () => {
-      navigator.clipboard.writeText(uri);
-      copyBtn.textContent = '✓';
-      setTimeout(() => copyBtn.textContent = 'Copy', 2000);
-    };
+    (copyBtn as any).text = uri;
     
     row.appendChild(labelEl);
     row.appendChild(uriEl);

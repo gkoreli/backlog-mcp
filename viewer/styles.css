@@ -682,11 +682,6 @@ task-detail .markdown-body {
   border-color: #58a6ff;
 }
 
-.task-id-btn, .epic-id-btn {
-  font-family: monospace;
-  font-weight: 600;
-}
-
 /* Resource Viewer */
 .resource-viewer {
   flex: 1;
@@ -826,12 +821,6 @@ task-detail .markdown-body {
   white-space: nowrap;
 }
 
-.copy-uri-btn {
-  padding: 4px 12px;
-  font-size: 11px;
-  min-width: 50px;
-}
-
 /* System Info Modal */
 .pane-header {
   display: flex;
@@ -947,4 +936,10 @@ task-detail .markdown-body {
   color: #f85149;
   text-align: center;
   padding: 20px;
+}
+
+/* Copy Button */
+copy-button {
+  font-family: monospace;
+  font-weight: 600;
 }

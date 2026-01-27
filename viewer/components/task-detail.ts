@@ -55,22 +55,23 @@ export class TaskDetail extends HTMLElement {
   private updatePaneHeader(task: any) {
     const headerHtml = `
       <div class="task-header-left">
-        ${task.epic_id ? `<button class="btn-outline epic-id-btn" onclick="navigator.clipboard.writeText('${task.epic_id}')" title="Copy Epic ID"><task-badge task-id="${task.epic_id}" type="epic"></task-badge> <svg-icon src="${copyIcon}"></svg-icon></button>` : ''}
-        <button class="btn-outline task-id-btn" onclick="navigator.clipboard.writeText('${task.id}')" title="Copy ID"><task-badge task-id="${task.id}" type="${task.type || 'task'}"></task-badge> <svg-icon src="${copyIcon}"></svg-icon></button>
+        ${task.epic_id ? `<copy-button id="copy-epic-id" title="Copy Epic ID"><task-badge task-id="${task.epic_id}" type="epic"></task-badge></copy-button>` : ''}
+        <copy-button id="copy-task-id" title="Copy ID"><task-badge task-id="${task.id}" type="${task.type || 'task'}"></task-badge></copy-button>
         <span class="status-badge status-${task.status || 'open'}">${(task.status || 'open').replace('_', ' ')}</span>
       </div>
-      <button class="copy-btn copy-raw btn-outline" title="Copy markdown">Copy Markdown <svg-icon src="${copyIcon}"></svg-icon></button>
+      <copy-button id="copy-markdown" title="Copy markdown">Copy Markdown</copy-button>
     `;
     
     const paneHeader = document.getElementById('task-pane-header');
     if (paneHeader) {
       paneHeader.innerHTML = headerHtml;
       
-      // Bind copy raw button
-      const copyRawBtn = paneHeader.querySelector('.copy-raw');
-      if (copyRawBtn && task.raw) {
-        copyRawBtn.addEventListener('click', () => navigator.clipboard.writeText(task.raw));
-      }
+      // Set text via property (not attribute) to avoid DOM pollution
+      const epicBtn = document.getElementById('copy-epic-id') as any;
+      if (epicBtn) epicBtn.text = task.epic_id;
+      
+      (document.getElementById('copy-task-id') as any).text = task.id;
+      (document.getElementById('copy-markdown') as any).text = task.raw || '';
     }
   }
 
