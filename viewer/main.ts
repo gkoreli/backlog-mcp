@@ -14,6 +14,7 @@ import { urlState } from './utils/url-state.js';
 import { splitPane } from './utils/split-pane.js';
 import { resizeService } from './utils/resize.js';
 import { layoutService } from './utils/layout.js';
+import { initCopyButtons } from './utils/copy-button.js';
 
 // Subscribe components to URL state changes - single source of truth
 urlState.subscribe((state) => {
@@ -35,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
   resizeService.init();
   layoutService.init();
   splitPane.init();
+  initCopyButtons();
   
   // Inject settings icon
   const systemInfoBtn = document.getElementById('system-info-btn');

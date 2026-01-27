@@ -81,18 +81,6 @@ class SystemInfoModal extends HTMLElement {
           </div>
         </div>
       `;
-
-      // Attach copy button handler
-      body.querySelectorAll('.copy-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const text = btn.getAttribute('data-copy');
-          if (text) {
-            navigator.clipboard.writeText(text);
-            btn.textContent = 'Copied!';
-            setTimeout(() => btn.textContent = 'Copy', 2000);
-          }
-        });
-      });
     } catch (error) {
       body.innerHTML = `<div class="error">Failed to load system info</div>`;
     }
