@@ -181,11 +181,7 @@ class SplitPaneService {
     const copyBtn = document.createElement('button');
     copyBtn.className = 'btn-outline btn-sm copy-uri-btn';
     copyBtn.textContent = 'Copy';
-    copyBtn.onclick = () => {
-      navigator.clipboard.writeText(uri);
-      copyBtn.textContent = '✓';
-      setTimeout(() => copyBtn.textContent = 'Copy', 2000);
-    };
+    copyBtn.setAttribute('data-copy', uri);
     
     row.appendChild(labelEl);
     row.appendChild(uriEl);

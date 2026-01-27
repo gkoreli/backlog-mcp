@@ -948,3 +948,34 @@ task-detail .markdown-body {
   text-align: center;
   padding: 20px;
 }
+
+/* Copy Button Tooltip */
+#copy-tooltip {
+  position: fixed;
+  transform: translate(-50%, -100%);
+  background: #2d2d30;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  z-index: 10000;
+}
+
+#copy-tooltip.show {
+  opacity: 1;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
