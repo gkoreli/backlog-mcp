@@ -9,6 +9,7 @@ import './components/task-detail.js';
 import './components/task-badge.js';
 import './components/resource-viewer.js';
 import './components/system-info-modal.js';
+import './components/copy-button.js';
 import { settingsIcon } from './icons/index.js';
 import { urlState } from './utils/url-state.js';
 import { splitPane } from './utils/split-pane.js';
