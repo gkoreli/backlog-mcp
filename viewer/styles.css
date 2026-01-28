@@ -151,7 +151,7 @@
     
     task-filter-bar {
       display: block;
-      margin-bottom: 16px;
+      margin-bottom: 0;
       padding: 12px;
       background: #252526;
       border-radius: 8px;
@@ -200,6 +200,47 @@
       color: white;
     }
     
+    /* Breadcrumb */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 0;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #3e3e42;
+      font-size: 13px;
+    }
+    
+    .breadcrumb-segment {
+      background: none;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: all 0.2s;
+      font-size: 13px;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .breadcrumb-segment:hover {
+      background: #2d2d30;
+      color: #d4d4d4;
+    }
+    
+    .breadcrumb-segment:last-child {
+      color: #d4d4d4;
+      font-weight: 500;
+    }
+    
+    .breadcrumb-separator {
+      color: #555;
+      user-select: none;
+    }
+    
     /* Task List */
     .task-list {
       display: flex;
@@ -238,11 +279,6 @@
       bottom: 50%;
       width: 1px;
       background: #3e3e42;
-    }
-    
-    .task-item-wrapper.pinned .task-item {
-      border-color: #f0b429;
-      background: #3d3522;
     }
     
     .task-item {
@@ -288,6 +324,19 @@
       border-radius: 10px;
     }
     
+    .enter-icon {
+      font-size: 14px;
+      color: #888;
+      margin-left: auto;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+    
+    .task-item.type-epic:hover .enter-icon {
+      opacity: 1;
+      color: #007acc;
+    }
+    
     .task-item:hover {
       background: #2d2d30;
       border-color: #007acc;
@@ -298,28 +347,38 @@
       border-color: #007acc;
     }
     
-    .task-item-wrapper > .pin-btn {
-      background: #252526;
-      border: 1px solid #3e3e42;
-      border-radius: 6px;
-      padding: 0 8px;
-      cursor: pointer;
-      color: #888;
+    .task-item.current-epic {
+      /* Separator below provides visual distinction */
+    }
+    
+    .epic-separator {
       display: flex;
       align-items: center;
-      transition: all 0.2s;
+      margin: 12px 0;
+      gap: 12px;
     }
     
-    .task-item-wrapper > .pin-btn:hover {
-      background: #2d2d30;
-      border-color: #f0b429;
-      color: #f0b429;
+    .epic-separator::before,
+    .epic-separator::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(9, 105, 218, 0.3), transparent);
     }
     
-    .task-item-wrapper > .pin-btn.pinned {
-      background: #3d3522;
-      border-color: #f0b429;
-      color: #f0b429;
+    .epic-separator::before {
+      background: linear-gradient(90deg, transparent, rgba(9, 105, 218, 0.3));
+    }
+    
+    .epic-separator::after {
+      background: linear-gradient(90deg, rgba(9, 105, 218, 0.3), transparent);
+    }
+    
+    .separator-icon {
+      width: 10px !important;
+      height: 10px !important;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #00d4ff, #7b2dff, #ff2d7b) !important;
     }
     
     .task-id {
@@ -488,6 +547,12 @@
     .empty-state {
       text-align: center;
       padding: 60px 20px;
+      color: #888;
+    }
+    
+    .empty-state-inline {
+      text-align: center;
+      padding: 40px 20px;
       color: #888;
     }
     

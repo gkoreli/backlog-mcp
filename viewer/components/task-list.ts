@@ -1,31 +1,23 @@
 import { fetchTasks, type Task } from '../utils/api.js';
+import './breadcrumb.js';
+import { ringIcon } from '../icons/index.js';
 
 function escapeAttr(text: string | undefined): string {
   if (!text) return '';
   return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function getCollapsedEpics(): Set<string> {
-  try {
-    return new Set(JSON.parse(localStorage.getItem('collapsed-epics') || '[]'));
-  } catch { return new Set(); }
-}
-
-function setCollapsedEpics(ids: Set<string>) {
-  localStorage.setItem('collapsed-epics', JSON.stringify([...ids]));
-}
-
 export class TaskList extends HTMLElement {
   private currentFilter: string = 'active';
   private currentType: string = 'all';
-  private pinnedEpicId: string | null = null;
+  private currentEpicId: string | null = null;
   private selectedTaskId: string | null = null;
-  private collapsedEpics: Set<string> = getCollapsedEpics();
+  private allTasks: Task[] = [];
   
   connectedCallback() {
     const params = new URLSearchParams(window.location.search);
     this.selectedTaskId = params.get('task');
-    this.pinnedEpicId = params.get('epic');
+    this.currentEpicId = params.get('epic');
     
     this.loadTasks();
     setInterval(() => this.loadTasks(), 5000);
@@ -40,27 +32,29 @@ export class TaskList extends HTMLElement {
       this.setSelected(e.detail.taskId);
     }) as EventListener);
     
-    document.addEventListener('epic-pin', ((e: CustomEvent) => {
-      this.pinnedEpicId = e.detail.epicId;
-      this.loadTasks();
-    }) as EventListener);
-    
-    document.addEventListener('epic-toggle', ((e: CustomEvent) => {
-      const { epicId } = e.detail;
-      if (this.collapsedEpics.has(epicId)) {
-        this.collapsedEpics.delete(epicId);
-      } else {
-        this.collapsedEpics.add(epicId);
+    document.addEventListener('epic-navigate', ((e: CustomEvent) => {
+      this.currentEpicId = e.detail.epicId;
+      // Auto-select epic when navigating into it
+      if (e.detail.epicId) {
+        this.selectedTaskId = e.detail.epicId;
+        document.dispatchEvent(new CustomEvent('task-selected', { detail: { taskId: e.detail.epicId } }));
       }
-      setCollapsedEpics(this.collapsedEpics);
       this.loadTasks();
     }) as EventListener);
+
+    document.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && this.currentEpicId) {
+        const currentEpic = this.allTasks.find(t => t.id === this.currentEpicId);
+        const parentEpicId = currentEpic?.epic_id || null;
+        document.dispatchEvent(new CustomEvent('epic-navigate', { detail: { epicId: parentEpicId } }));
+      }
+    });
   }
   
   setState(filter: string, type: string, epicId: string | null, taskId: string | null) {
     this.currentFilter = filter;
     this.currentType = type;
-    this.pinnedEpicId = epicId;
+    this.currentEpicId = epicId;
     this.selectedTaskId = taskId;
     this.loadTasks();
   }
@@ -68,72 +62,91 @@ export class TaskList extends HTMLElement {
   async loadTasks() {
     try {
       let tasks = await fetchTasks(this.currentFilter as any);
+      this.allTasks = tasks;
       
       // Type filter
       if (this.currentType !== 'all') {
         tasks = tasks.filter(t => (t.type ?? 'task') === this.currentType);
       }
       
-      // Epic pin filter
-      if (this.pinnedEpicId) {
-        const pinnedEpic = tasks.find(t => t.id === this.pinnedEpicId);
-        const children = tasks.filter(t => t.epic_id === this.pinnedEpicId);
-        tasks = pinnedEpic ? [pinnedEpic, ...children] : children;
+      // Epic navigation filter
+      if (this.currentEpicId) {
+        const currentEpic = tasks.find(t => t.id === this.currentEpicId);
+        const children = tasks.filter(t => t.epic_id === this.currentEpicId);
+        tasks = currentEpic ? [currentEpic, ...children] : children;
+      } else {
+        // Home page: only root epics and orphan tasks
+        const rootEpics = tasks.filter(t => (t.type ?? 'task') === 'epic' && !t.epic_id);
+        const orphanTasks = tasks.filter(t => (t.type ?? 'task') === 'task' && !t.epic_id);
+        tasks = [...rootEpics, ...orphanTasks];
       }
       
       this.render(tasks);
+      
+      const breadcrumb = this.querySelector('epic-breadcrumb');
+      if (breadcrumb) {
+        (breadcrumb as any).setData(this.currentEpicId, this.allTasks);
+      }
     } catch (error) {
       this.innerHTML = `<div class="error">Failed to load tasks: ${(error as Error).message}</div>`;
     }
   }
   
   render(tasks: Task[]) {
-    if (tasks.length === 0) {
+    const isEmpty = tasks.length === 0;
+    const isInsideEpic = !!this.currentEpicId;
+    const currentEpic = isInsideEpic ? tasks.find(t => t.id === this.currentEpicId) : null;
+    const hasOnlyEpic = isInsideEpic && tasks.length === 1 && currentEpic;
+    
+    if (isEmpty) {
       this.innerHTML = `
+        <epic-breadcrumb></epic-breadcrumb>
         <div class="empty-state">
           <div class="empty-state-icon">—</div>
           <div>No tasks found</div>
         </div>
       `;
+      const breadcrumb = this.querySelector('epic-breadcrumb');
+      if (breadcrumb) {
+        (breadcrumb as any).setData(this.currentEpicId, this.allTasks);
+      }
       return;
     }
     
-    // Group: epics first with their children, then orphan tasks
+    // Group: epics first, then tasks
     const epics = tasks.filter(t => (t.type ?? 'task') === 'epic');
-    const rootEpics = epics.filter(e => !e.epic_id); // Only root epics for iteration
-    const childTasks = tasks.filter(t => t.epic_id && epics.some(e => e.id === t.epic_id));
-    const orphanTasks = tasks.filter(t => (t.type ?? 'task') === 'task' && !childTasks.includes(t));
-    
-    const grouped: Array<Task & { isChild?: boolean; childCount?: number }> = [];
-    for (const epic of rootEpics) {
-      const children = childTasks.filter(t => t.epic_id === epic.id);
-      const isCollapsed = this.collapsedEpics.has(epic.id);
-      grouped.push({ ...epic, childCount: children.length });
-      if (!isCollapsed) {
-        for (const child of children) {
-          grouped.push({ ...child, isChild: true });
-        }
-      }
-    }
-    grouped.push(...orphanTasks);
+    const regularTasks = tasks.filter(t => (t.type ?? 'task') === 'task');
+    const grouped = [...epics, ...regularTasks];
     
     this.innerHTML = `
+      <epic-breadcrumb></epic-breadcrumb>
       <div class="task-list">
-        ${grouped.map(task => `
-          <task-item 
-            data-id="${task.id}"
-            data-title="${escapeAttr(task.title)}"
-            data-status="${task.status}"
-            data-type="${task.type ?? 'task'}"
-            ${task.isChild ? 'data-child="true"' : ''}
-            ${task.childCount !== undefined ? `data-child-count="${task.childCount}"` : ''}
-            ${this.collapsedEpics.has(task.id) ? 'data-collapsed="true"' : ''}
-            ${this.selectedTaskId === task.id ? 'selected' : ''}
-            ${this.pinnedEpicId === task.id ? 'pinned' : ''}
-          ></task-item>
-        `).join('')}
+        ${grouped.map((task, index) => {
+          const childCount = (task.type ?? 'task') === 'epic' 
+            ? this.allTasks.filter(t => t.epic_id === task.id).length 
+            : 0;
+          const isCurrentEpic = this.currentEpicId === task.id;
+          return `
+            <task-item 
+              data-id="${task.id}"
+              data-title="${escapeAttr(task.title)}"
+              data-status="${task.status}"
+              data-type="${task.type ?? 'task'}"
+              data-child-count="${childCount}"
+              ${this.selectedTaskId === task.id ? 'selected' : ''}
+              ${isCurrentEpic ? 'data-current-epic="true"' : ''}
+            ></task-item>
+            ${isCurrentEpic ? `<div class="epic-separator"><svg-icon class="separator-icon" src="${ringIcon}"></svg-icon></div>` : ''}
+          `;
+        }).join('')}
+        ${hasOnlyEpic ? '<div class="empty-state-inline"><div class="empty-state-icon">—</div><div>No tasks in this epic</div></div>' : ''}
       </div>
     `;
+    
+    const breadcrumb = this.querySelector('epic-breadcrumb');
+    if (breadcrumb) {
+      (breadcrumb as any).setData(this.currentEpicId, this.allTasks);
+    }
   }
   
   setSelected(taskId: string) {

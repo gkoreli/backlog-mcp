@@ -1,5 +1,3 @@
-import { pinIcon, chevronIcon } from '../icons/index.js';
-
 export class TaskItem extends HTMLElement {
   connectedCallback() {
     this.render();
@@ -11,32 +9,38 @@ export class TaskItem extends HTMLElement {
     const title = this.dataset.title || '';
     const status = this.dataset.status || 'open';
     const type = this.dataset.type || 'task';
-    const isChild = this.dataset.child === 'true';
-    const isPinned = this.hasAttribute('pinned');
+    const isCurrentEpic = this.dataset.currentEpic === 'true';
     const isSelected = this.hasAttribute('selected');
-    const isCollapsed = this.dataset.collapsed === 'true';
-    const childCount = this.dataset.childCount;
+    const childCount = this.dataset.childCount || '0';
     
-    this.className = `task-item-wrapper ${isPinned ? 'pinned' : ''} ${isChild ? 'child' : ''}`;
+    this.className = 'task-item-wrapper';
     this.innerHTML = `
-      <div class="task-item ${isSelected ? 'selected' : ''} type-${type}">
-        ${type === 'epic' ? `<button class="collapse-btn ${isCollapsed ? 'collapsed' : ''}" title="${isCollapsed ? 'Expand' : 'Collapse'}"><svg-icon src="${chevronIcon}"></svg-icon></button>` : ''}
+      <div class="task-item ${isSelected ? 'selected' : ''} ${isCurrentEpic ? 'current-epic' : ''} type-${type}">
         <task-badge task-id="${id}" type="${type}"></task-badge>
         <span class="task-title">${title}</span>
-        ${isCollapsed && childCount ? `<span class="child-count">${childCount}</span>` : ''}
+        ${type === 'epic' ? `<span class="child-count">${childCount}</span>` : ''}
+        ${type === 'epic' && !isCurrentEpic ? '<span class="enter-icon">→</span>' : ''}
         <span class="status-badge status-${status}">${status.replace('_', ' ')}</span>
       </div>
-      ${type === 'epic' ? `<button class="pin-btn ${isPinned ? 'pinned' : ''}" title="${isPinned ? 'Unpin' : 'Pin to filter'}"><svg-icon src="${pinIcon}"></svg-icon></button>` : ''}
     `;
   }
   
   attachListeners() {
     const taskItem = this.querySelector('.task-item');
+    const type = this.dataset.type || 'task';
+    const isCurrentEpic = this.dataset.currentEpic === 'true';
+    
     taskItem?.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).closest('.collapse-btn')) return;
       const taskId = this.dataset.id;
       if (!taskId) return;
       
+      // If epic and not current epic, navigate into it
+      if (type === 'epic' && !isCurrentEpic) {
+        document.dispatchEvent(new CustomEvent('epic-navigate', { detail: { epicId: taskId } }));
+        return;
+      }
+      
+      // Otherwise, select and show detail
       document.querySelectorAll('task-item .task-item').forEach(item => {
         item.classList.toggle('selected', (item.closest('task-item') as HTMLElement)?.dataset.id === taskId);
       });
@@ -53,28 +57,6 @@ export class TaskItem extends HTMLElement {
         (taskList as any).setSelected(taskId);
       }
     });
-    
-    const collapseBtn = this.querySelector('.collapse-btn');
-    if (collapseBtn) {
-      collapseBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const epicId = this.dataset.id;
-        if (epicId) {
-          document.dispatchEvent(new CustomEvent('epic-toggle', { detail: { epicId } }));
-        }
-      });
-    }
-    
-    const pinBtn = this.querySelector('.pin-btn');
-    if (pinBtn) {
-      pinBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const epicId = this.dataset.id;
-        if (!epicId) return;
-        const isPinned = this.hasAttribute('pinned');
-        document.dispatchEvent(new CustomEvent('epic-pin', { detail: { epicId: isPinned ? null : epicId } }));
-      });
-    }
   }
 }
 
