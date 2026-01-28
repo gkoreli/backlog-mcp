@@ -47,6 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const modal = document.querySelector('system-info-modal') as any;
   systemInfoBtn?.addEventListener('click', () => modal?.open());
   
+  // Wire up home button
+  document.getElementById('home-button')?.addEventListener('click', () => {
+    urlState.set({ epic: null, task: null });
+  });
+  
   // Restore resource from localStorage
   const savedResource = localStorage.getItem('openResource');
   if (savedResource) {
@@ -65,6 +70,10 @@ document.addEventListener('filter-change', ((e: CustomEvent) => {
 
 document.addEventListener('task-selected', ((e: CustomEvent) => {
   urlState.set({ task: e.detail.taskId });
+}) as EventListener);
+
+document.addEventListener('epic-navigate', ((e: CustomEvent) => {
+  urlState.set({ epic: e.detail.epicId });
 }) as EventListener);
 
 document.addEventListener('epic-pin', ((e: CustomEvent) => {
