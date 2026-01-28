@@ -55,10 +55,12 @@ class BacklogStorage {
           if (!task.id) continue;
           yield task;
         } catch (error) {
-          // Skip files that were deleted between listing and reading
+          // Skip files that fail to parse (deleted, malformed YAML, etc.)
+          // Log for debugging but don't break the entire operation
           if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-            throw error;
+            console.warn(`Skipping malformed task file: ${file}`);
           }
+          continue;
         }
       }
     }
