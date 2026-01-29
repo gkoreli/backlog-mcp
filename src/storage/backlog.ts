@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import matter from 'gray-matter';
 import type { Task, Status, TaskType } from './schema.js';
 import { paths } from '@/utils/paths.js';
+import { logger } from '@/utils/logger.js';
 
 const TASKS_DIR = 'tasks';
 
@@ -56,9 +57,9 @@ class BacklogStorage {
           yield task;
         } catch (error) {
           // Skip files that fail to parse (deleted, malformed YAML, etc.)
-          // Log for debugging but don't break the entire operation
           if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-            console.warn(`Skipping malformed task file: ${file}`);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.warn('Malformed task file', { file, error: errorMessage });
           }
           continue;
         }

@@ -6,6 +6,7 @@ import { registerViewerRoutes } from './viewer-routes.js';
 import { registerMcpHandler } from './mcp-handler.js';
 import { authMiddleware } from '@/middleware/auth.js';
 import { paths } from '@/utils/paths.js';
+import { logger } from '@/utils/logger.js';
 
 const app = Fastify({ logger: false, bodyLimit: 10 * 1024 * 1024 });
 
@@ -33,6 +34,7 @@ app.post('/shutdown', async (request, reply) => {
 
 export async function startHttpServer(port: number = 3030): Promise<void> {
   await app.listen({ port, host: '0.0.0.0' });
+  logger.info('Server started', { port, dataDir: paths.backlogDataDir, version: paths.getVersion() });
   console.log(`Backlog MCP server running on http://localhost:${port}`);
   console.log(`- Viewer: http://localhost:${port}/`);
   console.log(`- MCP endpoint: http://localhost:${port}/mcp`);
@@ -41,6 +43,7 @@ export async function startHttpServer(port: number = 3030): Promise<void> {
 
 // Graceful shutdown
 const shutdown = async () => {
+  logger.info('Server shutting down');
   console.log('Shutting down gracefully...');
   await app.close();
   setTimeout(() => process.exit(0), 500);
