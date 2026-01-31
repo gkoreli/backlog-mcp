@@ -12,7 +12,7 @@ export {
 } from './storage/schema.js';
 
 // Storage
-export { storage } from './storage/backlog.js';
+export { storage } from './storage/backlog-service.js';
 
 // HTTP Server
 export { startHttpServer } from './server/fastify-server.js';

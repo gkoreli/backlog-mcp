@@ -3,7 +3,7 @@ import fastifyStatic from '@fastify/static';
 import { exec } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import matter from 'gray-matter';
-import { storage } from '../storage/backlog.js';
+import { storage } from '../storage/backlog-service.js';
 import { resourceManager } from '../resources/manager.js';
 import { paths } from '../utils/paths.js';
 

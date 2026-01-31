@@ -210,7 +210,7 @@ describe('Lifecycle Management', () => {
   });
 
   it('should delete resources when task is deleted', async () => {
-    const { storage } = await import('../storage/backlog.js');
+    const { storage } = await import('../storage/backlog-service.js');
     
     // Create task
     const task = {
@@ -237,7 +237,7 @@ describe('Lifecycle Management', () => {
   });
 
   it('should handle task deletion when no resources exist', async () => {
-    const { storage } = await import('../storage/backlog.js');
+    const { storage } = await import('../storage/backlog-service.js');
     
     const task = {
       id: 'TASK-9998',

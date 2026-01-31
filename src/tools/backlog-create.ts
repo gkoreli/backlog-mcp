@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { storage } from '../storage/backlog.js';
+import { storage } from '../storage/backlog-service.js';
 import { nextTaskId, createTask, TASK_TYPES } from '../storage/schema.js';
 
 export function registerBacklogCreateTool(server: McpServer) {

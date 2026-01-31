@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Fastify from 'fastify';
 import { registerViewerRoutes } from '../server/viewer-routes.js';
-import { storage } from '../storage/backlog.js';
+import { storage } from '../storage/backlog-service.js';
 import type { Task } from '../storage/schema.js';
 
 // Mock the storage module
-vi.mock('../storage/backlog.js', () => ({
+vi.mock('../storage/backlog-service.js', () => ({
   storage: {
     list: vi.fn(),
     get: vi.fn(),
