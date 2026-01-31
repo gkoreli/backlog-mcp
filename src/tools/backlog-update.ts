@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { storage } from '../storage/backlog.js';
+import { storage } from '../storage/backlog-service.js';
 import { STATUSES } from '../storage/schema.js';
 
 export function registerBacklogUpdateTool(server: McpServer) {

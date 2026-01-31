@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { storage } from '../storage/backlog.js';
+import { storage } from '../storage/backlog-service.js';
 import { createTask, nextTaskId } from '../storage/schema.js';
 import { paths } from '../utils/paths.js';
 
