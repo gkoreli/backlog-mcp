@@ -54,7 +54,7 @@ class BacklogService {
         filters: { status: storageFilter.status, type: storageFilter.type, epic_id: storageFilter.epic_id },
         limit: storageFilter.limit,
       });
-      return results.map(r => r.task);
+      return results.map(r => ({ ...r.task, score: r.score }));
     }
 
     return this.taskStorage.list(storageFilter);
