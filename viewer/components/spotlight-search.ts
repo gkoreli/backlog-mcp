@@ -2,7 +2,6 @@ import { Highlight } from '@orama/highlight';
 import type { Task } from '../utils/api.js';
 import { API_URL } from '../utils/api.js';
 import { urlState } from '../utils/url-state.js';
-import { epicIcon, taskIcon } from '../icons/index.js';
 
 const highlighter = new Highlight({ CSSClass: 'spotlight-match' });
 
@@ -151,8 +150,7 @@ class SpotlightSearch extends HTMLElement {
     }
 
     resultsEl.innerHTML = this.results.map((r, i) => {
-      const isEpic = r.task.type === 'epic' || r.task.id.startsWith('EPIC-');
-      const icon = isEpic ? epicIcon : taskIcon;
+      const type = r.task.type || (r.task.id.startsWith('EPIC-') ? 'epic' : 'task');
       const scorePercent = this.getScorePercent(r.score);
       const matchText = r.snippet.matchCount === 1 ? '1 match' : `${r.snippet.matchCount} matches`;
       const status = r.task.status || 'open';
@@ -160,8 +158,7 @@ class SpotlightSearch extends HTMLElement {
       return `
         <div class="spotlight-result ${i === this.selectedIndex ? 'selected' : ''}" data-index="${i}">
           <div class="spotlight-result-header">
-            <svg-icon src="${icon}" class="spotlight-result-icon"></svg-icon>
-            <span class="spotlight-result-id">${r.task.id}</span>
+            <task-badge task-id="${r.task.id}" type="${type}"></task-badge>
             <span class="spotlight-result-title">${highlighter.highlight(r.task.title, this.query).HTML}</span>
             <span class="status-badge status-${status}">${status.replace('_', ' ')}</span>
             <span class="spotlight-score-badge">${scorePercent}%</span>
