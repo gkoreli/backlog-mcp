@@ -32,8 +32,16 @@ type OramaInstance = Orama<typeof schema>;
  * Orama-backed search service implementation.
  */
 export class OramaSearchService implements SearchService {
+  private static instance: OramaSearchService;
   private db: OramaInstance | null = null;
   private taskCache = new Map<string, Task>();
+
+  static getInstance(): OramaSearchService {
+    if (!OramaSearchService.instance) {
+      OramaSearchService.instance = new OramaSearchService();
+    }
+    return OramaSearchService.instance;
+  }
 
   private taskToDoc(task: Task): OramaDoc {
     return {
@@ -99,17 +107,30 @@ export class OramaSearchService implements SearchService {
   async addDocument(task: Task): Promise<void> {
     if (!this.db) return;
     this.taskCache.set(task.id, task);
-    await insert(this.db, this.taskToDoc(task));
+    try {
+      await insert(this.db, this.taskToDoc(task));
+    } catch (e: any) {
+      if (e?.code === 'DOCUMENT_ALREADY_EXISTS') {
+        await this.updateDocument(task);
+      } else {
+        throw e;
+      }
+    }
   }
 
   async removeDocument(id: string): Promise<void> {
     if (!this.db) return;
     this.taskCache.delete(id);
-    await remove(this.db, id);
+    try {
+      await remove(this.db, id);
+    } catch {
+      // Ignore if document doesn't exist
+    }
   }
 
   async updateDocument(task: Task): Promise<void> {
     await this.removeDocument(task.id);
-    await this.addDocument(task);
+    this.taskCache.set(task.id, task);
+    await insert(this.db!, this.taskToDoc(task));
   }
 }

@@ -54,7 +54,7 @@ describe('Viewer Routes - /tasks endpoint', () => {
         updated_at: new Date().toISOString(),
       }));
 
-      vi.mocked(storage.list).mockReturnValue(mockTasks);
+      vi.mocked(storage.list).mockResolvedValue(mockTasks);
 
       const response = await app.inject({
         method: 'GET',
@@ -89,7 +89,7 @@ describe('Viewer Routes - /tasks endpoint', () => {
         updated_at: new Date().toISOString(),
       }));
 
-      vi.mocked(storage.list).mockReturnValue(mockTasks);
+      vi.mocked(storage.list).mockResolvedValue(mockTasks);
 
       const response = await app.inject({
         method: 'GET',
@@ -113,7 +113,7 @@ describe('Viewer Routes - /tasks endpoint', () => {
         updated_at: new Date().toISOString(),
       }));
 
-      vi.mocked(storage.list).mockReturnValue(mockTasks);
+      vi.mocked(storage.list).mockResolvedValue(mockTasks);
 
       const response = await app.inject({
         method: 'GET',
@@ -140,7 +140,7 @@ describe('Viewer Routes - /tasks endpoint', () => {
         updated_at: new Date().toISOString(),
       }];
 
-      vi.mocked(storage.list).mockReturnValue(mockTasks);
+      vi.mocked(storage.list).mockResolvedValue(mockTasks);
 
       const response = await app.inject({
         method: 'GET',

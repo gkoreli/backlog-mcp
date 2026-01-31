@@ -23,7 +23,8 @@
       "@/tools/*": ["src/tools/*"],
       "@/resources/*": ["src/resources/*"],
       "@/middleware/*": ["src/middleware/*"],
-      "@/cli/*": ["src/cli/*"]
+      "@/cli/*": ["src/cli/*"],
+      "@/search/*": ["src/search/*"]
     }
   },
   "include": ["src/**/*.ts"],

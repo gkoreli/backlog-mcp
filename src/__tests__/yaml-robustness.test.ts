@@ -27,7 +27,7 @@ describe('YAML Robustness', () => {
       expect(retrieved?.title).toBe('Design: My Feature');
     });
 
-    it('should not break list() when one file has malformed YAML', () => {
+    it('should not break list() when one file has malformed YAML', async () => {
       // Create a valid task
       const task = createTask({ id: 'TASK-0001', title: 'Valid Task' });
       storage.add(task);
@@ -39,7 +39,7 @@ describe('YAML Robustness', () => {
       );
       
       // list() should not throw - should skip bad file and return valid tasks
-      const tasks = storage.list();
+      const tasks = await storage.list();
       expect(tasks.length).toBeGreaterThanOrEqual(1);
       expect(tasks.find(t => t.id === 'TASK-0001')).toBeDefined();
     });
