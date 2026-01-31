@@ -1128,20 +1128,6 @@ copy-button {
   gap: 8px;
 }
 
-.spotlight-result-icon {
-  width: 16px;
-  height: 16px;
-  color: #8b949e;
-  flex-shrink: 0;
-}
-
-.spotlight-result-id {
-  font-size: 12px;
-  font-weight: 600;
-  color: #6e7681;
-  font-family: monospace;
-}
-
 .spotlight-result-title {
   flex: 1;
   font-weight: 500;
