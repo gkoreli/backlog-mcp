@@ -114,17 +114,45 @@ Indexed fields with boosting:
 - `references` (boost: 0.5)
 - `epic_id` (boost: 1.0)
 
-### Phase 2: Integration (In Progress)
+### Phase 2: Integration (Complete)
 
 - Wire SearchService into BacklogStorage
 - Replace simple `matchesQuery` with Orama search
 - Maintain backward compatibility (empty query = no search)
+- Disk persistence for search index
+- Architecture decoupling (TaskStorage + SearchService composed by BacklogService)
 
-### Phase 3: Vector Search (Future)
+### Phase 3: Hybrid Search with Local Embeddings (CRITICAL - Next)
 
-- Add `@orama/plugin-embeddings` for local vectors
-- Enable hybrid search (BM25 + semantic)
-- Schema addition: `embedding: 'vector[512]'`
+**Goal**: Maximum search resilience without external API dependencies.
+
+**Implementation**:
+- Add `@orama/plugin-embeddings` for local vector generation
+- Add `@xenova/transformers` (transformers.js) for local ML inference
+- Default model: `all-MiniLM-L6-v2` (~23MB, good quality/size balance)
+- Enable hybrid search mode: BM25 (exact/fuzzy) + Vector (semantic)
+- Configure hybrid weights (e.g., text: 0.7, vector: 0.3)
+
+**Why Hybrid**:
+| Query | BM25 alone | + Vector |
+|-------|------------|----------|
+| "authentication" | ✅ | ✅ |
+| "login" | ❌ | ✅ finds auth tasks |
+| "user can't access" | ❌ | ✅ finds auth tasks |
+| "blocked deployment" | partial | ✅ finds CI/CD tasks |
+
+**Trade-offs**:
+- First run: ~5s model download (cached after)
+- Memory: +50-80MB for embedding model
+- Index time: ~10ms/task (embedding generation)
+- Search latency: ~20-30ms (still fast)
+
+**Alternative local models for future benchmarking**:
+- `bge-small-en-v1.5` - slightly better quality, same size
+- `nomic-embed-text-v1` - newer, good performance
+- `all-mpnet-base-v2` - higher quality, larger (~420MB)
+
+**Backlog Item**: TASK-0146
 
 ### Phase 4: RAG / Context Hydration (Future)
 
