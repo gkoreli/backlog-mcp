@@ -1162,13 +1162,13 @@ copy-button {
   overflow: hidden;
 }
 
-.spotlight-result-snippet md-block {
+.spotlight-result-snippet .snippet-text {
   display: block;
   max-height: 3.6em; /* ~2-3 lines */
   overflow: hidden;
 }
 
-.spotlight-result-snippet md-block p {
+.spotlight-result-snippet .snippet-text p {
   margin: 0;
 }
 

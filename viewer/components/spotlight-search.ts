@@ -167,7 +167,7 @@ class SpotlightSearch extends HTMLElement {
             <span class="spotlight-score-badge">${scorePercent}%</span>
           </div>
           <div class="spotlight-result-snippet">
-            <md-block content="${this.escapeAttr(r.snippet.html)}"></md-block>
+            <span class="snippet-text">${r.snippet.html}</span>
           </div>
           <div class="spotlight-result-meta">
             <span class="spotlight-result-field">${r.snippet.field}</span>
