@@ -18,7 +18,7 @@ export function registerBacklogListTool(server: McpServer) {
       }),
     },
     async ({ status, type, epic_id, query, counts, limit }) => {
-      const tasks = storage.list({ status, type, epic_id, query, limit });
+      const tasks = await storage.list({ status, type, epic_id, query, limit });
       const list = tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, type: t.type ?? 'task', epic_id: t.epic_id }));
       const result: any = { tasks: list };
       if (counts) result.counts = storage.counts();

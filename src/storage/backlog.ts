@@ -2,19 +2,28 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlink
 import { join } from 'node:path';
 import matter from 'gray-matter';
 import type { Task, Status, TaskType } from './schema.js';
-import { paths } from '@/utils/paths.js';
-import { logger } from '@/utils/logger.js';
+import { paths } from '../utils/paths.js';
+import { logger } from '../utils/logger.js';
+import { OramaSearchService, type SearchService } from '../search/index.js';
 
 const TASKS_DIR = 'tasks';
 
 class BacklogStorage {
   private static instance: BacklogStorage;
+  private search: SearchService = OramaSearchService.getInstance();
+  private searchReady = false;
 
   static getInstance(): BacklogStorage {
     if (!BacklogStorage.instance) {
       BacklogStorage.instance = new BacklogStorage();
     }
     return BacklogStorage.instance;
+  }
+
+  private async ensureSearchReady(): Promise<void> {
+    if (this.searchReady) return;
+    await this.search.index(Array.from(this.iterateTasks()));
+    this.searchReady = true;
   }
 
   private get tasksPath(): string {
@@ -83,19 +92,26 @@ class BacklogStorage {
     return null;
   }
 
-  list(filter?: { status?: Status[]; type?: TaskType; epic_id?: string; query?: string; limit?: number }): Task[] {
+  async list(filter?: { status?: Status[]; type?: TaskType; epic_id?: string; query?: string; limit?: number }): Promise<Task[]> {
     const { status, type, epic_id, query, limit = 20 } = filter ?? {};
 
-    let tasks = Array.from(this.iterateTasks());
-    
-    if (query) tasks = tasks.filter(t => this.matchesQuery(t, query));
-    if (status) tasks = tasks.filter(t => status.includes(t.status));
-    if (type) tasks = tasks.filter(t => (t.type ?? 'task') === type);
-    if (epic_id) tasks = tasks.filter(t => t.epic_id === epic_id);
+    let tasks: Task[];
 
-    return tasks
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-      .slice(0, limit);
+    if (query) {
+      await this.ensureSearchReady();
+      const results = await this.search.search(query, { filters: { status, type, epic_id }, limit });
+      tasks = results.map(r => r.task);
+    } else {
+      tasks = Array.from(this.iterateTasks());
+      if (status) tasks = tasks.filter(t => status.includes(t.status));
+      if (type) tasks = tasks.filter(t => (t.type ?? 'task') === type);
+      if (epic_id) tasks = tasks.filter(t => t.epic_id === epic_id);
+      tasks = tasks
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+        .slice(0, limit);
+    }
+
+    return tasks;
   }
 
   private matchesQuery(task: Task, query: string): boolean {
@@ -113,20 +129,21 @@ class BacklogStorage {
 
   add(task: Task): void {
     this.ensureDir(this.tasksPath);
-    const filePath = this.taskFilePath(task.id);
-    writeFileSync(filePath, this.taskToMarkdown(task));
+    writeFileSync(this.taskFilePath(task.id), this.taskToMarkdown(task));
+    if (this.searchReady) this.search.addDocument(task);
   }
 
   save(task: Task): void {
     this.ensureDir(this.tasksPath);
-    const filePath = this.taskFilePath(task.id);
-    writeFileSync(filePath, this.taskToMarkdown(task));
+    writeFileSync(this.taskFilePath(task.id), this.taskToMarkdown(task));
+    if (this.searchReady) this.search.updateDocument(task);
   }
 
   delete(id: string): boolean {
     const path = this.taskFilePath(id);
     if (existsSync(path)) {
       unlinkSync(path);
+      if (this.searchReady) this.search.removeDocument(id);
       
       // Delete associated resources if they exist
       const resourcesPath = join(paths.backlogDataDir, 'resources', id);
@@ -181,4 +198,5 @@ class BacklogStorage {
   }
 }
 
+export { BacklogStorage };
 export const storage = BacklogStorage.getInstance();

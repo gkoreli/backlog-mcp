@@ -25,7 +25,7 @@ export function registerViewerRoutes(app: FastifyInstance) {
     };
     
     const filterConfig = statusMap[filter || 'active'] || statusMap.active;
-    const tasks = storage.list({ 
+    const tasks = await storage.list({ 
       ...filterConfig, 
       query: q || undefined,
       limit: limit ? parseInt(limit) : 10000 
@@ -51,7 +51,7 @@ export function registerViewerRoutes(app: FastifyInstance) {
 
   // System status
   app.get('/api/status', async () => {
-    const tasks = storage.list({ limit: 10000 });
+    const tasks = await storage.list({ limit: 10000 });
     const address = app.server.address();
     const port = typeof address === 'object' && address ? address.port : 3030;
     
