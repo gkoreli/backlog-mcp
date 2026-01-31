@@ -2,12 +2,14 @@ import { Highlight } from '@orama/highlight';
 import type { Task } from '../utils/api.js';
 import { API_URL } from '../utils/api.js';
 import { urlState } from '../utils/url-state.js';
+import { epicIcon, taskIcon } from '../icons/index.js';
 
 const highlighter = new Highlight({ CSSClass: 'spotlight-match' });
 
 interface SearchResult {
   task: Task;
-  snippet: { field: string; html: string };
+  snippet: { field: string; html: string; matchCount: number };
+  score: number;
 }
 
 class SpotlightSearch extends HTMLElement {
@@ -16,6 +18,7 @@ class SpotlightSearch extends HTMLElement {
   private selectedIndex = 0;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private query = '';
+  private maxScore = 0;
 
   connectedCallback() {
     this.render();
@@ -72,10 +75,18 @@ class SpotlightSearch extends HTMLElement {
       const response = await fetch(`${API_URL}/tasks?q=${encodeURIComponent(this.query)}&filter=all&limit=10`);
       const tasks: Task[] = await response.json();
       
-      this.results = tasks.map(task => ({
-        task,
-        snippet: this.generateSnippet(task, this.query)
-      }));
+      this.results = tasks.map(task => {
+        const snippet = this.generateSnippet(task, this.query);
+        return {
+          task,
+          snippet,
+          score: (task as any).score ?? 1, // Score from search API if available
+        };
+      });
+      
+      // Calculate max score for normalization
+      this.maxScore = Math.max(...this.results.map(r => r.score), 1);
+      
       this.selectedIndex = 0;
       this.renderResults();
     } catch {
@@ -83,7 +94,7 @@ class SpotlightSearch extends HTMLElement {
     }
   }
 
-  private generateSnippet(task: Task, query: string): { field: string; html: string } {
+  private generateSnippet(task: Task, query: string): { field: string; html: string; matchCount: number } {
     // Check fields in priority order (matches Orama boost order)
     const fields: { name: string; value: string }[] = [
       { name: 'title', value: task.title },
@@ -93,24 +104,38 @@ class SpotlightSearch extends HTMLElement {
       { name: 'references', value: (task.references || []).map(r => `${r.title || ''} ${r.url}`).join(' ') },
     ];
 
+    let totalMatches = 0;
+    
+    // Count total matches across all fields
+    for (const { value } of fields) {
+      if (!value) continue;
+      const result = highlighter.highlight(value, query);
+      totalMatches += result.positions.length;
+    }
+
+    // Find first matching field for snippet
     for (const { name, value } of fields) {
       if (!value) continue;
       const result = highlighter.highlight(value, query);
       if (result.positions.length > 0) {
-        // Trim to ~100 chars around first match
-        const trimmed = result.trim(50);
-        return { field: name, html: trimmed };
+        // Get more context - ~200 chars for multi-line display
+        const trimmed = result.trim(100);
+        return { field: name, html: trimmed, matchCount: totalMatches };
       }
     }
 
     // Fallback: show title
-    return { field: 'title', html: this.escapeHtml(task.title) };
+    return { field: 'title', html: this.escapeHtml(task.title), matchCount: 0 };
   }
 
   private escapeHtml(text: string): string {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  private getScorePercent(score: number): number {
+    return Math.round((score / this.maxScore) * 100);
   }
 
   private renderResults() {
@@ -125,18 +150,32 @@ class SpotlightSearch extends HTMLElement {
       return;
     }
 
-    resultsEl.innerHTML = this.results.map((r, i) => `
-      <div class="spotlight-result ${i === this.selectedIndex ? 'selected' : ''}" data-index="${i}">
-        <div class="spotlight-result-icon">${this.getTypeIcon(r.task)}</div>
-        <div class="spotlight-result-content">
-          <div class="spotlight-result-title">${highlighter.highlight(r.task.title, this.query).HTML}</div>
+    resultsEl.innerHTML = this.results.map((r, i) => {
+      const isEpic = r.task.type === 'epic' || r.task.id.startsWith('EPIC-');
+      const icon = isEpic ? epicIcon : taskIcon;
+      const scorePercent = this.getScorePercent(r.score);
+      const matchText = r.snippet.matchCount === 1 ? '1 match' : `${r.snippet.matchCount} matches`;
+      const status = r.task.status || 'open';
+      
+      return `
+        <div class="spotlight-result ${i === this.selectedIndex ? 'selected' : ''}" data-index="${i}">
+          <div class="spotlight-result-header">
+            <svg-icon src="${icon}" class="spotlight-result-icon"></svg-icon>
+            <span class="spotlight-result-id">${r.task.id}</span>
+            <span class="spotlight-result-title">${highlighter.highlight(r.task.title, this.query).HTML}</span>
+            <span class="status-badge status-${status}">${status.replace('_', ' ')}</span>
+            <span class="spotlight-score-badge">${scorePercent}%</span>
+          </div>
           <div class="spotlight-result-snippet">
-            <span class="spotlight-result-field">${r.snippet.field}:</span> ${r.snippet.html}
+            <md-block content="${this.escapeAttr(r.snippet.html)}"></md-block>
+          </div>
+          <div class="spotlight-result-meta">
+            <span class="spotlight-result-field">${r.snippet.field}</span>
+            <span class="spotlight-result-matches">${matchText}</span>
           </div>
         </div>
-        <task-badge status="${r.task.status}"></task-badge>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     // Attach click handlers
     resultsEl.querySelectorAll('.spotlight-result').forEach(el => {
@@ -147,17 +186,15 @@ class SpotlightSearch extends HTMLElement {
     });
   }
 
-  private getTypeIcon(task: Task): string {
-    const isEpic = task.type === 'epic' || task.id.startsWith('EPIC-');
-    return isEpic 
-      ? '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.764c.958 0 1.76.56 2.311 1.184C7.985 3.648 8.48 4 9 4h4.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5v-9z"/></svg>'
-      : '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 2A1.5 1.5 0 0 0 1 3.5v9A1.5 1.5 0 0 0 2.5 14h11a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 13.5 2h-11zM4 5.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5z"/></svg>';
+  private escapeAttr(text: string): string {
+    return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   private handleKeydown(e: KeyboardEvent) {
     switch (e.key) {
       case 'Escape':
         e.preventDefault();
+        e.stopPropagation(); // Prevent task-list's global Escape handler
         this.close();
         break;
       case 'ArrowDown':
@@ -191,7 +228,11 @@ class SpotlightSearch extends HTMLElement {
     const result = this.results[index];
     if (!result) return;
     
-    urlState.set({ task: result.task.id });
+    // Set both task and epic for proper navigation
+    urlState.set({ 
+      task: result.task.id,
+      epic: result.task.epic_id || null
+    });
     this.close();
   }
 
