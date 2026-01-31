@@ -122,37 +122,46 @@ Indexed fields with boosting:
 - Disk persistence for search index
 - Architecture decoupling (TaskStorage + SearchService composed by BacklogService)
 
-### Phase 3: Hybrid Search with Local Embeddings (CRITICAL - Next)
+### Phase 3: Hybrid Search with Local Embeddings (Complete)
 
 **Goal**: Maximum search resilience without external API dependencies.
 
 **Implementation**:
-- Add `@orama/plugin-embeddings` for local vector generation
-- Add `@xenova/transformers` (transformers.js) for local ML inference
-- Default model: `all-MiniLM-L6-v2` (~23MB, good quality/size balance)
-- Enable hybrid search mode: BM25 (exact/fuzzy) + Vector (semantic)
-- Configure hybrid weights (e.g., text: 0.7, vector: 0.3)
+- Added `@huggingface/transformers` for local ML inference
+- Created `EmbeddingService` with lazy model loading
+- Default model: `Xenova/all-MiniLM-L6-v2` (~23MB, cached in `~/.cache/huggingface`)
+- Enabled hybrid search mode: BM25 (exact/fuzzy) + Vector (semantic)
+- Configured hybrid weights: text 0.8, vector 0.2 (prioritizes exact matches)
+- Graceful fallback to BM25-only if embeddings fail
 
-**Why Hybrid**:
+**Results**:
 | Query | BM25 alone | + Vector |
 |-------|------------|----------|
 | "authentication" | ✅ | ✅ |
 | "login" | ❌ | ✅ finds auth tasks |
 | "user can't access" | ❌ | ✅ finds auth tasks |
-| "blocked deployment" | partial | ✅ finds CI/CD tasks |
 
-**Trade-offs**:
+**Trade-offs accepted**:
 - First run: ~5s model download (cached after)
 - Memory: +50-80MB for embedding model
-- Index time: ~10ms/task (embedding generation)
-- Search latency: ~20-30ms (still fast)
-
-**Alternative local models for future benchmarking**:
-- `bge-small-en-v1.5` - slightly better quality, same size
-- `nomic-embed-text-v1` - newer, good performance
-- `all-mpnet-base-v2` - higher quality, larger (~420MB)
+- Index size: ~1.5KB per task additional
 
 **Backlog Item**: TASK-0146
+**ADR**: 0042-hybrid-search-local-embeddings.md
+
+### Phase 3.5: Hyphen-Aware Tokenizer (Complete)
+
+**Problem**: Default Orama tokenizer kept hyphenated words as single tokens, so "first" wouldn't match "keyboard-first".
+
+**Solution**: Custom tokenizer that expands hyphenated words while preserving originals:
+- `"keyboard-first"` → `["keyboard-first", "keyboard", "first"]`
+
+**Bonus fixes**:
+- Numeric queries: `"0001"` now finds `TASK-0001`
+- Short word fuzzy matching now works
+
+**Backlog Item**: TASK-0147
+**ADR**: 0041-hyphen-aware-tokenizer.md
 
 ### Phase 4: RAG / Context Hydration (Future)
 
