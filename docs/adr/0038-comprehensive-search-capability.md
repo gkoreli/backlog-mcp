@@ -187,19 +187,195 @@ src/search/
 
 **Vision**: Transform backlog-mcp from task tracker into intelligent context provider for LLM agents.
 
-**Planned capabilities:**
-- `backlog_context` MCP tool for intelligent context retrieval
-- Three-layer context system: Semantic Search + Graph Relations + Temporal Memory
-- HydrationService abstraction with context ranking
-- Graph relations (epic→task, references, dependencies)
-- AnswerSession for conversational RAG (Orama built-in)
-- Token budgeting and context window management
-- Prompt templates for different query modes
+#### Problem Statement
 
-**Use cases:**
-- "What tasks are related to authentication?" → Semantic similarity, not just keywords
-- "What might block this task?" → Graph traversal of dependencies
-- "How did we solve caching before?" → Historical pattern retrieval
+LLM agents working with backlog-mcp need **relevant context** to make good decisions. Currently, agents must manually fetch tasks, read descriptions, and piece together context. This is inefficient and error-prone.
+
+**Context Engineering** (as defined by Andrej Karpathy) is:
+> "The delicate art and science of filling the context window with just the right information for the next step."
+
+backlog-mcp should become a **context hydration service** - automatically providing agents with the most relevant tasks, history, and knowledge for their current work.
+
+#### Use Cases
+
+1. **Task Discovery**: "What tasks are related to authentication?" → Returns semantically similar tasks, not just keyword matches
+2. **Context for New Work**: "I'm working on search feature" → Returns related tasks, past decisions (ADRs), blockers, dependencies
+3. **Historical Learning**: "How did we solve caching before?" → Returns past tasks with evidence, linked artifacts
+4. **Dependency Awareness**: "What might block this task?" → Returns blocked tasks in same epic, related open issues
+
+#### Three-Layer Context Architecture
+
+Based on context engineering research, we need three layers:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    CONTEXT HYDRATION API                     │
+│  GET /context?query=...&task_id=...&mode=...                │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │  SEMANTIC   │  │   GRAPH     │  │  TEMPORAL   │         │
+│  │   SEARCH    │  │  RELATIONS  │  │   MEMORY    │         │
+│  │             │  │             │  │             │         │
+│  │ Vector      │  │ Epic→Task   │  │ Recent      │         │
+│  │ embeddings  │  │ Task→Task   │  │ activity    │         │
+│  │ Hybrid      │  │ References  │  │ Agent       │         │
+│  │ search      │  │ Dependencies│  │ sessions    │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+│         ↓                ↓                ↓                 │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │              CONTEXT COMPOSER                        │   │
+│  │  Ranks, filters, compresses → optimal context window │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Layer 1: Semantic Search** (already implemented in Phase 3)
+- Full-text search: Find tasks by keywords, descriptions
+- Vector search: Find semantically similar tasks
+- Hybrid search: Combine both for best results
+
+**Layer 2: Graph Relations** (planned)
+- Epic → Task relationships
+- Task → Task references
+- Artifact links (ADRs, research docs)
+- Implicit dependencies (same epic, similar tags)
+
+**Layer 3: Temporal Memory** (planned)
+- Recent agent activity (what was just worked on)
+- Session context (current focus area)
+- Historical patterns (how similar tasks were resolved)
+
+#### MCP Tool Design: backlog_context
+
+```typescript
+interface BacklogContextParams {
+  // What the agent is working on
+  query?: string           // Natural language query
+  task_id?: string         // Current task context
+  
+  // What kind of context to retrieve
+  mode?: 'related' | 'dependencies' | 'history' | 'all'
+  
+  // Filtering
+  epic_id?: string         // Scope to epic
+  status?: Status[]        // Filter by status
+  
+  // Output control
+  limit?: number           // Max results (default: 10)
+  include_content?: boolean // Include full descriptions
+}
+
+interface ContextResult {
+  // Primary results
+  tasks: Task[]
+  
+  // Relevance metadata
+  scores: Record<string, number>  // task_id → relevance score
+  
+  // Graph context
+  related_epics?: Epic[]
+  linked_artifacts?: Reference[]
+  
+  // Suggested actions
+  suggestions?: string[]  // "You might also want to check TASK-0042"
+}
+```
+
+**Example: Agent Starting New Work**
+```
+Agent: backlog_context(query: "search implementation", mode: "related")
+
+Response: {
+  tasks: [
+    { id: "TASK-0104", title: "Add search capability...", score: 0.95 },
+    { id: "TASK-0142", title: "SearchService abstraction...", score: 0.92 }
+  ],
+  linked_artifacts: [
+    { url: "mcp://backlog/.../search-research.md", title: "Search research" }
+  ],
+  suggestions: [
+    "TASK-0142 is a dependency for TASK-0104",
+    "Research artifact contains architecture decisions"
+  ]
+}
+```
+
+#### Orama RAG Capabilities
+
+Orama provides built-in RAG support that will power Phase 4:
+
+**Answer Engine**:
+- Takes search hits, builds prompt, calls LLM via SecureProxy
+- Prompt templates with `{{hits}}`, `{{question}}`, `{{metadata}}` placeholders
+- Token budgeting to prevent context window overflow
+- Streaming answers (token-by-token)
+
+**AnswerSession API**:
+```typescript
+import { AnswerSession } from '@orama/orama'
+
+const session = new AnswerSession(db, {
+  systemPrompt: 'You are a task management assistant...',
+  promptTemplate: 'Context:\n{{hits}}\n\nQuestion: {{question}}\nAnswer:',
+  tokenBudget: 1800,
+  events: { onStateChange: console.log }
+})
+
+const answer = await session.ask({ term: 'blocked auth tasks' })
+// Returns: "There are 2 blocked tasks related to auth: TASK-0042..."
+```
+
+**Context Engineering Techniques**:
+- Result pinning: Mark docs as "pinned" - always injected at top of context
+- Relevance weighting: Adjust BM25/QPS blend for optimal retrieval
+- Token budgeting: Auto-truncate/summarize to fit context window
+- Multi-turn hydration: Keep session alive, each turn gets fresh hits
+- Streaming + more context: Interleaved search if model needs more
+
+**Native MCP Integration**:
+- OramaCloud auto-exposes MCP server per project
+- AI assistants query/retrieve via MCP standard
+- Supported clients: ChatGPT, Cursor, any MCP-compatible interface
+
+#### Technical Considerations
+
+**Performance**:
+- Context retrieval: <50ms (hybrid search + graph traversal)
+- Graph relations: O(n) where n = related tasks (typically <20)
+- Temporal memory: O(1) lookup from session cache
+
+**Storage**:
+- Graph relations: Stored in task metadata (no additional storage)
+- Session context: In-memory cache, cleared after timeout
+- Historical patterns: Derived from existing task data
+
+**Context Window Management**:
+Following context engineering best practices:
+- **Compress**: Summarize long descriptions before returning
+- **Select**: Return only most relevant tasks (ranked by score)
+- **Isolate**: Separate semantic results from graph results
+- **Budget**: Enforce token limits to prevent overflow
+
+#### Success Criteria
+
+- [ ] `backlog_context` MCP tool implemented
+- [ ] `/context` HTTP endpoint available
+- [ ] Semantic search returns relevant tasks (not just keyword matches)
+- [ ] Graph relations included in context (epic, references)
+- [ ] Context is ranked by relevance score
+- [ ] Results are compressed to fit context windows
+- [ ] Documentation explains context hydration concept
+
+#### Future Vision
+
+backlog-mcp becomes the **memory layer** for LLM agents:
+- Agents ask "what should I work on?" → backlog provides prioritized context
+- Agents ask "what did we decide?" → backlog retrieves past ADRs
+- Agents ask "what's blocking progress?" → backlog surfaces dependencies
+- Agents complete work → backlog learns from patterns
+
+This transforms backlog-mcp from a task tracker into an **intelligent context provider** for agentic workflows.
 
 See TASK-0143 for full design specification.
 
