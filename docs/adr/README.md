@@ -8,6 +8,7 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0045. Fix Spotlight Snippet Display](./0045-fix-spotlight-snippet-display.md) - Fix snippet not displaying by using innerHTML instead of md-block - 2026-01-31
 - [0044. Search API Relevance Scores](./0044-search-api-relevance-scores.md) - Return Orama scores from search API for Spotlight UI - 2026-01-31
 - [0043. Spotlight Search UX Improvements](./0043-spotlight-search-ux-improvements.md) - Fix navigation bugs, add rich snippets, reuse icons, show scores - 2026-01-31
 - [0042. Hybrid Search with Local Embeddings](./0042-hybrid-search-local-embeddings.md) - Semantic search via transformers.js with graceful BM25 fallback - 2026-01-31
