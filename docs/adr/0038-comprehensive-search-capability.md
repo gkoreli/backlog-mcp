@@ -2,7 +2,7 @@
 
 **Date**: 2026-01-31
 **Status**: Accepted
-**Backlog Item**: TASK-0104, TASK-0142
+**Backlog Items**: TASK-0104, TASK-0141, TASK-0142, TASK-0145, TASK-0146, TASK-0147
 
 ## Context
 
@@ -17,11 +17,11 @@ As the backlog grows, finding specific tasks becomes difficult. Users need to se
 5. Future RAG/vector search path without library swaps
 6. Zero vendor lock-in via abstraction layer
 
-### Research Findings
+### Research Findings (TASK-0141)
 
 Evaluated 6 JS search libraries (see research artifact):
 - **MiniSearch**: Good but no RAG path
-- **Orama**: Full-text + vector + RAG, native TypeScript, zero deps
+- **Orama**: Full-text + vector + RAG, native TypeScript, zero deps ✅ Selected
 - **FlexSearch**: TypeScript issues, stale maintenance
 - **Fuse.js**: Fuzzy-only, no indexing
 - **Lunr.js**: Dated, no active development
@@ -31,23 +31,20 @@ Evaluated 6 JS search libraries (see research artifact):
 
 **Selected**: SearchService abstraction with Orama backend
 
-### Architecture
+### Architecture (Final)
 
 ```
-┌─────────────────────────────────────────────────┐
-│                  Consumers                       │
-│  (BacklogStorage, MCP tools, HTTP routes)       │
-└─────────────────────┬───────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────┐
-│              SearchService Interface             │
-│  index(), search(), add/remove/updateDocument() │
-└─────────────────────┬───────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────┐
-│            OramaSearchService                    │
-│  (can swap to MiniSearch, Meilisearch, etc.)    │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    BacklogService                        │
+│  (orchestrates storage + search, exposed to MCP tools)  │
+└─────────────┬─────────────────────────┬─────────────────┘
+              │                         │
+┌─────────────▼─────────────┐ ┌─────────▼─────────────────┐
+│      TaskStorage          │ │      SearchService        │
+│  (pure file I/O)          │ │  (pure search + persist)  │
+│  - read/write markdown    │ │  - index/search/persist   │
+│  - no search knowledge    │ │  - configured via options │
+└───────────────────────────┘ └───────────────────────────┘
 ```
 
 ### SearchService Interface
@@ -85,7 +82,7 @@ interface SearchResult {
 | TypeScript | ✅ Native (written in TS) |
 | Zero dependencies | ✅ |
 | Bundle size | ~2KB |
-| Vector search (future) | ✅ Built-in |
+| Vector search | ✅ Built-in |
 | RAG pipeline (future) | ✅ Built-in |
 | License | Apache 2.0 |
 
@@ -95,10 +92,22 @@ interface SearchResult {
 - Framework plugins: Docusaurus, VitePress, Astro
 - GitHub: 10.1k stars, 106 contributors
 
-## Implementation
+## Implementation Summary
+
+All phases complete. Total: 156 tests passing.
+
+| Phase | Description | Status | Task |
+|-------|-------------|--------|------|
+| 1 | SearchService Foundation | ✅ Complete | TASK-0142 |
+| 2 | Integration & Persistence | ✅ Complete | TASK-0142 |
+| 2.5 | Architecture Decoupling | ✅ Complete | TASK-0145 |
+| 3 | Hybrid Search (BM25 + Vector) | ✅ Complete | TASK-0146 |
+| 3.5 | Hyphen-Aware Tokenizer | ✅ Complete | TASK-0147 |
+| 4 | RAG / Context Hydration | 🔲 Future | TASK-0143 |
 
 ### Phase 1: SearchService Foundation (Complete)
 
+**Files created:**
 ```
 src/search/
 ├── types.ts              # Interface + types
@@ -106,7 +115,7 @@ src/search/
 └── index.ts              # Barrel export
 ```
 
-Indexed fields with boosting:
+**Indexed fields with boosting:**
 - `title` (boost: 2.0)
 - `description` (boost: 1.0)
 - `evidence` (boost: 1.0)
@@ -114,19 +123,32 @@ Indexed fields with boosting:
 - `references` (boost: 0.5)
 - `epic_id` (boost: 1.0)
 
-### Phase 2: Integration (Complete)
+### Phase 2: Integration & Persistence (Complete)
 
-- Wire SearchService into BacklogStorage
-- Replace simple `matchesQuery` with Orama search
-- Maintain backward compatibility (empty query = no search)
-- Disk persistence for search index
-- Architecture decoupling (TaskStorage + SearchService composed by BacklogService)
+- Wired SearchService into BacklogStorage
+- Replaced simple `matchesQuery` with Orama search
+- Maintained backward compatibility (empty query = no search)
+- Added disk persistence to `.cache/search-index.json`
+- MCP tool: `backlog_list` accepts `query` parameter
+- HTTP API: `/tasks` accepts `q` query parameter
+- Viewer UI: search input in filter bar + spotlight search (Cmd+J)
 
-### Phase 3: Hybrid Search with Local Embeddings (Complete)
+### Phase 2.5: Architecture Decoupling (Complete) - TASK-0145
+
+**Problem**: BacklogStorage and SearchService were tightly coupled.
+
+**Solution**: Composition layer architecture:
+- Created `TaskStorage` for pure file I/O (no search knowledge)
+- Updated `SearchService` to take `{ cachePath }` config (no paths import)
+- Created `BacklogService` composing both with singleton pattern
+
+**ADR**: 0040-search-storage-decoupling.md
+
+### Phase 3: Hybrid Search with Local Embeddings (Complete) - TASK-0146
 
 **Goal**: Maximum search resilience without external API dependencies.
 
-**Implementation**:
+**Implementation:**
 - Added `@huggingface/transformers` for local ML inference
 - Created `EmbeddingService` with lazy model loading
 - Default model: `Xenova/all-MiniLM-L6-v2` (~23MB, cached in `~/.cache/huggingface`)
@@ -134,60 +156,90 @@ Indexed fields with boosting:
 - Configured hybrid weights: text 0.8, vector 0.2 (prioritizes exact matches)
 - Graceful fallback to BM25-only if embeddings fail
 
-**Results**:
+**Results:**
 | Query | BM25 alone | + Vector |
 |-------|------------|----------|
 | "authentication" | ✅ | ✅ |
 | "login" | ❌ | ✅ finds auth tasks |
 | "user can't access" | ❌ | ✅ finds auth tasks |
 
-**Trade-offs accepted**:
+**Trade-offs accepted:**
 - First run: ~5s model download (cached after)
 - Memory: +50-80MB for embedding model
 - Index size: ~1.5KB per task additional
 
-**Backlog Item**: TASK-0146
 **ADR**: 0042-hybrid-search-local-embeddings.md
 
-### Phase 3.5: Hyphen-Aware Tokenizer (Complete)
+### Phase 3.5: Hyphen-Aware Tokenizer (Complete) - TASK-0147
 
 **Problem**: Default Orama tokenizer kept hyphenated words as single tokens, so "first" wouldn't match "keyboard-first".
 
 **Solution**: Custom tokenizer that expands hyphenated words while preserving originals:
 - `"keyboard-first"` → `["keyboard-first", "keyboard", "first"]`
 
-**Bonus fixes**:
+**Bonus fixes:**
 - Numeric queries: `"0001"` now finds `TASK-0001`
 - Short word fuzzy matching now works
 
-**Backlog Item**: TASK-0147
 **ADR**: 0041-hyphen-aware-tokenizer.md
 
-### Phase 4: RAG / Context Hydration (Future)
+### Phase 4: RAG / Context Hydration (Future) - TASK-0143
 
-- Add HydrationService abstraction
-- Implement AnswerSession for conversational RAG
+- `backlog_context` MCP tool for intelligent context retrieval
+- HydrationService abstraction
+- Graph relations (epic→task, references)
+- AnswerSession for conversational RAG
 - Token budgeting, prompt templates
 
 ## Consequences
 
-**Positive**:
+**Positive:**
 - Fuzzy search finds tasks despite typos
+- Semantic search finds related content ("login" → "authentication")
 - Relevance ranking surfaces best matches first
 - Abstraction allows backend swap without code changes
+- Clean architecture: TaskStorage + SearchService composed by BacklogService
 - Clear path to RAG without library replacement
 
-**Negative**:
-- Additional dependency (@orama/orama ~2KB)
-- Index must be rebuilt on startup
-- Memory overhead for index (~100KB for 1k tasks)
+**Negative:**
+- Additional dependencies (@orama/orama ~2KB, @huggingface/transformers ~23MB model)
+- Index rebuilt on startup (fast: <100ms for 1k tasks)
+- Memory overhead for embeddings (~50-80MB)
 
-**Trade-offs Accepted**:
+**Trade-offs Accepted:**
 - In-memory index (acceptable for <10k tasks)
 - Post-search filtering (simpler than Orama's enum filters)
+- Local embeddings over API (offline-first, no external dependencies)
+
+## File Structure (Final)
+
+```
+src/
+├── search/
+│   ├── types.ts                 # SearchService interface
+│   ├── orama-search-service.ts  # Orama + hybrid search implementation
+│   ├── embedding-service.ts     # Local embeddings via transformers.js
+│   └── index.ts                 # Barrel export
+├── storage/
+│   ├── task-storage.ts          # Pure file I/O
+│   ├── backlog-service.ts       # Composition layer (singleton)
+│   └── schema.ts                # Task types
+└── __tests__/
+    ├── search.test.ts           # Unit tests
+    ├── search-golden.test.ts    # Golden benchmark tests
+    └── search-hybrid.test.ts    # Semantic search tests
+```
+
+## Related ADRs
+
+- **0038** (this): Comprehensive search capability (master ADR)
+- **0040**: Search storage decoupling
+- **0041**: Hyphen-aware tokenizer
+- **0042**: Hybrid search with local embeddings
 
 ## References
 
 - Research artifact: `mcp://backlog/backlog-mcp-engineer/search-research-2026-01-31/artifact.md`
 - Orama docs: https://docs.orama.com/
 - Orama GitHub: https://github.com/oramasearch/orama
+- Hugging Face Transformers.js: https://huggingface.co/docs/transformers.js
