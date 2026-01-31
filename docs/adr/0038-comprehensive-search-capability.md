@@ -185,11 +185,52 @@ src/search/
 
 ### Phase 4: RAG / Context Hydration (Future) - TASK-0143
 
+**Vision**: Transform backlog-mcp from task tracker into intelligent context provider for LLM agents.
+
+**Planned capabilities:**
 - `backlog_context` MCP tool for intelligent context retrieval
-- HydrationService abstraction
-- Graph relations (epic→task, references)
-- AnswerSession for conversational RAG
-- Token budgeting, prompt templates
+- Three-layer context system: Semantic Search + Graph Relations + Temporal Memory
+- HydrationService abstraction with context ranking
+- Graph relations (epic→task, references, dependencies)
+- AnswerSession for conversational RAG (Orama built-in)
+- Token budgeting and context window management
+- Prompt templates for different query modes
+
+**Use cases:**
+- "What tasks are related to authentication?" → Semantic similarity, not just keywords
+- "What might block this task?" → Graph traversal of dependencies
+- "How did we solve caching before?" → Historical pattern retrieval
+
+See TASK-0143 for full design specification.
+
+## Performance Characteristics
+
+| Operation | Latency | Notes |
+|-----------|---------|-------|
+| Initial index (1k tasks) | <100ms | One-time on startup |
+| BM25 search | <5ms | In-memory |
+| Hybrid search (BM25 + vector) | <50ms | Includes embedding generation |
+| Add/update document | <10ms | Incremental index update |
+| First embedding model load | ~5s | One-time download, cached after |
+
+**Memory footprint:**
+- Orama index: ~100KB for 1k tasks
+- Embedding model: +50-80MB when loaded
+- Vector storage: ~1.5KB per task
+
+## Test Coverage
+
+156 tests across 3 test files:
+- `search.test.ts` - Unit tests for OramaSearchService
+- `search-golden.test.ts` - Golden benchmark tests (real-world queries)
+- `search-hybrid.test.ts` - Semantic search verification
+
+## Known Limitations
+
+1. **No stemming** - Custom tokenizer trades stemming for hyphen handling. "running" won't match "run".
+2. **In-memory index** - Acceptable for <10k tasks. Would need external search service for larger scale.
+3. **Post-search filtering** - Filters applied after Orama search, not during. Works fine for current scale.
+4. **First-run latency** - ~5s model download on first semantic search (cached after).
 
 ## Consequences
 
