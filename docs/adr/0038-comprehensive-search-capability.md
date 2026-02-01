@@ -104,6 +104,7 @@ All phases complete. Total: 156 tests passing.
 | 2.5 | Architecture Decoupling | ✅ Complete | TASK-0145 |
 | 3 | Hybrid Search (BM25 + Vector) | ✅ Complete | TASK-0146 |
 | 3.5 | Hyphen-Aware Tokenizer | ✅ Complete | TASK-0147 |
+| 3.75 | UI Layer (Filter Bar + Spotlight) | ✅ Complete | TASK-0144, TASK-0148 |
 | 4 | RAG / Context Hydration | 🔲 Future | TASK-0143 |
 
 ### Phase 1: SearchService Foundation (Complete)
@@ -183,6 +184,70 @@ src/search/
 - Short word fuzzy matching now works
 
 **ADR**: 0041-hyphen-aware-tokenizer.md
+
+### UI Layer Architecture (Complete) - TASK-0144, TASK-0148
+
+The search capability is exposed through two complementary UIs serving different workflows:
+
+#### Filter Bar Search (Inline)
+
+- **Component**: `task-filter-bar.ts`
+- **Use case**: Filtering visible tasks (narrow down current view)
+- **Behavior**: Always visible, searches while filtering
+- **Results**: Shown in main task list
+- **API**: `/tasks?q=query&status=...&type=...`
+
+#### Spotlight Search (Modal)
+
+- **Component**: `spotlight-search.ts`
+- **Use case**: Discovery (find any task quickly, keyboard-driven)
+- **Trigger**: `Cmd+J` (macOS) / `Ctrl+J` (Windows/Linux)
+- **Behavior**: Modal overlay with rich result previews
+- **Results**: Direct navigation to selected task/epic
+- **API**: `/tasks?q=query&limit=10&filter=all`
+
+**Design Rationale**: Two UIs serve different workflows:
+- **Filter bar**: Refine what you're already looking at
+- **Spotlight**: Jump to anything from anywhere
+
+#### Spotlight Implementation Details
+
+**Client-side highlighting** (ADR-0039):
+- Uses `@orama/highlight` (~2KB) for snippet generation
+- Same accuracy as server-side without backend changes
+- Rejected server-side (more code) and regex (inaccurate for fuzzy matching)
+
+**Component architecture** (ADR-0039):
+- Single component (~200 lines), no sub-components
+- Rejected over-engineering (search-input, search-results, search-result-item)
+- Minimal code principle applied
+
+**Navigation state** (ADR-0043):
+- Sets both `task` and `epic` URL params on selection
+- Ensures sidebar shows correct epic expanded with task selected
+- Escape key uses `stopPropagation()` to prevent global handler from firing
+
+**Score display** (ADR-0043, ADR-0044):
+- Normalized percentage badge (0-100%)
+- Score attached to task object in API response: `{ ...task, score }`
+- Trade-off: Type impurity accepted for pragmatic benefit
+
+**Rich snippets** (ADR-0043, ADR-0045):
+- ~200 chars context, multi-line display (2-3 lines)
+- Rendered as HTML via `<span>` (not markdown via `<md-block>`)
+- Shows hit count ("N matches") and matched field name
+- Rejected md-block (wrong abstraction - expects markdown, but snippet is HTML)
+
+**Keyboard navigation**:
+- `↑`/`↓`: Navigate results
+- `Enter`: Select highlighted result
+- `Escape`: Close modal (with stopPropagation)
+
+**Visual design**:
+- 700px wide, 500px results height
+- Type icons reused from `task-badge` component
+- Task/Epic IDs displayed prominently
+- Status badges and relevance scores shown
 
 ### Phase 4: RAG / Context Hydration (Future) - TASK-0143
 
@@ -546,9 +611,13 @@ The research artifact (`search-research-2026-01-31/artifact.md`) contains a "REV
 ## Related ADRs
 
 - **0038** (this): Comprehensive search capability (master ADR)
+- **0039**: Spotlight-style search UI
 - **0040**: Search storage decoupling
 - **0041**: Hyphen-aware tokenizer
 - **0042**: Hybrid search with local embeddings
+- **0043**: Spotlight search UX improvements
+- **0044**: Search API relevance scores
+- **0045**: Fix spotlight snippet display
 
 ## References
 
