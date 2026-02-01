@@ -301,6 +301,11 @@ interface Resource {
 
 **UI**: Resources appear in Spotlight with file icon, selecting opens resource pane.
 
+**Trade-offs accepted**:
+- Resources have empty task-specific fields (status, epic_id) - acceptable overhead
+- Index rebuild required on schema change - one-time cost
+- Limited to `resources/` directory for MVP - agent artifacts not yet searchable
+
 **ADR**: 0048-resource-search-integration.md
 
 ### Phase 4: RAG / Context Hydration (Future) - TASK-0143
