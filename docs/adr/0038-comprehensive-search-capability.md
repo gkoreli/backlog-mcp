@@ -3,7 +3,7 @@
 **Date**: 2026-01-31
 **Status**: Accepted
 **Master Epic**: EPIC-0019 (Search & RAG: Intelligent Context for Agents)
-**Backlog Items**: TASK-0104, TASK-0141, TASK-0142, TASK-0145, TASK-0146, TASK-0147, EPIC-0018
+**Backlog Items**: TASK-0104, TASK-0141, TASK-0142, TASK-0145, TASK-0146, TASK-0147, TASK-0159, TASK-0160, EPIC-0018
 
 ## Context
 
@@ -95,7 +95,7 @@ interface SearchResult {
 
 ## Implementation Summary
 
-All phases complete. Total: 156 tests passing.
+All phases complete. Total: 161 tests passing.
 
 | Phase | Description | Status | Task |
 |-------|-------------|--------|------|
@@ -105,6 +105,8 @@ All phases complete. Total: 156 tests passing.
 | 3 | Hybrid Search (BM25 + Vector) | ✅ Complete | TASK-0146 |
 | 3.5 | Hyphen-Aware Tokenizer | ✅ Complete | TASK-0147 |
 | 3.75 | UI Layer (Filter Bar + Spotlight) | ✅ Complete | TASK-0144, TASK-0148 |
+| 3.8 | Unified Search API | ✅ Complete | TASK-0159 |
+| 3.9 | Resource Search Integration | ✅ Complete | TASK-0160 |
 | 4 | RAG / Context Hydration | 🔲 Future | TASK-0143 |
 
 ### Phase 1: SearchService Foundation (Complete)
@@ -248,6 +250,58 @@ The search capability is exposed through two complementary UIs serving different
 - Type icons reused from `task-badge` component
 - Task/Epic IDs displayed prominently
 - Status badges and relevance scores shown
+
+### Phase 3.8: Unified Search API (Complete) - TASK-0159
+
+**Problem**: Score was attached to task object (type impurity):
+```typescript
+return results.map(r => ({ ...r.task, score: r.score }));  // score not in Task type
+```
+
+**Solution**: New `/search` endpoint with proper types:
+```typescript
+interface UnifiedSearchResult {
+  item: Task | Resource;
+  score: number;
+  type: 'task' | 'epic' | 'resource';
+}
+```
+
+**API**: `GET /search?q=query&types=task,epic,resource&limit=N`
+
+**Benefits**:
+- Type-safe API, no `(task as any).score` hacks
+- Enables cross-type ranking (task vs epic vs resource)
+- Extensible to new document types
+
+**Backward compatible**: `/tasks?q=` still works.
+
+**ADR**: 0047-unified-search-api.md
+
+### Phase 3.9: Resource Search Integration (Complete) - TASK-0160
+
+**Problem**: Resources (markdown files in `resources/`) were not searchable - only managed by ResourceManager for file I/O.
+
+**Solution**: Single Orama index with `docType` field for unified relevance ranking:
+- Added `Resource` type and `SearchableType` to types
+- Added `list()` method to ResourceManager for scanning resources directory
+- Extended OramaSearchService with `indexResources()`, `searchAll()`, resource CRUD methods
+- Resources get hybrid search (BM25 + vectors) using same embedding model as tasks
+- Updated Spotlight to render resources with 📄 icon
+
+**Resource schema**:
+```typescript
+interface Resource {
+  id: string;      // MCP URI: mcp://backlog/resources/path/to/file.md
+  path: string;    // Relative path
+  title: string;   // First # heading or filename
+  content: string; // Full markdown content
+}
+```
+
+**UI**: Resources appear in Spotlight with file icon, selecting opens resource pane.
+
+**ADR**: 0048-resource-search-integration.md
 
 ### Phase 4: RAG / Context Hydration (Future) - TASK-0143
 
@@ -462,7 +516,7 @@ See TASK-0143 for full design specification.
 
 ## Test Coverage
 
-156 tests across 3 test files:
+161 tests across 3 test files:
 - `search.test.ts` - Unit tests for OramaSearchService
 - `search-golden.test.ts` - Golden benchmark tests (real-world queries)
 - `search-hybrid.test.ts` - Semantic search verification
@@ -618,6 +672,8 @@ The research artifact (`search-research-2026-01-31/artifact.md`) contains a "REV
 - **0043**: Spotlight search UX improvements
 - **0044**: Search API relevance scores
 - **0045**: Fix spotlight snippet display
+- **0047**: Unified search API
+- **0048**: Resource search integration
 
 ## References
 
