@@ -340,5 +340,15 @@ describe('Search Golden Benchmark', () => {
       const results = await service.search('keyboard');
       expect(results.every(r => r.score > 0)).toBe(true);
     });
+
+    it('title match ranks higher than description-only match (ADR-0050)', async () => {
+      // EPIC-0001 has "backlog" in title: "backlog-mcp 10x"
+      // Other tasks may have "backlog" only in description
+      const results = await service.search('backlog');
+      const epic = results.find(r => r.task.id === 'EPIC-0001');
+      expect(epic).toBeDefined();
+      // Epic with title match should have bonus applied (score > 10)
+      expect(epic!.score).toBeGreaterThan(10);
+    });
   });
 });

@@ -8,6 +8,8 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0050. Search Ranking: Title Match Bonus](./0050-search-ranking-title-bonus.md) - Post-search re-ranking to prioritize title matches over description-only matches - 2026-02-02
+- [0049. Keep Orama Over Algolia](./0049-keep-orama-over-algolia.md) - Evaluation confirms Orama is the right choice for backlog-mcp search - 2026-02-02
 - [0048. Resource Search Integration in Spotlight](./0048-resource-search-integration.md) - Index resources in search, show in Spotlight alongside tasks/epics - 2026-02-01
 - [0047. Unified Search API with Proper Types](./0047-unified-search-api.md) - New /search endpoint returning UnifiedSearchResult[] for type-safe search - 2026-02-01
 - [0046. Reuse task-badge in Spotlight](./0046-reuse-task-badge-in-spotlight.md) - Replace custom icon+id with task-badge component for consistency - 2026-01-31
