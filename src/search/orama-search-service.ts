@@ -70,6 +70,49 @@ const hyphenAwareTokenizer: Tokenizer = {
 };
 
 /**
+ * Title match bonus values for re-ranking.
+ * Exact word match (e.g., "Backlog" in "Backlog MCP") gets higher bonus
+ * than partial match (e.g., "backlog" in "BacklogStorage").
+ */
+const TITLE_BONUS = {
+  EXACT_WORD: 10,   // Query appears as standalone word in title
+  PARTIAL: 3,       // Query appears as substring in title (compound word)
+};
+
+/**
+ * Re-rank results to prioritize title matches.
+ * Adds fixed bonus for title matches to ensure they rank above description-only matches.
+ * 
+ * @param results - Search results with score and item (task or resource)
+ * @param query - Original search query
+ * @returns Re-ranked results sorted by adjusted score
+ */
+function rerankWithTitleBonus<T extends { score: number; item: { title?: string } }>(
+  results: T[],
+  query: string
+): T[] {
+  if (!query.trim()) return results;
+  
+  const queryLower = query.toLowerCase().trim();
+  const queryWords = queryLower.split(/\s+/);
+  
+  return results.map(r => {
+    const title = r.item.title?.toLowerCase() || '';
+    const titleWords = title.split(/\W+/).filter(Boolean);
+    
+    // Check for exact word match: any query word appears as standalone word in title
+    const hasExactMatch = queryWords.some(qw => titleWords.includes(qw));
+    
+    // Check for partial match: query appears as substring (compound word)
+    const hasPartialMatch = !hasExactMatch && queryWords.some(qw => title.includes(qw));
+    
+    const bonus = hasExactMatch ? TITLE_BONUS.EXACT_WORD : hasPartialMatch ? TITLE_BONUS.PARTIAL : 0;
+    
+    return { ...r, score: r.score + bonus };
+  }).sort((a, b) => b.score - a.score);
+}
+
+/**
  * Orama-backed search service with optional hybrid search (BM25 + vector).
  * Gracefully falls back to BM25-only if embeddings fail to load.
  */
@@ -300,6 +343,17 @@ export class OramaSearchService implements SearchService {
       }
     }
 
+    // Re-rank to prioritize title matches (ADR-0050)
+    const reranked = rerankWithTitleBonus(
+      hits.map(h => ({ score: h.score, item: h.task })),
+      query
+    );
+    hits = reranked.map((r, i) => ({
+      id: hits.find(h => h.task === r.item)!.id,
+      score: r.score,
+      task: r.item,
+    }));
+
     return hits.slice(0, limit);
   }
 
@@ -418,7 +472,7 @@ export class OramaSearchService implements SearchService {
     }
 
     // Filter to resources only
-    const resourceHits = results.hits
+    let resourceHits = results.hits
       .filter(hit => hit.document.type === 'resource')
       .map(hit => ({
         id: hit.document.id,
@@ -426,6 +480,17 @@ export class OramaSearchService implements SearchService {
         resource: this.resourceCache.get(hit.document.id)!,
       }))
       .filter(h => h.resource);
+
+    // Re-rank to prioritize title matches (ADR-0050)
+    const reranked = rerankWithTitleBonus(
+      resourceHits.map(h => ({ score: h.score, item: h.resource })),
+      query
+    );
+    resourceHits = reranked.map(r => ({
+      id: (r.item as Resource).id,
+      score: r.score,
+      resource: r.item as Resource,
+    }));
 
     return resourceHits.slice(0, limit);
   }
@@ -497,6 +562,9 @@ export class OramaSearchService implements SearchService {
         return true;
       });
     }
+
+    // Re-rank to prioritize title matches (ADR-0050)
+    hits = rerankWithTitleBonus(hits, query);
 
     return hits.slice(0, limit);
   }
