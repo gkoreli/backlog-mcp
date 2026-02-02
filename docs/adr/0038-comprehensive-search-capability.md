@@ -3,7 +3,7 @@
 **Date**: 2026-01-31
 **Status**: Accepted
 **Master Epic**: EPIC-0019 (Search & RAG: Intelligent Context for Agents)
-**Backlog Items**: TASK-0104, TASK-0141, TASK-0142, TASK-0145, TASK-0146, TASK-0147, TASK-0159, TASK-0160, EPIC-0018
+**Backlog Items**: TASK-0104, TASK-0141, TASK-0142, TASK-0145, TASK-0146, TASK-0147, TASK-0159, TASK-0160, TASK-0162, TASK-0165, TASK-0166, EPIC-0018
 
 ## Context
 
@@ -95,7 +95,7 @@ interface SearchResult {
 
 ## Implementation Summary
 
-All phases complete. Total: 161 tests passing.
+All phases complete. Total: 165 tests passing.
 
 | Phase | Description | Status | Task |
 |-------|-------------|--------|------|
@@ -107,6 +107,8 @@ All phases complete. Total: 161 tests passing.
 | 3.75 | UI Layer (Filter Bar + Spotlight) | ✅ Complete | TASK-0144, TASK-0148 |
 | 3.8 | Unified Search API | ✅ Complete | TASK-0159 |
 | 3.9 | Resource Search Integration | ✅ Complete | TASK-0160 |
+| 3.95 | Multi-Signal Ranking | ✅ Complete | TASK-0162, TASK-0165 |
+| 3.97 | Spotlight UX Overhaul | ✅ Complete | TASK-0166 |
 | 4 | RAG / Context Hydration | 🔲 Future | TASK-0143 |
 
 ### Phase 1: SearchService Foundation (Complete)
@@ -308,6 +310,78 @@ interface Resource {
 - Limited to `resources/` directory for MVP - agent artifacts not yet searchable
 
 **ADR**: 0048-resource-search-integration.md
+
+### Phase 3.95: Multi-Signal Ranking (Complete) - TASK-0162, TASK-0165
+
+**Problem**: BM25 term frequency in descriptions overwhelmed title boost. Searching "backlog" returned tasks with many mentions above EPIC-0002 "Backlog MCP" which has the term directly in its title.
+
+**Evolution**:
+1. TASK-0162 added `rerankWithTitleBonus()` with +10 exact word, +3 partial match
+2. TASK-0165 replaced it with `rerankWithSignals()` - multi-signal approach
+
+**Current Algorithm** (`rerankWithSignals()` in `orama-search-service.ts`):
+
+```typescript
+const RANKING_BONUS = {
+  TITLE_STARTS_WITH: 20,      // Title starts with query (strongest)
+  TITLE_EXACT_WORD: 10,       // Query word in title
+  TITLE_PARTIAL: 3,           // Query substring in title
+  MULTI_WORD_MATCH: 8,        // Per additional query word in title
+  EPIC_WITH_TITLE_MATCH: 5,   // Epic bonus (only with title match)
+  RECENCY_TODAY: 5,
+  RECENCY_WEEK: 3,
+  RECENCY_MONTH: 2,
+  RECENCY_QUARTER: 1,
+};
+```
+
+**Signals applied**:
+- Title-starts-with: +20 when title begins with query
+- Exact word match: +10 when query appears as standalone word in title
+- Partial match: +3 when query is substring in title
+- Multi-word bonus: +8 per additional query word matched in title
+- Epic bonus: +5 only when epic has title match (prevents epics ranking above tasks when only matching in description)
+- Recency decay: +5/3/2/1 based on days since update (today/week/month/quarter)
+
+**Final score**: `bm25Score + titleBonus + epicBonus + recencyBonus`
+
+**To modify ranking**: Edit `RANKING_BONUS` constants in `orama-search-service.ts`.
+
+**ADRs**: 0050-search-ranking-title-bonus.md (superseded), 0051-multi-signal-search-ranking.md
+
+### Phase 3.97: Spotlight UX Overhaul (Complete) - TASK-0166
+
+**Problem**: Spotlight had confusing percentage scores, no filtering/sorting, and insufficient match context.
+
+**Changes**:
+- Removed percentage scores (ranked order IS the relevance indicator)
+- Added type filter pills: All | Tasks | Epics | Resources
+- Added sort toggle: Relevant (default) | Recent
+- Added result count display ("12 results")
+- Added loading spinner during search
+- Enhanced match context: "Matched in: title, description" (shows all matched fields)
+
+**UI Layout**:
+```
+┌─────────────────────────────────────────────────────────┐
+│ 🔍 [Search input...                        ] [esc]      │
+├─────────────────────────────────────────────────────────┤
+│ [All] [Tasks] [Epics] [Resources]    Sort: [Recent ▼]   │
+│                                      12 results         │
+├─────────────────────────────────────────────────────────┤
+│ Results...                                              │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Keyboard shortcuts**:
+- `Cmd+J` (macOS) / `Ctrl+J` (Windows/Linux): Open Spotlight
+- `↑`/`↓`: Navigate results
+- `Enter`: Select highlighted result
+- `Escape`: Close modal
+
+**API**: `/search?q=query&types=task,epic,resource&sort=relevant|recent&limit=N`
+
+**ADR**: 0052-spotlight-search-ux-overhaul.md
 
 ### Phase 4: RAG / Context Hydration (Future) - TASK-0143
 
@@ -522,7 +596,7 @@ See TASK-0143 for full design specification.
 
 ## Test Coverage
 
-161 tests across 3 test files:
+165 tests across 3 test files:
 - `search.test.ts` - Unit tests for OramaSearchService
 - `search-golden.test.ts` - Golden benchmark tests (real-world queries)
 - `search-hybrid.test.ts` - Semantic search verification
@@ -680,6 +754,9 @@ The research artifact (`search-research-2026-01-31/artifact.md`) contains a "REV
 - **0045**: Fix spotlight snippet display
 - **0047**: Unified search API
 - **0048**: Resource search integration
+- **0050**: Search ranking title bonus (superseded by 0051)
+- **0051**: Multi-signal search ranking (current ranking algorithm)
+- **0052**: Spotlight search UX overhaul (current UX)
 
 ## References
 
