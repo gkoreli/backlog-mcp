@@ -412,13 +412,14 @@ resources/read uri="mcp://backlog/tasks/TASK-0039/description"
 ### Permission Enforcement
 
 ```json
-resources/write uri="mcp://backlog/archive/TASK-0001/description"
+resources/write uri="mcp://backlog/tasks/TASK-0001/description"
   operation={ type: "append", content: "..." }
+  // where task status is "done"
 → 403 Forbidden
 {
   "error": {
     "code": "permission_denied",
-    "message": "Archived tasks are read-only"
+    "message": "Completed tasks are read-only"
   }
 }
 ```

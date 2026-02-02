@@ -183,9 +183,9 @@ BACKLOG_VIEWER_PORT=3030                    # HTTP server port
 
 ## Storage
 
-- Default: `data/tasks/` and `data/archive/` (local to project)
+- Default: `data/tasks/` (local to project)
 - Global: Set `BACKLOG_DATA_DIR=~/.backlog` for cross-project persistence
-- Completed/cancelled tasks auto-archive to `archive/`
+- All tasks stored in single `tasks/` directory regardless of status (see [ADR 0003](docs/adr/0003-remove-archive-directory.md))
 
 ## License
 

@@ -16,8 +16,7 @@ Users need to create ADRs, design documents, and other artifacts that are perman
 ### Current State
 
 The backlog-mcp system stores tasks as flat markdown files:
-- Active tasks: `~/.backlog/tasks/TASK-XXXX.md`
-- Archived tasks: `~/.backlog/archive/TASK-XXXX.md`
+- All tasks: `~/.backlog/tasks/TASK-XXXX.md` (single directory, see ADR 0003)
 - Task schema includes `references` field for external URLs
 
 The system already has separate directories for different content types:

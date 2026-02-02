@@ -4,6 +4,8 @@
 **Status**: Accepted
 **Backlog Item**: TASK-0048
 
+> **Note**: This ADR predates [ADR 0003](./0003-remove-archive-directory.md) which removed the archive directory. References to `archive/` below reflect the system state at the time of this decision.
+
 ## Context
 
 When creating a new epic, the system overwrites existing epics instead of generating unique incremental IDs. For example, creating a third epic (EPIC-0003) would overwrite EPIC-0002.
