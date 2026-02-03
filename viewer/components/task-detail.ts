@@ -55,8 +55,8 @@ export class TaskDetail extends HTMLElement {
   private updatePaneHeader(task: any) {
     const headerHtml = `
       <div class="task-header-left">
-        ${task.epic_id ? `<copy-button id="copy-epic-id" title="Copy Epic ID"><task-badge task-id="${task.epic_id}" type="epic"></task-badge></copy-button>` : ''}
-        <copy-button id="copy-task-id" title="Copy ID"><task-badge task-id="${task.id}" type="${task.type || 'task'}"></task-badge></copy-button>
+        ${task.epic_id ? `<copy-button id="copy-epic-id" title="Copy Epic ID"><task-badge task-id="${task.epic_id}"></task-badge></copy-button>` : ''}
+        <copy-button id="copy-task-id" title="Copy ID"><task-badge task-id="${task.id}"></task-badge></copy-button>
         <span class="status-badge status-${task.status || 'open'}">${(task.status || 'open').replace('_', ' ')}</span>
       </div>
       <div class="task-header-right">
@@ -110,7 +110,7 @@ export class TaskDetail extends HTMLElement {
       <div class="task-meta-row">
         <span>Created: ${task.created_at ? new Date(task.created_at).toLocaleDateString() : ''}</span>
         <span>Updated: ${task.updated_at ? new Date(task.updated_at).toLocaleDateString() : ''}</span>
-        ${task.epic_id ? `<span class="task-meta-epic"><span class="task-meta-epic-label">Epic:</span><a href="#" class="epic-link" data-epic-id="${task.epic_id}"><task-badge task-id="${task.epic_id}" type="epic"></task-badge></a>${task.epicTitle ? `<span class="epic-title">${task.epicTitle}</span>` : ''}</span>` : ''}
+        ${task.epic_id ? `<span class="task-meta-epic"><span class="task-meta-epic-label">Epic:</span><a href="#" class="epic-link" data-epic-id="${task.epic_id}"><task-badge task-id="${task.epic_id}"></task-badge></a>${task.epicTitle ? `<span class="epic-title">${task.epicTitle}</span>` : ''}</span>` : ''}
       </div>
       ${task.references?.length ? `
         <div class="task-meta-section">
