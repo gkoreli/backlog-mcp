@@ -1624,6 +1624,10 @@ copy-button {
   display: none;
 }
 
+.activity-diff .d2h-file-wrapper {
+  margin-bottom: 0;
+}
+
 .activity-diff .d2h-diff-table {
   font-size: 12px;
 }
