@@ -1393,8 +1393,37 @@ copy-button {
 .activity-item-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.activity-item-header:hover {
+  background: #2d2d30;
+}
+
+.activity-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-item-info {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  flex-wrap: wrap;
+}
+
+.activity-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: 12px;
 }
 
 .activity-icon {
@@ -1429,13 +1458,51 @@ copy-button {
 
 .activity-time {
   font-size: 12px;
-  color: #6e7681;
+  color: #8b949e;
   flex-shrink: 0;
 }
 
+.activity-date {
+  font-size: 11px;
+  color: #6e7681;
+}
+
+.activity-actor-inline {
+  font-size: 12px;
+}
+
+.activity-actor-user {
+  color: #58a6ff;
+}
+
+.activity-actor-agent {
+  color: #a371f7;
+}
+
 .activity-expanded {
-  padding: 0 12px 12px;
+  padding: 12px;
   border-top: 1px solid #30363d;
+  background: #1e1e1e;
+}
+
+.activity-detail-row {
+  display: flex;
+  gap: 8px;
+  padding: 6px 0;
+  align-items: flex-start;
+}
+
+.activity-detail-label {
+  color: #8b949e;
+  font-size: 12px;
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.activity-detail-value {
+  color: #d4d4d4;
+  font-size: 13px;
+  word-break: break-word;
 }
 
 .activity-diff {
@@ -1529,20 +1596,6 @@ copy-button {
 }
 
 /* Actor display in activity panel */
-.activity-actor-row {
-  padding: 4px 12px 8px 34px;
-  font-size: 12px;
-  color: #8b949e;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
-}
-
-.activity-actor {
-  font-weight: 500;
-}
-
 .activity-actor-user {
   color: #58a6ff;
 }
