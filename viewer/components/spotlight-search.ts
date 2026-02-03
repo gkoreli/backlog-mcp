@@ -319,7 +319,7 @@ class SpotlightSearch extends HTMLElement {
       return `
         <div class="spotlight-result ${i === this.selectedIndex ? 'selected' : ''}" data-index="${i}">
           <div class="spotlight-result-header">
-            <task-badge task-id="${task.id}" type="${type}"></task-badge>
+            <task-badge task-id="${task.id}"></task-badge>
             <span class="spotlight-result-title">${highlighter.highlight(task.title, this.query).HTML}</span>
             <span class="status-badge status-${status}">${status.replace('_', ' ')}</span>
           </div>

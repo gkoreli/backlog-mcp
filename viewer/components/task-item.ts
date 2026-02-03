@@ -16,7 +16,7 @@ export class TaskItem extends HTMLElement {
     this.className = 'task-item-wrapper';
     this.innerHTML = `
       <div class="task-item ${isSelected ? 'selected' : ''} ${isCurrentEpic ? 'current-epic' : ''} type-${type}">
-        <task-badge task-id="${id}" type="${type}"></task-badge>
+        <task-badge task-id="${id}"></task-badge>
         <span class="task-title">${title}</span>
         ${type === 'epic' ? `<span class="child-count">${childCount}</span>` : ''}
         ${type === 'epic' && !isCurrentEpic ? '<span class="enter-icon">→</span>' : ''}
