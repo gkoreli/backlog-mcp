@@ -37,3 +37,9 @@ export async function fetchTask(taskId: string): Promise<TaskResponse> {
   const response = await fetch(`${API_URL}/tasks/${taskId}`);
   return response.json();
 }
+
+export async function fetchOperationCount(taskId: string): Promise<number> {
+  const response = await fetch(`${API_URL}/operations/count/${encodeURIComponent(taskId)}`);
+  const data = await response.json();
+  return data.count || 0;
+}

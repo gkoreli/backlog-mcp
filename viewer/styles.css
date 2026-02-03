@@ -1505,3 +1505,113 @@ copy-button {
   align-items: center;
   gap: 4px;
 }
+
+/* Activity button with badge */
+.activity-btn-with-badge {
+  position: relative;
+}
+
+.activity-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: #f85149;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Actor display in activity panel */
+.activity-actor-row {
+  padding: 4px 12px 8px 34px;
+  font-size: 12px;
+  color: #8b949e;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.activity-actor {
+  font-weight: 500;
+}
+
+.activity-actor-user {
+  color: #58a6ff;
+}
+
+.activity-actor-agent {
+  color: #a371f7;
+}
+
+.activity-delegated {
+  color: #6e7681;
+  font-style: italic;
+}
+
+.activity-context {
+  color: #6e7681;
+  font-size: 11px;
+}
+
+/* diff2html overrides for dark theme */
+.activity-diff-content {
+  overflow-x: auto;
+}
+
+.activity-diff-content .d2h-wrapper {
+  background: transparent;
+}
+
+.activity-diff-content .d2h-file-wrapper {
+  border: none;
+  margin: 0;
+}
+
+.activity-diff-content .d2h-file-header {
+  display: none;
+}
+
+.activity-diff-content .d2h-diff-table {
+  font-size: 11px;
+}
+
+.activity-diff-content .d2h-code-line-ctn {
+  background: #1e1e1e;
+}
+
+.activity-diff-content .d2h-del {
+  background-color: rgba(248, 81, 73, 0.15);
+}
+
+.activity-diff-content .d2h-ins {
+  background-color: rgba(63, 185, 80, 0.15);
+}
+
+.activity-diff-content .d2h-code-line del {
+  background-color: rgba(248, 81, 73, 0.4);
+  text-decoration: none;
+}
+
+.activity-diff-content .d2h-code-line ins {
+  background-color: rgba(63, 185, 80, 0.4);
+  text-decoration: none;
+}
+
+.activity-diff-content .d2h-code-linenumber {
+  background: #252526;
+  color: #6e7681;
+  border-right: 1px solid #30363d;
+}
+
+.activity-diff-content .d2h-info {
+  background: #252526;
+  color: #8b949e;
+}
