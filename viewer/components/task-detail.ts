@@ -1,4 +1,4 @@
-import { fetchTask } from '../utils/api.js';
+import { fetchTask, fetchOperationCount } from '../utils/api.js';
 import type { Reference } from '../utils/api.js';
 import { copyIcon, activityIcon } from '../icons/index.js';
 
@@ -60,8 +60,9 @@ export class TaskDetail extends HTMLElement {
         <span class="status-badge status-${task.status || 'open'}">${(task.status || 'open').replace('_', ' ')}</span>
       </div>
       <div class="task-header-right">
-        <button id="task-activity-btn" class="btn-outline" title="View activity for this task">
+        <button id="task-activity-btn" class="btn-outline activity-btn-with-badge" title="View activity for this task">
           <svg-icon src="${activityIcon}" size="14px"></svg-icon>
+          <span id="activity-count-badge" class="activity-badge" style="display: none;"></span>
         </button>
         <copy-button id="copy-markdown" title="Copy markdown">Copy Markdown</copy-button>
       </div>
@@ -82,6 +83,22 @@ export class TaskDetail extends HTMLElement {
       document.getElementById('task-activity-btn')?.addEventListener('click', () => {
         document.dispatchEvent(new CustomEvent('activity-open', { detail: { taskId: task.id } }));
       });
+      
+      // Fetch and display operation count badge
+      this.updateActivityBadge(task.id);
+    }
+  }
+
+  private async updateActivityBadge(taskId: string) {
+    try {
+      const count = await fetchOperationCount(taskId);
+      const badge = document.getElementById('activity-count-badge');
+      if (badge && count > 0) {
+        badge.textContent = count > 99 ? '99+' : String(count);
+        badge.style.display = 'flex';
+      }
+    } catch {
+      // Silently fail - badge is optional
     }
   }
 

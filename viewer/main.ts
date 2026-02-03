@@ -1,5 +1,6 @@
 import './styles.css';
 import './github-markdown.css';
+import 'diff2html/bundles/css/diff2html.min.css';
 import './components/svg-icon.js';
 import './components/md-block.js';
 import './components/task-filter-bar.js';

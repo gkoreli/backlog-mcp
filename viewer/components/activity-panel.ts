@@ -1,9 +1,19 @@
+import * as Diff2Html from 'diff2html';
+
+interface Actor {
+  type: 'user' | 'agent';
+  name: string;
+  delegatedBy?: string;
+  taskContext?: string;
+}
+
 interface OperationEntry {
   ts: string;
   tool: string;
   params: Record<string, unknown>;
   result: unknown;
   resourceId?: string;
+  actor?: Actor;
 }
 
 function formatRelativeTime(isoDate: string): string {
@@ -41,14 +51,91 @@ function getToolIcon(tool: string): string {
   return icons[tool] || '⚡';
 }
 
+function formatActorDisplay(actor?: Actor): string {
+  if (!actor) return '';
+  
+  const currentUser = 'You'; // Could be enhanced to check against current user
+  
+  if (actor.type === 'user') {
+    return `<span class="activity-actor activity-actor-user">${currentUser}</span>`;
+  }
+  
+  // Agent with delegation info
+  let display = `<span class="activity-actor activity-actor-agent">${actor.name}</span>`;
+  if (actor.delegatedBy) {
+    display += `<span class="activity-delegated">(delegated by ${actor.delegatedBy})</span>`;
+  }
+  if (actor.taskContext) {
+    display += `<span class="activity-context">Working on: ${actor.taskContext}</span>`;
+  }
+  return display;
+}
+
+/**
+ * Generate unified diff string from old and new content.
+ */
+function createUnifiedDiff(oldStr: string, newStr: string, filename: string = 'file'): string {
+  const oldLines = oldStr.split('\n');
+  const newLines = newStr.split('\n');
+  
+  let diff = `--- a/${filename}\n+++ b/${filename}\n`;
+  diff += `@@ -1,${oldLines.length} +1,${newLines.length} @@\n`;
+  
+  for (const line of oldLines) {
+    diff += `-${line}\n`;
+  }
+  for (const line of newLines) {
+    diff += `+${line}\n`;
+  }
+  
+  return diff;
+}
+
+const POLL_INTERVAL = 30000; // 30 seconds
+
 export class ActivityPanel extends HTMLElement {
   private taskId: string | null = null;
   private operations: OperationEntry[] = [];
   private expandedIndex: number | null = null;
+  private pollTimer: number | null = null;
+  private visibilityHandler: (() => void) | null = null;
 
   connectedCallback() {
     this.className = 'activity-panel';
     this.render();
+    this.startPolling();
+  }
+
+  disconnectedCallback() {
+    this.stopPolling();
+  }
+
+  private startPolling() {
+    // Start polling timer
+    this.pollTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        this.loadOperations();
+      }
+    }, POLL_INTERVAL);
+
+    // Also refresh when page becomes visible
+    this.visibilityHandler = () => {
+      if (document.visibilityState === 'visible') {
+        this.loadOperations();
+      }
+    };
+    document.addEventListener('visibilitychange', this.visibilityHandler);
+  }
+
+  private stopPolling() {
+    if (this.pollTimer !== null) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
+    }
   }
 
   setTaskId(taskId: string | null) {
@@ -57,7 +144,10 @@ export class ActivityPanel extends HTMLElement {
   }
 
   async loadOperations() {
-    this.innerHTML = '<div class="activity-loading">Loading activity...</div>';
+    // Only show loading on initial load, not on poll refresh
+    if (this.operations.length === 0) {
+      this.innerHTML = '<div class="activity-loading">Loading activity...</div>';
+    }
 
     try {
       const url = this.taskId 
@@ -117,6 +207,7 @@ export class ActivityPanel extends HTMLElement {
     const resourceDisplay = op.resourceId 
       ? `<a class="activity-task-link" data-task-id="${op.resourceId}">${op.resourceId}</a>`
       : this.getResourceFromParams(op);
+    const actorDisplay = formatActorDisplay(op.actor);
 
     return `
       <div class="activity-item ${isExpanded ? 'expanded' : ''}" data-index="${index}">
@@ -126,6 +217,7 @@ export class ActivityPanel extends HTMLElement {
           <span class="activity-resource">${resourceDisplay}</span>
           <span class="activity-time">${formatRelativeTime(op.ts)}</span>
         </div>
+        ${actorDisplay ? `<div class="activity-actor-row">${actorDisplay}</div>` : ''}
         ${isExpanded ? this.renderExpandedContent(op) : ''}
       </div>
     `;
@@ -146,16 +238,23 @@ export class ActivityPanel extends HTMLElement {
     const paramsJson = JSON.stringify(op.params, null, 2);
     const resultJson = JSON.stringify(op.result, null, 2);
 
-    // For str_replace operations, show a simple diff
+    // For str_replace operations, use diff2html for proper rendering
     let diffHtml = '';
     if (op.tool === 'write_resource' && op.params.operation) {
       const operation = op.params.operation as { type: string; old_str?: string; new_str?: string };
       if (operation.type === 'str_replace' && operation.old_str && operation.new_str) {
+        const unifiedDiff = createUnifiedDiff(operation.old_str, operation.new_str);
         diffHtml = `
           <div class="activity-diff">
             <div class="activity-diff-header">Changes</div>
-            <div class="activity-diff-old">- ${this.escapeHtml(operation.old_str.slice(0, 200))}</div>
-            <div class="activity-diff-new">+ ${this.escapeHtml(operation.new_str.slice(0, 200))}</div>
+            <div class="activity-diff-content">
+              ${Diff2Html.html(unifiedDiff, {
+                drawFileList: false,
+                matching: 'lines',
+                outputFormat: 'line-by-line',
+                diffStyle: 'word',
+              })}
+            </div>
           </div>
         `;
       }

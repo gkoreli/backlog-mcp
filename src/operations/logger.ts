@@ -1,54 +1,33 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { paths } from '@/utils/paths.js';
-
-export interface OperationEntry {
-  ts: string;
-  tool: string;
-  params: Record<string, unknown>;
-  result: unknown;
-  resourceId?: string;
-}
-
-const WRITE_TOOLS = ['backlog_create', 'backlog_update', 'backlog_delete', 'write_resource'];
-
 /**
- * Extract resource ID from tool params or result for filtering.
+ * Operation logger - thin orchestration layer.
+ * Coordinates storage, resource ID extraction, and actor info.
  */
-function extractResourceId(tool: string, params: Record<string, unknown>, result: unknown): string | undefined {
-  // For backlog_create, ID is in the result
-  if (tool === 'backlog_create') {
-    const text = (result as any)?.content?.[0]?.text as string | undefined;
-    if (text) {
-      const match = text.match(/(TASK|EPIC)-\d+/);
-      return match?.[0];
-    }
-  }
-  
-  if (tool === 'write_resource') {
-    const uri = params.uri as string | undefined;
-    if (uri) {
-      const match = uri.match(/(TASK|EPIC)-\d+/);
-      return match?.[0];
-    }
-  }
-  
-  // For backlog_update/delete, id is in params
-  return params.id as string | undefined;
-}
+
+import { OperationStorage } from './storage.js';
+import { extractResourceId } from './resource-id.js';
+import type { Actor, OperationEntry, OperationFilter } from './types.js';
+import { WRITE_TOOLS } from './types.js';
+
+// Read actor info from environment at module load
+const actor: Actor = {
+  type: (process.env.BACKLOG_ACTOR_TYPE as 'user' | 'agent') || 'user',
+  name: process.env.BACKLOG_ACTOR_NAME || process.env.USER || 'unknown',
+  delegatedBy: process.env.BACKLOG_DELEGATED_BY,
+  taskContext: process.env.BACKLOG_TASK_CONTEXT,
+};
 
 class OperationLogger {
-  private logPath: string;
+  private storage: OperationStorage;
 
   constructor() {
-    this.logPath = join(paths.backlogDataDir, '.internal', 'operations.jsonl');
+    this.storage = new OperationStorage();
   }
 
   /**
    * Log a tool operation. Only logs write operations.
    */
   log(tool: string, params: Record<string, unknown>, result: unknown): void {
-    if (!WRITE_TOOLS.includes(tool)) return;
+    if (!WRITE_TOOLS.includes(tool as any)) return;
 
     const entry: OperationEntry = {
       ts: new Date().toISOString(),
@@ -56,59 +35,28 @@ class OperationLogger {
       params,
       result,
       resourceId: extractResourceId(tool, params, result),
+      actor,
     };
 
-    try {
-      const dir = dirname(this.logPath);
-      if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true });
-      }
-      appendFileSync(this.logPath, JSON.stringify(entry) + '\n', 'utf-8');
-    } catch {
-      // Fail silently - logging should not break tool execution
-    }
+    this.storage.append(entry);
   }
 
   /**
    * Read recent operations, optionally filtered by task ID.
    */
-  read(options: { limit?: number; taskId?: string } = {}): OperationEntry[] {
-    const { limit = 50, taskId } = options;
-
-    if (!existsSync(this.logPath)) return [];
-
-    try {
-      const content = readFileSync(this.logPath, 'utf-8');
-      const lines = content.trim().split('\n').filter(Boolean);
-      
-      let entries: OperationEntry[] = lines
-        .map(line => {
-          try {
-            return JSON.parse(line) as OperationEntry;
-          } catch {
-            return null;
-          }
-        })
-        .filter((e): e is OperationEntry => e !== null);
-
-      // Filter by task ID if specified
-      if (taskId) {
-        entries = entries.filter(e => e.resourceId === taskId);
-      }
-
-      // Return most recent first, limited
-      return entries.reverse().slice(0, limit);
-    } catch {
-      return [];
-    }
+  read(options: OperationFilter = {}): OperationEntry[] {
+    return this.storage.query(options);
   }
 
   /**
    * Count operations for a specific task (for badge display).
    */
   countForTask(taskId: string): number {
-    return this.read({ taskId, limit: 1000 }).length;
+    return this.storage.countForTask(taskId);
   }
 }
 
 export const operationLogger = new OperationLogger();
+
+// Re-export types for convenience
+export type { Actor, OperationEntry, OperationFilter } from './types.js';
