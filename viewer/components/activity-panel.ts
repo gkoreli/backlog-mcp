@@ -167,16 +167,20 @@ export class ActivityPanel extends HTMLElement {
       </div>
     `;
 
-    // Bind click handlers for expansion
-    this.querySelectorAll('.activity-item').forEach((item, i) => {
-      item.addEventListener('click', () => this.toggleExpand(i));
+    // Bind click handlers for expansion - only on header
+    this.querySelectorAll('.activity-item-header').forEach((header) => {
+      header.addEventListener('click', (e) => {
+        const item = (e.currentTarget as HTMLElement).closest('.activity-item');
+        const index = parseInt(item?.getAttribute('data-index') || '0');
+        this.toggleExpand(index);
+      });
     });
 
-    // Bind task ID links
-    this.querySelectorAll('.activity-task-link').forEach(link => {
-      link.addEventListener('click', (e) => {
+    // Bind task badge clicks for navigation
+    this.querySelectorAll('.activity-task-link').forEach(badge => {
+      badge.addEventListener('click', (e) => {
         e.stopPropagation();
-        const taskId = (link as HTMLElement).dataset.taskId;
+        const taskId = (badge as HTMLElement).getAttribute('task-id');
         if (taskId) {
           document.dispatchEvent(new CustomEvent('task-selected', { detail: { taskId } }));
         }
@@ -186,53 +190,102 @@ export class ActivityPanel extends HTMLElement {
 
   private renderOperation(op: OperationEntry, index: number): string {
     const isExpanded = this.expandedIndex === index;
-    const resourceDisplay = op.resourceId 
-      ? `<task-badge class="activity-task-link" task-id="${op.resourceId}" data-task-id="${op.resourceId}"></task-badge>`
-      : this.getResourceFromParams(op);
-    const actorDisplay = formatActorDisplay(op.actor);
+    const resourceBadge = op.resourceId 
+      ? `<task-badge class="activity-task-link" task-id="${op.resourceId}"></task-badge>`
+      : '';
+    const time = new Date(op.ts);
+    const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const dateStr = time.toLocaleDateString([], { month: 'short', day: 'numeric' });
 
     return `
       <div class="activity-item ${isExpanded ? 'expanded' : ''}" data-index="${index}">
         <div class="activity-item-header">
-          <span class="activity-icon">${getToolIcon(op.tool)}</span>
-          <span class="activity-label">${getToolLabel(op.tool)}</span>
-          <span class="activity-resource">${resourceDisplay}</span>
-          <span class="activity-time">${formatRelativeTime(op.ts)}</span>
+          <div class="activity-item-left">
+            <span class="activity-icon">${getToolIcon(op.tool)}</span>
+            <div class="activity-item-info">
+              <span class="activity-label">${getToolLabel(op.tool)}</span>
+              ${resourceBadge}
+              ${this.renderActorInline(op.actor)}
+            </div>
+          </div>
+          <div class="activity-item-right">
+            <span class="activity-date">${dateStr}</span>
+            <span class="activity-time">${timeStr}</span>
+          </div>
         </div>
-        ${actorDisplay ? `<div class="activity-actor-row">${actorDisplay}</div>` : ''}
         ${isExpanded ? this.renderExpandedContent(op) : ''}
       </div>
     `;
   }
 
-  private getResourceFromParams(op: OperationEntry): string {
-    if (op.tool === 'write_resource' && op.params.uri) {
-      const uri = op.params.uri as string;
-      return uri.split('/').pop() || uri;
+  private renderActorInline(actor?: Actor): string {
+    if (!actor) return '';
+    if (actor.type === 'user') {
+      return `<span class="activity-actor-inline activity-actor-user">by you</span>`;
     }
-    if (op.params.title) {
-      return `"${(op.params.title as string).slice(0, 30)}..."`;
-    }
-    return '';
+    let text = `by ${actor.name}`;
+    if (actor.delegatedBy) text += ` (delegated)`;
+    return `<span class="activity-actor-inline activity-actor-agent">${text}</span>`;
   }
 
   private renderExpandedContent(op: OperationEntry): string {
-    // Show meaningful summary based on tool type
-    let summary = '';
+    let content = '';
     
     if (op.tool === 'backlog_create') {
       const title = op.params.title as string;
-      summary = `<div class="activity-summary">Created: "${title}"</div>`;
+      const type = op.params.type || 'task';
+      const epicId = op.params.epic_id as string | undefined;
+      content = `
+        <div class="activity-detail-row">
+          <span class="activity-detail-label">Title:</span>
+          <span class="activity-detail-value">${this.escapeHtml(title)}</span>
+        </div>
+        <div class="activity-detail-row">
+          <span class="activity-detail-label">Type:</span>
+          <span class="activity-detail-value">${type}</span>
+        </div>
+        ${epicId ? `
+          <div class="activity-detail-row">
+            <span class="activity-detail-label">Epic:</span>
+            <task-badge class="activity-task-link" task-id="${epicId}"></task-badge>
+          </div>
+        ` : ''}
+      `;
     } else if (op.tool === 'backlog_update') {
-      const fields = Object.keys(op.params).filter(k => k !== 'id');
-      summary = `<div class="activity-summary">Updated: ${fields.join(', ')}</div>`;
+      const fields = Object.entries(op.params).filter(([k]) => k !== 'id');
+      content = fields.map(([key, value]) => {
+        let displayValue: string;
+        if (Array.isArray(value)) {
+          displayValue = value.length > 0 ? `${value.length} items` : 'cleared';
+        } else if (typeof value === 'string' && value.length > 100) {
+          displayValue = value.slice(0, 100) + '...';
+        } else {
+          displayValue = String(value);
+        }
+        return `
+          <div class="activity-detail-row">
+            <span class="activity-detail-label">${key}:</span>
+            <span class="activity-detail-value">${this.escapeHtml(displayValue)}</span>
+          </div>
+        `;
+      }).join('');
     } else if (op.tool === 'backlog_delete') {
-      summary = `<div class="activity-summary">Deleted task</div>`;
+      content = `<div class="activity-detail-row"><span class="activity-detail-value">Task permanently deleted</span></div>`;
     } else if (op.tool === 'write_resource' && op.params.operation) {
       const operation = op.params.operation as { type: string; old_str?: string; new_str?: string };
+      const uri = op.params.uri as string;
+      const filename = uri.split('/').pop() || 'file';
+      
+      content = `
+        <div class="activity-detail-row">
+          <span class="activity-detail-label">File:</span>
+          <span class="activity-detail-value">${this.escapeHtml(filename)}</span>
+        </div>
+      `;
+      
       if (operation.type === 'str_replace' && operation.old_str && operation.new_str) {
-        const unifiedDiff = createUnifiedDiff(operation.old_str, operation.new_str);
-        summary = `
+        const unifiedDiff = createUnifiedDiff(operation.old_str, operation.new_str, filename);
+        content += `
           <div class="activity-diff">
             ${Diff2Html.html(unifiedDiff, {
               drawFileList: false,
@@ -243,11 +296,16 @@ export class ActivityPanel extends HTMLElement {
           </div>
         `;
       } else {
-        summary = `<div class="activity-summary">Operation: ${operation.type}</div>`;
+        content += `
+          <div class="activity-detail-row">
+            <span class="activity-detail-label">Operation:</span>
+            <span class="activity-detail-value">${operation.type}</span>
+          </div>
+        `;
       }
     }
 
-    return `<div class="activity-expanded">${summary}</div>`;
+    return `<div class="activity-expanded" onclick="event.stopPropagation()">${content}</div>`;
   }
 
   private escapeHtml(str: string): string {
