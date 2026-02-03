@@ -217,44 +217,37 @@ export class ActivityPanel extends HTMLElement {
   }
 
   private renderExpandedContent(op: OperationEntry): string {
-    const paramsJson = JSON.stringify(op.params, null, 2);
-    const resultJson = JSON.stringify(op.result, null, 2);
-
-    // For str_replace operations, use diff2html for proper rendering
-    let diffHtml = '';
-    if (op.tool === 'write_resource' && op.params.operation) {
+    // Show meaningful summary based on tool type
+    let summary = '';
+    
+    if (op.tool === 'backlog_create') {
+      const title = op.params.title as string;
+      summary = `<div class="activity-summary">Created: "${title}"</div>`;
+    } else if (op.tool === 'backlog_update') {
+      const fields = Object.keys(op.params).filter(k => k !== 'id');
+      summary = `<div class="activity-summary">Updated: ${fields.join(', ')}</div>`;
+    } else if (op.tool === 'backlog_delete') {
+      summary = `<div class="activity-summary">Deleted task</div>`;
+    } else if (op.tool === 'write_resource' && op.params.operation) {
       const operation = op.params.operation as { type: string; old_str?: string; new_str?: string };
       if (operation.type === 'str_replace' && operation.old_str && operation.new_str) {
         const unifiedDiff = createUnifiedDiff(operation.old_str, operation.new_str);
-        diffHtml = `
+        summary = `
           <div class="activity-diff">
-            <div class="activity-diff-header">Changes</div>
-            <div class="activity-diff-content">
-              ${Diff2Html.html(unifiedDiff, {
-                drawFileList: false,
-                matching: 'lines',
-                outputFormat: 'line-by-line',
-                diffStyle: 'word',
-              })}
-            </div>
+            ${Diff2Html.html(unifiedDiff, {
+              drawFileList: false,
+              matching: 'lines',
+              outputFormat: 'line-by-line',
+              diffStyle: 'word',
+            })}
           </div>
         `;
+      } else {
+        summary = `<div class="activity-summary">Operation: ${operation.type}</div>`;
       }
     }
 
-    return `
-      <div class="activity-expanded">
-        ${diffHtml}
-        <details class="activity-details">
-          <summary>Parameters</summary>
-          <pre class="activity-json">${this.escapeHtml(paramsJson)}</pre>
-        </details>
-        <details class="activity-details">
-          <summary>Result</summary>
-          <pre class="activity-json">${this.escapeHtml(resultJson)}</pre>
-        </details>
-      </div>
-    `;
+    return `<div class="activity-expanded">${summary}</div>`;
   }
 
   private escapeHtml(str: string): string {
