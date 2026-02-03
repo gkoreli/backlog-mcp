@@ -177,10 +177,11 @@ export class ActivityPanel extends HTMLElement {
     });
 
     // Bind task badge clicks for navigation (in expanded content)
-    this.querySelectorAll('.activity-task-link').forEach(badge => {
-      badge.addEventListener('click', (e) => {
+    this.querySelectorAll('.activity-task-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
         e.stopPropagation();
-        const taskId = (badge as HTMLElement).getAttribute('task-id');
+        const taskId = (link as HTMLElement).dataset.taskId;
         if (taskId) {
           document.dispatchEvent(new CustomEvent('task-selected', { detail: { taskId } }));
         }
@@ -233,7 +234,9 @@ export class ActivityPanel extends HTMLElement {
       content += `
         <div class="activity-detail-row">
           <span class="activity-detail-label">Task:</span>
-          <task-badge class="activity-task-link" task-id="${op.resourceId}"></task-badge>
+          <a href="#" class="activity-task-link" data-task-id="${op.resourceId}">
+            <task-badge task-id="${op.resourceId}"></task-badge>
+          </a>
         </div>
       `;
     }
@@ -249,7 +252,9 @@ export class ActivityPanel extends HTMLElement {
         ${epicId ? `
           <div class="activity-detail-row">
             <span class="activity-detail-label">Epic:</span>
-            <task-badge class="activity-task-link" task-id="${epicId}"></task-badge>
+            <a href="#" class="activity-task-link" data-task-id="${epicId}">
+              <task-badge task-id="${epicId}"></task-badge>
+            </a>
           </div>
         ` : ''}
       `;
@@ -272,20 +277,13 @@ export class ActivityPanel extends HTMLElement {
         `;
       }).join('');
     } else if (op.tool === 'backlog_delete') {
-      content = `<div class="activity-detail-row"><span class="activity-detail-value">Task permanently deleted</span></div>`;
+      content += `<div class="activity-detail-row"><span class="activity-detail-value">Task permanently deleted</span></div>`;
     } else if (op.tool === 'write_resource' && op.params.operation) {
       const operation = op.params.operation as { type: string; old_str?: string; new_str?: string };
-      const uri = op.params.uri as string;
-      const filename = uri.split('/').pop() || 'file';
-      
-      content = `
-        <div class="activity-detail-row">
-          <span class="activity-detail-label">File:</span>
-          <span class="activity-detail-value">${this.escapeHtml(filename)}</span>
-        </div>
-      `;
       
       if (operation.type === 'str_replace' && operation.old_str && operation.new_str) {
+        const uri = op.params.uri as string;
+        const filename = uri.split('/').pop() || 'file';
         const unifiedDiff = createUnifiedDiff(operation.old_str, operation.new_str, filename);
         content += `
           <div class="activity-diff">
