@@ -62,19 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
     urlState.set({ epic: null, task: null });
   });
   
-  // Restore resource from localStorage
-  const savedPane = localStorage.getItem('openPane');
-  if (savedPane) {
-    if (savedPane.startsWith('activity:')) {
-      const taskId = savedPane.slice(9) || undefined;
-      splitPane.openActivity(taskId);
-    } else if (savedPane.startsWith('mcp://')) {
-      splitPane.openMcp(savedPane);
-    } else {
-      splitPane.open(savedPane);
-    }
-  }
-  
   // Spotlight search keyboard shortcut (Cmd+J / Ctrl+J)
   const spotlight = document.querySelector('spotlight-search') as any;
   document.addEventListener('keydown', (e) => {
@@ -112,29 +99,21 @@ document.addEventListener('epic-pin', ((e: CustomEvent) => {
 
 document.addEventListener('resource-open', ((e: CustomEvent) => {
   if (e.detail.uri) {
-    // MCP URI
-    localStorage.setItem('openPane', e.detail.uri);
     splitPane.openMcp(e.detail.uri);
   } else if (e.detail.path) {
-    // File path
-    localStorage.setItem('openPane', e.detail.path);
     splitPane.open(e.detail.path);
   }
 }) as EventListener);
 
 document.addEventListener('resource-close', () => {
-  localStorage.removeItem('openPane');
   splitPane.close();
 });
 
 document.addEventListener('activity-close', () => {
-  localStorage.removeItem('openPane');
   splitPane.close();
 });
 
 document.addEventListener('activity-open', ((e: CustomEvent) => {
-  const taskId = e.detail?.taskId || '';
-  localStorage.setItem('openPane', `activity:${taskId}`);
   splitPane.openActivity(e.detail?.taskId);
 }) as EventListener);
 
