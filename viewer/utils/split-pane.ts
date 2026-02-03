@@ -1,6 +1,7 @@
 import { resizeService } from './resize.js';
 
 type PaneContent = 'resource' | 'activity';
+const STORAGE_KEY = 'openPane';
 
 class SplitPaneService {
   private pane: HTMLElement | null = null;
@@ -25,10 +26,36 @@ class SplitPaneService {
       handle.classList.add('split-resize-handle');
       this.rightPane.appendChild(handle);
     }
+
+    // Restore last open pane
+    this.restore();
+  }
+
+  private restore() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+
+    if (saved.startsWith('activity:')) {
+      const taskId = saved.slice(9) || undefined;
+      this.openActivity(taskId);
+    } else if (saved.startsWith('mcp://')) {
+      this.openMcp(saved);
+    } else {
+      this.open(saved);
+    }
+  }
+
+  private persist(value: string | null) {
+    if (value) {
+      localStorage.setItem(STORAGE_KEY, value);
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
   }
 
   open(path: string) {
     if (!this.rightPane) return;
+    this.persist(path);
 
     if (this.viewer) {
       this.viewer.loadResource(path);
@@ -75,6 +102,7 @@ class SplitPaneService {
 
   openMcp(uri: string) {
     if (!this.rightPane) return;
+    this.persist(uri);
 
     if (this.viewer) {
       this.viewer.loadMcpResource(uri);
@@ -119,6 +147,7 @@ class SplitPaneService {
   }
 
   close() {
+    this.persist(null);
     if (this.pane) {
       this.pane.remove();
       this.pane = null;
@@ -140,6 +169,7 @@ class SplitPaneService {
    */
   openActivity(taskId?: string) {
     if (!this.rightPane) return;
+    this.persist(`activity:${taskId || ''}`);
 
     // If already showing activity for same task, just return
     if (this.currentContent === 'activity' && this.viewer) {
