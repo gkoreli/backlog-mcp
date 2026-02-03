@@ -13,18 +13,27 @@ export interface OperationEntry {
 const WRITE_TOOLS = ['backlog_create', 'backlog_update', 'backlog_delete', 'write_resource'];
 
 /**
- * Extract resource ID from tool params for filtering.
+ * Extract resource ID from tool params or result for filtering.
  */
-function extractResourceId(tool: string, params: Record<string, unknown>): string | undefined {
+function extractResourceId(tool: string, params: Record<string, unknown>, result: unknown): string | undefined {
+  // For backlog_create, ID is in the result
+  if (tool === 'backlog_create') {
+    const text = (result as any)?.content?.[0]?.text as string | undefined;
+    if (text) {
+      const match = text.match(/(TASK|EPIC)-\d+/);
+      return match?.[0];
+    }
+  }
+  
   if (tool === 'write_resource') {
     const uri = params.uri as string | undefined;
     if (uri) {
-      // Extract task ID from URI like mcp://backlog/tasks/TASK-0001.md
       const match = uri.match(/(TASK|EPIC)-\d+/);
       return match?.[0];
     }
   }
-  // For backlog tools, id is directly in params
+  
+  // For backlog_update/delete, id is in params
   return params.id as string | undefined;
 }
 
@@ -46,7 +55,7 @@ class OperationLogger {
       tool,
       params,
       result,
-      resourceId: extractResourceId(tool, params),
+      resourceId: extractResourceId(tool, params, result),
     };
 
     try {
