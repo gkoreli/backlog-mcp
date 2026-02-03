@@ -1481,8 +1481,10 @@ copy-button {
 
 .activity-expanded {
   padding: 12px;
-  border-top: 1px solid #30363d;
-  background: #1e1e1e;
+  margin: 8px 12px 12px;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
   cursor: default;
 }
 
