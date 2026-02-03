@@ -167,9 +167,11 @@ export class ActivityPanel extends HTMLElement {
       </div>
     `;
 
-    // Bind click handlers for expansion - only on header
+    // Bind click handlers for expansion - only on header, not on badges
     this.querySelectorAll('.activity-item-header').forEach((header) => {
       header.addEventListener('click', (e) => {
+        // Don't toggle if clicking on a task badge
+        if ((e.target as HTMLElement).closest('task-badge')) return;
         const item = (e.currentTarget as HTMLElement).closest('.activity-item');
         const index = parseInt(item?.getAttribute('data-index') || '0');
         this.toggleExpand(index);
