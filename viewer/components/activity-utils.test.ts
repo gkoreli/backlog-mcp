@@ -189,8 +189,8 @@ describe('activity-utils', () => {
       expect(journal.completed).toHaveLength(1);
     });
 
-    it('shows first status change for each task', () => {
-      // Operations are processed in order - first status wins for each category
+    it('shows only highest priority state for each task', () => {
+      // Task goes through in_progress then done - should only show in completed
       const operations: OperationEntry[] = [
         { ts: '2026-02-05T10:00:00Z', tool: 'backlog_update', params: { status: 'in_progress' }, result: {}, resourceId: 'TASK-0001' },
         { ts: '2026-02-05T11:00:00Z', tool: 'backlog_update', params: { status: 'done' }, result: {}, resourceId: 'TASK-0001' },
@@ -198,9 +198,9 @@ describe('activity-utils', () => {
 
       const journal = aggregateForJournal(operations);
       
-      // Both statuses are recorded since they're different categories
-      expect(journal.inProgress).toHaveLength(1);
+      // Only shows in completed (highest priority), not in_progress
       expect(journal.completed).toHaveLength(1);
+      expect(journal.inProgress).toHaveLength(0);
     });
 
     it('skips operations without resourceId', () => {

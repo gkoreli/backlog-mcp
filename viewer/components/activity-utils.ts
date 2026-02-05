@@ -213,6 +213,8 @@ export function mergeConsecutiveEdits(operations: OperationEntry[]): OperationEn
 /**
  * Aggregate operations for journal view.
  * Categorizes tasks by their most significant status change.
+ * Each task appears in only ONE category (highest priority wins):
+ * completed > in_progress > created > updated
  */
 export function aggregateForJournal(operations: OperationEntry[]): JournalData {
   const completed: JournalEntry[] = [];
@@ -220,37 +222,53 @@ export function aggregateForJournal(operations: OperationEntry[]): JournalData {
   const created: JournalEntry[] = [];
   const updated: JournalEntry[] = [];
   
-  const seenCompleted = new Set<string>();
-  const seenInProgress = new Set<string>();
-  const seenCreated = new Set<string>();
-  const seenUpdated = new Set<string>();
+  // Track the highest priority state for each task
+  const taskState = new Map<string, { state: 'completed' | 'in_progress' | 'created' | 'updated'; title: string; epicId?: string; epicTitle?: string }>();
   
+  // Process operations (newest first) to find the latest state
   for (const op of operations) {
     const resourceId = op.resourceId;
     if (!resourceId) continue;
     
-    // Use resourceTitle from server enrichment, fall back to params.title or resourceId
     const title = op.resourceTitle || (op.params.title as string) || resourceId;
     const epicId = op.epicId;
     const epicTitle = op.epicTitle;
+    const entry = { title, epicId, epicTitle };
     
-    if (op.tool === 'backlog_create') {
-      if (!seenCreated.has(resourceId)) {
-        seenCreated.add(resourceId);
-        created.push({ resourceId, title, epicId, epicTitle });
-      }
-    } else if (op.tool === 'backlog_update') {
+    const existing = taskState.get(resourceId);
+    
+    if (op.tool === 'backlog_update') {
       const status = op.params.status as string | undefined;
-      if (status === 'done' && !seenCompleted.has(resourceId)) {
-        seenCompleted.add(resourceId);
-        completed.push({ resourceId, title, epicId, epicTitle });
-      } else if (status === 'in_progress' && !seenInProgress.has(resourceId)) {
-        seenInProgress.add(resourceId);
-        inProgress.push({ resourceId, title, epicId, epicTitle });
-      } else if (!seenUpdated.has(resourceId) && !seenCompleted.has(resourceId) && !seenInProgress.has(resourceId)) {
-        seenUpdated.add(resourceId);
-        updated.push({ resourceId, title, epicId, epicTitle });
+      if (status === 'done') {
+        // Completed is highest priority - always set
+        if (!existing || existing.state !== 'completed') {
+          taskState.set(resourceId, { state: 'completed', ...entry });
+        }
+      } else if (status === 'in_progress') {
+        // In progress beats created/updated
+        if (!existing || (existing.state !== 'completed' && existing.state !== 'in_progress')) {
+          taskState.set(resourceId, { state: 'in_progress', ...entry });
+        }
+      } else if (!existing) {
+        // Generic update - lowest priority
+        taskState.set(resourceId, { state: 'updated', ...entry });
       }
+    } else if (op.tool === 'backlog_create') {
+      // Created beats updated only
+      if (!existing || existing.state === 'updated') {
+        taskState.set(resourceId, { state: 'created', ...entry });
+      }
+    }
+  }
+  
+  // Build result arrays
+  for (const [resourceId, data] of taskState) {
+    const entry: JournalEntry = { resourceId, title: data.title, epicId: data.epicId, epicTitle: data.epicTitle };
+    switch (data.state) {
+      case 'completed': completed.push(entry); break;
+      case 'in_progress': inProgress.push(entry); break;
+      case 'created': created.push(entry); break;
+      case 'updated': updated.push(entry); break;
     }
   }
   
