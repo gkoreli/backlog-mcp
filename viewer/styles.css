@@ -1866,3 +1866,43 @@ copy-button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Epic grouping in journal */
+.activity-journal-epic-group {
+  margin-bottom: 16px;
+}
+
+.activity-journal-epic-group:last-child {
+  margin-bottom: 0;
+}
+
+.activity-journal-epic-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 4px 0;
+}
+
+.activity-journal-epic-title {
+  font-weight: 500;
+  color: #d4d4d4;
+  font-size: 13px;
+}
+
+.activity-epic-link {
+  text-decoration: none;
+}
+
+.activity-epic-link:hover task-badge {
+  opacity: 0.8;
+}
+
+.activity-journal-epic-group .activity-journal-list {
+  padding-left: 12px;
+  border-left: 2px solid #30363d;
+  margin-left: 4px;
+}
+
+.activity-journal-epic-group .activity-journal-item {
+  padding: 4px 0;
+}

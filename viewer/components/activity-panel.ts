@@ -12,6 +12,7 @@ import {
   groupByDay,
   groupByTask,
   aggregateForJournal,
+  groupByEpic,
   getToolLabel,
   getToolIcon,
   type OperationEntry,
@@ -19,6 +20,7 @@ import {
   type DayGroup,
   type TaskGroup,
   type JournalEntry,
+  type EpicGroup,
 } from './activity-utils.js';
 
 type ViewMode = 'timeline' | 'journal';
@@ -230,12 +232,46 @@ export class ActivityPanel extends HTMLElement {
           </div>
         ` : `
           <div class="activity-journal-content">
-            ${this.renderJournalSection('✅ Completed', journal.completed)}
+            ${this.renderCompletedSection(journal.completed)}
             ${this.renderJournalSection('🚧 In Progress', journal.inProgress)}
             ${this.renderJournalSection('➕ Created', journal.created)}
             ${this.renderJournalSection('✏️ Updated', journal.updated)}
           </div>
         `}
+      </div>
+    `;
+  }
+
+  private renderCompletedSection(entries: JournalEntry[]): string {
+    if (entries.length === 0) return '';
+    
+    const epicGroups = groupByEpic(entries);
+    
+    return `
+      <div class="activity-journal-section">
+        <div class="activity-journal-section-title">✅ Completed</div>
+        ${epicGroups.map(group => `
+          <div class="activity-journal-epic-group">
+            <div class="activity-journal-epic-header">
+              ${group.epicId ? `
+                <a href="#" class="activity-epic-link" data-epic-id="${group.epicId}">
+                  <task-badge task-id="${group.epicId}"></task-badge>
+                </a>
+              ` : ''}
+              <span class="activity-journal-epic-title">${this.escapeHtml(group.epicTitle)}</span>
+            </div>
+            <ul class="activity-journal-list">
+              ${group.entries.map(e => `
+                <li class="activity-journal-item">
+                  <a href="#" class="activity-task-link" data-task-id="${e.resourceId}">
+                    <task-badge task-id="${e.resourceId}"></task-badge>
+                  </a>
+                  ${e.title !== e.resourceId ? `<span class="activity-journal-title">${this.escapeHtml(e.title)}</span>` : ''}
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        `).join('')}
       </div>
     `;
   }
@@ -433,13 +469,25 @@ export class ActivityPanel extends HTMLElement {
     });
 
     // Task links
-    this.querySelectorAll('.activity-task-link, .activity-epic-link').forEach(link => {
+    this.querySelectorAll('.activity-task-link').forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         const taskId = (link as HTMLElement).dataset.taskId;
         if (taskId) {
           document.dispatchEvent(new CustomEvent('task-selected', { detail: { taskId } }));
+        }
+      });
+    });
+
+    // Epic links
+    this.querySelectorAll('.activity-epic-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const epicId = (link as HTMLElement).dataset.epicId;
+        if (epicId) {
+          document.dispatchEvent(new CustomEvent('epic-navigate', { detail: { epicId } }));
         }
       });
     });
