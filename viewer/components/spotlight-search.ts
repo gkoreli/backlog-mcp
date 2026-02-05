@@ -2,6 +2,7 @@ import { Highlight } from '@orama/highlight';
 import type { Task } from '../utils/api.js';
 import { API_URL } from '../utils/api.js';
 import { urlState } from '../utils/url-state.js';
+import { recentSearchesService, type RecentSearchItem } from '../services/recent-searches-service.js';
 
 const highlighter = new Highlight({ CSSClass: 'spotlight-match' });
 
@@ -27,6 +28,7 @@ interface SearchResult {
 
 type SortMode = 'relevant' | 'recent';
 type TypeFilter = 'all' | 'task' | 'epic' | 'resource';
+type DefaultTab = 'searches' | 'activity';
 
 function isResource(item: Task | Resource): item is Resource {
   return 'path' in item && 'content' in item;
@@ -41,6 +43,9 @@ class SpotlightSearch extends HTMLElement {
   private sortMode: SortMode = 'relevant';
   private typeFilter: TypeFilter = 'all';
   private isLoading = false;
+  private activeTab: DefaultTab = 'searches';
+  private recentActivity: SearchResult[] = [];
+  private isLoadingActivity = false;
 
   connectedCallback() {
     this.render();
@@ -74,6 +79,7 @@ class SpotlightSearch extends HTMLElement {
             <span class="spotlight-result-count"></span>
             <span class="spotlight-loading-indicator"></span>
           </div>
+          <div class="spotlight-default-tabs"></div>
           <div class="spotlight-results"></div>
         </div>
       </div>
@@ -106,6 +112,23 @@ class SpotlightSearch extends HTMLElement {
         if (sort) this.setSortMode(sort);
       });
     });
+
+    // Tab buttons
+    this.querySelectorAll('.spotlight-tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const tab = (e.target as HTMLElement).dataset.tab as DefaultTab;
+        if (tab) this.setActiveTab(tab);
+      });
+    });
+
+    // Tab item clicks
+    this.querySelectorAll('.spotlight-tab-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const id = (item as HTMLElement).dataset.id;
+        const type = (item as HTMLElement).dataset.type as 'task' | 'epic' | 'resource';
+        if (id && type) this.selectTabItem(id, type);
+      });
+    });
   }
 
   private setTypeFilter(type: TypeFilter) {
@@ -124,13 +147,135 @@ class SpotlightSearch extends HTMLElement {
     if (this.query.length >= 2) this.search();
   }
 
+  private setActiveTab(tab: DefaultTab) {
+    this.activeTab = tab;
+    this.selectedIndex = 0;
+    this.renderDefaultTabs();
+    this.attachEventListeners();
+  }
+
+  private selectTabItem(id: string, type: 'task' | 'epic' | 'resource') {
+    if (type === 'resource') {
+      document.dispatchEvent(new CustomEvent('resource-open', { detail: { uri: id } }));
+    } else {
+      const isEpic = type === 'epic';
+      urlState.set({ task: id, epic: isEpic ? id : null });
+    }
+    this.close();
+  }
+
+  private async loadRecentActivity() {
+    if (this.isLoadingActivity) return;
+    this.isLoadingActivity = true;
+
+    try {
+      // Fetch recent tasks/epics sorted by updated_at
+      const response = await fetch(`${API_URL}/tasks?filter=all&limit=15`);
+      const tasks: Task[] = await response.json();
+      
+      // Sort by updated_at descending and convert to SearchResult format
+      const sorted = tasks.sort((a, b) => 
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+      
+      this.recentActivity = sorted.slice(0, 15).map(task => ({
+        item: task,
+        type: (task.type || (task.id.startsWith('EPIC-') ? 'epic' : 'task')) as 'task' | 'epic',
+        snippet: { field: '', html: '', matchedFields: [] },
+        score: 0,
+      }));
+    } catch {
+      this.recentActivity = [];
+    } finally {
+      this.isLoadingActivity = false;
+      if (this.query.length < 2) {
+        this.renderDefaultTabs();
+        this.attachEventListeners();
+      }
+    }
+  }
+
+  private renderDefaultTabs() {
+    const tabsEl = this.querySelector('.spotlight-default-tabs') as HTMLElement;
+    const resultsEl = this.querySelector('.spotlight-results') as HTMLElement;
+    const controlsEl = this.querySelector('.spotlight-controls') as HTMLElement;
+    const statusEl = this.querySelector('.spotlight-status') as HTMLElement;
+
+    if (this.query.length >= 2) {
+      // Hide tabs, show search UI
+      tabsEl.style.display = 'none';
+      resultsEl.style.display = 'block';
+      controlsEl.style.display = 'flex';
+      statusEl.style.display = 'flex';
+      return;
+    }
+
+    // Show tabs, hide search UI
+    tabsEl.style.display = 'block';
+    resultsEl.style.display = 'none';
+    controlsEl.style.display = 'none';
+    statusEl.style.display = 'none';
+
+    const recentSearches = recentSearchesService.getAll();
+    
+    tabsEl.innerHTML = `
+      <div class="spotlight-tabs-header">
+        <button class="spotlight-tab-btn ${this.activeTab === 'searches' ? 'active' : ''}" data-tab="searches">Recent Searches</button>
+        <button class="spotlight-tab-btn ${this.activeTab === 'activity' ? 'active' : ''}" data-tab="activity">Recent Activity</button>
+      </div>
+      <div class="spotlight-tabs-content">
+        ${this.activeTab === 'searches' ? this.renderRecentSearches(recentSearches) : this.renderRecentActivity()}
+      </div>
+    `;
+  }
+
+  private renderRecentSearches(items: RecentSearchItem[]): string {
+    if (items.length === 0) {
+      return '<div class="spotlight-tab-empty">No recent searches</div>';
+    }
+
+    return items.map((item, i) => `
+      <div class="spotlight-tab-item ${i === this.selectedIndex ? 'selected' : ''}" data-id="${item.id}" data-type="${item.type}" data-index="${i}">
+        ${item.type === 'resource' 
+          ? `<span class="spotlight-resource-icon">📄</span><span class="spotlight-tab-item-title">${this.escapeHtml(item.title)}</span>`
+          : `<task-badge task-id="${item.id}"></task-badge><span class="spotlight-tab-item-title">${this.escapeHtml(item.title)}</span>`
+        }
+        <span class="type-badge type-${item.type}">${item.type}</span>
+      </div>
+    `).join('');
+  }
+
+  private renderRecentActivity(): string {
+    if (this.isLoadingActivity) {
+      return '<div class="spotlight-tab-loading"><span class="spotlight-spinner"></span></div>';
+    }
+
+    if (this.recentActivity.length === 0) {
+      return '<div class="spotlight-tab-empty">No recent activity</div>';
+    }
+
+    return this.recentActivity.map((r, i) => {
+      const task = r.item as Task;
+      const type = r.type;
+      return `
+        <div class="spotlight-tab-item ${i === this.selectedIndex ? 'selected' : ''}" data-id="${task.id}" data-type="${type}" data-index="${i}">
+          <task-badge task-id="${task.id}"></task-badge>
+          <span class="spotlight-tab-item-title">${this.escapeHtml(task.title)}</span>
+          <span class="status-badge status-${task.status}">${task.status.replace('_', ' ')}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
   private handleInput(value: string) {
     this.query = value.trim();
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     
     if (this.query.length < 2) {
       this.results = [];
-      this.renderResults();
+      this.selectedIndex = 0;
+      this.renderDefaultTabs();
+      this.attachEventListeners();
       this.updateResultCount();
       return;
     }
@@ -141,6 +286,7 @@ class SpotlightSearch extends HTMLElement {
   private async search() {
     this.isLoading = true;
     this.updateLoadingState();
+    this.renderDefaultTabs(); // Hide tabs, show search UI
 
     try {
       // Build query params
@@ -357,36 +503,85 @@ class SpotlightSearch extends HTMLElement {
         e.preventDefault();
         this.moveSelection(-1);
         break;
+      case 'Tab':
+        // Switch tabs when in default view
+        if (this.query.length < 2) {
+          e.preventDefault();
+          this.setActiveTab(this.activeTab === 'searches' ? 'activity' : 'searches');
+        }
+        break;
       case 'Enter':
         e.preventDefault();
-        if (this.results.length > 0) {
+        if (this.query.length >= 2 && this.results.length > 0) {
           this.selectResult(this.selectedIndex);
+        } else if (this.query.length < 2) {
+          this.selectTabItemByIndex(this.selectedIndex);
         }
         break;
     }
   }
 
-  private moveSelection(delta: number) {
-    if (this.results.length === 0) return;
-    this.selectedIndex = (this.selectedIndex + delta + this.results.length) % this.results.length;
-    this.renderResults();
+  private selectTabItemByIndex(index: number) {
+    const items = this.activeTab === 'searches' 
+      ? recentSearchesService.getAll() 
+      : this.recentActivity;
     
-    const selected = this.querySelector('.spotlight-result.selected');
-    selected?.scrollIntoView({ block: 'nearest' });
+    if (index < 0 || index >= items.length) return;
+    
+    if (this.activeTab === 'searches') {
+      const item = items[index] as RecentSearchItem;
+      this.selectTabItem(item.id, item.type);
+    } else {
+      const result = items[index] as SearchResult;
+      if (result.type === 'resource') {
+        const resource = result.item as Resource;
+        this.selectTabItem(resource.id, 'resource');
+      } else {
+        const task = result.item as Task;
+        const type = task.type || (task.id.startsWith('EPIC-') ? 'epic' : 'task');
+        this.selectTabItem(task.id, type);
+      }
+    }
+  }
+
+  private moveSelection(delta: number) {
+    if (this.query.length >= 2) {
+      // Search results mode
+      if (this.results.length === 0) return;
+      this.selectedIndex = (this.selectedIndex + delta + this.results.length) % this.results.length;
+      this.renderResults();
+      const selected = this.querySelector('.spotlight-result.selected');
+      selected?.scrollIntoView({ block: 'nearest' });
+    } else {
+      // Tabs mode
+      const items = this.activeTab === 'searches' 
+        ? recentSearchesService.getAll() 
+        : this.recentActivity;
+      if (items.length === 0) return;
+      this.selectedIndex = (this.selectedIndex + delta + items.length) % items.length;
+      this.renderDefaultTabs();
+      this.attachEventListeners();
+      const selected = this.querySelector('.spotlight-tab-item.selected');
+      selected?.scrollIntoView({ block: 'nearest' });
+    }
   }
 
   private selectResult(index: number) {
     const result = this.results[index];
     if (!result) return;
     
+    // Track this selection in recent searches
     if (result.type === 'resource') {
       const resource = result.item as Resource;
+      recentSearchesService.add({ id: resource.id, title: resource.title, type: 'resource' });
       document.dispatchEvent(new CustomEvent('resource-open', { 
         detail: { uri: resource.id } 
       }));
     } else {
       const task = result.item as Task;
-      const isEpic = task.type === 'epic';
+      const type = task.type || (task.id.startsWith('EPIC-') ? 'epic' : 'task');
+      recentSearchesService.add({ id: task.id, title: task.title, type });
+      const isEpic = type === 'epic';
       urlState.set({ 
         task: task.id,
         epic: isEpic ? task.id : (task.epic_id || null),
@@ -400,6 +595,7 @@ class SpotlightSearch extends HTMLElement {
     this.query = '';
     this.results = [];
     this.selectedIndex = 0;
+    this.activeTab = 'searches'; // Reset to default tab
     
     const overlay = this.querySelector('.spotlight-overlay') as HTMLElement;
     overlay.style.display = 'flex';
@@ -408,7 +604,10 @@ class SpotlightSearch extends HTMLElement {
     input.value = '';
     input.focus();
     
-    this.renderResults();
+    // Show tabs and load recent activity
+    this.renderDefaultTabs();
+    this.attachEventListeners();
+    this.loadRecentActivity();
     this.updateResultCount();
   }
 

@@ -1299,6 +1299,86 @@ copy-button {
   color: #8b949e;
 }
 
+/* Spotlight Default Tabs */
+.spotlight-default-tabs {
+  display: none;
+}
+
+.spotlight-tabs-header {
+  display: flex;
+  gap: 4px;
+  padding: 10px 20px;
+  border-bottom: 1px solid #3e3e42;
+}
+
+.spotlight-tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #8b949e;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.spotlight-tab-btn:hover {
+  background: #3e3e42;
+  color: #d4d4d4;
+}
+
+.spotlight-tab-btn.active {
+  background: #37373d;
+  border-color: #58a6ff;
+  color: #d4d4d4;
+}
+
+.spotlight-tabs-content {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.spotlight-tab-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid #3e3e42;
+  transition: background 0.15s;
+}
+
+.spotlight-tab-item:last-child {
+  border-bottom: none;
+}
+
+.spotlight-tab-item:hover,
+.spotlight-tab-item.selected {
+  background: #37373d;
+}
+
+.spotlight-tab-item-title {
+  flex: 1;
+  color: #d4d4d4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.spotlight-tab-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #6e7681;
+}
+
+.spotlight-tab-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
 /* Resource-specific spotlight styles */
 .spotlight-resource-icon {
   font-size: 16px;
