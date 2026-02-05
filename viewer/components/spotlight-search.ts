@@ -113,6 +113,11 @@ class SpotlightSearch extends HTMLElement {
       });
     });
 
+    this.attachTabListeners();
+  }
+
+  // Separate method for tab-related listeners that get re-rendered
+  private attachTabListeners() {
     // Tab buttons
     this.querySelectorAll('.spotlight-tab-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -151,7 +156,7 @@ class SpotlightSearch extends HTMLElement {
     this.activeTab = tab;
     this.selectedIndex = 0;
     this.renderDefaultTabs();
-    this.attachEventListeners();
+    this.attachTabListeners();
   }
 
   private selectTabItem(id: string, type: 'task' | 'epic' | 'resource') {
@@ -190,7 +195,7 @@ class SpotlightSearch extends HTMLElement {
       this.isLoadingActivity = false;
       if (this.query.length < 2) {
         this.renderDefaultTabs();
-        this.attachEventListeners();
+        this.attachTabListeners();
       }
     }
   }
