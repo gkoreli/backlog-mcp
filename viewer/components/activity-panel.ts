@@ -401,7 +401,7 @@ export class ActivityPanel extends HTMLElement {
     } else if (op.tool === 'write_resource' && op.params.operation) {
       const operation = op.params.operation as { type: string; old_str?: string; new_str?: string };
       
-      if (operation.type === 'str_replace' && operation.old_str && operation.new_str) {
+      if (operation.type === 'str_replace' && operation.old_str !== undefined && operation.new_str !== undefined) {
         const uri = op.params.uri as string;
         const filename = uri.split('/').pop() || 'file';
         const unifiedDiff = createUnifiedDiff(operation.old_str, operation.new_str, filename);
