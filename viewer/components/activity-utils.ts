@@ -145,28 +145,59 @@ export function aggregateForJournal(operations: OperationEntry[]): JournalData {
     
     // Use resourceTitle from server enrichment, fall back to params.title or resourceId
     const title = op.resourceTitle || (op.params.title as string) || resourceId;
+    const epicId = op.epicId;
+    const epicTitle = op.epicTitle;
     
     if (op.tool === 'backlog_create') {
       if (!seenCreated.has(resourceId)) {
         seenCreated.add(resourceId);
-        created.push({ resourceId, title });
+        created.push({ resourceId, title, epicId, epicTitle });
       }
     } else if (op.tool === 'backlog_update') {
       const status = op.params.status as string | undefined;
       if (status === 'done' && !seenCompleted.has(resourceId)) {
         seenCompleted.add(resourceId);
-        completed.push({ resourceId, title });
+        completed.push({ resourceId, title, epicId, epicTitle });
       } else if (status === 'in_progress' && !seenInProgress.has(resourceId)) {
         seenInProgress.add(resourceId);
-        inProgress.push({ resourceId, title });
+        inProgress.push({ resourceId, title, epicId, epicTitle });
       } else if (!seenUpdated.has(resourceId) && !seenCompleted.has(resourceId) && !seenInProgress.has(resourceId)) {
         seenUpdated.add(resourceId);
-        updated.push({ resourceId, title });
+        updated.push({ resourceId, title, epicId, epicTitle });
       }
     }
   }
   
   return { completed, inProgress, created, updated };
+}
+
+/**
+ * Group journal entries by epic.
+ * Returns groups sorted by epic title, with "No Epic" at the end.
+ */
+export function groupByEpic(entries: JournalEntry[]): EpicGroup[] {
+  const groups = new Map<string | null, EpicGroup>();
+  
+  for (const entry of entries) {
+    const key = entry.epicId || null;
+    
+    if (!groups.has(key)) {
+      groups.set(key, {
+        epicId: key,
+        epicTitle: entry.epicTitle || (key ? key : 'No Epic'),
+        entries: [],
+      });
+    }
+    
+    groups.get(key)!.entries.push(entry);
+  }
+  
+  // Sort: epics with titles first (alphabetically), then "No Epic" last
+  return Array.from(groups.values()).sort((a, b) => {
+    if (a.epicId === null) return 1;
+    if (b.epicId === null) return -1;
+    return a.epicTitle.localeCompare(b.epicTitle);
+  });
 }
 
 /**

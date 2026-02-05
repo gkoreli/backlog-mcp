@@ -3,9 +3,11 @@ import {
   groupByDay,
   groupByTask,
   aggregateForJournal,
+  groupByEpic,
   getToolLabel,
   getToolIcon,
   type OperationEntry,
+  type JournalEntry,
 } from './activity-utils.js';
 
 describe('activity-utils', () => {
@@ -211,6 +213,90 @@ describe('activity-utils', () => {
       expect(journal.inProgress).toHaveLength(0);
       expect(journal.created).toHaveLength(0);
       expect(journal.updated).toHaveLength(0);
+    });
+
+    it('captures epicId and epicTitle from operations', () => {
+      const operations: OperationEntry[] = [
+        { 
+          ts: '2026-02-05T10:00:00Z', 
+          tool: 'backlog_update', 
+          params: { status: 'done' }, 
+          result: {}, 
+          resourceId: 'TASK-0001',
+          resourceTitle: 'My Task',
+          epicId: 'EPIC-0001',
+          epicTitle: 'My Epic',
+        },
+      ];
+
+      const journal = aggregateForJournal(operations);
+      
+      expect(journal.completed).toHaveLength(1);
+      expect(journal.completed[0].epicId).toBe('EPIC-0001');
+      expect(journal.completed[0].epicTitle).toBe('My Epic');
+    });
+  });
+
+  describe('groupByEpic', () => {
+    it('groups entries by epicId', () => {
+      const entries: JournalEntry[] = [
+        { resourceId: 'TASK-0001', title: 'Task 1', epicId: 'EPIC-0001', epicTitle: 'Epic A' },
+        { resourceId: 'TASK-0002', title: 'Task 2', epicId: 'EPIC-0001', epicTitle: 'Epic A' },
+        { resourceId: 'TASK-0003', title: 'Task 3', epicId: 'EPIC-0002', epicTitle: 'Epic B' },
+      ];
+
+      const groups = groupByEpic(entries);
+      
+      expect(groups).toHaveLength(2);
+      expect(groups[0].epicId).toBe('EPIC-0001');
+      expect(groups[0].entries).toHaveLength(2);
+      expect(groups[1].epicId).toBe('EPIC-0002');
+      expect(groups[1].entries).toHaveLength(1);
+    });
+
+    it('puts tasks without epic in "No Epic" group', () => {
+      const entries: JournalEntry[] = [
+        { resourceId: 'TASK-0001', title: 'Task 1', epicId: 'EPIC-0001', epicTitle: 'Epic A' },
+        { resourceId: 'TASK-0002', title: 'Task 2' }, // No epic
+      ];
+
+      const groups = groupByEpic(entries);
+      
+      expect(groups).toHaveLength(2);
+      expect(groups[0].epicId).toBe('EPIC-0001');
+      expect(groups[1].epicId).toBeNull();
+      expect(groups[1].epicTitle).toBe('No Epic');
+    });
+
+    it('sorts epics alphabetically with "No Epic" last', () => {
+      const entries: JournalEntry[] = [
+        { resourceId: 'TASK-0001', title: 'Task 1' }, // No epic
+        { resourceId: 'TASK-0002', title: 'Task 2', epicId: 'EPIC-0002', epicTitle: 'Zebra Epic' },
+        { resourceId: 'TASK-0003', title: 'Task 3', epicId: 'EPIC-0001', epicTitle: 'Alpha Epic' },
+      ];
+
+      const groups = groupByEpic(entries);
+      
+      expect(groups).toHaveLength(3);
+      expect(groups[0].epicTitle).toBe('Alpha Epic');
+      expect(groups[1].epicTitle).toBe('Zebra Epic');
+      expect(groups[2].epicTitle).toBe('No Epic');
+    });
+
+    it('uses epicId as title fallback when epicTitle is missing', () => {
+      const entries: JournalEntry[] = [
+        { resourceId: 'TASK-0001', title: 'Task 1', epicId: 'EPIC-0001' }, // No epicTitle
+      ];
+
+      const groups = groupByEpic(entries);
+      
+      expect(groups).toHaveLength(1);
+      expect(groups[0].epicTitle).toBe('EPIC-0001');
+    });
+
+    it('returns empty array for empty input', () => {
+      const groups = groupByEpic([]);
+      expect(groups).toHaveLength(0);
     });
   });
 
