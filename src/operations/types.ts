@@ -22,6 +22,7 @@ export interface OperationEntry {
 
 export interface OperationFilter {
   taskId?: string;
+  date?: string; // YYYY-MM-DD - filter by date
   limit?: number;
 }
 

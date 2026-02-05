@@ -58,12 +58,17 @@ export class OperationStorage {
    * Query operations with optional filtering.
    */
   query(filter: OperationFilter = {}): OperationEntry[] {
-    const { taskId, limit = 50 } = filter;
+    const { taskId, date, limit = 50 } = filter;
     
     let entries = this.readAll();
 
     if (taskId) {
       entries = entries.filter(e => e.resourceId === taskId);
+    }
+
+    if (date) {
+      // Filter by date (YYYY-MM-DD matches start of ISO timestamp)
+      entries = entries.filter(e => e.ts.startsWith(date));
     }
 
     // Return most recent first, limited

@@ -90,16 +90,27 @@ export class ActivityPanel extends HTMLElement {
   }
 
   setMode(mode: ViewMode) {
+    const wasJournal = this.mode === 'journal';
     this.mode = mode;
     this.expandedIndex = null;
     // Persist mode to localStorage
     localStorage.setItem(MODE_STORAGE_KEY, mode);
-    this.render();
+    // Reload when switching to/from journal mode (different data requirements)
+    if (mode === 'journal' || wasJournal) {
+      this.loadOperations();
+    } else {
+      this.render();
+    }
   }
 
   setDate(dateKey: string) {
     this.selectedDate = dateKey;
-    this.render();
+    // Reload operations for the new date when in journal mode
+    if (this.mode === 'journal') {
+      this.loadOperations();
+    } else {
+      this.render();
+    }
   }
 
   async loadOperations() {
@@ -108,9 +119,15 @@ export class ActivityPanel extends HTMLElement {
     }
 
     try {
-      const url = this.taskId 
-        ? `/operations?task=${encodeURIComponent(this.taskId)}&limit=100`
-        : '/operations?limit=100';
+      let url: string;
+      if (this.taskId) {
+        url = `/operations?task=${encodeURIComponent(this.taskId)}&limit=100`;
+      } else if (this.mode === 'journal') {
+        // In journal mode, fetch all operations for the selected date
+        url = `/operations?date=${this.selectedDate}`;
+      } else {
+        url = '/operations?limit=100';
+      }
       
       const res = await fetch(url);
       this.operations = await res.json();
