@@ -411,29 +411,29 @@ export class ActivityPanel extends HTMLElement {
       const mergedOps = op.params._mergedOps as OperationEntry[] | undefined;
       
       if (mergedOps && mergedOps.length > 1) {
-        // Render stacked diffs for all merged operations (oldest first for reading order)
+        // Concatenate all diffs into one unified diff (oldest first)
         const uri = op.params.uri as string;
         const filename = uri.split('/').pop() || 'file';
         
-        content += `<div class="activity-diff-stack">`;
+        let combinedDiff = '';
         for (const mergedOp of [...mergedOps].reverse()) {
           const operation = mergedOp.params.operation as { type: string; old_str?: string; new_str?: string };
           if (operation.old_str !== undefined && operation.new_str !== undefined) {
-            const unifiedDiff = createUnifiedDiff(operation.old_str, operation.new_str, filename);
-            content += `
-              <div class="activity-diff">
-                ${Diff2Html.html(unifiedDiff, {
-                  drawFileList: false,
-                  matching: 'lines',
-                  outputFormat: 'line-by-line',
-                  diffStyle: 'word',
-                  colorScheme: 'dark',
-                })}
-              </div>
-            `;
+            combinedDiff += createUnifiedDiff(operation.old_str, operation.new_str, filename) + '\n';
           }
         }
-        content += `</div>`;
+        
+        content += `
+          <div class="activity-diff">
+            ${Diff2Html.html(combinedDiff, {
+              drawFileList: false,
+              matching: 'lines',
+              outputFormat: 'line-by-line',
+              diffStyle: 'word',
+              colorScheme: 'dark',
+            })}
+          </div>
+        `;
       } else if (op.params.operation) {
         // Single operation
         const operation = op.params.operation as { type: string; old_str?: string; new_str?: string };
@@ -508,7 +508,10 @@ export class ActivityPanel extends HTMLElement {
           } else {
             this.expandedTaskGroups.add(taskId);
           }
+          // Preserve scroll position during re-render
+          const scrollTop = this.scrollTop;
           this.render();
+          this.scrollTop = scrollTop;
         }
       });
     });

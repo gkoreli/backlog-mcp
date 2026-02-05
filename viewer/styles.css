@@ -2009,7 +2009,10 @@ copy-button {
 }
 
 .activity-journal-section {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  background: #1e1e1e;
+  border-radius: 8px;
+  padding: 12px;
 }
 
 .activity-journal-section:last-child {
@@ -2020,8 +2023,8 @@ copy-button {
   font-weight: 600;
   color: #d4d4d4;
   font-size: 14px;
-  margin-bottom: 8px;
-  padding-bottom: 4px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
   border-bottom: 1px solid #30363d;
 }
 
@@ -2035,7 +2038,18 @@ copy-button {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 0;
+  padding: 8px 0;
+  border-bottom: 1px solid #252525;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.activity-journal-item:last-child {
+  border-bottom: none;
+}
+
+.activity-journal-item task-badge {
+  flex-shrink: 0;
 }
 
 .activity-journal-title {
@@ -2044,6 +2058,8 @@ copy-button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
 /* Epic grouping in journal */
@@ -2060,12 +2076,20 @@ copy-button {
   align-items: center;
   gap: 8px;
   padding: 8px 0 4px 0;
+  flex-wrap: nowrap;
+}
+
+.activity-journal-epic-header task-badge {
+  flex-shrink: 0;
 }
 
 .activity-journal-epic-title {
   font-weight: 500;
   color: #d4d4d4;
   font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .activity-journal-epic-group .activity-journal-list {
@@ -2075,5 +2099,5 @@ copy-button {
 }
 
 .activity-journal-epic-group .activity-journal-item {
-  padding: 4px 0;
+  padding: 6px 0;
 }
