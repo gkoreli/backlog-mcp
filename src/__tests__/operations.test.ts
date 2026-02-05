@@ -90,5 +90,41 @@ describe('Operations Module', () => {
         expect(ops[0].actor.name).toBeDefined();
       }
     });
+
+    it('filters operations by date', () => {
+      // Log operations with different timestamps
+      const storage = new OperationStorage();
+      
+      // Manually append entries with specific dates for testing
+      const entry1 = {
+        ts: '2026-02-04T10:00:00.000Z',
+        tool: 'backlog_update',
+        params: { id: 'TASK-0001' },
+        result: {},
+        resourceId: 'TASK-0001',
+        actor: { type: 'user' as const, name: 'test' },
+      };
+      const entry2 = {
+        ts: '2026-02-05T10:00:00.000Z',
+        tool: 'backlog_update',
+        params: { id: 'TASK-0002' },
+        result: {},
+        resourceId: 'TASK-0002',
+        actor: { type: 'user' as const, name: 'test' },
+      };
+      
+      storage.append(entry1);
+      storage.append(entry2);
+      
+      // Query by date
+      const feb4Ops = storage.query({ date: '2026-02-04' });
+      const feb5Ops = storage.query({ date: '2026-02-05' });
+      
+      expect(feb4Ops.length).toBe(1);
+      expect(feb4Ops[0].resourceId).toBe('TASK-0001');
+      
+      expect(feb5Ops.length).toBe(1);
+      expect(feb5Ops[0].resourceId).toBe('TASK-0002');
+    });
   });
 });

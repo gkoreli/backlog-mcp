@@ -189,11 +189,12 @@ export function registerViewerRoutes(app: FastifyInstance) {
 
   // Operations API - recent activity (enriched with task titles and epic info)
   app.get('/operations', async (request) => {
-    const { limit, task } = request.query as { limit?: string; task?: string };
+    const { limit, task, date } = request.query as { limit?: string; task?: string; date?: string };
     
     const operations = operationLogger.read({
-      limit: limit ? parseInt(limit) : 50,
+      limit: limit ? parseInt(limit) : (date ? 1000 : 50), // Higher limit when filtering by date
       taskId: task || undefined,
+      date: date || undefined,
     });
     
     // Enrich operations with task titles and epic info
