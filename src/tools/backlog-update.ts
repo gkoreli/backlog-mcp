@@ -17,9 +17,11 @@ export function registerBacklogUpdateTool(server: McpServer) {
         blocked_reason: z.array(z.string()).optional().describe('Reason if status is blocked'),
         evidence: z.array(z.string()).optional().describe('Proof of completion when marking done - links to PRs, docs, or notes'),
         references: z.array(z.object({ url: z.string(), title: z.string().optional() })).optional().describe('Reference links. Formats: external URLs (https://...), task refs (mcp://backlog/tasks/TASK-XXXX.md), resources (mcp://backlog/resources/{path}). Local files must include extension (file:///path/to/file.md)'),
+        due_date: z.union([z.string(), z.null()]).optional().describe('Due date for milestones (ISO 8601). Null to clear.'),
+        content_type: z.union([z.string(), z.null()]).optional().describe('Content type for artifacts (e.g. text/markdown). Null to clear.'),
       }),
     },
-    async ({ id, epic_id, parent_id, ...updates }) => {
+    async ({ id, epic_id, parent_id, due_date, content_type, ...updates }) => {
       const task = storage.get(id);
       if (!task) return { content: [{ type: 'text', text: `Task ${id} not found` }], isError: true };
 
@@ -39,6 +41,12 @@ export function registerBacklogUpdateTool(server: McpServer) {
           task.epic_id = epic_id;
           task.parent_id = epic_id;
         }
+      }
+
+      // Nullable type-specific fields: null clears, string sets
+      for (const [key, val] of Object.entries({ due_date, content_type })) {
+        if (val === null) delete (task as any)[key];
+        else if (val !== undefined) (task as any)[key] = val;
       }
 
       Object.assign(task, updates, { updated_at: new Date().toISOString() });

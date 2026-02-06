@@ -1,4 +1,4 @@
-# 0063. Unified Entity Model with Substrates Architecture
+# 0065. Unified Entity Model with Substrates Architecture
 
 **Date**: 2025-02-05
 **Status**: Accepted
