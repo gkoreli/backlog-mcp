@@ -35,7 +35,7 @@ export class TaskList extends HTMLElement {
 
     // Real-time updates via centralized event service
     backlogEvents.onChange((event) => {
-      if (event.type === 'task_changed' || event.type === 'task_created' || event.type === 'task_deleted') {
+      if (event.type === 'task_changed' || event.type === 'task_created' || event.type === 'task_deleted' || event.type === 'resource_changed') {
         this.loadTasks();
       }
     });

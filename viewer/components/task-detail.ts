@@ -19,7 +19,7 @@ export class TaskDetail extends HTMLElement {
 
     // Re-fetch displayed task when it changes via SSE
     backlogEvents.onChange((event) => {
-      if (this.currentTaskId && event.type === 'task_changed' && event.id === this.currentTaskId) {
+      if (this.currentTaskId && (event.type === 'task_changed' || event.type === 'resource_changed') && event.id === this.currentTaskId) {
         this.loadTask(this.currentTaskId);
       }
     });
