@@ -586,10 +586,11 @@ class SpotlightSearch extends HTMLElement {
       const task = result.item as Task;
       const type = task.type || (task.id.startsWith('EPIC-') ? 'epic' : 'task');
       recentSearchesService.add({ id: task.id, title: task.title, type });
-      const isEpic = type === 'epic';
+      const parentId = task.parent_id || task.epic_id;
+      const isContainer = type === 'epic' || type === 'folder' || type === 'milestone';
       urlState.set({ 
         task: task.id,
-        epic: isEpic ? task.id : (task.epic_id || null),
+        epic: isContainer ? task.id : (parentId || null),
       });
     }
     this.close();

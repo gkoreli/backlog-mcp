@@ -344,17 +344,17 @@ export class ActivityPanel extends HTMLElement {
     
     if (op.tool === 'backlog_create') {
       const title = op.params.title as string;
-      const epicId = op.params.epic_id as string | undefined;
+      const parentId = (op.params.parent_id || op.params.epic_id) as string | undefined;
       content += `
         <div class="activity-detail-row">
           <span class="activity-detail-label">Title:</span>
           <span class="activity-detail-value">${this.escapeHtml(title)}</span>
         </div>
-        ${epicId ? `
+        ${parentId ? `
           <div class="activity-detail-row">
-            <span class="activity-detail-label">Epic:</span>
-            <a href="#" class="activity-task-link" data-task-id="${epicId}">
-              <task-badge task-id="${epicId}"></task-badge>
+            <span class="activity-detail-label">Parent:</span>
+            <a href="#" class="activity-task-link" data-task-id="${parentId}">
+              <task-badge task-id="${parentId}"></task-badge>
             </a>
           </div>
         ` : ''}

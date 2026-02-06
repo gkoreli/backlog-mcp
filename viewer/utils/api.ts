@@ -11,19 +11,24 @@ export interface Task {
   title: string;
   description?: string;
   status: string;
-  type?: 'task' | 'epic';
+  type?: string;
   epic_id?: string;
+  parent_id?: string;
   references?: Reference[];
   blocked_reason?: string[];
   evidence?: string[];
   created_at: string;
   updated_at: string;
+  due_date?: string;
+  content_type?: string;
+  path?: string;
 }
 
 export interface TaskResponse extends Task {
   filePath?: string;
   raw?: string;
   epicTitle?: string;
+  parentTitle?: string;
 }
 
 export async function fetchTasks(filter: 'active' | 'completed' | 'all' = 'active', query?: string): Promise<Task[]> {

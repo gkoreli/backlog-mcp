@@ -1,5 +1,6 @@
 import { fetchTasks, type Task } from '../utils/api.js';
 import { backlogEvents } from '../services/event-source-client.js';
+import { getTypeConfig, getParentId } from '../type-registry.js';
 import './breadcrumb.js';
 import { ringIcon } from '../icons/index.js';
 
@@ -104,16 +105,22 @@ export class TaskList extends HTMLElement {
       // Apply sort
       tasks = this.sortTasks(tasks);
 
-      // Epic navigation filter
+      // Container navigation filter (works for epics, folders, milestones)
       if (this.currentEpicId) {
-        const currentEpic = tasks.find(t => t.id === this.currentEpicId);
-        const children = tasks.filter(t => t.epic_id === this.currentEpicId);
-        tasks = currentEpic ? [currentEpic, ...children] : children;
+        const currentContainer = tasks.find(t => t.id === this.currentEpicId);
+        const children = tasks.filter(t => getParentId(t) === this.currentEpicId);
+        tasks = currentContainer ? [currentContainer, ...children] : children;
       } else {
-        // Home page: only root epics and orphan tasks
-        const rootEpics = tasks.filter(t => (t.type ?? 'task') === 'epic' && !t.epic_id);
-        const orphanTasks = tasks.filter(t => (t.type ?? 'task') === 'task' && !t.epic_id);
-        tasks = [...rootEpics, ...orphanTasks];
+        // Home page: root containers and orphan items (no parent)
+        const containers = tasks.filter(t => {
+          const config = getTypeConfig(t.type ?? 'task');
+          return config.isContainer && !getParentId(t);
+        });
+        const orphans = tasks.filter(t => {
+          const config = getTypeConfig(t.type ?? 'task');
+          return !config.isContainer && !getParentId(t);
+        });
+        tasks = [...containers, ...orphans];
       }
 
       this.render(tasks);
@@ -129,9 +136,9 @@ export class TaskList extends HTMLElement {
 
   render(tasks: Task[]) {
     const isEmpty = tasks.length === 0;
-    const isInsideEpic = !!this.currentEpicId;
-    const currentEpic = isInsideEpic ? tasks.find(t => t.id === this.currentEpicId) : null;
-    const hasOnlyEpic = isInsideEpic && tasks.length === 1 && currentEpic;
+    const isInsideContainer = !!this.currentEpicId;
+    const currentContainer = isInsideContainer ? tasks.find(t => t.id === this.currentEpicId) : null;
+    const hasOnlyContainer = isInsideContainer && tasks.length === 1 && currentContainer;
 
     if (isEmpty) {
       this.innerHTML = `
@@ -148,33 +155,36 @@ export class TaskList extends HTMLElement {
       return;
     }
 
-    // Group: epics first, then tasks
-    const epics = tasks.filter(t => (t.type ?? 'task') === 'epic');
-    const regularTasks = tasks.filter(t => (t.type ?? 'task') === 'task');
-    const grouped = [...epics, ...regularTasks];
+    // Group: containers first, then leaves
+    const containers = tasks.filter(t => getTypeConfig(t.type ?? 'task').isContainer);
+    const leaves = tasks.filter(t => !getTypeConfig(t.type ?? 'task').isContainer);
+    const grouped = [...containers, ...leaves];
 
     this.innerHTML = `
       <epic-breadcrumb></epic-breadcrumb>
       <div class="task-list">
-        ${grouped.map((task, index) => {
-          const childCount = (task.type ?? 'task') === 'epic'
-            ? this.allTasks.filter(t => t.epic_id === task.id).length
+        ${grouped.map((task) => {
+          const type = task.type ?? 'task';
+          const config = getTypeConfig(type);
+          const childCount = config.isContainer
+            ? this.allTasks.filter(t => getParentId(t) === task.id).length
             : 0;
-          const isCurrentEpic = this.currentEpicId === task.id;
+          const isCurrentContainer = this.currentEpicId === task.id;
           return `
             <task-item
               data-id="${task.id}"
               data-title="${escapeAttr(task.title)}"
               data-status="${task.status}"
-              data-type="${task.type ?? 'task'}"
+              data-type="${type}"
               data-child-count="${childCount}"
+              ${task.due_date ? `data-due-date="${task.due_date}"` : ''}
               ${this.selectedTaskId === task.id ? 'selected' : ''}
-              ${isCurrentEpic ? 'data-current-epic="true"' : ''}
+              ${isCurrentContainer ? 'data-current-epic="true"' : ''}
             ></task-item>
-            ${isCurrentEpic ? `<div class="epic-separator"><svg-icon class="separator-icon" src="${ringIcon}"></svg-icon></div>` : ''}
+            ${isCurrentContainer ? `<div class="epic-separator"><svg-icon class="separator-icon" src="${ringIcon}"></svg-icon></div>` : ''}
           `;
         }).join('')}
-        ${hasOnlyEpic ? '<div class="empty-state-inline"><div class="empty-state-icon">—</div><div>No tasks in this epic</div></div>' : ''}
+        ${hasOnlyContainer ? '<div class="empty-state-inline"><div class="empty-state-icon">—</div><div>No items in this container</div></div>' : ''}
       </div>
     `;
 

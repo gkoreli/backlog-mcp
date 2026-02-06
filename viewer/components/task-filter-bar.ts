@@ -1,3 +1,5 @@
+import { TYPE_REGISTRY } from '../type-registry.js';
+
 const FILTERS = [
   { key: 'active', label: 'Active' },
   { key: 'completed', label: 'Completed' },
@@ -15,9 +17,9 @@ const SORT_STORAGE_KEY = 'backlog:sort';
 export class TaskFilterBar extends HTMLElement {
   private currentFilter = 'active';
   private currentSort = 'updated';
+  private currentType = 'all';
 
   connectedCallback() {
-    // Restore sort from localStorage
     const savedSort = localStorage.getItem(SORT_STORAGE_KEY);
     if (savedSort && SORT_OPTIONS.some(o => o.key === savedSort)) {
       this.currentSort = savedSort;
@@ -29,6 +31,13 @@ export class TaskFilterBar extends HTMLElement {
   render() {
     const statusButtons = FILTERS.map(f => 
       `<button class="filter-btn ${this.currentFilter === f.key ? 'active' : ''}" data-filter="${f.key}">${f.label}</button>`
+    ).join('');
+    
+    const typeButtons = [
+      { key: 'all', label: 'All' },
+      ...Object.entries(TYPE_REGISTRY).map(([key, config]) => ({ key, label: config.label }))
+    ].map(t =>
+      `<button class="filter-btn ${this.currentType === t.key ? 'active' : ''}" data-type-filter="${t.key}">${t.label}</button>`
     ).join('');
     
     const sortOptions = SORT_OPTIONS.map(s =>
@@ -43,6 +52,10 @@ export class TaskFilterBar extends HTMLElement {
           <select class="filter-sort-select">${sortOptions}</select>
         </div>
       </div>
+      <div class="filter-bar type-filter">
+        <span class="filter-label">Type</span>
+        ${typeButtons}
+      </div>
     `;
   }
 
@@ -54,6 +67,13 @@ export class TaskFilterBar extends HTMLElement {
       });
     });
     
+    this.querySelectorAll('[data-type-filter]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const type = (e.target as HTMLElement).dataset.typeFilter;
+        if (type) this.setType(type);
+      });
+    });
+    
     this.querySelector('.filter-sort-select')?.addEventListener('change', (e) => {
       const sort = (e.target as HTMLSelectElement).value;
       this.setSort(sort);
@@ -61,7 +81,15 @@ export class TaskFilterBar extends HTMLElement {
   }
 
   setFilter(filter: string) {
-    document.dispatchEvent(new CustomEvent('filter-change', { detail: { filter, type: 'all', sort: this.currentSort } }));
+    this.currentFilter = filter;
+    this.updateActiveStates();
+    document.dispatchEvent(new CustomEvent('filter-change', { detail: { filter, type: this.currentType, sort: this.currentSort } }));
+  }
+
+  setType(type: string) {
+    this.currentType = type;
+    this.updateActiveStates();
+    document.dispatchEvent(new CustomEvent('filter-change', { detail: { filter: this.currentFilter, type, sort: this.currentSort } }));
   }
 
   setSort(sort: string) {
@@ -70,11 +98,18 @@ export class TaskFilterBar extends HTMLElement {
     document.dispatchEvent(new CustomEvent('sort-change', { detail: { sort } }));
   }
 
+  private updateActiveStates() {
+    this.querySelectorAll('[data-filter]').forEach(btn => {
+      btn.classList.toggle('active', (btn as HTMLElement).dataset.filter === this.currentFilter);
+    });
+    this.querySelectorAll('[data-type-filter]').forEach(btn => {
+      btn.classList.toggle('active', (btn as HTMLElement).dataset.typeFilter === this.currentType);
+    });
+  }
+
   setState(filter: string, _type: string, _query: string | null) {
     this.currentFilter = filter;
-    this.querySelectorAll('[data-filter]').forEach(btn => {
-      btn.classList.toggle('active', (btn as HTMLElement).dataset.filter === filter);
-    });
+    this.updateActiveStates();
   }
   
   getSort(): string {

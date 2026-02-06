@@ -2,6 +2,7 @@ import { fetchTask, fetchOperationCount } from '../utils/api.js';
 import type { Reference } from '../utils/api.js';
 import { copyIcon, activityIcon } from '../icons/index.js';
 import { backlogEvents } from '../services/event-source-client.js';
+import { getTypeFromId, getTypeConfig, getParentId } from '../type-registry.js';
 
 function linkify(input: string | Reference): string {
   if (typeof input === 'string') {
@@ -44,7 +45,7 @@ export class TaskDetail extends HTMLElement {
       
       // Create resource-viewer with custom metadata renderer
       const viewer = document.createElement('resource-viewer') as any;
-      viewer.setShowHeader(false); // No header for task detail
+      viewer.setShowHeader(false);
       viewer.setMetadataRenderer((frontmatter: any) => this.renderTaskMetadata(frontmatter));
       viewer.loadData({
         frontmatter: task,
@@ -64,11 +65,12 @@ export class TaskDetail extends HTMLElement {
   }
 
   private updatePaneHeader(task: any) {
+    const parentId = getParentId(task);
     const headerHtml = `
       <div class="task-header-left">
-        ${task.epic_id ? `<copy-button id="copy-epic-id" title="Copy Epic ID"><task-badge task-id="${task.epic_id}"></task-badge></copy-button>` : ''}
+        ${parentId ? `<copy-button id="copy-parent-id" title="Copy Parent ID"><task-badge task-id="${parentId}"></task-badge></copy-button>` : ''}
         <copy-button id="copy-task-id" title="Copy ID"><task-badge task-id="${task.id}"></task-badge></copy-button>
-        <span class="status-badge status-${task.status || 'open'}">${(task.status || 'open').replace('_', ' ')}</span>
+        ${getTypeConfig(task.type ?? 'task').hasStatus ? `<span class="status-badge status-${task.status || 'open'}">${(task.status || 'open').replace('_', ' ')}</span>` : ''}
       </div>
       <div class="task-header-right">
         <button id="task-activity-btn" class="btn-outline activity-btn-with-badge" title="View activity for this task">
@@ -83,19 +85,16 @@ export class TaskDetail extends HTMLElement {
     if (paneHeader) {
       paneHeader.innerHTML = headerHtml;
       
-      // Set text via property (not attribute) to avoid DOM pollution
-      const epicBtn = document.getElementById('copy-epic-id') as any;
-      if (epicBtn) epicBtn.text = task.epic_id;
+      const parentBtn = document.getElementById('copy-parent-id') as any;
+      if (parentBtn) parentBtn.text = parentId;
       
       (document.getElementById('copy-task-id') as any).text = task.id;
       (document.getElementById('copy-markdown') as any).text = task.raw || '';
       
-      // Activity button handler
       document.getElementById('task-activity-btn')?.addEventListener('click', () => {
         document.dispatchEvent(new CustomEvent('activity-open', { detail: { taskId: task.id } }));
       });
       
-      // Fetch and display operation count badge
       this.updateActivityBadge(task.id);
     }
   }
@@ -114,6 +113,10 @@ export class TaskDetail extends HTMLElement {
   }
 
   private renderTaskMetadata(task: any): HTMLElement {
+    const parentId = getParentId(task);
+    const type = task.type ?? 'task';
+    const parentType = parentId ? getTypeFromId(parentId) : null;
+
     const metaDiv = document.createElement('div');
     metaDiv.className = 'task-meta-card';
     metaDiv.innerHTML = `
@@ -121,7 +124,9 @@ export class TaskDetail extends HTMLElement {
       <div class="task-meta-row">
         <span>Created: ${task.created_at ? new Date(task.created_at).toLocaleDateString() : ''}</span>
         <span>Updated: ${task.updated_at ? new Date(task.updated_at).toLocaleDateString() : ''}</span>
-        ${task.epic_id ? `<span class="task-meta-epic"><span class="task-meta-epic-label">Epic:</span><a href="#" class="epic-link" data-epic-id="${task.epic_id}"><task-badge task-id="${task.epic_id}"></task-badge></a>${task.epicTitle ? `<span class="epic-title">${task.epicTitle}</span>` : ''}</span>` : ''}
+        ${task.due_date ? `<span class="due-date-meta">Due: ${new Date(task.due_date).toLocaleDateString()}</span>` : ''}
+        ${parentId ? `<span class="task-meta-epic"><span class="task-meta-epic-label">${parentType ? getTypeConfig(parentType).label : 'Parent'}:</span><a href="#" class="epic-link" data-epic-id="${parentId}"><task-badge task-id="${parentId}"></task-badge></a>${task.parentTitle || task.epicTitle ? `<span class="epic-title">${task.parentTitle || task.epicTitle}</span>` : ''}</span>` : ''}
+        ${task.content_type ? `<span class="content-type-badge">${task.content_type}</span>` : ''}
       </div>
       ${task.references?.length ? `
         <div class="task-meta-section">
@@ -146,7 +151,6 @@ export class TaskDetail extends HTMLElement {
   }
 
   private bindEventHandlers(task: any) {
-    // Bind epic link click
     const epicLink = this.querySelector('.epic-link');
     if (epicLink) {
       epicLink.addEventListener('click', (e) => {
