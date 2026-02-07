@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlink
 import { join } from 'node:path';
 import matter from 'gray-matter';
 import type { Task, Status, TaskType } from './schema.js';
-import { TYPE_PREFIXES } from './schema.js';
+import { TYPE_PREFIXES, isValidTaskId } from './schema.js';
 import { paths } from '../utils/paths.js';
 import { logger } from '../utils/logger.js';
 
@@ -96,6 +96,9 @@ export class TaskStorage {
   }
 
   save(task: Task): void {
+    if (!isValidTaskId(task.id)) {
+      throw new Error(`Cannot save task with invalid id: ${String(task.id)}`);
+    }
     this.ensureDir(this.tasksPath);
     writeFileSync(this.taskFilePath(task.id), this.taskToMarkdown(task));
   }
