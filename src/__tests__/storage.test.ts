@@ -59,6 +59,13 @@ describe('Storage', () => {
       expect(retrieved?.title).toBe('Updated');
     });
 
+    it('should throw when saving task with invalid id', () => {
+      const task = createTask({ id: 'TASK-0001', title: 'Test' });
+      expect(() => storage.save({ ...task, id: undefined as any })).toThrow('invalid id');
+      expect(() => storage.save({ ...task, id: '' })).toThrow('invalid id');
+      expect(() => storage.save({ ...task, id: 'garbage' })).toThrow('invalid id');
+    });
+
     it('should archive task when status is done', async () => {
       const task = createTask({ id: 'TASK-0001', title: 'Test' });
       storage.add(task);
