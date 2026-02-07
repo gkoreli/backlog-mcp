@@ -19,6 +19,7 @@ export class TaskList extends HTMLElement {
   private selectedTaskId: string | null = null;
   private currentQuery: string | null = null;
   private allTasks: Task[] = [];
+  private pendingAutoScope = false;
 
   connectedCallback() {
     const params = new URLSearchParams(window.location.search);
@@ -70,6 +71,7 @@ export class TaskList extends HTMLElement {
     this.currentType = type;
     this.selectedTaskId = id;
     this.currentQuery = query;
+    this.pendingAutoScope = !!id;
     this.loadTasks();
   }
 
@@ -95,17 +97,15 @@ export class TaskList extends HTMLElement {
       let tasks = await fetchTasks(this.currentFilter as any, this.currentQuery || undefined);
       this.allTasks = tasks;
 
-      // Auto-scope for leaf entities: if selected entity is a leaf, scope to its parent
-      if (this.selectedTaskId && !this.currentScopeId) {
+      // Auto-scope for leaf entities on URL navigation
+      if (this.pendingAutoScope && this.selectedTaskId) {
+        this.pendingAutoScope = false;
         const selectedTask = tasks.find(t => t.id === this.selectedTaskId);
         if (selectedTask) {
           const config = getTypeConfig(selectedTask.type ?? 'task');
           if (!config.isContainer) {
             const parentId = getParentId(selectedTask);
-            if (parentId) {
-              sidebarScope.set(parentId);
-              // Don't return — continue rendering with the new scope
-            }
+            sidebarScope.set(parentId || null);
           }
         }
       }
