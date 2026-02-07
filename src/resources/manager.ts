@@ -192,6 +192,16 @@ export class ResourceManager {
       }
 
       const fileContent = readFileSync(filePath, 'utf-8');
+
+      // Prevent create from overwriting existing task files — use str_replace or backlog_update instead
+      if (isTask && operation.type === 'create' && fileContent) {
+        return {
+          success: false,
+          message: 'Cannot overwrite existing task file',
+          error: `${uri} already exists. Use str_replace to edit content, or backlog_update to update metadata.`,
+        };
+      }
+
       let newContent = applyOperation(fileContent, operation);
       
       // Update timestamp for task files
