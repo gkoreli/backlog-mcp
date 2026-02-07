@@ -98,8 +98,13 @@ export function groupByTask(operations: OperationEntry[]): TaskGroup[] {
   const groups = new Map<string, TaskGroup>();
   
   for (const op of operations) {
-    const resourceId = op.resourceId || '_no_task_';
-    const title = op.resourceTitle || (op.params.title as string) || resourceId;
+    // For write_resource without a task ID, group by URI path
+    const resourceId = op.resourceId
+      || (op.tool === 'write_resource' && op.params.uri ? op.params.uri as string : '')
+      || '_no_task_';
+    const title = op.resourceTitle || (op.params.title as string)
+      || (op.tool === 'write_resource' && op.params.uri ? (op.params.uri as string).replace('mcp://backlog/', '') : '')
+      || resourceId;
     
     if (!groups.has(resourceId)) {
       groups.set(resourceId, {

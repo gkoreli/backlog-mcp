@@ -183,6 +183,8 @@ export class ActivityPanel extends HTMLElement {
     const mostRecentDate = new Date(taskGroup.mostRecentTs);
     const mostRecentDateStr = formatDateTime(mostRecentDate);
     
+    const isTaskId = /^(TASK|EPIC|FLDR|ARTF|MLST)-\d+$/.test(taskGroup.resourceId);
+
     return `
       <div class="activity-task-group">
         <div class="activity-task-header">
@@ -191,9 +193,11 @@ export class ActivityPanel extends HTMLElement {
               <task-badge task-id="${taskGroup.epicId}"></task-badge>
             </a>
           ` : ''}
-          <a href="#" class="activity-task-link" data-task-id="${taskGroup.resourceId}">
-            <task-badge task-id="${taskGroup.resourceId}"></task-badge>
-          </a>
+          ${isTaskId ? `
+            <a href="#" class="activity-task-link" data-task-id="${taskGroup.resourceId}">
+              <task-badge task-id="${taskGroup.resourceId}"></task-badge>
+            </a>
+          ` : ''}
           ${taskGroup.title !== taskGroup.resourceId ? `<span class="activity-task-title">${this.escapeHtml(taskGroup.title)}</span>` : ''}
           <span class="activity-task-recent">${mostRecentDateStr}</span>
         </div>
