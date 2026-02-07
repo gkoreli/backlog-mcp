@@ -44,6 +44,12 @@ There is no unified way to declare "this component depends on X, re-render when 
 
 Components subscribe to global events and services but rarely unsubscribe. `ActivityPanel` is the only component that implements `disconnectedCallback` cleanup. All others leak listeners when removed from the DOM.
 
+### Problem 5: CSS Is a Maintenance Bottleneck
+
+`styles.css` is a single 600+ line global stylesheet with manual class names. Every new component means adding more hand-written CSS. Component styles are not colocated with component logic — they live in a separate file, requiring constant context-switching. Class naming is ad-hoc (`.task-item`, `.epic-separator`, `.empty-state-inline`), with no system or convention.
+
+For AI-assisted development, this is especially problematic: an LLM generating a component must also know and maintain a separate CSS file with project-specific class names. There's no way for the AI to see what a component looks like from its source alone.
+
 ### What We Want
 
 A lightweight framework layer — **not** React, **not** Angular, **no compiler, no virtual DOM, no runtime scheduler** — that gives us:
@@ -52,6 +58,19 @@ A lightweight framework layer — **not** React, **not** Angular, **no compiler,
 3. **Signal-based state** with automatic dependency tracking
 4. **Stateless dependency injection** for services (no global singletons with hard imports)
 5. **A single `viewer/framework/` folder** housing all framework code
+6. **Colocated styling** — styles visible in the component source, not a separate file
+
+### Design Principle: Human-AI Coherence
+
+This framework will be authored and maintained by humans and AI collaboratively. Every design choice should optimize for **coherence** — how easily both a human and an LLM can read, write, and reason about the code without special knowledge or hidden conventions.
+
+This means:
+- **No invented syntax** — use standard TypeScript and HTML, no DSLs
+- **No hidden magic** — if something happens, it should be visible in the source
+- **No `this`** — pure functions are universally understood by humans and LLMs
+- **Implicit over explicit ceremony** — signals should just work in templates without calling them
+- **Styles inline with structure** — an LLM should produce a complete component in one function
+- **Predictable patterns** — every component follows the same shape, no variations
 
 ### Constraints
 
@@ -60,7 +79,7 @@ A lightweight framework layer — **not** React, **not** Angular, **no compiler,
 - No runtime scheduler or fiber-like architecture
 - Must be incrementally adoptable (migrate one component at a time)
 - Must stay under ~3KB minified for all framework code combined
-- Pure TypeScript, no external dependencies
+- Pure TypeScript, no external dependencies (Tailwind is a build-time tool, not a runtime dep)
 
 ---
 
@@ -115,21 +134,23 @@ import { signal, computed, effect } from './framework';
 
 // These are standalone functions — no class, no this, no context needed
 const [count, setCount] = signal(0);
-count();            // read → 0 (auto-tracks if inside effect/computed)
+count.value;        // read → 0 (auto-tracks if inside effect/computed)
 setCount(5);        // write → notifies dependents
 setCount(n => n + 1); // updater function
 
 // Derived — lazy, cached, auto-tracks
-const doubled = computed(() => count() * 2);
+const doubled = computed(() => count.value * 2);
 
 // Side effect — re-runs when deps change, returns dispose function
 const dispose = effect(() => {
-  console.log('count is', count());
+  console.log('count is', count.value);
   return () => { /* cleanup on re-run or dispose */ };
 });
 ```
 
 Signals are **completely decoupled from components**. They work anywhere: in a component setup, in a service, in a plain module, in a test. They're just reactive atoms with dependency tracking.
+
+**Implicit reads in templates**: Signal objects implement `toString()` and carry a `[signalBrand]` symbol. When the `html` tag function encounters a signal in an interpolation slot, it recognizes it and creates a live binding — no need to call `count()` or `count.value` in templates. You just write `${count}` and the template engine handles subscription automatically. Outside templates (in computed, effect, or plain code), you use `.value` for explicit reads.
 
 **Key design choice**: Push-pull hybrid. Writes push "dirty" flags up the graph. Reads pull fresh values lazily. Computed values aren't recalculated until actually read.
 
@@ -143,19 +164,19 @@ import { defineComponent, html, signal, computed, inject, listen } from './frame
 // ---------- Example: TaskItem ----------
 const TaskItem = defineComponent('task-item', (host) => {
   // Reactive state — plain function calls, no this
-  const title = signal('');
-  const status = signal('open');
-  const selected = signal(false);
-  const childCount = signal(0);
+  const [title, setTitle] = signal('');
+  const [status, setStatus] = signal('open');
+  const [selected, setSelected] = signal(false);
+  const [childCount, setChildCount] = signal(0);
 
   // Inject services — resolved from ancestor providers via DOM tree
   const scope = inject(SidebarScope);
 
   // Derived state — auto-recomputes when dependencies change
-  const statusLabel = computed(() => status().replace('_', ' '));
+  const statusLabel = computed(() => status.value.replace('_', ' '));
 
   // Events — auto-cleaned when component disconnects
-  listen('.task-item click', () => {
+  listen('.task-row click', () => {
     document.dispatchEvent(new CustomEvent('task-selected', { detail: { taskId: host.id } }));
   });
   listen('.enter-icon click', (e) => {
@@ -163,16 +184,19 @@ const TaskItem = defineComponent('task-item', (host) => {
     scope.set(host.dataset.id);
   });
   listen('document task-selected', (e) => {
-    selected.set(e.detail.taskId === host.dataset.id);
+    setSelected(e.detail.taskId === host.dataset.id);
   });
 
-  // Template — returns binding map, not HTML string
+  // Template — signals are IMPLICIT, no .value or () needed
+  // Tailwind classes colocated with structure
   return html`
-    <div class="task-item ${() => selected() ? 'selected' : ''}">
-      <task-badge task-id="${() => host.dataset.id}"></task-badge>
-      <span class="task-title">${title}</span>
-      <span class="status-badge status-${status}">${statusLabel}</span>
-      ${() => childCount() > 0 ? html`<span class="child-count">${childCount}</span>` : null}
+    <div class="flex items-center gap-2 px-3 py-2 rounded cursor-pointer
+                hover:bg-white/5 transition-colors
+                ${selected} ? 'bg-white/10 border-l-2 border-blue-400' : ''">
+      <task-badge task-id="${host.dataset.id}"></task-badge>
+      <span class="flex-1 truncate text-sm">${title}</span>
+      <span class="text-xs px-2 py-0.5 rounded-full bg-white/10">${statusLabel}</span>
+      ${when(childCount, html`<span class="text-xs text-gray-400">${childCount}</span>`)}
     </div>
   `;
 });
@@ -186,6 +210,10 @@ const TaskItem = defineComponent('task-item', (host) => {
 5. In `disconnectedCallback`, all registered listeners and effects are disposed automatically
 
 The component author never touches `connectedCallback`, `disconnectedCallback`, `attributeChangedCallback`, or `this`. The setup function receives `host` (the raw element) for the rare cases you need it (reading `dataset`, `id`, etc.).
+
+**Implicit signal reads in templates**: When the `html` tag function processes `${title}`, it checks if the value is a signal (has a `[signalBrand]` symbol). If so, it reads the current value for initial render AND subscribes for future updates. The component author never needs to write `title.value` or `title()` inside a template — just `${title}`. This is critical for human-AI coherence: an LLM naturally writes `${title}`, not `${title()}`.
+
+**Conditional rendering**: `when(signal, thenTemplate, elseTemplate?)` renders based on whether a signal is truthy. `repeat(signal, keyFn, templateFn)` handles lists. These are plain functions, not special syntax.
 
 ### Why This Is Better Than `this.signal()` / `this.inject()`
 
@@ -204,18 +232,18 @@ The component author never touches `connectedCallback`, `disconnectedCallback`, 
 ```typescript
 // Shared composable — works in any component's setup()
 function useSelection(getId: () => string) {
-  const selected = signal(false);
+  const [selected, setSelected] = signal(false);
   listen('document task-selected', (e) => {
-    selected.set(e.detail.taskId === getId());
+    setSelected(e.detail.taskId === getId());
   });
-  return selected;
+  return selected;  // returns readable signal — implicit in templates
 }
 
 // Used in TaskItem setup:
 const selected = useSelection(() => host.dataset.id!);
 
 // Used in TaskDetail setup:
-const selected = useSelection(() => currentTaskId());
+const selected = useSelection(() => currentTaskId.value);
 ```
 
 This is a "composable" / "hook" without React's rules-of-hooks constraints. It's just a function that calls other functions. No ordering rules, no conditional call restrictions.
@@ -450,6 +478,150 @@ The returned render function is wrapped in an `effect()`. When any signal read i
 
 ---
 
+## Template Alternatives Analysis
+
+Since we're not building a compiler, the template question is: what's the best way to describe DOM structure in plain TypeScript?
+
+### Option 1: Tagged Template Literals (`html\`...\``) — Recommended
+
+```typescript
+return html`
+  <div class="flex items-center gap-2 px-3 py-2">
+    <span class="flex-1 truncate">${title}</span>
+    <span class="text-xs">${statusLabel}</span>
+    ${when(isContainer, html`<span class="text-gray-400">${childCount}</span>`)}
+  </div>
+`;
+```
+
+**How it works**: The `html` tag receives the static string parts and dynamic values separately. Static HTML is parsed once into a `<template>` element and cached. Dynamic "holes" become `Binding` objects. Signals are detected automatically (via `[signalBrand]` symbol) and subscribed — no explicit `.value` or `()` in templates.
+
+**Why this wins**:
+- Looks like normal HTML — both humans and LLMs write it naturally
+- Framework gets access to raw signal objects *before* string coercion
+- Static structure parsed once, cloned per instance, only bindings update
+- `@event` syntax for inline event binding: `<button @click=${handler}>` (like Lit)
+- Proven at scale (Lit, uhtml, hundreds of production apps)
+- Zero build step — esbuild passes tagged templates through untouched
+
+### Option 2: JSX — Not Possible Without a Compiler
+
+```typescript
+return <div className="flex items-center"><span>{title}</span></div>
+```
+
+JSX is syntactic sugar that *must* be compiled to `createElement()` calls. TypeScript's JSX transform could do it, but that means every component file needs `.tsx` extension and a JSX factory configured — which is a compiler step we explicitly want to avoid. Also, JSX factory functions produce virtual DOM nodes that need reconciliation, pulling us toward a VDOM architecture.
+
+**Verdict**: Ruled out by our no-compiler constraint.
+
+### Option 3: htm (Hyperscript Tagged Templates)
+
+```typescript
+const html = htm.bind(h);
+return html`<div class="flex"><span>${title}</span></div>`;
+```
+
+htm by the Preact team makes tagged templates look like JSX. It works standalone without Preact. However, it translates templates into `h(tag, props, children)` hyperscript calls, producing a virtual node tree. We'd then need our own render/reconcile layer to turn those vnodes into DOM. This re-invents the VDOM problem.
+
+**Verdict**: Adds a dependency and a VDOM-like indirection layer. Our tagged template can do the same job directly against the real DOM.
+
+### Option 4: Plain Template Strings
+
+```typescript
+return () => `<div class="flex"><span>${title.value}</span></div>`;
+```
+
+What we have today. By the time the framework sees this, it's a flat string with values baked in — the framework can't know which parts changed. Requires full re-parse and morph/diff on every update. Also requires explicit `.value` reads (LLMs will forget).
+
+**Verdict**: Used in Proposals B and C. Works but has O(n) performance ceiling.
+
+### Option 5: Hyperscript / `createElement()` Calls
+
+```typescript
+return h('div', { class: 'flex' }, h('span', {}, title));
+```
+
+Maximum control, but unreadable for anything beyond trivial templates. No human or LLM wants to write nested function calls for UI. This is what JSX compiles *down to* — it exists so people don't have to write it.
+
+**Verdict**: Poor human-AI coherence. Ruled out.
+
+### Conclusion
+
+Tagged template literals with implicit signal reads are the **best option in the no-compiler design space**. The authoring experience is:
+
+```typescript
+// What you write (almost identical to JSX + Tailwind)
+return html`
+  <div class="flex items-center gap-2 p-3 rounded hover:bg-white/5
+              ${selected} ? 'bg-blue-500/20' : ''">
+    <task-badge task-id="${id}"></task-badge>
+    <span class="flex-1 truncate text-sm">${title}</span>
+    ${when(hasChildren, html`<span class="text-xs text-gray-400">${childCount}</span>`)}
+  </div>
+`;
+```
+
+This is as close to "just write HTML with expressions" as you can get without a compiler. An LLM produces this naturally — it's just HTML with `${}` slots.
+
+---
+
+## CSS Strategy: Tailwind CSS
+
+### Why Tailwind
+
+The current codebase has a 600+ line `styles.css` file with hand-written, project-specific class names. This creates several problems for human-AI collaborative development:
+
+1. **Context split**: To understand a component, you must read both the TS file and search through `styles.css` for its classes
+2. **Naming burden**: Every new element needs a unique class name invented on the spot
+3. **AI blind spot**: An LLM generating a component can't see what it looks like from the component source alone — the styles are elsewhere
+4. **Dead CSS**: Removing a component doesn't remove its styles. Over time, `styles.css` accumulates orphaned rules
+
+Tailwind solves all of these by making styles **colocated** and **declarative**:
+
+```typescript
+// Before: component.ts + styles.css (two files, context-switching)
+this.innerHTML = `<div class="task-item selected">...`;
+// .task-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; }
+// .task-item.selected { background: rgba(255,255,255,0.1); border-left: 2px solid #60a5fa; }
+
+// After: just component.ts (one file, complete picture)
+return html`
+  <div class="flex items-center gap-2 px-3 py-2
+              ${selected} ? 'bg-white/10 border-l-2 border-blue-400' : ''">
+`;
+```
+
+### Why LLMs Excel with Tailwind
+
+Tailwind is likely the single highest-signal styling system in LLM training data:
+- Utility classes are **self-documenting** — `flex items-center gap-2` reads like a description
+- **No project-specific knowledge** needed — Tailwind classes are universal across all codebases
+- An LLM can produce a pixel-accurate component in one shot because styles and structure are one thing
+- No context-switching to a CSS file means fewer hallucinated class names
+
+### Tailwind v4 + esbuild Setup
+
+Tailwind v4 works with esbuild via `esbuild-plugin-tailwindcss`. The setup is minimal:
+- Add `@import "tailwindcss"` to a CSS entry file
+- Add the esbuild plugin
+- No `tailwind.config.js` needed — v4 uses CSS-first configuration
+
+Build performance: v4's Oxide engine is 3.5-10x faster than v3, incremental builds in microseconds. Output CSS is typically <10KB after minification.
+
+### Shadow DOM Compatibility
+
+**Not an issue for this project.** All current components use **light DOM** (`this.innerHTML`), not shadow DOM. Tailwind's global CSS applies directly. If we ever need shadow DOM isolation for specific components, we can use the `@layer` approach or simply keep those components in light DOM.
+
+### Migration Path
+
+1. Add `tailwindcss` and `esbuild-plugin-tailwindcss` as dev dependencies
+2. Add `@import "tailwindcss"` to a new `viewer/app.css`
+3. New components use Tailwind classes in their `html` templates
+4. Gradually replace custom classes in `styles.css` as components are migrated
+5. `styles.css` shrinks to near-zero as migration completes
+
+---
+
 ## Comparison Matrix
 
 | Criterion | A: Signals + Targeted Binding | B: Proxy + Morphdom | C: Signals + Morphdom |
@@ -457,7 +629,8 @@ The returned render function is wrapped in an `effect()`. When any signal read i
 | **Update granularity** | Signal → exact DOM node | Full subtree morph | Full subtree morph |
 | **Performance at scale** | O(1) per signal change | O(n) tree walk per change | O(n) tree walk per change |
 | **SSE update cost** | Update 1 task = patch 1 row | Update 1 task = morph entire list | Update 1 task = morph entire list |
-| **Template complexity** | Tagged `html` template (new concept) | Plain HTML string (familiar) | Plain HTML string (familiar) |
+| **Template style** | Tagged `html` + implicit signals | Plain string + explicit reads | Plain string + explicit `signal()` calls |
+| **AI coherence** | High — `${title}` just works | Medium — `${state.title}` | Low — `${title()}` (LLMs forget) |
 | **Framework code size** | ~570 lines (~3KB min) | ~400 lines (~2KB min) | ~500 lines (~2.5KB min) |
 | **Implementation risk** | Higher (binding engine, repeat) | Lower (morph is well-understood) | Medium |
 | **Migration effort** | Medium (new template syntax) | Low (templates stay as strings) | Medium (add signals, keep strings) |
@@ -467,6 +640,7 @@ The returned render function is wrapped in an `effect()`. When any signal read i
 | **Testability** | High (signals are pure, inject mocks) | Medium (need DOM for proxy) | High (signals are pure, inject mocks) |
 | **Component authoring** | `defineComponent()` + pure functions | `defineComponent()` + pure functions | `defineComponent()` + pure functions |
 | **DI / Events** | Pure `inject()` / `listen()` | Pure `inject()` / `listen()` | Pure `inject()` / `listen()` |
+| **CSS strategy** | Tailwind (all proposals) | Tailwind (all proposals) | Tailwind (all proposals) |
 
 ---
 
@@ -476,15 +650,19 @@ The returned render function is wrapped in an `effect()`. When any signal read i
 
 1. **The core problem is needless re-rendering**. The primary complaint — "new data arrives from the backend and it causes to re-render the entire freakin DOM tree" — is a granularity problem. Proposals B and C improve on `innerHTML` but still walk the full subtree. Only Proposal A achieves O(1) updates: one signal change → one DOM mutation.
 
-2. **Pure functions are the right default**. `signal()`, `inject()`, `listen()` don't need a class. Making them standalone functions means they compose naturally — extract shared logic into a `useSelection()` or `useSSE()` function, call it from any component's `setup()`. No mixins, no multiple inheritance, no decorator magic. This is the same insight that drove React hooks, Vue 3 Composition API, and Angular's functional `inject()`.
+2. **Implicit signals maximize human-AI coherence**. In Proposal A's tagged templates, `${title}` just works — the tag function detects the signal and subscribes automatically. In Proposal B, `${state.title}` is fine but reactive proxies have edge cases. In Proposal C, `${title()}` requires remembering to call the signal — LLMs will forget this, producing broken components. The implicit approach means the most natural code is also the correct code.
 
-3. **The complexity is front-loaded, not ongoing**. The binding engine in `template.ts` is ~200 lines of code written once. After that, every component author gets fine-grained reactivity for free by writing natural-looking tagged templates. Morphdom is simpler to implement but imposes O(n) cost on every component, forever.
+3. **Pure functions are the right default**. `signal()`, `inject()`, `listen()` don't need a class. Making them standalone functions means they compose naturally — extract shared logic into a `useSelection()` or `useSSE()` function, call it from any component's `setup()`. No mixins, no multiple inheritance, no decorator magic. This is the same insight that drove React hooks, Vue 3 Composition API, and Angular's functional `inject()`.
 
-4. **Signals are the industry direction**. TC39 has a signals proposal. Angular, Solid, Preact, Qwik, and Vue all converge on this model. Building on signals means the mental model will be familiar to anyone who has touched modern frontend in the last two years.
+4. **Tailwind + tagged templates = complete components in one function**. An LLM (or human) can produce a fully styled, reactive component without leaving the setup function. No separate CSS file, no invented class names, no context-switching. The component source is the single source of truth for behavior, state, and appearance.
 
-5. **The DI system pays for itself immediately**. Replacing 15 hard-coded singleton imports with injectable tokens via pure `inject()` makes every component testable in isolation — something currently impossible without mocking module imports.
+5. **The complexity is front-loaded, not ongoing**. The binding engine in `template.ts` is ~200 lines of code written once. After that, every component author gets fine-grained reactivity for free by writing natural-looking tagged templates. Morphdom is simpler to implement but imposes O(n) cost on every component, forever.
 
-6. **Incremental adoption eliminates migration risk**. Old `HTMLElement` components keep working. New `defineComponent` components coexist in the same DOM tree. There is no "big bang" rewrite.
+6. **Signals are the industry direction**. TC39 has a signals proposal. Angular, Solid, Preact, Qwik, and Vue all converge on this model. Building on signals means the mental model will be familiar to anyone who has touched modern frontend in the last two years.
+
+7. **The DI system pays for itself immediately**. Replacing 15 hard-coded singleton imports with injectable tokens via pure `inject()` makes every component testable in isolation — something currently impossible without mocking module imports.
+
+8. **Incremental adoption eliminates migration risk**. Old `HTMLElement` components keep working. New `defineComponent` components coexist in the same DOM tree. There is no "big bang" rewrite.
 
 ### Implementation Order
 
@@ -519,14 +697,17 @@ Total: ~570 lines of framework code, 0 external dependencies, 0 build plugins.
 ### Positive
 - SSE updates patch individual task rows instead of rebuilding the entire list
 - **No `this` in component authoring** — pure functions all the way down
+- **Implicit signal reads** — `${title}` in templates, no ceremony
 - **Composable** — shared reactive logic extracted as plain functions, reusable across components
+- **Self-contained components** — Tailwind + tagged templates = complete component in one function
 - Signals work anywhere (services, tests, standalone modules) — not coupled to components
 - Event listeners are declarative, auto-cleaned, and type-safe via `listen()`
 - State is explicit (signals) instead of implicit (scattered private fields)
 - Components become testable via `inject()` (provide mock services)
 - New components are ~40% less code than current equivalents
 - Framework code lives in one folder, clearly separated from application code
-- No new build tooling — esbuild handles tagged templates natively
+- No new build tooling beyond Tailwind esbuild plugin — tagged templates work natively
+- **High AI coherence** — an LLM can produce correct, styled, reactive components naturally
 
 ### Negative
 - Contributors must learn signals, tagged template bindings, and the setup context pattern
@@ -534,9 +715,11 @@ Total: ~570 lines of framework code, 0 external dependencies, 0 build plugins.
 - Debugging reactive chains requires understanding the push-pull propagation model
 - Two component styles coexist during migration (raw HTMLElement and defineComponent)
 - Calling `inject()`/`listen()` outside `setup()` throws — must be clearly documented
+- Tailwind adds a dev dependency and esbuild plugin (though zero runtime cost)
 
 ### Risks
 - Tagged template performance: parsing + cloning must be fast. Mitigated by caching parsed templates per component class.
 - Memory: each binding holds a DOM node reference. Mitigated by cleanup in `disconnectedCallback`.
 - Setup context confusion: calling `inject()` outside setup throws. Mitigated by clear error messages ("inject() must be called inside defineComponent setup").
 - Edge cases in `repeat()` (reordering, nested lists). Mitigated by starting with simple append/remove and upgrading to keyed reconciliation.
+- Tailwind class verbosity in complex components. Mitigated by extracting common patterns into composable functions that return class strings.
