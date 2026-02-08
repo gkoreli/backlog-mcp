@@ -149,59 +149,70 @@ This is the same pattern used by Angular's `inject()`, Solid's `createSignal()`,
 ```typescript
 import { signal, computed, effect } from './framework';
 
-// Create a signal — returns [read, write] tuple
-const [count, setCount] = signal(0);
+// Create a signal — returns a reactive container
+const count = signal(0);
 
-// Read: call the signal like a function
-count()             // → 0 (auto-tracks if inside effect/computed)
+// Read: access .value (auto-tracks if inside effect/computed)
+count.value             // → 0
 
-// Write: call the setter
-setCount(5);        // → notifies dependents
-setCount(n => n + 1); // updater function
+// Write: assign to .value
+count.value = 5;        // → notifies dependents
 
 // Derived — lazy, cached, auto-tracks dependencies
-const doubled = computed(() => count() * 2);
+const doubled = computed(() => count.value * 2);
 
 // Side effect — re-runs when deps change, returns dispose function
 const dispose = effect(() => {
-  console.log('count is', count());
+  console.log('count is', count.value);
   return () => { /* cleanup on re-run or dispose */ };
 });
 ```
 
 Signals are **completely decoupled from components**. They work anywhere: in a component setup, in a service, in a plain module, in a test. They're just reactive atoms with dependency tracking.
 
-#### Why `count()` and not just `count` (the honest answer)
+#### Why `.value` and not `count()` — The Decision
 
 In JavaScript, there is no way to make a plain variable reactive. When you write `const x = someSignal`, `x` holds a reference — reading `x` doesn't go through any proxy or trap. This is a language-level limitation that every framework hits:
 
-| Framework | Read syntax | Requires compiler? |
-|---|---|---|
-| Svelte 5 | `count` (plain variable) | Yes (`$state` rune) |
-| Vue | `count.value` | No |
-| Angular 17+ | `count()` | No |
-| Solid | `count()` | No |
-| React | `count` (but no dependency tracking) | No |
+| Framework | Read syntax | Write syntax | Requires compiler? |
+|---|---|---|---|
+| Svelte 5 | `count` | `count = 5` | Yes (`$state` rune) |
+| Vue | `count.value` | `count.value = 5` | No |
+| Angular 17+ | `count()` | `count.set(5)` | No |
+| Solid | `count()` | `setCount(5)` | No |
+| React | `count` | `setCount(5)` | No (but no tracking) |
 
-Without a compiler, the only options are `.value` (property access) or `()` (function call). We choose `()` because:
-- It's one character shorter than `.value`
-- The return shape of `signal()` — a tuple `[getter, setter]` — makes it obvious that `count` is a function
-- Angular and Solid have proven this ergonomic at scale
-- It's consistent: `count()` reads, `setCount(v)` writes
+Without a compiler, the only options are `.value` (property access) or `()` (function call). We evaluated both:
 
-**However, in templates, signals are fully implicit.** The `html` tag function receives the raw signal object in each `${}` slot. It detects signals (via `[Symbol.signal]` brand), reads the current value for initial render, and subscribes for updates. You just write `${count}` — the template engine handles everything. This is the crucial difference from Solid/Angular, where you'd write `${count()}` in JSX/templates. Our tagged template design means the most natural code IS the correct code.
+**`count()` (Solid/Angular style)**:
+- Shorter by one character
+- BUT: forgetting `()` is a **silent runtime bug**
+- `count` without `()` gives you the function reference, which is truthy — `if (count)` is always true
+- `count + 1` may produce `NaN` silently — TypeScript may not catch this in all contexts
+- LLMs naturally write `count` when they see `const count = signal(0)` — the call syntax is easy to forget
+
+**`count.value` (Vue style) — our choice**:
+- Forgetting `.value` is a **compile-time error** — TypeScript catches `count + 1` (Signal<number> + number)
+- `if (count)` is a TypeScript warning (object is always truthy) — caught by lint rules
+- Read and write use the same syntax: `count.value` reads, `count.value = 5` writes — symmetric, no separate setter function
+- The `.value` suffix is a visual marker that says "this is reactive" — both humans and LLMs learn this pattern once and apply it everywhere
+- Vue has proven this ergonomic at massive scale over 5+ years
+
+**The TypeScript safety argument is decisive.** With `()`, bugs hide until runtime. With `.value`, TypeScript catches them at compile time. In a codebase authored by humans and AI collaboratively, compile-time safety is worth the extra 6 characters.
+
+**However, in templates, signals are fully implicit.** The `html` tag function receives the raw signal object in each `${}` slot. It detects signals (via `[Symbol.signal]` brand), reads `.value` for initial render, and subscribes for updates. You just write `${count}` — the template engine handles everything. This is the crucial difference from Vue, where you'd write `{{ count.value }}` in templates (or use auto-unwrapping with `ref()`). Our tagged template design means the most natural template code IS the correct code.
 
 ```typescript
 // In JS code (computed, effect, event handlers):
-const doubled = computed(() => count() * 2);  // explicit read
+const doubled = computed(() => count.value * 2);  // explicit — TypeScript enforced
 
 // In html templates:
-html`<span>${count}</span>`                    // implicit — just works
+html`<span>${count}</span>`                       // implicit — just works
 ```
 
 **Key design choice**: Push-pull hybrid. Writes push "dirty" flags up the graph. Reads pull fresh values lazily. Computed values aren't recalculated until actually read.
 
-**Batch updates**: Multiple synchronous writes coalesce into one microtask flush via `queueMicrotask`. `setA(1); setB(2); setC(3)` triggers one update pass, not three.
+**Batch updates**: Multiple synchronous `.value` writes coalesce into one microtask flush via `queueMicrotask`. `a.value = 1; b.value = 2; c.value = 3` triggers one update pass, not three.
 
 ### Component Model (`component.ts`) — Thin Shell + setup()
 
@@ -209,17 +220,17 @@ html`<span>${count}</span>`                    // implicit — just works
 import { defineComponent, html, signal, computed, inject, when } from './framework';
 
 const TaskItem = defineComponent('task-item', (host) => {
-  // State — pure function calls, no this
-  const [title, setTitle] = signal('');
-  const [status, setStatus] = signal('open');
-  const [childCount, setChildCount] = signal(0);
+  // State — plain signal creation, no this
+  const title = signal('');
+  const status = signal('open');
+  const childCount = signal(0);
 
   // Inject typed channels and services from ancestor providers
   const navigation = inject(NavigationChannel);
   const scope = inject(SidebarScope);
 
   // Derived state
-  const statusLabel = computed(() => status().replace('_', ' '));
+  const statusLabel = computed(() => status.value.replace('_', ' '));
 
   // Selection — subscribe to channel, get reactive signal back
   const selected = navigation.isSelected(() => host.dataset.id!);
@@ -350,14 +361,14 @@ Because everything is a plain function, you can extract and share reactive logic
 // Shared composable — works in any component's setup()
 function useSelection(channel: Channel<NavigationEvents>, getId: () => string) {
   const selectedId = channel.toSignal('select', e => e.id, null);
-  return computed(() => selectedId() === getId());
+  return computed(() => selectedId.value === getId());
 }
 
 // Used in TaskItem setup:
 const selected = useSelection(nav, () => host.dataset.id!);
 
 // Used in TaskDetail setup:
-const selected = useSelection(nav, () => currentTaskId());
+const selected = useSelection(nav, () => currentTaskId.value);
 ```
 
 This is a "composable" / "hook" without React's rules-of-hooks constraints. It's just a function that calls other functions. No ordering rules, no conditional call restrictions.
@@ -559,21 +570,21 @@ This is the approach used by Turbo/Stimulus (via idiomorph), htmx, and Phoenix L
 import { defineComponent, signal, computed, inject } from './framework';
 
 const TaskItem = defineComponent('task-item', (host) => {
-  const [title, setTitle] = signal('');
-  const [status, setStatus] = signal('open');
-  const [selected, setSelected] = signal(false);
+  const title = signal('');
+  const status = signal('open');
+  const selected = signal(false);
 
   const nav = inject(NavigationChannel);
-  const statusLabel = computed(() => status().replace('_', ' '));
+  const statusLabel = computed(() => status.value.replace('_', ' '));
 
-  nav.on('select', ({ id }) => setSelected(id === host.dataset.id));
+  nav.on('select', ({ id }) => { selected.value = id === host.dataset.id; });
 
-  // Returns a render function (plain string), signals must be called explicitly
+  // Returns a render function (plain string), signals must use .value explicitly
   return () => `
-    <div class="flex items-center gap-2 px-3 py-2 ${selected() ? 'bg-white/10' : ''}">
+    <div class="flex items-center gap-2 px-3 py-2 ${selected.value ? 'bg-white/10' : ''}">
       <task-badge task-id="${host.dataset.id}"></task-badge>
-      <span class="flex-1 truncate text-sm">${title()}</span>
-      <span class="text-xs">${statusLabel()}</span>
+      <span class="flex-1 truncate text-sm">${title.value}</span>
+      <span class="text-xs">${statusLabel.value}</span>
     </div>
   `;
 });
@@ -581,7 +592,7 @@ const TaskItem = defineComponent('task-item', (host) => {
 
 The returned render function is wrapped in an `effect()`. When any signal read inside it changes, the effect re-runs, producing a new HTML string. The morph algorithm applies the diff to the live DOM.
 
-**Note**: Like Proposal B, plain strings cannot support `@click` syntax and require explicit `signal()` calls everywhere — including in the template where LLMs will forget the `()`.
+**Note**: Like Proposal B, plain strings cannot support `@click` syntax. And unlike Proposal A's tagged templates where signals are implicit (`${title}`), plain string templates require `.value` everywhere — `${title.value}`. Forgetting `.value` in a string template produces `[object Object]` in the rendered HTML — a visible but annoying bug.
 
 ### Strengths
 - Signals provide computed/effect/batch primitives for complex derived state
@@ -620,8 +631,8 @@ const SSEChannel = createChannel<{
 const sse = inject(SSEChannel);
 sse.on('taskChanged', ({ id, patch }) => {
   if (id === host.dataset.id) {
-    if (patch.title) setTitle(patch.title);
-    if (patch.status) setStatus(patch.status);
+    if (patch.title) title.value = patch.title;
+    if (patch.status) status.value = patch.status;
   }
 });
 ```
@@ -640,9 +651,9 @@ const filter = signal('active');
 const sortBy = signal('updated');
 const scopeId = signal<string | null>(null);
 
-const filtered = computed(() => filterTasks(allTasks(), filter()));
-const sorted = computed(() => sortTasks(filtered(), sortBy()));
-const scoped = computed(() => scopeTasks(sorted(), scopeId(), allTasks()));
+const filtered = computed(() => filterTasks(allTasks.value, filter.value));
+const sorted = computed(() => sortTasks(filtered.value, sortBy.value));
+const scoped = computed(() => scopeTasks(sorted.value, scopeId.value, allTasks.value));
 ```
 
 Each layer is lazy and cached. Changing `sortBy` only recomputes `sorted` and `scoped` — not `filtered`. Changing `filter` recomputes from `filtered` down. The framework batches all updates into one render pass.
@@ -821,7 +832,7 @@ Build performance: v4's Oxide engine is 3.5-10x faster than v3, incremental buil
 | **Performance at scale** | O(1) per signal change | O(n) tree walk per change | O(n) tree walk per change |
 | **SSE update cost** | Update 1 task = patch 1 row | Update 1 task = morph entire list | Update 1 task = morph entire list |
 | **Template style** | Tagged `html` + implicit signals | Plain string + explicit reads | Plain string + explicit `signal()` calls |
-| **AI coherence** | High — `${title}` just works | Medium — `${state.title}` | Low — `${title()}` (LLMs forget) |
+| **AI coherence** | High — `${title}` just works in templates | Medium — `${state.title}` | Medium — `${title.value}` or `[object Object]` |
 | **Framework code size** | ~570 lines (~3KB min) | ~400 lines (~2KB min) | ~500 lines (~2.5KB min) |
 | **Implementation risk** | Higher (binding engine, repeat) | Lower (morph is well-understood) | Medium |
 | **Migration effort** | Medium (new template syntax) | Low (templates stay as strings) | Medium (add signals, keep strings) |
@@ -843,7 +854,7 @@ Build performance: v4's Oxide engine is 3.5-10x faster than v3, incremental buil
 
 1. **The core problem is needless re-rendering**. The primary complaint — "new data arrives from the backend and it causes to re-render the entire freakin DOM tree" — is a granularity problem. Proposals B and C improve on `innerHTML` but still walk the full subtree. Only Proposal A achieves O(1) updates: one signal change → one DOM mutation.
 
-2. **Implicit signals maximize human-AI coherence**. In Proposal A's tagged templates, `${title}` just works — the tag function detects the signal and subscribes automatically. In Proposal B, `${state.title}` is fine but reactive proxies have edge cases. In Proposal C, `${title()}` requires remembering to call the signal — LLMs will forget this, producing broken components. The implicit approach means the most natural code is also the correct code.
+2. **Implicit signals in templates maximize human-AI coherence**. In Proposal A's tagged templates, `${title}` just works — the tag function detects the signal and subscribes automatically. In JS code, `.value` is enforced by TypeScript — forgetting it is a compile error, not a silent runtime bug. In Proposal B, `${state.title}` works but proxies have edge cases with destructuring. In Proposal C, plain strings require `${title.value}` everywhere — forgetting it renders `[object Object]`. Only Proposal A gives you implicit reads where it matters most (templates) AND type safety where it matters most (JS logic).
 
 3. **Pure functions are the right default**. `signal()`, `inject()`, `listen()` don't need a class. Making them standalone functions means they compose naturally — extract shared logic into a `useSelection()` or `useSSE()` function, call it from any component's `setup()`. No mixins, no multiple inheritance, no decorator magic. This is the same insight that drove React hooks, Vue 3 Composition API, and Angular's functional `inject()`.
 
