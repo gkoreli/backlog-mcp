@@ -114,7 +114,7 @@ viewer/framework/
 ├── component.ts       # component() + minimal BaseComponent shell
 ├── template.ts        # html tagged template → DOM binding engine + @event
 ├── channel.ts         # createChannel() — typed pub/sub, replaces CustomEvent
-├── injector.ts        # createToken(), provide(), inject() — pure functions
+├── injector.ts        # provide(), inject() — pure functions, class-as-token
 ├── context.ts         # Setup context: getCurrentComponent() + runWithContext()
 └── index.ts           # Public API barrel export
 ```
@@ -478,14 +478,14 @@ Errors are caught at the component boundary — one broken component doesn't tak
 Data fetching lives in **services**, injected via DI. Components orchestrate, services execute. Clear separation:
 
 ```typescript
-// Service — plain class, injected, testable
+// Service — plain class, the class itself IS the injection token
 class BacklogAPI {
   async getTasks(filter: string): Promise<Task[]> { ... }
   async updateTask(id: string, patch: Partial<Task>): Promise<Task> { ... }
 }
-
-const BacklogAPIToken = createToken<BacklogAPI>('BacklogAPI');
 ```
+
+No `createToken()`. The class constructor is already a unique JavaScript object reference — it works as a `Map` key. It's already typed. It already has a name. There's nothing a token adds that the class doesn't already have.
 
 Components use services via `inject()`, manage loading/error state with signals, and use `computed()` for view selection:
 
@@ -495,7 +495,7 @@ interface TaskListProps {
 }
 
 const TaskList = component<TaskListProps>('task-list', (host, props) => {
-  const api = inject(BacklogAPIToken);
+  const api = inject(BacklogAPI);
   const nav = inject(NavigationChannel);
   const sse = inject(SSEChannel);
 
@@ -657,15 +657,15 @@ html`
 
 `.map()` uses key-based reconciliation: adds new items, removes deleted items, reorders moved items — but never recreates items whose data merely changed. Existing items receive signal updates through their bindings.
 
-### Dependency Injection (`injector.ts`) — Pure Functions
+### Dependency Injection (`injector.ts`) — Class-as-Token, No Ceremony
+
+The core insight from Angular's evolution: **the class IS the token**. A class constructor is already a unique JavaScript object reference, already typed, already named. `createToken()` was reinventing what JavaScript gives us for free.
 
 ```typescript
-import { createToken, createChannel, provide, inject } from './framework';
+import { createChannel, provide, inject } from './framework';
 
-// Services — plain tokens
-const SidebarScope = createToken<SidebarScopeService>('SidebarScope');
-const BacklogAPI = createToken<BacklogAPIService>('BacklogAPI');
-const SSEEvents = createToken<SSEService>('SSEEvents');
+// Services — the class IS the token. No createToken() needed.
+// Just define the class and use it directly.
 
 // Channels — typed pub/sub (replace document.dispatchEvent)
 const NavigationChannel = createChannel<NavigationEvents>('Navigation');
@@ -674,9 +674,9 @@ const ResourceChannel = createChannel<ResourceEvents>('Resource');
 
 // Provider (app root setup)
 const BacklogApp = component('backlog-app', (host) => {
-  provide(SidebarScope, () => new SidebarScopeService());
-  provide(BacklogAPI, () => new BacklogAPIService());
-  provide(SSEEvents, () => new SSEService());
+  provide(SidebarScopeService);                    // framework calls new SidebarScopeService()
+  provide(BacklogAPI, () => new BacklogAPI(config)); // or pass a factory for custom init
+  provide(SSEService);
   provide(NavigationChannel);
   provide(FilterChannel);
   provide(ResourceChannel);
@@ -685,17 +685,29 @@ const BacklogApp = component('backlog-app', (host) => {
 
 // Consumer (any descendant setup)
 const TaskList = component('task-list', (host) => {
-  const scope = inject(SidebarScope);
+  const scope = inject(SidebarScopeService);  // typed as SidebarScopeService
+  const api = inject(BacklogAPI);             // typed as BacklogAPI
   const nav = inject(NavigationChannel);
   const filters = inject(FilterChannel);
   // ...
 });
 ```
 
-`inject()` calls `getCurrentComponent()` internally, walks up `host.parentElement` to find the nearest ancestor that called `provide()` for that token. Values are lazy-created and cached. Falls back to a module-level registry for backward compat with existing singletons during migration.
+`provide(Class)` registers the class — the framework instantiates it lazily on first `inject()`. `provide(Class, factory)` takes a factory for cases where construction needs arguments. `inject(Class)` walks up `host.parentElement` to find the nearest ancestor that called `provide()` for that class. Values are lazy-created and cached. Falls back to a module-level registry for backward compat with existing singletons during migration.
+
+For the rare case of non-class dependencies (config objects, primitives), `createToken<T>(name)` exists as an escape hatch:
+
+```typescript
+// Rare: non-class dependency needs an explicit token
+const AppConfig = createToken<{ apiUrl: string; debug: boolean }>('AppConfig');
+provide(AppConfig, () => ({ apiUrl: '/api', debug: true }));
+const config = inject(AppConfig);
+```
+
+But for the 95% case — service classes — the class IS the token. One concept, zero ceremony.
 
 **Channels vs Services**: Both are injectable, but they serve different purposes:
-- **Services** (`createToken`) — hold logic and state (API clients, storage, SSE connection)
+- **Services** (class-as-token) — hold logic and state (API clients, storage, SSE connection)
 - **Channels** (`createChannel`) — typed event buses for component-to-component communication
 
 This separation makes intent explicit: if a component injects a channel, it's communicating with siblings/ancestors. If it injects a service, it's accessing shared infrastructure.
@@ -1147,7 +1159,7 @@ Build performance: v4's Oxide engine is 3.5-10x faster than v3, incremental buil
 |---|---|---|
 | 1 | `signal.ts` — `signal()`, `computed()`, `effect()` with batching | Everything |
 | 2 | `context.ts` — `runWithContext()`, `getCurrentComponent()` | Pure function DI/channels |
-| 3 | `injector.ts` — `createToken()`, `provide()`, `inject()` | Testability, decoupling |
+| 3 | `injector.ts` — `provide()`, `inject()`, class-as-token | Testability, decoupling |
 | 4 | `channel.ts` — `createChannel()`, typed emit/on/toSignal | Replace CustomEvent pollution |
 | 5 | `component.ts` — `component()` shell + lifecycle + typed props + error boundaries | Component authoring |
 | 6 | `template.ts` — Tagged `html` with binding engine + `@event` + `class:name` + `.map()`/`key` | Fine-grained rendering |
@@ -1164,7 +1176,7 @@ viewer/framework/
 ├── component.ts       # ~100 lines — component(), lifecycle wiring, typed props, error boundaries
 ├── template.ts        # ~270 lines — html tagged template, Binding, @event, class:name, .map()/key
 ├── channel.ts         # ~80 lines  — createChannel(), typed pub/sub
-├── injector.ts        # ~60 lines  — createToken(), provide(), inject()
+├── injector.ts        # ~60 lines  — provide(), inject(), class-as-token
 └── index.ts           # ~10 lines  — Re-exports
 ```
 
