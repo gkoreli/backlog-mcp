@@ -11,6 +11,7 @@ import { signal, computed, effect, batch, type ReadonlySignal } from '../framewo
 import { component } from '../framework/component.js';
 import { html, each, when } from '../framework/template.js';
 import { inject } from '../framework/injector.js';
+import { query } from '../framework/query.js';
 import { fetchTasks, type Task } from '../utils/api.js';
 import { backlogEvents } from '../services/event-source-client.js';
 import { sidebarScope } from '../utils/sidebar-scope.js';
@@ -54,10 +55,14 @@ export const TaskList = component('task-list', (_props, host) => {
   const typeFilter = signal('all');
   const sort = signal(loadSavedSort());
   const selectedId = signal<string | null>(params.get('id') || params.get('task'));
-  const query = signal<string | null>(null);
-  const allTasks = signal<Task[]>([]);
+  const searchQuery = signal<string | null>(null);
   const scopeId = signal<string | null>(sidebarScope.get());
-  const error = signal<string | null>(null);
+  /**
+   * When a user navigates to `?id=TASK-0042`, we need to auto-expand the
+   * parent container in the sidebar after the task list loads. This flag
+   * is set by setState when an id is present, and cleared once the
+   * auto-scope effect runs.
+   */
   const pendingAutoScope = signal(false);
 
   // ── Derived: visible tasks ───────────────────────────────────────
@@ -93,46 +98,45 @@ export const TaskList = component('task-list', (_props, host) => {
     return [...containers, ...leaves];
   });
 
-  // ── Fetch tasks ──────────────────────────────────────────────────
-  async function doFetch() {
-    try {
-      error.value = null;
-      const tasks = await fetchTasks(filter.value as any, query.value || undefined);
-      allTasks.value = tasks;
+  // ── Fetch tasks via query() — auto-refetches when filter/query change ──
+  const tasksQuery = query<Task[]>(
+    () => ['tasks', filter.value, searchQuery.value],
+    () => fetchTasks(filter.value as any, searchQuery.value || undefined),
+    { initialData: [] },
+  );
+  const allTasks = tasksQuery.data as ReadonlySignal<Task[]>;
+  const error = computed(() => tasksQuery.error.value?.message ?? null);
 
-      if (pendingAutoScope.value && selectedId.value) {
-        pendingAutoScope.value = false;
-        const selected = tasks.find(t => t.id === selectedId.value);
-        if (selected) {
-          const config = getTypeConfig(selected.type ?? 'task');
-          if (!config.isContainer) {
-            const parentId = getParentId(selected);
-            sidebarScope.set(parentId || null);
-            scopeId.value = parentId || null;
-          }
-        }
+  /**
+   * After tasks load, if the user navigated via URL to a specific task
+   * (pendingAutoScope), find that task's parent container and expand it
+   * in the sidebar so the task is visible in context.
+   */
+  effect(() => {
+    const tasks = allTasks.value;
+    if (!tasks?.length || !pendingAutoScope.value || !selectedId.value) return;
+    pendingAutoScope.value = false;
+    const selected = tasks.find(t => t.id === selectedId.value);
+    if (selected) {
+      const config = getTypeConfig(selected.type ?? 'task');
+      if (!config.isContainer) {
+        const parentId = getParentId(selected);
+        sidebarScope.set(parentId || null);
+        scopeId.value = parentId || null;
       }
-    } catch (e) {
-      error.value = (e as Error).message;
     }
-  }
-
-  // No initial doFetch() — backlog-app calls setState() which triggers the first fetch.
+  });
 
   backlogEvents.onChange((event) => {
     if (event.type === 'task_changed' || event.type === 'task_created' ||
         event.type === 'task_deleted' || event.type === 'resource_changed') {
-      doFetch();
+      tasksQuery.refetch();
     }
   });
 
   // ── Emitter subscriptions (auto-dispose via emitter-auto-dispose) ──
   nav.on('task-select', ({ taskId }) => {
     selectedId.value = taskId;
-
-    // HACK:CROSS_QUERY — update task-detail directly until it's migrated
-    const detailPane = document.querySelector('task-detail');
-    if (detailPane) (detailPane as any).loadTask(taskId);
   });
 
   nav.on('scope-enter', ({ scopeId: id }) => {
@@ -144,7 +148,6 @@ export const TaskList = component('task-list', (_props, host) => {
   filterEvents.on('filter-change', ({ filter: f, type: t }) => {
     filter.value = f;
     typeFilter.value = t ?? 'all';
-    doFetch();
   });
 
   filterEvents.on('sort-change', ({ sort: s }) => {
@@ -152,8 +155,7 @@ export const TaskList = component('task-list', (_props, host) => {
   });
 
   filterEvents.on('search-change', ({ query: q }) => {
-    query.value = q || null;
-    doFetch();
+    searchQuery.value = q || null;
   });
 
   // HACK:DOC_EVENT — sidebarScope dispatches document event; migrate when sidebarScope uses emitter
@@ -167,10 +169,9 @@ export const TaskList = component('task-list', (_props, host) => {
       filter.value = f;
       typeFilter.value = t;
       selectedId.value = id;
-      query.value = q;
+      searchQuery.value = q;
       pendingAutoScope.value = !!id;
     });
-    doFetch();
   };
 
   (host as any).setSelected = (taskId: string) => {
