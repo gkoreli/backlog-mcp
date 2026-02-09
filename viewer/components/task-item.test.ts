@@ -128,6 +128,7 @@ describe('task-item rendering', () => {
 
   it('renders selected class when selected prop is true', () => {
     const el = createTaskItem({ selected: true });
+    flushEffects();
     const inner = el.querySelector('.task-item');
     expect(inner?.classList.contains('selected')).toBe(true);
   });
