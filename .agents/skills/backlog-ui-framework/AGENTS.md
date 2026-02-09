@@ -318,6 +318,20 @@ html`<div class="p-2"
 
 Uses `classList.toggle(name, bool)` — preserves other classes on the element.
 
+### `tmpl-class-attribute-safe` — Reactive class attributes use classList, not setAttribute
+
+The class attribute binding uses `classList.add/remove` internally (not `setAttribute('class', ...)`) so it composes safely with `class:name` directives on the same element. This means `class` with signal interpolations and `class:name` directives can coexist:
+
+```typescript
+// ✅ SAFE — class attribute + class:name directives on the same element
+const type = signal('task');
+const selected = signal(true);
+html`<div class="item type-${type}" class:selected="${selected}">`;
+// Changing type.value does NOT wipe out 'selected' class
+```
+
+See [ADR 0007](docs/framework-adr/0007-class-attribute-classList-conflict.md) for the full bug analysis.
+
 ### `tmpl-computed-views` — Use computed() for multi-branch rendering
 
 For anything with 2+ branches, use `computed()` to select the template in JavaScript:
@@ -630,7 +644,7 @@ Every hack must be tagged so they can be found and cleaned up later:
 
 ### `migration-auto-resolve` — Props auto-resolve on framework elements
 
-The template engine's `bindAttribute()` checks for `_setProp()` on the element. Framework components get prop routing; vanilla elements get `setAttribute()`. Standard HTML attributes (`class`, `id`, `style`, `slot`, `data-*`, `aria-*`) always use `setAttribute()`.
+The template engine's `bindAttribute()` checks for `_setProp()` on the element. Framework components get prop routing; vanilla elements get `setAttribute()`. Standard HTML attributes (`id`, `style`, `slot`, `data-*`, `aria-*`) always use `setAttribute()`. The `class` attribute is handled specially by `bindClassAttribute()` (uses `classList` operations, see `tmpl-class-attribute-safe`).
 
 ### `migration-skip-leaf` — Skip attribute-driven leaf components
 
@@ -804,8 +818,14 @@ These are documented gaps from the ADRs. Code using workarounds MUST be tagged.
 | Gap | Severity | Tag | Status |
 |---|---|---|---|
 | No `expose()` API for public methods | HIGH | `HACK:EXPOSE` | Pending |
-| No `ref()` primitive | MEDIUM | `HACK:REF` | Pending |
 | No Emitter integration (migration period) | LOW | `HACK:DOC_EVENT` | Deferred |
 | No reactive list rendering (`each()`) | MEDIUM | `HACK:STATIC_LIST` | Pending |
-| Effect auto-disposal not wired to lifecycle | MEDIUM | — | Pending |
 | No `observedAttributes` → signal bridge | LOW | — | Deferred (skip leaf migration) |
+
+### Resolved Gaps
+
+| Gap | Resolution | ADR |
+|---|---|---|
+| `ref()` primitive | Implemented in `ref.ts` | ADR 0006 |
+| Effect auto-disposal | `setContextHook()` in signal.ts, wired in component.ts | ADR 0006 |
+| `class` attribute overwrites `class:name` directives | `bindClassAttribute()` uses classList instead of setAttribute | ADR 0007 |
