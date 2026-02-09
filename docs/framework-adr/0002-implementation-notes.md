@@ -1,4 +1,4 @@
-# Web Component Framework — Implementation Notes
+# 0002. Web Component Framework — Implementation Notes
 
 **Date**: 2026-02-09
 **Phase**: 1 (Core Primitives)
@@ -7,221 +7,298 @@
 
 ---
 
-## Overview
+## Purpose
 
-This document captures implementation insights, deviations from the ADR, and adjacent high-impact issues discovered during the Phase 1 implementation of the web component framework (`viewer/framework/`).
-
-### What Was Implemented
-
-| Phase | Module | Tests | Description |
-|---|---|---|---|
-| 1 | `signal.ts` | 35 | signal(), computed(), effect(), batch() — push-pull hybrid reactivity |
-| 2 | `context.ts` | 8 | runWithContext(), getCurrentComponent() — setup context for pure-function DI |
-| 3 | `emitter.ts` | 14 | Emitter\<T\> — typed pub/sub replacing document.dispatchEvent |
-| 4 | `injector.ts` | 17 | inject(), provide() — class-as-token auto-singleton DI |
-| 5 | `component.ts` | 12 | component() — lifecycle, typed props via Proxy, error boundaries |
-| 6 | `template.ts` | 24 | html tagged template — text/attr/class/event bindings, when(), nesting |
-| 7 | `query.ts` | 14 | query(), QueryClient — async data loading with cache and race handling |
+This is the mandatory reference for anyone modifying or extending the framework. It contains the hard invariants of each module — the rules that, if violated, will introduce silent bugs.
 
 ---
 
-## Actual Line Counts vs. ADR Estimates
+## Module Invariants
 
-| File | ADR Estimate | Actual | Delta | Notes |
-|---|---|---|---|---|
-| `signal.ts` | ~120 | ~280 | +133% | Push-pull hybrid required careful observer management. ComputedImpl carries dual source/observer nature. |
-| `context.ts` | ~20 | ~50 | +150% | Added `hasContext()` utility + ComponentHost interface + JSDoc. |
-| `emitter.ts` | ~30 | ~75 | +150% | Re-entrancy safety (iterate copy) and `toSignal()` bridge added lines. |
-| `injector.ts` | ~60 | ~100 | +67% | Circular dependency detection + constructor failure handling + createToken(). |
-| `component.ts` | ~120 | ~155 | +29% | Close to estimate. Proxy + Map for props is clean. |
-| `template.ts` | ~270 | ~310 | +15% | Close to estimate. Comment-marker approach works well. |
-| `query.ts` | ~50 | ~185 | +270% | **Biggest underestimate.** Race conditions, promise rejection handling, retries, cache invalidation. |
-| `index.ts` | ~10 | ~65 | N/A | Barrel with type re-exports. |
+### signal.ts — The Reactive Core
 
-**Total: ADR estimated ~680 lines, actual ~1,220 lines.** The 80% overshoot is concentrated in `query.ts` (+135) and `signal.ts` (+160). The additional lines are error handling, type safety, and documentation that make the code production-grade rather than prototype-grade.
+Everything depends on this module being correct. A bug here silently breaks every component.
 
----
+**1. Dependency tracking is context-driven, not explicit.**
+`activeObserver` is a module-level variable. A signal read registers as a dependency ONLY if `activeObserver !== null`. This global is swapped in computed's `update()` (line ~213) and effect's `runEffect()` (line ~316). Reading a signal in plain JavaScript code does NOT track it. This is not a bug — it's the design. The implication: if you add a new reactive primitive (like a future `watch()`), you MUST set `activeObserver` before calling user code and restore it after.
 
-## Key Implementation Insights
+**2. Equality check is `Object.is()`, not `===`.**
+Signal writes (line ~136) and computed value comparisons (line ~218) use `Object.is()`. This handles `NaN === NaN` correctly (Object.is returns true, preventing infinite loops). Changing this to `===` would cause `signal(NaN)` to notify on every write because `NaN !== NaN`.
 
-### 1. Effect-Driven Async Is an Inherently Complex Boundary
+**3. Computed is both a source AND an observer.**
+`ComputedImpl` has an `_node` (with `observers`, like a signal — it's a source) and also acts as a `ReactiveNode` (with `sources` and `notify()` — it's an observer). This dual nature is what makes the diamond dependency (`A→B, A→C, B+C→D`) work correctly. D reads B and C; B and C read A. When A changes, dirty flags push up to D, but D only recomputes once when its value is pulled. If you refactor `ComputedImpl`, you must preserve BOTH interfaces.
 
-The ADR describes `query()` as "~50 lines built on signals." In practice, the synchronous `effect()` / async `doFetch()` boundary creates three distinct problems:
+**4. Dependencies are fully re-tracked on every execution.**
+Before computed re-evaluates or effect re-runs, ALL previous source subscriptions are removed (lines ~206-210, ~309-313). Dependencies are discovered fresh on each run. This is what makes conditional dependencies work: `flag.value ? a.value : b.value` tracks `a` or `b` depending on `flag`, and switching `flag` correctly drops the unused signal. If you skip the "unsubscribe from previous sources" step, stale dependencies will trigger spurious updates.
 
-**Unhandled promise rejections**: `effect()` is synchronous. Calling an async function inside it produces a fire-and-forget promise. If the fetcher rejects, the rejection is unhandled. **Solution**: explicit `.catch(() => {})` on every async call site inside effects.
+**5. Batch only flushes at the outermost level.**
+`batchDepth` counts nesting. `flushPendingEffects()` only runs when `batchDepth` drops to 0. Nested `batch()` calls must NOT trigger a flush. Without this, `batch(() => { a.value = 1; batch(() => { b.value = 2; }); c.value = 3; })` would flush after `b.value = 2`, defeating the purpose.
 
-**In-flight dedup + rejection**: When `QueryClient.setInFlight()` stores a fetcher promise and that promise rejects, any `.finally()` chain triggers an unhandled rejection. **Solution**: `promise.catch(() => {})` before storing, and using a `handled` copy for cleanup.
+**6. Effect errors are logged, not thrown, and the effect stays alive.**
+Line ~324: if an effect throws, `console.error` and continue. The effect is NOT disposed. This is deliberate — a temporary failure (network timeout, missing element) shouldn't permanently kill the effect. It will re-run on the next signal change and may succeed.
 
-**Generation tracking for staleness**: When a dependency changes mid-flight, the old fetch must be "invalidated" without actually aborting the network request (no AbortController yet). **Solution**: `fetchGeneration` counter — each fetch checks it's still current before writing signals.
+**7. Cleanup errors are always swallowed.**
+Lines ~305, ~387: cleanup function errors are caught and ignored. Cleanup failure must not prevent the effect from running again or from being disposed.
 
-**Takeaway**: Any reactive framework that integrates async operations needs a carefully designed boundary layer. This is where most real-world bugs will occur.
+**8. `flushPendingEffects()` copies the set before iterating.**
+Line ~80: `[...pendingEffects]`. During effect execution, `notify()` may add NEW effects to the set. Iterating the live set would miss them or cause infinite loops. The copy means: effects scheduled during this flush cycle run in the NEXT flush. This is why cascading effects need two `flushEffects()` calls in tests.
 
-### 2. Computed Values Have Dual Nature (Source + Observer)
+**9. Circular computed detection uses a `computing` flag.**
+Line ~187: if a computed tries to read its own value during computation, it throws "Circular dependency detected." Without this, it would recurse until stack overflow.
 
-`ComputedImpl` must simultaneously be:
-- A **source** — other computeds/effects read it (like a signal with observers)
-- An **observer** — it reads from signals/other computeds (like an effect with sources)
+### context.ts — The Synchronous Boundary
 
-This dual nature creates the `ReactiveNode` interface bridging. The diamond dependency test (`A → B, A → C, B+C → D`) confirmed correctness — D recomputes exactly once when A changes, validating the push-dirty/pull-fresh design.
+**1. Context is STRICTLY synchronous. It does NOT survive microtasks.**
+`runWithContext()` sets `currentComponent`, runs `fn()`, restores previous value. After `fn()` returns, the context is gone — even if `fn()` scheduled a microtask. This means: `inject()`, `effect()`, and `emitter.on()` called inside `await` expressions or `.then()` callbacks will throw "called outside setup()." This is intentional. All setup-time registration must happen synchronously.
 
-### 3. Template Markers Use HTML Comments, Not Template Holes
+**2. Context must be restored on error.**
+The try/finally on lines ~41-47 ensures `currentComponent` is restored even if `fn()` throws. If this guarantee breaks, subsequent component setups would see the wrong context.
 
-The ADR describes expression "holes" in `<template>` elements. The actual implementation uses comment markers (`<!--bk-0-->`) because:
-1. HTML attributes can't contain arbitrary JS objects — need index-based association
-2. Comment nodes are cleanly replaceable with text/element nodes during mount
-3. For attribute positions, the marker appears in the attribute value and is pattern-matched
+**3. Nested contexts work correctly.**
+Inner `runWithContext()` temporarily replaces the outer context. When the inner function returns, the outer context is restored. This happens during component trees where parent setup creates child components.
 
-**Known limitation**: Attribute values containing the marker pattern `<!--bk-N-->` would break. Acceptable because the `bk-` prefix won't appear in normal HTML.
+### emitter.ts — Typed Pub/Sub
 
-### 4. Cascading Effects Need Multiple Flushes
+**1. `emit()` iterates a copy of the subscriber set.**
+Line ~43: `[...set]`. A subscriber may unsubscribe itself during its callback (or subscribe new listeners). Without the copy, the iteration would skip or double-fire listeners.
 
-When effect A writes to a signal that effect B depends on, a single `flushEffects()` only runs effect A. Effect B gets scheduled but needs another flush. This prevents infinite loops but means tests for cascading effects need:
+**2. Subscriber errors don't propagate — other subscribers still fire.**
+Lines ~44-49: each listener is wrapped in try/catch. One broken subscriber cannot prevent others from executing. Errors are logged with `console.error`.
 
-```typescript
-flushEffects(); // runs effect A → writes signal → schedules effect B
-flushEffects(); // runs effect B → reads updated signal
-```
+**3. `on()` auto-registers a disposer when inside component context.**
+Lines ~74-76: if `hasContext()` is true, the unsubscribe function is registered via `getCurrentComponent().addDisposer()`. This is what makes "subscriptions automatically clean up on disconnect" work. Outside context (in services, tests), no auto-disposal — the caller gets the unsubscribe function and must manage it.
 
-This is correct behavior but was not documented in the ADR.
+**4. `toSignal()` creates a subscription that outlives the call site.**
+The `on()` call inside `toSignal()` creates a persistent subscription. If called inside component context, it auto-disposes on disconnect (because `on()` handles that). If called outside context, the subscription is permanent. This is intentional but easy to forget.
 
-### 5. Effect Auto-Disposal Gap (ACTION NEEDED)
+### injector.ts — Dependency Injection
 
-**The current `effect()` does NOT auto-register disposers in component context.** If a component author writes `effect(() => { ... })` inside setup, the effect continues running after disconnect unless manually disposed.
+**1. Singleton identity is a hard contract: `inject(A) === inject(A)` always.**
+Once an instance is cached, all subsequent `inject()` calls return the exact same object. Services depend on this for shared state. Breaking it means two parts of the app get different instances with diverging state.
 
-This violates the ADR's promise: "all subscriptions, effects, and event bindings are disposed automatically." Emitter subscriptions (via `on()`) DO auto-dispose because emitter.ts checks `hasContext()`. The same pattern should be applied to `effect()`.
+**2. Failed construction is NEVER cached.**
+Lines ~76-103: if `new Class()` or the factory throws, the error propagates and no instance is stored. The next `inject()` call tries again. If you accidentally cache a half-constructed instance, all future consumers get a broken service with no way to recover.
 
-**Fix** (~5 lines):
-```typescript
-// In effect():
-const dispose = () => { /* existing disposal */ };
-if (hasContext()) {
-  getCurrentComponent().addDisposer(dispose);
-}
-return dispose;
-```
+**3. `provide()` immediately clears the cache for that token.**
+Line ~118-119: `singletonCache.delete(token)`. This is what makes test overrides work — `provide(A, mockFactory); inject(A)` returns the mock, not the previously cached real instance. If `provide()` doesn't clear the cache, overrides are silently ignored.
 
-### 6. Proxy Props Are Simpler Than Expected
+**4. Circular dependency detection uses an `instantiating` set.**
+Lines ~68-74: before calling `new Class()`, add the token to `instantiating`. If a constructor calls `inject()` for a token already in the set, throw immediately. Without this: `A` needs `B`, `B` needs `A` → stack overflow.
 
-The ADR describes Proxy-based prop discovery as a complex mechanism. In practice: a `Map<string, Signal>` with a Proxy `get` trap that creates signals on first access and a `setProperty` method that updates them. Elegantly simple — no schema, no attribute observation, just intercept-and-create.
+**5. `createToken()` without a factory AND without `provide()` throws.**
+Lines ~88-97: injection tokens that are not classes have no default constructor. If nobody called `provide()` and no default factory was given, `inject()` throws with a clear "No provider found" error.
 
----
+### component.ts — Lifecycle and Props
 
-## Adjacent High-Impact Issues & Proposals
+**1. Setup runs once per DOM CONNECTION, not once per element lifetime.**
+`connectedCallback` runs setup. `disconnectedCallback` sets `_mounted = false` and disposes everything. Re-adding the element to the DOM runs setup AGAIN from scratch. All internal state, effects, and subscriptions are recreated. This is intentional and matches Lit's behavior. During list reconciliation (future), elements that are moved in the DOM will re-initialize. This may be revisited (see Proposal 4 below).
 
-These issues were identified during implementation but are NOT in the current ADR. Each has significant architectural impact.
+**2. Props use Proxy with lazy signal creation.**
+The props object is a `Proxy`. First access to `props.title` creates a `Signal<undefined>`. Setting `el._setProp('title', value)` creates-or-updates the backing signal. Direct property assignment on the element (`el.title = 'new'`) does NOT go through the Proxy — you MUST use `_setProp()`. The factory function handles this; only manual element manipulation has this gotcha.
 
-### Proposal 1: Effect Auto-Disposal in Component Context
+**3. Setup errors render a fallback, not a crash.**
+Lines ~158-185: if `setup()` throws, the error is caught, logged, and a fallback `<div style="color:red">` is rendered. Sibling components are completely unaffected. The component stays "mounted" (so `disconnectedCallback` can still clean up). The error does NOT propagate to the parent.
 
-**Impact: HIGH — prevents memory leaks in every component**
-**Effort: ~5 lines**
-**Risk: Low**
+**4. `disconnectedCallback` MUST call `result.dispose()` AND `host.dispose()`.**
+Lines ~190-195: template disposal cleans up DOM bindings/effects. Host disposal cleans up registered disposers (emitter subscriptions, etc.). Missing either one causes memory leaks.
 
-See Insight #5 above. Effects created outside component context (services, tests) are unaffected. Only component-setup effects gain auto-cleanup — which is the desired behavior.
+### template.ts — DOM Binding Engine
 
-### Proposal 2: Reactive List Primitive (.map() + key Reconciliation)
+**1. Expression slots use HTML comment markers (`<!--bk-N-->`).**
+Each `${}` in the tagged template becomes `<!--bk-0-->`, `<!--bk-1-->`, etc. in the generated HTML. During DOM walk, these comments are found and replaced with bound text nodes, elements, or nothing. The `bk-` prefix is the collision boundary — attribute values containing `<!--bk-N-->` would break. This is acceptable because this pattern never appears in normal HTML.
 
-**Impact: HIGH — unblocks task list migration**
-**Effort: ~80-120 lines**
-**Risk: Medium**
+**2. Signal detection determines binding type.**
+In text positions, `isSignal(value)` determines whether to create a static text node or a reactive binding via `effect()`. In attribute positions, signals get effects; non-signals get one-time `setAttribute()`. This is the "implicit signals in templates" feature from the ADR — `${title}` just works because the engine detects the signal and subscribes.
 
-The current `template.ts` handles arrays by mounting all items statically. There is NO keyed reconciliation — when the array changes, all items are destroyed and recreated. The ADR describes `.map()` + `key` as a core feature, but v1 only handles static arrays.
+**3. `class:name` uses `classList.toggle()`, not attribute manipulation.**
+Lines ~381-388: `el.classList.toggle(className, !!value)`. This preserves other classes on the element. Using `setAttribute('class', ...)` would overwrite the static `class="..."` attribute.
 
-Without this, the task list would rebuild the entire DOM on every filter/sort/SSE event — exactly the problem the framework was designed to solve.
+**4. `@event` handlers are wrapped in try/catch.**
+Lines ~443-449: handler errors are logged but don't crash the component or prevent other handlers. This is critical for error containment — a broken click handler must not take down the entire UI.
 
-A reactive list primitive would:
-1. Accept a `Signal<T[]>` and a mapping function
-2. Track items by key
-3. On change: insert new, remove deleted, reorder moved (v1: no move detection, clear+recreate for reorders)
-4. Existing items receive signal updates through bindings
+**5. Event modifiers are applied as wrapping layers.**
+Lines ~402-440: `.stop` wraps the handler to call `e.stopPropagation()`. `.prevent` wraps to call `e.preventDefault()`. `.once` wraps to auto-unsubscribe. Keyboard modifiers (`.enter`, `.escape`) filter by `e.key`. Order matters: stop/prevent wrap first, then once, then keyboard. If you add new modifiers, you must decide where they go in this chain.
 
-### Proposal 3: AbortController Integration for query()
+**6. null, undefined, and false render as nothing.**
+Lines ~326-328: the marker comment is removed with no replacement. This makes `${condition && html\`...\`}` work as expected — falsy values produce zero DOM nodes.
 
-**Impact: MEDIUM — prevents wasted network requests**
-**Effort: ~20 lines**
-**Risk: Low (opt-in)**
+**7. Array rendering is static (no reconciliation yet).**
+Lines ~310-325: arrays are rendered once between start/end comment markers. Items are mounted sequentially. There is no keyed reconciliation — updating the array requires disposing and re-rendering. This is the biggest gap for the task-list migration (see Proposal 2).
 
-`query()` handles staleness by ignoring stale responses, but the network request still completes. AbortController would cancel stale fetches. **Complication**: changes fetcher signature. Should be opt-in via options.
+**8. `dispose()` must clear both disposers and bindings arrays.**
+Lines ~144-154: calling dispose twice must not throw or double-clean. The arrays are cleared after iteration.
 
-### Proposal 4: Component Re-Mounting Strategy
+### query.ts — Async Data Loading
 
-**Impact: MEDIUM — affects lifecycle during list reorder**
-**Effort: ~30 lines**
-**Risk: Medium**
+**1. `fetchGeneration` is the race condition guard.**
+Every call to `doFetch()` captures a `generation` from `++fetchGeneration`. Before writing to `data`, `error`, or `loading` signals, the code checks `generation === fetchGeneration && !disposed`. If another fetch started in the meantime, the older one silently drops its result. This is the ONLY thing preventing stale response overwrites.
 
-Currently, removing and re-adding a component to the DOM re-runs `setup()` completely. During list reorder (which detaches and reattaches elements), this means all internal state is lost and data is re-fetched.
+**2. Every async call inside `effect()` MUST have `.catch(() => {})`.**
+Lines ~264, ~277: `doFetch().catch(() => {})`. `effect()` is synchronous — it can't await the promise. If the promise rejects and nobody awaits it, Node/browsers log an unhandled rejection warning. The `.catch(() => {})` prevents this. The actual error handling happens inside `doFetch()` via try/catch around the await.
 
-Options:
-1. **Re-initialize** (current): Simple, predictable. Matches Lit.
-2. **Preserve-on-reconnect**: Cache setup result, only re-attach bindings. Preserves state across moves.
+**3. In-flight promises must also have `.catch(() => {})`.**
+Lines ~95-102, ~231: `promise.catch(() => {})` before `client.setInFlight(serialized, promise)`. The stored promise may be awaited by a dedup path (lines ~208-226), which has its own try/catch. But the stored promise itself needs a catch handler to prevent the unhandled rejection when `.finally()` runs on a rejected promise.
 
-**Recommend deferring** until list reconciliation is implemented and impact can be measured.
+**4. `enabled()` is both a guard AND a tracked dependency.**
+Lines ~191-192, ~262: `enabled()` is called inside the effect, which means signals read inside `enabled()` are tracked. When those signals change, the effect re-runs and re-evaluates whether to fetch. This is subtle: `enabled` isn't just a gate — it's reactive.
 
-### Proposal 5: TypeScript Strict Mode for viewer/
+**5. `disposed` flag prevents writes after component unmount.**
+Lines ~186, ~189, ~236, ~246, ~261: every async operation checks `!disposed` before writing to signals. Without this, a query that resolves after the component is removed from the DOM would write to detached signals — not a crash, but a memory leak.
 
-**Impact: MEDIUM — catches bugs at compile time**
-**Effort: ~1 line (add script)**
-**Risk: Low**
+**6. Cache invalidation uses element-wise prefix matching, not string prefix.**
+Lines ~111-125: `invalidate(['tasks'])` matches `['tasks']`, `['tasks', '1']`, `['tasks', '1', 'x']`. It does NOT use string prefix matching (which would fail because `JSON.stringify(['tasks'])` = `'["tasks"]'` which is not a prefix of `'["tasks","1"]'`). It deserializes each key and checks element-by-element.
 
-The viewer code has never been type-checked in CI. `pnpm typecheck` only checks `src/`. Framework code has type annotations but no gate.
-
-**Fix**: Add `"typecheck:viewer": "tsc --noEmit -p viewer/tsconfig.json"` to package.json scripts and include it in the build pipeline.
-
-### Proposal 6: Shared Test Utilities
-
-**Impact: LOW-MEDIUM — reduces test duplication**
-**Effort: ~30 lines**
-
-Recurring patterns across 7 test files:
-- `createMockHost()` — context.test.ts, emitter.test.ts
-- `uniqueTag()` — component.test.ts
-- `mount()` — template.test.ts
-- `deferred()` — query.test.ts
-
-Extract to `viewer/framework/test-helpers.ts`.
+**7. `QueryClient` is a global singleton via `inject()`.**
+Lines ~176-182: inside component context, `inject(QueryClient)` gets the shared cache. Outside context (tests, standalone), a local `QueryClient` is created. This means queries in tests don't share cache with production queries. Use `provide(QueryClient, () => new QueryClient())` in tests if you need a controlled cache.
 
 ---
 
-## Event Listener Leaks in Current Components (Migration Priority)
+## Cross-Module Dependencies
 
-The ADR's Problem 6 ("rarely unsubscribe") was confirmed during implementation review:
+These are the places where one module's correctness depends on another module's internals.
 
-| Component | Issue | Severity |
+| Dependent | Depends on | Why |
 |---|---|---|
-| `task-list.ts` | 5+ document.addEventListener, NO disconnectedCallback | High — runs on every filter |
-| `task-item.ts` | Click handlers in attachListeners(), destroyed by innerHTML but never explicitly removed | High — created/destroyed per item |
-| `main.ts` | 8 document.addEventListener, never removed | Acceptable — app root singleton |
-| `task-detail.ts` | setTimeout for click handlers, no cleanup | Medium |
-| `spotlight-search.ts` | Keyboard listeners, no cleanup | Medium |
+| emitter.ts `on()` | context.ts `hasContext()` | Auto-disposal registration |
+| component.ts `connectedCallback` | context.ts `runWithContext()` | Enables inject/effect/on inside setup |
+| component.ts `mountTemplate()` | template.ts `TemplateResult.mount()` | Renders the component's DOM |
+| template.ts text bindings | signal.ts `effect()` | Reactive DOM updates |
+| template.ts `isSignal()` check | signal.ts `SIGNAL_BRAND` | Detects signals in expression slots |
+| query.ts `doFetch()` | signal.ts `effect()` | Auto-refetch when dependencies change |
+| query.ts cache sharing | injector.ts `inject(QueryClient)` | Global singleton cache |
+| query.ts disposal | context.ts `getCurrentComponent()` | Registers cleanup on disconnect |
 
-### Recommended Migration Order (Revised from ADR)
-
-The ADR's Phase 8-9 (migrate task-item then task-list) is correct but should be expanded:
-
-1. **task-item** — highest churn, most event leaks, leaf component, validates factory composition
-2. **task-badge** — simplest leaf, validates the simplest component() usage
-3. **task-filter-bar** — emits events, validates Emitter pattern
-4. **task-list** — validates list rendering, query(), SSE integration, and is the primary performance target
-5. **task-detail** — complex, validates computed views and query()
-6. **spotlight-search** — complex, validates keyboard event modifiers and query()
-7. Remaining components in any order
-
-Rationale: Start from leaves (no children to coordinate), validate each framework feature in isolation, then tackle containers that exercise composition and data loading.
+**The critical path**: signal.ts → context.ts → component.ts → template.ts. A bug in signal.ts propagates through every layer. A bug in context.ts breaks DI and auto-disposal. A bug in template.ts is contained to rendering.
 
 ---
 
-## Testing Architecture Decisions
+## Gotchas: Things That Look Like They Should Work But Don't
 
-### happy-dom as DOM Environment
+These are the "why doesn't this work?" questions that will come up.
 
-Added `happy-dom` (vs. jsdom) as dev dependency. Per-file opt-in via `// @vitest-environment happy-dom` comment — only Phases 5-7 need DOM. Phases 1-4 are pure logic with zero DOM dependency, keeping them fast (~10ms each).
+### 1. Object mutation doesn't trigger updates
+```typescript
+const data = signal({ x: 1 });
+data.value.x = 2; // NOTHING HAPPENS — same reference, Object.is returns true
+data.value = { ...data.value, x: 2 }; // THIS works — new reference
+```
+Signals track by reference, not by deep equality. This is the same as React's `useState` and Vue's `ref()` for objects.
 
-### Test Organization
+### 2. Reading signals outside reactive context doesn't track
+```typescript
+const x = count.value + 1; // Pure JS — no tracking
+effect(() => { x; }); // x is a number, not a signal — no reactivity
+effect(() => { count.value; }); // THIS tracks — count read inside effect
+```
 
-Tests are colocated with implementation files (`signal.ts` + `signal.test.ts` in same directory). This follows the ADR's principle of self-contained files and makes it obvious which test covers which module.
+### 3. `inject()` inside async code throws
+```typescript
+component('my-el', async (props) => { // DON'T DO THIS
+  const api = inject(BacklogAPI); // throws: "called outside setup"
+});
 
-### Critical Test Cases That Caught Real Bugs
+component('my-el', (props) => { // DO THIS
+  const api = inject(BacklogAPI); // works — synchronous in setup
+  effect(() => { api.fetch(); }); // api captured in closure, works anywhere
+});
+```
+The setup function MUST be synchronous. Capture services synchronously, use them asynchronously.
 
-1. **Diamond dependency** (signal.test.ts) — Caught initial over-notification where D computed twice
-2. **Cascading effects** (signal.test.ts) — Revealed the multi-flush requirement
-3. **Cache invalidation** (query.test.ts) — Caught key prefix matching bug (JSON serialization boundary mismatch)
-4. **Unhandled rejections** (query.test.ts) — Caught 3 separate promise rejection leak paths
+### 4. `when()` with signal condition doesn't react to changes
+```typescript
+// STATIC — evaluates show.value ONCE at render time
+const result = when(show, html`<span>visible</span>`);
+
+// REACTIVE — use computed() for reactive conditional rendering
+const content = computed(() =>
+  show.value ? html`<span>visible</span>` : null
+);
+```
+`when()` is a convenience for static conditions. For reactive conditions, use `computed()` in a template slot.
+
+### 5. Direct element property assignment doesn't update props
+```typescript
+const el = document.createElement('my-component');
+el.title = 'new'; // DOES NOT update the prop signal
+(el as any)._setProp('title', 'new'); // THIS updates the signal
+```
+The factory function handles this automatically. This only matters for manual DOM manipulation.
+
+### 6. Cascading effects need multiple flushes in tests
+```typescript
+effect(() => { derived.value = source.value * 10; }); // effect A
+effect(() => { results.push(derived.value); });         // effect B
+
+source.value = 2;
+flushEffects(); // runs A → derived = 20 → schedules B
+flushEffects(); // runs B → reads derived = 20
+```
+Each flush cycle only runs effects that were pending at the START of that cycle. Effects scheduled DURING a cycle run in the next one.
+
+---
+
+## Error Boundaries Summary
+
+| Location | What happens on error | Why |
+|---|---|---|
+| `effect()` callback | Logged, effect stays alive | Temporary failures shouldn't be permanent |
+| Effect cleanup function | Swallowed silently | Cleanup failure must not block next execution |
+| `emit()` subscriber | Logged, other subscribers still fire | One broken listener can't kill the bus |
+| `@event` handler | Logged, component stays mounted | Broken handler can't crash the UI |
+| `component()` setup | Caught, fallback rendered, siblings unaffected | Error containment at component boundary |
+| `inject()` constructor | Propagated, NOT cached | Caller must handle; retry possible |
+| Computed circular | Thrown immediately | Must fail fast, not infinite loop |
+| DI circular | Thrown immediately | Must fail fast, not stack overflow |
+| Disposer errors | Swallowed silently | Disposal must always complete |
+
+---
+
+## Open Gaps (Action Needed)
+
+### Gap 1: effect() Does Not Auto-Dispose in Component Context (HIGH)
+
+`emitter.on()` auto-registers a disposer when `hasContext()` is true. `effect()` does not. This means component effects leak after disconnect unless the developer manually captures and disposes them. Fix: ~5 lines in `effect()`.
+
+### Gap 2: No Reactive List Reconciliation (HIGH)
+
+Arrays are rendered statically. Changing an array signal requires full re-render of the list. This blocks the task-list migration — the primary motivation for the framework. Fix: ~80-120 lines for insert/remove reconciliation with key matching.
+
+### Gap 3: `when()` is Not Reactive (MEDIUM)
+
+`when(signalCondition, template)` evaluates the signal once. It does not re-evaluate when the signal changes. Developers must use `computed()` for reactive conditionals. This may be surprising. Fix: make `when()` return a reactive binding that responds to signal changes.
+
+### Gap 4: No AbortController for query() (LOW)
+
+Stale fetches are ignored but not cancelled. The network request completes, consuming bandwidth. Fix: opt-in AbortController via options.
+
+### Gap 5: No TypeScript CI Gate for viewer/ (MEDIUM)
+
+Framework code has type annotations but `pnpm typecheck` only checks `src/`. Fix: add `typecheck:viewer` script.
+
+---
+
+## Estimation Accuracy
+
+| File | ADR Estimate | Actual | Overshoot | Root cause |
+|---|---|---|---|---|
+| signal.ts | ~120 | ~280 | +133% | Dual source/observer nature, observer management |
+| context.ts | ~20 | ~50 | +150% | ComponentHost interface, hasContext() |
+| emitter.ts | ~30 | ~75 | +150% | Re-entrancy safety, toSignal() bridge |
+| injector.ts | ~60 | ~100 | +67% | Circular detection, error clearing |
+| component.ts | ~120 | ~155 | +29% | Close — Proxy simpler than expected |
+| template.ts | ~270 | ~310 | +15% | Close — marker approach clean |
+| query.ts | ~50 | ~185 | +270% | Async boundary complexity massively underestimated |
+
+**Total: ADR ~680, actual ~1,220 (+80%).** The overshoot is error handling and type safety that makes the code production-grade. The core logic density matches estimates. Future estimates should apply a 2x multiplier for anything involving async/reactive boundaries.
+
+---
+
+## Test Cases That Caught Real Bugs
+
+| Test | Bug caught | Module |
+|---|---|---|
+| Diamond dependency (A→B, A→C, B+C→D) | D recomputed twice | signal.ts |
+| Cascading effects | Single flush insufficient | signal.ts |
+| Cache invalidation prefix matching | JSON string prefix ≠ array prefix | query.ts |
+| Unhandled promise rejections | 3 separate leak paths in query lifecycle | query.ts |
+| Subscriber self-unsubscribe during emit | Iterator invalidation | emitter.ts |
