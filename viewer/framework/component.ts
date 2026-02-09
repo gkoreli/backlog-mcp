@@ -11,9 +11,20 @@
  * The class internals (connectedCallback, etc.) are completely hidden.
  */
 
-import { signal, effect, type Signal, type ReadonlySignal } from './signal.js';
-import { runWithContext, type ComponentHost } from './context.js';
+import { signal, effect, setContextHook, type Signal, type ReadonlySignal } from './signal.js';
+import { runWithContext, hasContext, getCurrentComponent, type ComponentHost } from './context.js';
 import type { TemplateResult } from './template.js';
+import { runMountCallbacks } from './lifecycle.js';
+
+// Wire up effect auto-disposal: when effect() is called during component setup,
+// auto-register the dispose function with the component host.
+setContextHook(() => {
+  if (hasContext()) {
+    const comp = getCurrentComponent();
+    return (disposer: () => void) => comp.addDisposer(disposer);
+  }
+  return null;
+});
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -162,8 +173,11 @@ export function component<P extends Record<string, unknown> = Record<string, nev
 
         // Mount the template result
         if (this._templateResult) {
-          mountTemplate(this, this._templateResult);
+          mountTemplate(this, this._templateResult, host);
         }
+
+        // Run onMount() callbacks — DOM is now committed
+        runMountCallbacks(host);
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
         console.error(`Component <${tagName}> setup error:`, error);
@@ -228,8 +242,10 @@ export function component<P extends Record<string, unknown> = Record<string, nev
  * This is the bridge between component.ts and template.ts.
  * Template.ts will provide the actual implementation via the
  * TemplateResult.mount() method.
+ *
+ * @param hostImpl — optional ComponentHostImpl for registering disposers
  */
-function mountTemplate(host: HTMLElement, result: TemplateResult): void {
+function mountTemplate(host: HTMLElement, result: TemplateResult, hostImpl?: ComponentHostImpl): void {
   if (result && typeof result === 'object' && 'mount' in result && typeof result.mount === 'function') {
     result.mount(host);
   } else if (result && typeof result === 'object' && '__type' in result) {
@@ -247,6 +263,10 @@ function mountTemplate(host: HTMLElement, result: TemplateResult): void {
       const unsub = sig.subscribe((newVal: unknown) => {
         (el as any)._setProp(key, newVal);
       });
+      // Register unsub for cleanup on disconnect
+      if (hostImpl) {
+        hostImpl.addDisposer(unsub);
+      }
     }
     host.appendChild(el);
   }

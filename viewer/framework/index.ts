@@ -64,6 +64,19 @@ export {
   type TemplateResult,
 } from './template.js';
 
+// ── Element refs ────────────────────────────────────────────────────
+export {
+  ref,
+  isRef,
+  type Ref,
+} from './ref.js';
+
+// ── Lifecycle hooks ─────────────────────────────────────────────────
+export {
+  onMount,
+  onCleanup,
+} from './lifecycle.js';
+
 // ── Declarative data loading ────────────────────────────────────────
 export {
   query,

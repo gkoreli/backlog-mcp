@@ -1,0 +1,628 @@
+/**
+ * invariants.test.ts — Tests for framework invariants identified during ADR review.
+ *
+ * These tests encode the hard invariants that must hold across the framework.
+ * Each test references the specific gap or invariant it verifies.
+ *
+ * @vitest-environment happy-dom
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { component } from './component.js';
+import {
+  signal,
+  computed,
+  effect,
+  batch,
+  flushEffects,
+  isSignal,
+} from './signal.js';
+import { html, when, type TemplateResult } from './template.js';
+import { inject, provide, resetInjector } from './injector.js';
+import { Emitter } from './emitter.js';
+import { runWithContext, getCurrentComponent, hasContext, type ComponentHost } from './context.js';
+import { ref } from './ref.js';
+import { onMount, onCleanup } from './lifecycle.js';
+
+beforeEach(() => {
+  resetInjector();
+  document.body.innerHTML = '';
+});
+
+let tagCounter = 0;
+function uniqueTag(prefix = 'inv'): string {
+  return `${prefix}-${++tagCounter}-${Date.now()}`;
+}
+
+function mount(result: TemplateResult): HTMLElement {
+  const host = document.createElement('div');
+  result.mount(host);
+  return host;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GAP 1 (P0): Effect auto-disposal in component context
+// ADR 0002 Gap 1, ADR 0003 Gap 5
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: effect() auto-disposes in component context', () => {
+  it('effects created during setup are disposed on disconnect', () => {
+    const tag = uniqueTag('eff-dispose');
+    const count = signal(0);
+    const values: number[] = [];
+
+    component(tag, () => {
+      effect(() => {
+        values.push(count.value);
+      });
+      return html`<span>content</span>`;
+    });
+
+    const el = document.createElement(tag);
+    document.body.appendChild(el);
+    expect(values).toEqual([0]);
+
+    // Signal change triggers effect
+    count.value = 1;
+    flushEffects();
+    expect(values).toEqual([0, 1]);
+
+    // Remove element — effects should be disposed
+    document.body.removeChild(el);
+
+    // Signal change should NOT trigger effect
+    count.value = 2;
+    flushEffects();
+    expect(values).toEqual([0, 1]); // no 2 — effect was disposed
+  });
+
+  it('multiple effects in setup are all auto-disposed', () => {
+    const tag = uniqueTag('eff-multi');
+    const a = signal(0);
+    const b = signal(0);
+    const aValues: number[] = [];
+    const bValues: number[] = [];
+
+    component(tag, () => {
+      effect(() => { aValues.push(a.value); });
+      effect(() => { bValues.push(b.value); });
+      return html`<span>content</span>`;
+    });
+
+    const el = document.createElement(tag);
+    document.body.appendChild(el);
+    expect(aValues).toEqual([0]);
+    expect(bValues).toEqual([0]);
+
+    document.body.removeChild(el);
+
+    a.value = 1;
+    b.value = 1;
+    flushEffects();
+    expect(aValues).toEqual([0]); // disposed
+    expect(bValues).toEqual([0]); // disposed
+  });
+
+  it('effects outside component context are NOT auto-disposed', () => {
+    const count = signal(0);
+    const values: number[] = [];
+
+    const dispose = effect(() => {
+      values.push(count.value);
+    });
+    expect(values).toEqual([0]);
+
+    count.value = 1;
+    flushEffects();
+    expect(values).toEqual([0, 1]); // still alive — no component context
+
+    dispose(); // manual dispose needed
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// GAP 2: when() reactivity with signal conditions
+// ADR 0002 Gap 3
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: when() is reactive with signal conditions', () => {
+  it('shows/hides content reactively when signal changes', () => {
+    const show = signal(true);
+    const template = when(show, html`<span class="toggle">visible</span>`);
+    const result = html`<div>${template}</div>`;
+    const host = mount(result);
+
+    expect(host.querySelector('.toggle')).not.toBeNull();
+    expect(host.querySelector('.toggle')?.textContent).toBe('visible');
+
+    // Toggle off
+    show.value = false;
+    flushEffects();
+    expect(host.querySelector('.toggle')).toBeNull();
+
+    // Toggle back on
+    show.value = true;
+    flushEffects();
+    expect(host.querySelector('.toggle')).not.toBeNull();
+  });
+
+  it('supports lazy callback form for expensive branches', () => {
+    const show = signal(false);
+    let evalCount = 0;
+    const template = when(show, () => {
+      evalCount++;
+      return html`<span>expensive</span>`;
+    });
+    const result = html`<div>${template}</div>`;
+    mount(result);
+
+    // Template function not called when condition is false
+    expect(evalCount).toBe(0);
+
+    show.value = true;
+    flushEffects();
+    expect(evalCount).toBe(1);
+  });
+
+  it('static condition still works (non-signal)', () => {
+    const truthy = html`<div>${when(true, html`<span>yes</span>`)}</div>`;
+    const falsy = html`<div>${when(false, html`<span>no</span>`)}</div>`;
+
+    const hostT = mount(truthy);
+    const hostF = mount(falsy);
+
+    expect(hostT.querySelector('span')?.textContent).toBe('yes');
+    expect(hostF.querySelector('span')).toBeNull();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INVARIANT: XSS safety — text bindings use textNode.data
+// ADR 0004 Gap 6
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: XSS safety in text bindings', () => {
+  it('user input in text binding renders as text, not HTML', () => {
+    const userInput = signal('<img onerror=alert(1)>');
+    const result = html`<span>${userInput}</span>`;
+    const host = mount(result);
+
+    // Should be visible as text, NOT parsed as an HTML element
+    expect(host.querySelector('img')).toBeNull();
+    expect(host.textContent).toContain('<img onerror=alert(1)>');
+  });
+
+  it('script tags in text binding are not executed', () => {
+    const xss = signal('<script>window.__xss = true</script>');
+    const result = html`<div>${xss}</div>`;
+    const host = mount(result);
+
+    expect(host.querySelector('script')).toBeNull();
+    expect((window as any).__xss).toBeUndefined();
+  });
+
+  it('HTML entities in dynamic text are not double-encoded', () => {
+    const text = signal('A & B < C');
+    const result = html`<span>${text}</span>`;
+    const host = mount(result);
+
+    expect(host.querySelector('span')?.textContent).toBe('A & B < C');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INVARIANT: Cleanup errors are swallowed
+// ADR 0002 — error boundaries
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: cleanup errors are swallowed', () => {
+  it('effect cleanup error does not prevent next execution', () => {
+    const count = signal(0);
+    const values: number[] = [];
+
+    effect(() => {
+      values.push(count.value);
+      return () => {
+        if (count.value === 1) throw new Error('cleanup boom');
+      };
+    });
+    expect(values).toEqual([0]);
+
+    count.value = 1;
+    flushEffects();
+    expect(values).toEqual([0, 1]);
+
+    // The cleanup for value=1 throws, but the effect should still run
+    count.value = 2;
+    flushEffects();
+    expect(values).toEqual([0, 1, 2]);
+  });
+
+  it('disposal cleanup error does not prevent other disposers from running', () => {
+    const tag = uniqueTag('cleanup-swallow');
+    const afterBroken = vi.fn();
+
+    component(tag, () => {
+      onCleanup(() => { throw new Error('broken cleanup'); });
+      onCleanup(afterBroken);
+      return html`<span>content</span>`;
+    });
+
+    const el = document.createElement(tag);
+    document.body.appendChild(el);
+    document.body.removeChild(el);
+
+    // The second disposer should still run even though the first threw
+    expect(afterBroken).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INVARIANT: Error boundaries — sibling isolation
+// ADR 0002 — component.ts error boundaries
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: error boundaries isolate components', () => {
+  it('setup error in one component does not affect siblings', () => {
+    const goodTag = uniqueTag('good');
+    const badTag = uniqueTag('bad');
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    component(goodTag, () => html`<span class="ok">works</span>`);
+    component(badTag, () => { throw new Error('setup crash'); });
+
+    const good = document.createElement(goodTag);
+    const bad = document.createElement(badTag);
+    document.body.appendChild(good);
+    document.body.appendChild(bad);
+
+    expect(good.querySelector('.ok')?.textContent).toBe('works');
+    expect(bad.innerHTML).toContain('Error in');
+    errorSpy.mockRestore();
+  });
+
+  it('effect error is logged but effect stays alive', () => {
+    const count = signal(0);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const values: number[] = [];
+
+    effect(() => {
+      const v = count.value;
+      if (v === 1) throw new Error('temp failure');
+      values.push(v);
+    });
+    expect(values).toEqual([0]);
+
+    count.value = 1; // throws
+    flushEffects();
+    expect(errorSpy).toHaveBeenCalled();
+
+    count.value = 2; // should still work — effect not disposed
+    flushEffects();
+    expect(values).toEqual([0, 2]);
+    errorSpy.mockRestore();
+  });
+
+  it('event handler error is caught and logged', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = html`<button @click="${() => { throw new Error('click boom'); }}">Click</button>`;
+    const host = mount(result);
+
+    expect(() => host.querySelector('button')?.click()).not.toThrow();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Event handler error'),
+      expect.any(Error)
+    );
+    errorSpy.mockRestore();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INVARIANT: Singleton identity — inject(A) === inject(A) always
+// ADR 0002 — injector.ts invariant 1
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: DI singleton identity', () => {
+  it('inject() returns identical instance across all call sites', () => {
+    class SharedState { data = 'shared'; }
+
+    const a = inject(SharedState);
+    const b = inject(SharedState);
+    const c = inject(SharedState);
+
+    expect(a).toBe(b);
+    expect(b).toBe(c);
+  });
+
+  it('failed construction is never cached — retry is possible', () => {
+    let attempt = 0;
+    class FlakeyService {
+      constructor() {
+        attempt++;
+        if (attempt < 3) throw new Error(`fail-${attempt}`);
+      }
+    }
+
+    expect(() => inject(FlakeyService)).toThrow('fail-1');
+    expect(() => inject(FlakeyService)).toThrow('fail-2');
+    // Third attempt succeeds
+    const instance = inject(FlakeyService);
+    expect(instance).toBeInstanceOf(FlakeyService);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INVARIANT: Context is synchronous-only
+// ADR 0002 — context.ts invariant 1
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: context is strictly synchronous', () => {
+  it('context is gone after async boundary', async () => {
+    const host: ComponentHost = {
+      element: {} as HTMLElement,
+      addDisposer: () => {},
+    };
+
+    let contextInSync = false;
+    let contextAfterMicrotask = false;
+
+    runWithContext(host, () => {
+      contextInSync = hasContext();
+      queueMicrotask(() => {
+        contextAfterMicrotask = hasContext();
+      });
+    });
+
+    expect(contextInSync).toBe(true);
+
+    await new Promise(r => queueMicrotask(r));
+    expect(contextAfterMicrotask).toBe(false);
+  });
+
+  it('nested contexts restore correctly', () => {
+    const host1: ComponentHost = {
+      element: document.createElement('div'),
+      addDisposer: () => {},
+    };
+    const host2: ComponentHost = {
+      element: document.createElement('span'),
+      addDisposer: () => {},
+    };
+
+    let innerHost: HTMLElement | null = null;
+    let outerHostAfter: HTMLElement | null = null;
+
+    runWithContext(host1, () => {
+      runWithContext(host2, () => {
+        innerHost = getCurrentComponent().element;
+      });
+      outerHostAfter = getCurrentComponent().element;
+    });
+
+    expect(innerHost?.tagName).toBe('SPAN');
+    expect(outerHostAfter?.tagName).toBe('DIV');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INVARIANT: Signal equality uses Object.is()
+// ADR 0002 — signal.ts invariant 2
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: Object.is() equality semantics', () => {
+  it('NaN does not trigger infinite updates', () => {
+    const s = signal(NaN);
+    const fn = vi.fn(() => s.value);
+    effect(fn);
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    s.value = NaN;
+    flushEffects();
+    expect(fn).toHaveBeenCalledTimes(1); // Object.is(NaN, NaN) = true
+  });
+
+  it('-0 and +0 are different (Object.is semantics)', () => {
+    const s = signal(0);
+    const fn = vi.fn(() => s.value);
+    effect(fn);
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    s.value = -0;
+    flushEffects();
+    // Object.is(0, -0) = false — should trigger update
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('object mutation does not trigger (same reference)', () => {
+    const obj = { x: 1 };
+    const s = signal(obj);
+    const fn = vi.fn(() => s.value);
+    effect(fn);
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    s.value = obj; // same reference
+    flushEffects();
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    s.value = { ...obj }; // new reference
+    flushEffects();
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INVARIANT: Auto-resolution (_setProp vs setAttribute)
+// ADR 0005
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: auto-resolution for props vs attributes', () => {
+  it('standard HTML attributes use setAttribute even on framework components', () => {
+    const setPropCalls: [string, unknown][] = [];
+    class TestComp extends HTMLElement {
+      _setProp(key: string, value: unknown) {
+        setPropCalls.push([key, value]);
+      }
+    }
+    customElements.define('auto-res-std', TestComp);
+
+    const result = html`<auto-res-std class="foo" data-id="42" task="${'myTask'}"></auto-res-std>`;
+    const host = mount(result);
+    const el = host.querySelector('auto-res-std')!;
+
+    // class and data-id should use setAttribute (standard HTML attrs)
+    expect(el.getAttribute('class')).toBe('foo');
+    expect(el.getAttribute('data-id')).toBe('42');
+
+    // task is a custom prop — should route through _setProp
+    expect(setPropCalls).toContainEqual(['task', 'myTask']);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INVARIANT: Emitter auto-disposal in component context
+// ADR 0002 — emitter.ts invariant 3
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: emitter.on() auto-disposes in component context', () => {
+  it('subscription is cleaned up on disconnect', () => {
+    const tag = uniqueTag('emitter-dispose');
+    class TestEvents extends Emitter<{ ping: undefined }> {}
+
+    const events = new TestEvents();
+    const fn = vi.fn();
+
+    component(tag, () => {
+      events.on('ping', fn);
+      return html`<span>content</span>`;
+    });
+
+    const el = document.createElement(tag);
+    document.body.appendChild(el);
+
+    events.emit('ping', undefined);
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    document.body.removeChild(el);
+
+    events.emit('ping', undefined);
+    expect(fn).toHaveBeenCalledTimes(1); // disposed — not called again
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INVARIANT: Batch only flushes at outermost level
+// ADR 0002 — signal.ts invariant 5
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: batch nesting', () => {
+  it('inner batch does not flush — only outermost flushes', () => {
+    const s = signal(0);
+    const values: number[] = [];
+    effect(() => { values.push(s.value); });
+    values.length = 0; // clear initial run
+
+    batch(() => {
+      s.value = 1;
+      batch(() => {
+        s.value = 2;
+      });
+      // Inner batch returned — effect should NOT have run yet
+      expect(values).toEqual([]);
+      s.value = 3;
+    });
+    // Outer batch flushes
+    expect(values).toEqual([3]); // one run with final value
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INVARIANT: Dependencies are fully re-tracked on every execution
+// ADR 0002 — signal.ts invariant 4
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: dynamic dependency re-tracking', () => {
+  it('conditional dependency switch works correctly', () => {
+    const flag = signal(true);
+    const a = signal('A');
+    const b = signal('B');
+    const values: string[] = [];
+
+    effect(() => {
+      values.push(flag.value ? a.value : b.value);
+    });
+    expect(values).toEqual(['A']);
+
+    // b is not tracked when flag=true
+    b.value = 'B2';
+    flushEffects();
+    expect(values).toEqual(['A']); // no re-run
+
+    // Switch to b branch
+    flag.value = false;
+    flushEffects();
+    expect(values).toEqual(['A', 'B2']);
+
+    // a is no longer tracked
+    a.value = 'A2';
+    flushEffects();
+    expect(values).toEqual(['A', 'B2']); // no re-run for a
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INVARIANT: Circular dependency detection
+// ADR 0002 — both computed and DI
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: circular dependency detection', () => {
+  it('computed self-reference throws immediately', () => {
+    const self = computed((): number => (self as any).value + 1);
+    expect(() => self.value).toThrow('Circular dependency');
+  });
+
+  it('DI circular dependency throws immediately', () => {
+    class CycleA { constructor() { inject(CycleB); } }
+    class CycleB { constructor() { inject(CycleA); } }
+    expect(() => inject(CycleA)).toThrow('Circular dependency');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INVARIANT: Query generation guard prevents stale response overwrites
+// ADR 0002 — query.ts invariant 1
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: query generation guard', () => {
+  it('stale response does not overwrite fresh response', async () => {
+    const { query } = await import('./query.js');
+
+    const scopeId = signal('a');
+    const slowResolve: { resolve: (v: string) => void } = { resolve: () => {} };
+    const fastResolve: { resolve: (v: string) => void } = { resolve: () => {} };
+    let callCount = 0;
+
+    const result = query(
+      () => ['test', scopeId.value],
+      () => {
+        callCount++;
+        if (callCount === 1) return new Promise<string>(r => { slowResolve.resolve = r; });
+        return new Promise<string>(r => { fastResolve.resolve = r; });
+      },
+    );
+
+    flushEffects();
+    // First fetch in flight
+
+    scopeId.value = 'b';
+    flushEffects();
+    // Second fetch starts
+
+    // Resolve second (fast) before first (slow)
+    fastResolve.resolve('fast-result');
+    await vi.waitFor(() => expect(result.data.value).toBe('fast-result'));
+
+    // Resolve first (stale) — should NOT overwrite
+    slowResolve.resolve('slow-stale');
+    await new Promise(r => setTimeout(r, 10));
+    expect(result.data.value).toBe('fast-result');
+  });
+});

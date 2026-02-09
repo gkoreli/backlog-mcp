@@ -11,6 +11,21 @@
  * on every execution (dynamic/conditional tracking).
  */
 
+// ── Late-bound context hook for auto-disposal ──────────────────────
+// Avoids circular dependency: context.ts imports nothing from signal.ts,
+// but signal.ts needs to check for component context to auto-dispose effects.
+// component.ts wires this up at import time via `setContextHook()`.
+
+let contextHook: (() => ((fn: () => void) => void) | null) | null = null;
+
+/**
+ * Register the context hook. Called by component.ts at module init.
+ * The hook returns an `addDisposer` function if inside setup context, null otherwise.
+ */
+export function setContextHook(hook: () => ((fn: () => void) => void) | null): void {
+  contextHook = hook;
+}
+
 // ── Brand symbol for signal detection in templates ──────────────────
 
 export const SIGNAL_BRAND = Symbol.for('backlog.signal');
@@ -380,7 +395,7 @@ export function effect(fn: () => void | (() => void)): () => void {
   // Run immediately to establish initial dependencies
   runEffect(node);
 
-  return () => {
+  const dispose = () => {
     node.disposed = true;
     // Run final cleanup
     if (node.cleanup) {
@@ -394,6 +409,16 @@ export function effect(fn: () => void | (() => void)): () => void {
     node.sources.clear();
     pendingEffects.delete(node);
   };
+
+  // Auto-dispose when inside component setup context
+  if (contextHook) {
+    const addDisposer = contextHook();
+    if (addDisposer) {
+      addDisposer(dispose);
+    }
+  }
+
+  return dispose;
 }
 
 /**
