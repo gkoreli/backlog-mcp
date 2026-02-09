@@ -2,13 +2,14 @@
  * task-filter-bar.test.ts — Tests for the migrated task-filter-bar component.
  *
  * Validates: signals, computed class bindings, effects (localStorage),
- * event dispatching, backward-compat public API (setState, getSort).
+ * typed emitter events, backward-compat public API (setState, getSort).
  *
  * @vitest-environment happy-dom
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushEffects } from '../framework/signal.js';
-import { resetInjector } from '../framework/injector.js';
+import { resetInjector, provide } from '../framework/injector.js';
+import { FilterEvents } from '../services/filter-events.js';
 
 // ── Mock TYPE_REGISTRY before importing component ────────────────────
 
@@ -19,8 +20,7 @@ vi.mock('../type-registry.js', () => ({
   },
 }));
 
-// Dynamic import after mock is set up
-// The component self-registers via component() on import
+let filterEvents: FilterEvents;
 let imported = false;
 
 beforeEach(async () => {
@@ -28,7 +28,9 @@ beforeEach(async () => {
   document.body.innerHTML = '';
   localStorage.clear();
 
-  // Import once — component() guards against double registration
+  filterEvents = new FilterEvents();
+  provide(FilterEvents, () => filterEvents);
+
   if (!imported) {
     await import('./task-filter-bar.js');
     imported = true;
@@ -59,7 +61,6 @@ describe('task-filter-bar rendering', () => {
   it('renders type filter buttons (All + registry types)', () => {
     const el = createElement();
     const buttons = el.querySelectorAll('[data-type-filter]');
-    // 'All' + 'Task' + 'Epic' from mocked registry
     expect(buttons.length).toBe(3);
 
     const labels = [...buttons].map(b => b.textContent?.trim());
@@ -108,22 +109,21 @@ describe('task-filter-bar filter interaction', () => {
     expect(activeBtn.classList.contains('active')).toBe(false);
   });
 
-  it('clicking a status filter dispatches filter-change on document', () => {
+  it('clicking a status filter emits filter-change via FilterEvents', () => {
     const el = createElement();
     const handler = vi.fn();
-    document.addEventListener('filter-change', handler);
+    filterEvents.on('filter-change', handler);
 
     const completedBtn = el.querySelector('[data-filter="completed"]') as HTMLElement;
     completedBtn.click();
     flushEffects();
 
     expect(handler).toHaveBeenCalledTimes(1);
-    const detail = (handler.mock.calls[0][0] as CustomEvent).detail;
-    expect(detail.filter).toBe('completed');
-    expect(detail.type).toBe('all');
-    expect(detail.sort).toBe('updated');
-
-    document.removeEventListener('filter-change', handler);
+    expect(handler).toHaveBeenCalledWith({
+      filter: 'completed',
+      type: 'all',
+      sort: 'updated',
+    });
   });
 
   it('clicking a type filter button updates active class', () => {
@@ -137,31 +137,31 @@ describe('task-filter-bar filter interaction', () => {
     expect(allBtn.classList.contains('active')).toBe(false);
   });
 
-  it('clicking a type filter dispatches filter-change on document', () => {
+  it('clicking a type filter emits filter-change via FilterEvents', () => {
     const el = createElement();
     const handler = vi.fn();
-    document.addEventListener('filter-change', handler);
+    filterEvents.on('filter-change', handler);
 
     const epicBtn = el.querySelector('[data-type-filter="epic"]') as HTMLElement;
     epicBtn.click();
     flushEffects();
 
     expect(handler).toHaveBeenCalledTimes(1);
-    const detail = (handler.mock.calls[0][0] as CustomEvent).detail;
-    expect(detail.filter).toBe('active');
-    expect(detail.type).toBe('epic');
-
-    document.removeEventListener('filter-change', handler);
+    expect(handler).toHaveBeenCalledWith({
+      filter: 'active',
+      type: 'epic',
+      sort: 'updated',
+    });
   });
 });
 
 // ── Sort interaction ─────────────────────────────────────────────────
 
 describe('task-filter-bar sort interaction', () => {
-  it('changing sort dispatches sort-change on document', () => {
+  it('changing sort emits sort-change via FilterEvents', () => {
     const el = createElement();
     const handler = vi.fn();
-    document.addEventListener('sort-change', handler);
+    filterEvents.on('sort-change', handler);
 
     const select = el.querySelector('.filter-sort-select') as HTMLSelectElement;
     select.value = 'created_desc';
@@ -169,15 +169,11 @@ describe('task-filter-bar sort interaction', () => {
     flushEffects();
 
     expect(handler).toHaveBeenCalledTimes(1);
-    const detail = (handler.mock.calls[0][0] as CustomEvent).detail;
-    expect(detail.sort).toBe('created_desc');
-
-    document.removeEventListener('sort-change', handler);
+    expect(handler).toHaveBeenCalledWith({ sort: 'created_desc' });
   });
 
   it('sort change persists to localStorage', () => {
     const el = createElement();
-    // Initial mount persists default sort
     expect(localStorage.getItem('backlog:sort')).toBe('updated');
 
     const select = el.querySelector('.filter-sort-select') as HTMLSelectElement;
@@ -231,7 +227,6 @@ describe('task-filter-bar localStorage', () => {
     localStorage.setItem('backlog:sort', 'invalid_sort');
 
     const el = createElement() as any;
-    // Invalid sort values are ignored, defaults to 'updated'
     expect(el.getSort()).toBe('updated');
   });
 });

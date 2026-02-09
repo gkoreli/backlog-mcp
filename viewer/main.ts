@@ -17,22 +17,28 @@ import './components/backlog-app.js';
 import { urlState } from './utils/url-state.js';
 import { splitPane } from './utils/split-pane.js';
 import { backlogEvents } from './services/event-source-client.js';
+import { inject } from './framework/injector.js';
+import { FilterEvents } from './services/filter-events.js';
+import { NavigationEvents } from './services/navigation-events.js';
 
 // Connect to SSE for real-time updates
 backlogEvents.connect();
 
-// Component events -> URL updates
-document.addEventListener('filter-change', ((e: CustomEvent) => {
-  urlState.set({ filter: e.detail.filter, type: e.detail.type });
-}) as EventListener);
+// Emitter events -> URL updates (di-bootstrap-eager)
+const filterEvents = inject(FilterEvents);
+const navEvents = inject(NavigationEvents);
 
-document.addEventListener('search-change', ((e: CustomEvent) => {
-  urlState.set({ q: e.detail.query || null });
-}) as EventListener);
+filterEvents.on('filter-change', ({ filter, type }) => {
+  urlState.set({ filter, type });
+});
 
-document.addEventListener('task-selected', ((e: CustomEvent) => {
-  urlState.set({ id: e.detail.taskId });
-}) as EventListener);
+filterEvents.on('search-change', ({ query }) => {
+  urlState.set({ q: query || null });
+});
+
+navEvents.on('task-select', ({ taskId }) => {
+  urlState.set({ id: taskId });
+});
 
 // scope-change is handled by sidebarScope service directly — no URL update needed
 
