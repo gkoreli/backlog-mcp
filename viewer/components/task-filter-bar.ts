@@ -55,6 +55,7 @@ export const TaskFilterBar = component('task-filter-bar', (_props, host) => {
   // ── Actions ──────────────────────────────────────────────────────
   function setFilter(filter: string) {
     currentFilter.value = filter;
+    // HACK:DOC_EVENT — migrate to Emitter when task-list is migrated
     document.dispatchEvent(new CustomEvent('filter-change', {
       detail: { filter, type: currentType.value, sort: currentSort.value },
     }));
@@ -62,6 +63,7 @@ export const TaskFilterBar = component('task-filter-bar', (_props, host) => {
 
   function setType(type: string) {
     currentType.value = type;
+    // HACK:DOC_EVENT — migrate to Emitter when task-list is migrated
     document.dispatchEvent(new CustomEvent('filter-change', {
       detail: { filter: currentFilter.value, type, sort: currentSort.value },
     }));
@@ -69,6 +71,7 @@ export const TaskFilterBar = component('task-filter-bar', (_props, host) => {
 
   function setSort(sort: string) {
     currentSort.value = sort;
+    // HACK:DOC_EVENT — migrate to Emitter when task-list is migrated
     document.dispatchEvent(new CustomEvent('sort-change', {
       detail: { sort },
     }));
@@ -82,7 +85,7 @@ export const TaskFilterBar = component('task-filter-bar', (_props, host) => {
     } catch { /* localStorage unavailable */ }
   });
 
-  // ── Backward-compat public API on the host element ───────────────
+  // HACK:EXPOSE — replace with component expose() API when Gap 1 is resolved
   (host as any).setState = (filter: string, _type: string, _query: string | null) => {
     currentFilter.value = filter;
   };
@@ -101,8 +104,7 @@ export const TaskFilterBar = component('task-filter-bar', (_props, host) => {
     html`<option value="${s.key}">${s.label}</option>`
   );
 
-  // We need an effect to keep the select value in sync with the signal
-  // because <option> selected attribute is set at parse time, not reactively.
+  // HACK:REF — replace with ref() primitive when Gap 2 is resolved
   effect(() => {
     const sort = currentSort.value;
     const select = host.querySelector('.filter-sort-select') as HTMLSelectElement | null;

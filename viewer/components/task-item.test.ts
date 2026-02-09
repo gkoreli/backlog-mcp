@@ -1,0 +1,187 @@
+/**
+ * task-item.test.ts — Tests for the migrated task-item component.
+ *
+ * Validates: rendering from data attributes, click handlers,
+ * cross-component event dispatch, conditional template elements.
+ *
+ * @vitest-environment happy-dom
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { flushEffects } from '../framework/signal.js';
+import { resetInjector } from '../framework/injector.js';
+
+// ── Mock dependencies ────────────────────────────────────────────────
+
+vi.mock('../type-registry.js', () => ({
+  getTypeConfig: (type: string) => {
+    const configs: Record<string, any> = {
+      task: { prefix: 'TASK', label: 'Task', icon: '', gradient: '', isContainer: false, hasStatus: true },
+      epic: { prefix: 'EPIC', label: 'Epic', icon: '', gradient: '', isContainer: true, hasStatus: true },
+      milestone: { prefix: 'MLST', label: 'Milestone', icon: '', gradient: '', isContainer: true, hasStatus: true },
+      folder: { prefix: 'FLDR', label: 'Folder', icon: '', gradient: '', isContainer: true, hasStatus: false },
+    };
+    return configs[type] || configs.task;
+  },
+}));
+
+const mockSidebarScope = { set: vi.fn(), get: vi.fn() };
+vi.mock('../utils/sidebar-scope.js', () => ({
+  sidebarScope: mockSidebarScope,
+}));
+
+let imported = false;
+
+beforeEach(async () => {
+  resetInjector();
+  document.body.innerHTML = '';
+  mockSidebarScope.set.mockClear();
+
+  if (!imported) {
+    // Import task-badge first (used inside task-item template)
+    await import('./task-badge.js');
+    await import('./task-item.js');
+    imported = true;
+  }
+});
+
+// ── Helpers ──────────────────────────────────────────────────────────
+
+function createTaskItem(attrs: Record<string, string> = {}): HTMLElement {
+  const el = document.createElement('task-item');
+  const defaults: Record<string, string> = {
+    'data-id': 'TASK-0001',
+    'data-title': 'Test task',
+    'data-status': 'open',
+    'data-type': 'task',
+  };
+  for (const [key, val] of Object.entries({ ...defaults, ...attrs })) {
+    el.setAttribute(key, val);
+  }
+  document.body.appendChild(el);
+  flushEffects();
+  return el;
+}
+
+// ── Rendering ────────────────────────────────────────────────────────
+
+describe('task-item rendering', () => {
+  it('renders task title', () => {
+    const el = createTaskItem({ 'data-title': 'My Test Task' });
+    const title = el.querySelector('.task-title');
+    expect(title?.textContent).toContain('My Test Task');
+  });
+
+  it('renders task-badge with correct id', () => {
+    const el = createTaskItem({ 'data-id': 'TASK-0042' });
+    const badge = el.querySelector('task-badge');
+    expect(badge?.getAttribute('task-id')).toBe('TASK-0042');
+  });
+
+  it('renders status badge for status-bearing types', () => {
+    const el = createTaskItem({ 'data-status': 'in_progress', 'data-type': 'task' });
+    const status = el.querySelector('.status-badge');
+    expect(status).not.toBeNull();
+    expect(status?.textContent).toContain('in progress');
+    expect(status?.classList.contains('status-in_progress')).toBe(true);
+  });
+
+  it('does not render status badge for non-status types', () => {
+    const el = createTaskItem({ 'data-type': 'folder' });
+    const status = el.querySelector('.status-badge');
+    expect(status).toBeNull();
+  });
+
+  it('renders child count for container types', () => {
+    const el = createTaskItem({ 'data-type': 'epic', 'data-child-count': '5' });
+    const count = el.querySelector('.child-count');
+    expect(count).not.toBeNull();
+    expect(count?.textContent).toContain('5');
+  });
+
+  it('does not render child count for leaf types', () => {
+    const el = createTaskItem({ 'data-type': 'task' });
+    const count = el.querySelector('.child-count');
+    expect(count).toBeNull();
+  });
+
+  it('renders enter icon for containers that are not current epic', () => {
+    const el = createTaskItem({ 'data-type': 'epic' });
+    const enter = el.querySelector('.enter-icon');
+    expect(enter).not.toBeNull();
+  });
+
+  it('does not render enter icon when current epic', () => {
+    const el = createTaskItem({ 'data-type': 'epic', 'data-current-epic': 'true' });
+    const enter = el.querySelector('.enter-icon');
+    expect(enter).toBeNull();
+  });
+
+  it('renders selected class when selected attribute present', () => {
+    const el = document.createElement('task-item');
+    el.setAttribute('data-id', 'TASK-0001');
+    el.setAttribute('data-title', 'Test');
+    el.setAttribute('data-status', 'open');
+    el.setAttribute('data-type', 'task');
+    el.setAttribute('selected', '');
+    document.body.appendChild(el);
+    flushEffects();
+
+    const inner = el.querySelector('.task-item');
+    expect(inner?.classList.contains('selected')).toBe(true);
+  });
+
+  it('renders due date badge for milestones with due date', () => {
+    const el = createTaskItem({
+      'data-type': 'milestone',
+      'data-due-date': '2026-03-15',
+    });
+    const badge = el.querySelector('.due-date-badge');
+    expect(badge).not.toBeNull();
+  });
+
+  it('sets host className to task-item-wrapper', () => {
+    const el = createTaskItem();
+    expect(el.className).toBe('task-item-wrapper');
+  });
+});
+
+// ── Click behavior ───────────────────────────────────────────────────
+
+describe('task-item click behavior', () => {
+  it('clicking item dispatches task-selected event', () => {
+    const el = createTaskItem({ 'data-id': 'TASK-0099' });
+    const handler = vi.fn();
+    document.addEventListener('task-selected', handler);
+
+    const inner = el.querySelector('.task-item') as HTMLElement;
+    inner.click();
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    const detail = (handler.mock.calls[0][0] as CustomEvent).detail;
+    expect(detail.taskId).toBe('TASK-0099');
+
+    document.removeEventListener('task-selected', handler);
+  });
+
+  it('clicking enter icon calls sidebarScope.set', () => {
+    const el = createTaskItem({ 'data-type': 'epic', 'data-id': 'EPIC-0001' });
+    const enter = el.querySelector('.enter-icon') as HTMLElement;
+    enter.click();
+
+    expect(mockSidebarScope.set).toHaveBeenCalledWith('EPIC-0001');
+  });
+
+  it('clicking enter icon does not trigger item click', () => {
+    const el = createTaskItem({ 'data-type': 'epic', 'data-id': 'EPIC-0001' });
+    const handler = vi.fn();
+    document.addEventListener('task-selected', handler);
+
+    const enter = el.querySelector('.enter-icon') as HTMLElement;
+    enter.click();
+
+    // task-selected should NOT fire — enter click stops propagation
+    expect(handler).not.toHaveBeenCalled();
+
+    document.removeEventListener('task-selected', handler);
+  });
+});

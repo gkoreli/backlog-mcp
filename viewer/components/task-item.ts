@@ -1,81 +1,80 @@
+/**
+ * task-item.ts — Migrated to the reactive framework (Phase 9)
+ *
+ * Data comes from data-* attributes (set by parent task-list via innerHTML).
+ * When task-list is migrated, this will switch to reactive props.
+ *
+ * Uses: component, html template, @click handlers
+ */
+import { component } from '../framework/component.js';
+import { html } from '../framework/template.js';
 import { getTypeConfig } from '../type-registry.js';
 import { sidebarScope } from '../utils/sidebar-scope.js';
 
-export class TaskItem extends HTMLElement {
-  connectedCallback() {
-    this.render();
-    this.attachListeners();
-  }
-  
-  render() {
-    const id = this.dataset.id || '';
-    const title = this.dataset.title || '';
-    const status = this.dataset.status || 'open';
-    const type = this.dataset.type || 'task';
-    const isCurrentEpic = this.dataset.currentEpic === 'true';
-    const isSelected = this.hasAttribute('selected');
-    const childCount = this.dataset.childCount || '0';
-    const dueDate = this.dataset.dueDate || '';
-    const config = getTypeConfig(type);
-    
-    this.className = 'task-item-wrapper';
+export const TaskItem = component('task-item', (_props, host) => {
+  // ── Read data from attributes (set by parent before mount) ────────
+  const id = host.dataset.id || '';
+  const title = host.dataset.title || '';
+  const status = host.dataset.status || 'open';
+  const type = host.dataset.type || 'task';
+  const isCurrentEpic = host.dataset.currentEpic === 'true';
+  const isSelected = host.hasAttribute('selected');
+  const childCount = host.dataset.childCount || '0';
+  const dueDate = host.dataset.dueDate || '';
+  const config = getTypeConfig(type);
 
-    const dueDateHtml = type === 'milestone' && dueDate
-      ? `<span class="due-date-badge">${new Date(dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>`
-      : '';
+  host.className = 'task-item-wrapper';
 
-    this.innerHTML = `
-      <div class="task-item ${isSelected ? 'selected' : ''} ${isCurrentEpic ? 'current-epic' : ''} type-${type}">
-        <task-badge task-id="${id}"></task-badge>
-        <span class="task-title">${title}</span>
-        ${dueDateHtml}
-        ${config.isContainer ? `<span class="child-count">${childCount}</span>` : ''}
-        ${config.isContainer && !isCurrentEpic ? '<span class="enter-icon" title="Browse inside">→</span>' : ''}
-        ${config.hasStatus ? `<span class="status-badge status-${status}">${status.replace('_', ' ')}</span>` : ''}
-      </div>
-    `;
+  // ── Actions ──────────────────────────────────────────────────────
+
+  function handleEnterClick(e: Event) {
+    e.stopPropagation();
+    if (id) {
+      sidebarScope.set(id);
+    }
   }
-  
-  attachListeners() {
-    const taskItem = this.querySelector('.task-item');
-    const enterIcon = this.querySelector('.enter-icon');
-    const type = this.dataset.type || 'task';
-    const config = getTypeConfig(type);
-    
-    // Arrow click → scope sidebar only (no URL change)
-    if (enterIcon && config.isContainer) {
-      enterIcon.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const taskId = this.dataset.id;
-        if (taskId) {
-          sidebarScope.set(taskId);
-        }
-      });
+
+  function handleItemClick() {
+    if (!id) return;
+
+    // HACK:CROSS_QUERY — toggle selected across all task-items
+    document.querySelectorAll('task-item .task-item').forEach(item => {
+      item.classList.toggle('selected', (item.closest('task-item') as HTMLElement)?.dataset.id === id);
+    });
+
+    // HACK:CROSS_QUERY — call loadTask on task-detail
+    const detailPane = document.querySelector('task-detail');
+    if (detailPane) {
+      (detailPane as any).loadTask(id);
     }
 
-    // Item click → navigate (set ?id=, show in detail)
-    taskItem?.addEventListener('click', () => {
-      const taskId = this.dataset.id;
-      if (!taskId) return;
-      
-      // Select and show detail
-      document.querySelectorAll('task-item .task-item').forEach(item => {
-        item.classList.toggle('selected', (item.closest('task-item') as HTMLElement)?.dataset.id === taskId);
-      });
-      
-      const detailPane = document.querySelector('task-detail');
-      if (detailPane) {
-        (detailPane as any).loadTask(taskId);
-      }
-      
-      document.dispatchEvent(new CustomEvent('task-selected', { detail: { taskId } }));
-      
-      const taskList = document.querySelector('task-list');
-      if (taskList) {
-        (taskList as any).setSelected(taskId);
-      }
-    });
-  }
-}
+    // HACK:DOC_EVENT — migrate to Emitter when all listeners are migrated
+    document.dispatchEvent(new CustomEvent('task-selected', { detail: { taskId: id } }));
 
-customElements.define('task-item', TaskItem);
+    // HACK:CROSS_QUERY — call setSelected on task-list
+    const taskList = document.querySelector('task-list');
+    if (taskList) {
+      (taskList as any).setSelected(id);
+    }
+  }
+
+  // ── Template ─────────────────────────────────────────────────────
+
+  const dueDateHtml = type === 'milestone' && dueDate
+    ? html`<span class="due-date-badge">${new Date(dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>`
+    : null;
+
+  const selectedClass = isSelected ? ' selected' : '';
+  const currentEpicClass = isCurrentEpic ? ' current-epic' : '';
+
+  return html`
+    <div class="task-item${selectedClass}${currentEpicClass} type-${type}" @click="${handleItemClick}">
+      <task-badge task-id="${id}"></task-badge>
+      <span class="task-title">${title}</span>
+      ${dueDateHtml}
+      ${config.isContainer ? html`<span class="child-count">${childCount}</span>` : null}
+      ${config.isContainer && !isCurrentEpic ? html`<span class="enter-icon" title="Browse inside" @click.stop="${handleEnterClick}">→</span>` : null}
+      ${config.hasStatus ? html`<span class="status-badge status-${status}">${status.replace('_', ' ')}</span>` : null}
+    </div>
+  `;
+});
