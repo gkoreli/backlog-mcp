@@ -1,16 +1,15 @@
 /**
  * task-item.ts — Migrated to the reactive framework (Phase 9, updated Phase 11)
  *
- * Props are signals — simple bindings (title, id, class:selected) are
- * implicit in the template. Conditional branches evaluate at setup time
- * since the parent rebuilds elements on change (HACK:STATIC_LIST).
- *
+ * All props are signals — template reads them implicitly.
+ * Conditional branches use computed views (tmpl-computed-views).
  * Emits typed events via NavigationEvents emitter (DI singleton).
  *
- * Uses: component, html, inject, Emitter
+ * Uses: component, computed, html, when, inject, Emitter
  */
+import { computed } from '../framework/signal.js';
 import { component } from '../framework/component.js';
-import { html } from '../framework/template.js';
+import { html, when } from '../framework/template.js';
 import { inject } from '../framework/injector.js';
 import { getTypeConfig } from '../type-registry.js';
 import { NavigationEvents } from '../services/navigation-events.js';
@@ -27,12 +26,11 @@ export const TaskItem = component<{
 }>('task-item', (props, host) => {
   const nav = inject(NavigationEvents);
 
-  // Evaluate once — parent rebuilds elements on change (HACK:STATIC_LIST)
-  const type = props.type.value || 'task';
-  const status = props.status.value || 'open';
-  const isCurrentEpic = !!props.currentEpic.value;
-  const dueDate = props.dueDate.value || '';
-  const config = getTypeConfig(type);
+  // ── Derived state ────────────────────────────────────────────────
+  const config = computed(() => getTypeConfig(props.type.value || 'task'));
+  // Static base class — evaluated once so class attribute has no markers,
+  // which allows class:selected and class:current-epic to work alongside it.
+  const baseClass = `task-item type-${props.type.value || 'task'}`;
 
   host.className = 'task-item-wrapper';
 
@@ -48,21 +46,42 @@ export const TaskItem = component<{
     if (id) nav.emit('task-select', { taskId: id });
   }
 
-  // ── Conditional fragments (evaluated once) ───────────────────────
+  // ── Computed views (tmpl-computed-views) ──────────────────────────
 
-  const dueDateHtml = type === 'milestone' && dueDate
-    ? html`<span class="due-date-badge">${new Date(dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>`
-    : null;
+  const dueDateHtml = computed(() => {
+    if (props.type.value === 'milestone' && props.dueDate.value) {
+      return html`<span class="due-date-badge">${new Date(props.dueDate.value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>`;
+    }
+    return null;
+  });
 
-  // ── Template — signals implicit for simple bindings ──────────────
+  const childCountHtml = computed(() =>
+    config.value.isContainer
+      ? html`<span class="child-count">${props.childCount}</span>`
+      : null
+  );
+
+  const enterIconHtml = computed(() =>
+    config.value.isContainer && !props.currentEpic.value
+      ? html`<span class="enter-icon" title="Browse inside" @click.stop="${handleEnterClick}">→</span>`
+      : null
+  );
+
+  const statusHtml = computed(() => {
+    if (!config.value.hasStatus) return null;
+    const s = props.status.value || 'open';
+    return html`<span class="status-badge status-${s}">${s.replace('_', ' ')}</span>`;
+  });
+
+  // ── Template — all signals implicit ──────────────────────────────
   return html`
-    <div class="task-item type-${type}" class:selected="${props.selected}" class:current-epic="${isCurrentEpic}" @click="${handleItemClick}">
+    <div class="${baseClass}" class:selected="${props.selected}" class:current-epic="${props.currentEpic}" @click="${handleItemClick}">
       <task-badge task-id="${props.id}"></task-badge>
       <span class="task-title">${props.title}</span>
       ${dueDateHtml}
-      ${config.isContainer ? html`<span class="child-count">${props.childCount}</span>` : null}
-      ${config.isContainer && !isCurrentEpic ? html`<span class="enter-icon" title="Browse inside" @click.stop="${handleEnterClick}">→</span>` : null}
-      ${config.hasStatus ? html`<span class="status-badge status-${status}">${status.replace('_', ' ')}</span>` : null}
+      ${childCountHtml}
+      ${enterIconHtml}
+      ${statusHtml}
     </div>
   `;
 });

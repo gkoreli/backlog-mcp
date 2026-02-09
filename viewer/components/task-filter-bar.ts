@@ -9,6 +9,7 @@ import { signal, computed, effect } from '../framework/signal.js';
 import { component } from '../framework/component.js';
 import { html } from '../framework/template.js';
 import { inject } from '../framework/injector.js';
+import { ref } from '../framework/ref.js';
 import { TYPE_REGISTRY } from '../type-registry.js';
 import { FilterEvents } from '../services/filter-events.js';
 
@@ -82,6 +83,15 @@ export const TaskFilterBar = component('task-filter-bar', (_props, host) => {
   (host as any).getSort = () => currentSort.value;
 
   // ── Template ─────────────────────────────────────────────────────
+  const selectRef = ref<HTMLSelectElement>();
+
+  // Sync select element value when sort signal changes
+  effect(() => {
+    const s = currentSort.value;
+    if (selectRef.current && selectRef.current.value !== s) {
+      selectRef.current.value = s;
+    }
+  });
   const statusButtons = FILTERS.map(f =>
     html`<button class="filter-btn" class:active="${computed(() => currentFilter.value === f.key)}" data-filter="${f.key}" @click="${() => setFilter(f.key)}">${f.label}</button>`
   );
@@ -94,21 +104,12 @@ export const TaskFilterBar = component('task-filter-bar', (_props, host) => {
     html`<option value="${s.key}">${s.label}</option>`
   );
 
-  // HACK:REF — replace with ref() primitive when Gap 2 is resolved
-  effect(() => {
-    const sort = currentSort.value;
-    const select = host.querySelector('.filter-sort-select') as HTMLSelectElement | null;
-    if (select && select.value !== sort) {
-      select.value = sort;
-    }
-  });
-
   return html`
     <div class="filter-bar">
       ${statusButtons}
       <div class="filter-sort">
         <label class="filter-sort-label">Sort:</label>
-        <select class="filter-sort-select" @change="${(e: Event) => setSort((e.target as HTMLSelectElement).value)}">
+        <select class="filter-sort-select" ${selectRef} @change="${(e: Event) => setSort((e.target as HTMLSelectElement).value)}">
           ${sortOptions}
         </select>
       </div>
