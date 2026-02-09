@@ -1,15 +1,16 @@
 /**
- * task-filter-bar.ts — Migrated to the reactive framework (Phase 8)
+ * task-filter-bar.ts — Migrated to the reactive framework (Phase 8, updated Phase 11)
  *
- * Uses: signal, computed, effect, component, html template
+ * Uses: signal, computed, effect, component, html, inject, FilterEvents emitter
  *
- * Backward-compatible: same tag name, same document events,
- * same setState()/getSort() public API on the element.
+ * Backward-compatible: same tag name, same setState()/getSort() public API.
  */
 import { signal, computed, effect } from '../framework/signal.js';
 import { component } from '../framework/component.js';
 import { html } from '../framework/template.js';
+import { inject } from '../framework/injector.js';
 import { TYPE_REGISTRY } from '../type-registry.js';
+import { FilterEvents } from '../services/filter-events.js';
 
 // ── Static data ──────────────────────────────────────────────────────
 
@@ -27,8 +28,6 @@ const SORT_OPTIONS = [
 
 const SORT_STORAGE_KEY = 'backlog:sort';
 
-// ── Helper: read saved sort from localStorage ────────────────────────
-
 function loadSavedSort(): string {
   try {
     const saved = localStorage.getItem(SORT_STORAGE_KEY);
@@ -36,8 +35,6 @@ function loadSavedSort(): string {
   } catch { /* localStorage unavailable */ }
   return 'updated';
 }
-
-// ── Type filter entries (static — computed once) ─────────────────────
 
 const TYPE_ENTRIES = [
   { key: 'all', label: 'All' },
@@ -47,6 +44,8 @@ const TYPE_ENTRIES = [
 // ── Component definition ─────────────────────────────────────────────
 
 export const TaskFilterBar = component('task-filter-bar', (_props, host) => {
+  const filterEvents = inject(FilterEvents);
+
   // ── Reactive state ───────────────────────────────────────────────
   const currentFilter = signal('active');
   const currentSort = signal(loadSavedSort());
@@ -55,26 +54,17 @@ export const TaskFilterBar = component('task-filter-bar', (_props, host) => {
   // ── Actions ──────────────────────────────────────────────────────
   function setFilter(filter: string) {
     currentFilter.value = filter;
-    // HACK:DOC_EVENT — migrate to Emitter when task-list is migrated
-    document.dispatchEvent(new CustomEvent('filter-change', {
-      detail: { filter, type: currentType.value, sort: currentSort.value },
-    }));
+    filterEvents.emit('filter-change', { filter, type: currentType.value, sort: currentSort.value });
   }
 
   function setType(type: string) {
     currentType.value = type;
-    // HACK:DOC_EVENT — migrate to Emitter when task-list is migrated
-    document.dispatchEvent(new CustomEvent('filter-change', {
-      detail: { filter: currentFilter.value, type, sort: currentSort.value },
-    }));
+    filterEvents.emit('filter-change', { filter: currentFilter.value, type, sort: currentSort.value });
   }
 
   function setSort(sort: string) {
     currentSort.value = sort;
-    // HACK:DOC_EVENT — migrate to Emitter when task-list is migrated
-    document.dispatchEvent(new CustomEvent('sort-change', {
-      detail: { sort },
-    }));
+    filterEvents.emit('sort-change', { sort });
   }
 
   // ── Side effect: persist sort to localStorage ────────────────────

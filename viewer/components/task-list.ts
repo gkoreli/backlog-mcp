@@ -15,6 +15,7 @@ import { fetchTasks, type Task } from '../utils/api.js';
 import { backlogEvents } from '../services/event-source-client.js';
 import { sidebarScope } from '../utils/sidebar-scope.js';
 import { getTypeConfig, getParentId } from '../type-registry.js';
+import { FilterEvents } from '../services/filter-events.js';
 import { NavigationEvents } from '../services/navigation-events.js';
 import { TaskItem } from './task-item.js';
 import './breadcrumb.js';
@@ -44,6 +45,7 @@ function sortTasks(tasks: Task[], sort: string): Task[] {
 
 export const TaskList = component('task-list', (_props, host) => {
   const nav = inject(NavigationEvents);
+  const filterEvents = inject(FilterEvents);
 
   // ── Reactive state ───────────────────────────────────────────────
   const params = new URLSearchParams(window.location.search);
@@ -128,9 +130,6 @@ export const TaskList = component('task-list', (_props, host) => {
   nav.on('task-select', ({ taskId }) => {
     selectedId.value = taskId;
 
-    // HACK:DOC_EVENT — backlog-app listens for this to update URL
-    document.dispatchEvent(new CustomEvent('task-selected', { detail: { taskId } }));
-
     // HACK:CROSS_QUERY — update task-detail directly until it's migrated
     const detailPane = document.querySelector('task-detail');
     if (detailPane) (detailPane as any).loadTask(taskId);
@@ -141,22 +140,23 @@ export const TaskList = component('task-list', (_props, host) => {
     scopeId.value = id;
   });
 
-  // ── External event listeners (HACK:DOC_EVENT — until filter-bar uses emitter) ──
-  document.addEventListener('filter-change', ((e: CustomEvent) => {
-    filter.value = e.detail.filter;
-    typeFilter.value = e.detail.type ?? 'all';
+  // ── Emitter subscriptions (auto-dispose via emitter-auto-dispose) ──
+  filterEvents.on('filter-change', ({ filter: f, type: t }) => {
+    filter.value = f;
+    typeFilter.value = t ?? 'all';
     doFetch();
-  }) as EventListener);
+  });
 
-  document.addEventListener('sort-change', ((e: CustomEvent) => {
-    sort.value = e.detail.sort;
-  }) as EventListener);
+  filterEvents.on('sort-change', ({ sort: s }) => {
+    sort.value = s;
+  });
 
-  document.addEventListener('search-change', ((e: CustomEvent) => {
-    query.value = e.detail.query || null;
+  filterEvents.on('search-change', ({ query: q }) => {
+    query.value = q || null;
     doFetch();
-  }) as EventListener);
+  });
 
+  // HACK:DOC_EVENT — sidebarScope dispatches document event; migrate when sidebarScope uses emitter
   document.addEventListener('scope-change', (() => {
     scopeId.value = sidebarScope.get();
   }) as EventListener);
