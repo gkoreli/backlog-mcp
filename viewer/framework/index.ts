@@ -61,6 +61,7 @@ export {
 export {
   html,
   when,
+  each,
   type TemplateResult,
 } from './template.js';
 
