@@ -7,9 +7,9 @@
  *
  * Uses: signal, computed, effect, component, html, inject, Emitter, TaskItem factory
  */
-import { signal, computed, effect } from '../framework/signal.js';
+import { signal, computed, effect, batch, type ReadonlySignal } from '../framework/signal.js';
 import { component } from '../framework/component.js';
-import { html } from '../framework/template.js';
+import { html, each, when } from '../framework/template.js';
 import { inject } from '../framework/injector.js';
 import { fetchTasks, type Task } from '../utils/api.js';
 import { backlogEvents } from '../services/event-source-client.js';
@@ -117,7 +117,7 @@ export const TaskList = component('task-list', (_props, host) => {
     }
   }
 
-  doFetch();
+  // No initial doFetch() — backlog-app calls setState() which triggers the first fetch.
 
   backlogEvents.onChange((event) => {
     if (event.type === 'task_changed' || event.type === 'task_created' ||
@@ -163,11 +163,13 @@ export const TaskList = component('task-list', (_props, host) => {
 
   // HACK:EXPOSE — replace with props when backlog-app passes state down
   (host as any).setState = (f: string, t: string, id: string | null, q: string | null) => {
-    filter.value = f;
-    typeFilter.value = t;
-    selectedId.value = id;
-    query.value = q;
-    pendingAutoScope.value = !!id;
+    batch(() => {
+      filter.value = f;
+      typeFilter.value = t;
+      selectedId.value = id;
+      query.value = q;
+      pendingAutoScope.value = !!id;
+    });
     doFetch();
   };
 
@@ -175,107 +177,92 @@ export const TaskList = component('task-list', (_props, host) => {
     selectedId.value = taskId;
   };
 
-  // ── HACK:STATIC_LIST — Render list via effect ────────────────────
-  // Rebuilds task-item elements when visibleTasks/selectedId/scopeId change.
-  // Uses TaskItem factory for type-safe composition (comp-factory-composition).
-  // Replace with each() when reactive list primitive is implemented.
+  // ── Breadcrumb data (HACK:REF — breadcrumb is unmigrated) ────────
   effect(() => {
-    const tasks = visibleTasks.value;
-    const scope = scopeId.value;
-    const selected = selectedId.value;
-    const all = allTasks.value;
-    const err = error.value;
-
-    const container = host.querySelector('.task-list-container') as HTMLElement;
-    if (!container) return;
-
-    // HACK:REF — update breadcrumb via querySelector until ref() exists
     const breadcrumb = host.querySelector('epic-breadcrumb');
-    if (breadcrumb) (breadcrumb as any).setData(scope, all);
-
-    if (err) {
-      container.replaceChildren();
-      const errDiv = document.createElement('div');
-      errDiv.className = 'error';
-      errDiv.textContent = `Failed to load tasks: ${err}`;
-      container.appendChild(errDiv);
-      return;
-    }
-
-    if (tasks.length === 0) {
-      container.replaceChildren();
-      const empty = document.createElement('div');
-      empty.className = 'empty-state';
-      empty.appendChild(Object.assign(document.createElement('div'), { className: 'empty-state-icon', textContent: '—' }));
-      empty.appendChild(Object.assign(document.createElement('div'), { textContent: 'No tasks found' }));
-      container.appendChild(empty);
-      return;
-    }
-
-    const isInsideContainer = !!scope;
-    const currentContainer = isInsideContainer ? tasks.find(t => t.id === scope) : null;
-    const hasOnlyContainer = isInsideContainer && tasks.length === 1 && currentContainer;
-
-    // Build DOM using TaskItem factory (comp-factory-composition)
-    const listDiv = document.createElement('div');
-    listDiv.className = 'task-list';
-
-    for (const task of tasks) {
-      const type = task.type ?? 'task';
-      const config = getTypeConfig(type);
-      const childCount = config.isContainer
-        ? all.filter(t => getParentId(t) === task.id).length
-        : 0;
-      const isCurrentContainer = scope === task.id;
-
-      // Factory composition — type-safe, signals required (comp-props-signals)
-      const result = TaskItem({
-        id: signal(task.id),
-        title: signal(task.title),
-        status: signal(task.status),
-        type: signal(type),
-        childCount: signal(childCount),
-        dueDate: signal(task.due_date || ''),
-        selected: signal(selected === task.id),
-        currentEpic: signal(isCurrentContainer),
-      });
-
-      // Mount factory result into DOM
-      const factoryResult = result as unknown as {
-        tagName: string;
-        props: Record<string, unknown>;
-      };
-      const el = document.createElement(factoryResult.tagName);
-      for (const [key, val] of Object.entries(factoryResult.props)) {
-        (el as any)._setProp(key, (val as any).value ?? val);
-      }
-      listDiv.appendChild(el);
-
-      if (isCurrentContainer) {
-        const sep = document.createElement('div');
-        sep.className = 'epic-separator';
-        const icon = document.createElement('svg-icon');
-        icon.className = 'separator-icon';
-        icon.setAttribute('src', ringIcon);
-        sep.appendChild(icon);
-        listDiv.appendChild(sep);
-      }
-    }
-
-    if (hasOnlyContainer) {
-      const empty = document.createElement('div');
-      empty.className = 'empty-state-inline';
-      empty.appendChild(Object.assign(document.createElement('div'), { className: 'empty-state-icon', textContent: '—' }));
-      empty.appendChild(Object.assign(document.createElement('div'), { textContent: 'No items in this container' }));
-      listDiv.appendChild(empty);
-    }
-
-    container.replaceChildren(listDiv);
+    if (breadcrumb) (breadcrumb as any).setData(scopeId.value, allTasks.value);
   });
 
-  // ── Template (static shell) ──────────────────────────────────────
+  // ── Enriched task list for each() ────────────────────────────────
+  type EnrichedTask = {
+    id: string; title: string; status: string; type: string;
+    childCount: number; dueDate: string; selected: boolean; currentEpic: boolean;
+  };
+  const enrichedTasks = computed<EnrichedTask[]>(() => {
+    const tasks = visibleTasks.value;
+    const scope = scopeId.value;
+    const sel = selectedId.value;
+    const all = allTasks.value;
+    return tasks.map(task => {
+      const type = task.type ?? 'task';
+      const config = getTypeConfig(type);
+      return {
+        id: task.id, title: task.title, status: task.status, type,
+        childCount: config.isContainer ? all.filter(t => getParentId(t) === task.id).length : 0,
+        dueDate: task.due_date || '',
+        selected: sel === task.id,
+        currentEpic: scope === task.id,
+      };
+    });
+  });
+
+  const hasOnlyContainer = computed(() => {
+    const scope = scopeId.value;
+    if (!scope) return false;
+    const tasks = visibleTasks.value;
+    return tasks.length === 1 && tasks[0]?.id === scope;
+  });
+
+  const isEmpty = computed(() => !error.value && enrichedTasks.value.length === 0);
+
+  // ── View pieces ──────────────────────────────────────────────────
+  const taskItemFor = (task: ReadonlySignal<EnrichedTask>) =>
+    TaskItem({
+      id: computed(() => task.value.id),
+      title: computed(() => task.value.title),
+      status: computed(() => task.value.status),
+      type: computed(() => task.value.type),
+      childCount: computed(() => task.value.childCount),
+      dueDate: computed(() => task.value.dueDate),
+      selected: computed(() => task.value.selected),
+      currentEpic: computed(() => task.value.currentEpic),
+    });
+
+  const separator = html`
+    <div class="epic-separator">
+      <svg-icon class="separator-icon" src="${signal(ringIcon)}"></svg-icon>
+    </div>
+  `;
+
+  const taskList = each(enrichedTasks, t => t.id, (task) => html`
+    ${taskItemFor(task)}
+    ${computed(() => task.value.currentEpic ? separator : null)}
+  `);
+
+  const emptyList = html`
+    <div class="empty-state">
+      <div class="empty-state-icon">—</div>
+      <div>No tasks found</div>
+    </div>
+  `;
+
+  const emptyContainer = html`
+    <div class="empty-state-inline">
+      <div class="empty-state-icon">—</div>
+      <div>No items in this container</div>
+    </div>
+  `;
+
+  // ── Template ─────────────────────────────────────────────────────
   return html`
     <epic-breadcrumb></epic-breadcrumb>
-    <div class="task-list-container"></div>
+    <div class="task-list-container">
+      ${when(error, html`<div class="error">Failed to load tasks: ${error}</div>`)}
+      ${when(isEmpty, emptyList)}
+      <div class="task-list">
+        ${taskList}
+        ${when(hasOnlyContainer, emptyContainer)}
+      </div>
+    </div>
   `;
 });
