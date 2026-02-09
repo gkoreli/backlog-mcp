@@ -17,6 +17,7 @@ import {
   type Signal,
   type ReadonlySignal,
 } from './signal.js';
+import { isRef, type Ref } from './ref.js';
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -237,6 +238,21 @@ function processAttributes(
       continue;
     }
 
+    // Check for ref binding: ref="${myRef}"
+    if (name === 'ref' && attrValue.includes(MARKER_PREFIX)) {
+      const markerMatch = attrValue.match(/<!--bk-(\d+)-->/);
+      if (markerMatch) {
+        const index = Number(markerMatch[1]);
+        const value = values[index];
+        if (isRef(value)) {
+          (value as Ref).current = el;
+          disposers.push(() => { (value as Ref).current = null; });
+        }
+      }
+      attrsToRemove.push(name);
+      continue;
+    }
+
     // Check for regular attribute bindings with markers
     if (attrValue.includes(MARKER_PREFIX)) {
       const markers = [...attrValue.matchAll(/<!--bk-(\d+)-->/g)];
@@ -274,18 +290,58 @@ function replaceMarkerWithBinding(
   if (!parent) return;
 
   if (isSignal(value)) {
-    // Create a text node bound to the signal
-    const textNode = document.createTextNode(String(value.value));
-    parent.replaceChild(textNode, comment);
+    const signalValue = (value as ReadonlySignal<unknown>).value;
 
-    const binding: TextBinding = { type: 'text', node: textNode };
-    bindings.push(binding);
+    // Check if the signal holds a TemplateResult (e.g., from reactive when())
+    if (signalValue && typeof signalValue === 'object' && '__templateResult' in signalValue
+        || signalValue === null || signalValue === undefined) {
+      // Reactive template slot — mount/unmount templates as signal changes
+      const startMarker = document.createComment('when-start');
+      const endMarker = document.createComment('when-end');
+      parent.replaceChild(endMarker, comment);
+      parent.insertBefore(startMarker, endMarker);
 
-    const dispose = effect(() => {
-      textNode.data = String((value as ReadonlySignal<unknown>).value);
-    });
-    binding.dispose = dispose;
-    disposers.push(dispose);
+      let currentResult: TemplateResult | null = null;
+      let currentNodes: Node[] = [];
+
+      const dispose = effect(() => {
+        const newValue = (value as ReadonlySignal<unknown>).value;
+
+        // Remove previous content
+        if (currentResult?.dispose) {
+          try { currentResult.dispose(); } catch (_) {}
+        }
+        for (const node of currentNodes) {
+          node.parentNode?.removeChild(node);
+        }
+        currentNodes = [];
+        currentResult = null;
+
+        // Mount new content if truthy
+        if (newValue && typeof newValue === 'object' && '__templateResult' in newValue) {
+          currentResult = newValue as TemplateResult;
+          const wrapper = document.createDocumentFragment();
+          currentResult.mount(wrapper as unknown as HTMLElement);
+          // Capture the nodes before inserting
+          currentNodes = [...wrapper.childNodes];
+          parent.insertBefore(wrapper, endMarker);
+        }
+      });
+      disposers.push(dispose);
+    } else {
+      // Primitive signal — create a reactive text node
+      const textNode = document.createTextNode(String(signalValue));
+      parent.replaceChild(textNode, comment);
+
+      const binding: TextBinding = { type: 'text', node: textNode };
+      bindings.push(binding);
+
+      const dispose = effect(() => {
+        textNode.data = String((value as ReadonlySignal<unknown>).value);
+      });
+      binding.dispose = dispose;
+      disposers.push(dispose);
+    }
   } else if (value && typeof value === 'object' && '__templateResult' in value) {
     // Nested template result — mount it
     const result = value as TemplateResult;
@@ -495,15 +551,26 @@ function bindEvent(
 /**
  * Conditional rendering helper.
  * Shows the template when condition is truthy.
+ *
+ * Supports both static and reactive (signal) conditions.
+ * For signal conditions, returns a computed that reactively switches
+ * between the template and null.
+ *
+ * The template argument can be a TemplateResult or a lazy callback
+ * `() => TemplateResult` to avoid evaluating expensive branches.
  */
 export function when(
   condition: unknown,
-  template: TemplateResult,
-): TemplateResult | null {
+  template: TemplateResult | (() => TemplateResult),
+): TemplateResult | ReadonlySignal<TemplateResult | null> | null {
+  const resolveTemplate = () =>
+    typeof template === 'function' ? template() : template;
+
   if (isSignal(condition)) {
-    // For signal conditions, we need reactive switching
-    // Return a special marker that the parent template will handle
-    return (condition as ReadonlySignal<unknown>).value ? template : null;
+    // Reactive: return a computed that re-evaluates when the signal changes
+    return computed(() =>
+      (condition as ReadonlySignal<unknown>).value ? resolveTemplate() : null
+    );
   }
-  return condition ? template : null;
+  return condition ? resolveTemplate() : null;
 }

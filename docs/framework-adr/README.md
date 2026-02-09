@@ -11,3 +11,4 @@ These are separate from the main project ADRs in `docs/adr/` because the framewo
 - [0003. Migration Gaps, Framework Debt, and Component Follow-Up Tracker](./0003-migration-gaps-and-debt-tracker.md) - Active - 2026-02-09
 - [0004. Framework Resilience Gaps — Pre-Implementation Review](./0004-framework-resilience-gaps.md) - Proposed - 2026-02-08
 - [0005. Props vs Attributes Auto-Resolution Gap](./0005-props-vs-attributes-auto-resolution.md) - Proposed - 2026-02-08
+- [0006. Framework Review — Gap Resolution and Invariant Codification](./0006-framework-review-gap-resolution.md) - Accepted - 2026-02-09
