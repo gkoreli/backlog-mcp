@@ -11,6 +11,7 @@
  */
 
 import {
+  signal,
   isSignal,
   effect,
   computed,
@@ -559,6 +560,134 @@ function bindEvent(
  * The template argument can be a TemplateResult or a lazy callback
  * `() => TemplateResult` to avoid evaluating expensive branches.
  */
+// ── each() reactive list rendering ──────────────────────────────────
+
+/** Brand for each result detection */
+const EACH_BRAND = Symbol.for('backlog.each');
+
+interface EachEntry<T> {
+  key: string | number;
+  itemSignal: Signal<T>;
+  indexSignal: Signal<number>;
+  templateResult: TemplateResult;
+  nodes: Node[];
+}
+
+/**
+ * Reactive list rendering with keyed reconciliation.
+ *
+ * Renders a list of items from a signal, tracking each item by key.
+ * When the array changes, only affected DOM nodes are added, removed,
+ * or reordered — existing items update in-place via their signals.
+ *
+ * ```ts
+ * const tasks = signal([{ id: '1', title: 'A' }, { id: '2', title: 'B' }]);
+ * html`<ul>${each(tasks, t => t.id, (task, index) =>
+ *   html`<li>${computed(() => task.value.title)}</li>`
+ * )}</ul>`
+ * ```
+ */
+export function each<T>(
+  items: ReadonlySignal<T[]>,
+  keyFn: (item: T, index: number) => string | number,
+  templateFn: (item: ReadonlySignal<T>, index: ReadonlySignal<number>) => TemplateResult,
+): TemplateResult {
+  let startMarker: Comment;
+  let endMarker: Comment;
+  let entries: EachEntry<T>[] = [];
+  let effectDispose: (() => void) | null = null;
+
+  return {
+    __templateResult: true as const,
+
+    mount(host: HTMLElement) {
+      startMarker = document.createComment('each-start');
+      endMarker = document.createComment('each-end');
+      host.appendChild(startMarker);
+      host.appendChild(endMarker);
+
+      effectDispose = effect(() => {
+        const newItems = items.value;
+        reconcile(newItems);
+      });
+    },
+
+    dispose() {
+      if (effectDispose) {
+        effectDispose();
+        effectDispose = null;
+      }
+      for (const entry of entries) {
+        entry.templateResult.dispose();
+      }
+      entries = [];
+    },
+  };
+
+  function reconcile(newItems: T[]) {
+    const parent = endMarker.parentNode;
+    if (!parent) return;
+
+    // Build old key → entry map
+    const oldMap = new Map<string | number, EachEntry<T>>();
+    for (const entry of entries) {
+      oldMap.set(entry.key, entry);
+    }
+
+    // Build new entries list
+    const newEntries: EachEntry<T>[] = [];
+    const newKeys = new Set<string | number>();
+
+    for (let i = 0; i < newItems.length; i++) {
+      const item = newItems[i];
+      const key = keyFn(item, i);
+      newKeys.add(key);
+
+      const existing = oldMap.get(key);
+      if (existing) {
+        // Reuse — update signals in place
+        existing.itemSignal.value = item;
+        existing.indexSignal.value = i;
+        newEntries.push(existing);
+      } else {
+        // Create new entry
+        const itemSignal = signal(item) as Signal<T>;
+        const indexSignal = signal(i);
+        const wrapper = document.createDocumentFragment();
+        const templateResult = templateFn(itemSignal, indexSignal);
+        templateResult.mount(wrapper as unknown as HTMLElement);
+        const nodes = [...wrapper.childNodes];
+        newEntries.push({ key, itemSignal, indexSignal, templateResult, nodes });
+      }
+    }
+
+    // Remove entries whose key is gone
+    for (const entry of entries) {
+      if (!newKeys.has(entry.key)) {
+        entry.templateResult.dispose();
+        for (const node of entry.nodes) {
+          node.parentNode?.removeChild(node);
+        }
+      }
+    }
+
+    // Reorder DOM nodes to match new order
+    // Walk newEntries and ensure each entry's nodes are in the right position
+    let cursor: Node = startMarker;
+    for (const entry of newEntries) {
+      for (const node of entry.nodes) {
+        const nextSibling = cursor.nextSibling;
+        if (nextSibling !== node) {
+          parent.insertBefore(node, nextSibling);
+        }
+        cursor = node;
+      }
+    }
+
+    entries = newEntries;
+  }
+}
+
 export function when(
   condition: unknown,
   template: TemplateResult | (() => TemplateResult),

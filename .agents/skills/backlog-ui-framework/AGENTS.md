@@ -332,6 +332,39 @@ const content = computed(() => {
 return html`<div class="container">${content}</div>`;
 ```
 
+### `tmpl-each-lists` — Use each() for reactive list rendering
+
+`each()` renders an array of items reactively with keyed reconciliation. When the array signal changes, only affected DOM nodes are added, removed, or reordered.
+
+```typescript
+const tasks = signal([...]);
+
+html`<div>${each(
+  tasks,
+  (task) => task.id,                     // key function
+  (task, index) => html`                  // template function
+    <div class="task-item">
+      <span>${computed(() => task.value.title)}</span>
+    </div>
+  `,
+)}</div>`
+```
+
+**Key rules:**
+- First argument is a signal of an array
+- Key function maps each item to a unique, stable key
+- Template function receives `ReadonlySignal<T>` (not raw T) — use `.value` in computed/effect
+- Each item updates in-place via its signal — no remount for data changes
+- Cascading effects: after `flushEffects()` runs the each() effect, downstream text bindings need another `flushEffects()` in tests
+
+```typescript
+// ❌ WRONG — static array, no reactivity
+const items = tasks.value.map(t => html`<li>${t.title}</li>`);
+
+// ✅ CORRECT — reactive list with keyed reconciliation
+each(tasks, t => t.id, (task) => html`<li>${computed(() => task.value.title)}</li>`)
+```
+
 ### `tmpl-when-simple` — Use when() only for simple toggles
 
 `when()` is for single-branch inline toggles. No else branch, no nesting.
@@ -797,15 +830,45 @@ export { MyComponent };
 
 ---
 
+## Shared Reactive Services (Cross-Component Communication)
+
+Instead of `expose()` (rejected — see ADR 0007), use shared injectable services with signal properties for cross-component communication:
+
+```typescript
+// Service definition
+class AppState {
+  readonly selectedTaskId = signal<string | null>(null);
+  readonly filter = signal('active');
+}
+
+// Producer component
+const state = inject(AppState);
+state.selectedTaskId.value = taskId;
+
+// Consumer component — reacts automatically
+const state = inject(AppState);
+effect(() => {
+  const id = state.selectedTaskId.value;
+  if (id) loadTask(id);
+});
+```
+
+This replaces:
+- `HACK:EXPOSE` — no methods to expose, state is shared via signals
+- `HACK:CROSS_QUERY` — no querySelector needed, inject the service
+- Direct method calls via `(el as any).method()` — write to a signal instead
+
+---
+
 ## Known Framework Gaps (Active)
 
 These are documented gaps from the ADRs. Code using workarounds MUST be tagged.
 
 | Gap | Severity | Tag | Status |
 |---|---|---|---|
-| No `expose()` API for public methods | HIGH | `HACK:EXPOSE` | Pending |
-| No `ref()` primitive | MEDIUM | `HACK:REF` | Pending |
+| `expose()` replaced by shared services | HIGH | `HACK:EXPOSE` | **Resolved** (ADR 0007) — use injectable services |
+| `ref()` primitive | MEDIUM | `HACK:REF` | **Resolved** (ADR 0006) — use `ref()` |
 | No Emitter integration (migration period) | LOW | `HACK:DOC_EVENT` | Deferred |
-| No reactive list rendering (`each()`) | MEDIUM | `HACK:STATIC_LIST` | Pending |
-| Effect auto-disposal not wired to lifecycle | MEDIUM | — | Pending |
+| Reactive list rendering `each()` | MEDIUM | `HACK:STATIC_LIST` | **Resolved** (ADR 0007) — use `each()` |
+| Effect auto-disposal | MEDIUM | — | **Resolved** (ADR 0006) — auto-wired in component context |
 | No `observedAttributes` → signal bridge | LOW | — | Deferred (skip leaf migration) |
