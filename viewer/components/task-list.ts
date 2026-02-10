@@ -15,7 +15,7 @@ import { backlogEvents } from '../services/event-source-client.js';
 import { getTypeConfig, getParentId } from '../type-registry.js';
 import { AppState } from '../services/app-state.js';
 import { TaskItem } from './task-item.js';
-import './breadcrumb.js';
+import { Breadcrumb } from './breadcrumb.js';
 import { ringIcon } from '../icons/index.js';
 
 function sortTasks(tasks: Task[], sort: string): Task[] {
@@ -131,11 +131,8 @@ export const TaskList = component('task-list', (_props, host) => {
   const hasOnlyContainer = computed(() => isScoped.value && childItems.value.length === 0);
   const isEmpty = computed(() => !error.value && allEnriched.value.length === 0);
 
-  // ── Breadcrumb (HACK:REF — breadcrumb is unmigrated) ─────────────
-  effect(() => {
-    const breadcrumb = host.querySelector('epic-breadcrumb');
-    if (breadcrumb) (breadcrumb as any).setData(app.scopeId.value, allTasks.value);
-  });
+  // ── Breadcrumb (factory composition) ───────────────────────────────
+  const breadcrumb = Breadcrumb({ tasks: allTasks });
 
   // ── View pieces ──────────────────────────────────────────────────
   const taskItemFor = (task: ReadonlySignal<EnrichedTask>) =>
@@ -159,7 +156,7 @@ export const TaskList = component('task-list', (_props, host) => {
 
   // ── Template ─────────────────────────────────────────────────────
   return html`
-    <epic-breadcrumb></epic-breadcrumb>
+    ${breadcrumb}
     <div class="task-list-container">
       ${when(error, html`<div class="error">Failed to load tasks: ${error}</div>`)}
       ${when(isEmpty, html`
