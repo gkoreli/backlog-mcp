@@ -50,6 +50,8 @@ Reference these guidelines when:
 - `comp-no-innerhtml` - Never use `innerHTML`; use `html` tagged templates for targeted DOM patching
 - `comp-host-escape-hatch` - `host` is the second param; use it only for imperative DOM access
 - `comp-no-class-authoring` - Never extend HTMLElement directly for new components; use `component()`
+- `comp-host-attrs` - Use second factory arg `{ class: '...' }` for host-level CSS classes (ADR 0009)
+- `comp-prop-input` - Factory props accept `T | Signal<T>` — plain values are auto-wrapped (ADR 0009)
 
 ### 2. Signals & Reactivity (CRITICAL)
 
@@ -59,6 +61,7 @@ Reference these guidelines when:
 - `signal-effect-side-effects` - Effects are for side effects only (DOM, network, localStorage)
 - `signal-batch-writes` - Use `batch()` for multiple synchronous signal writes
 - `signal-no-async-in-setup-context` - `inject()`, `effect()`, `emitter.on()` must be called synchronously in setup
+- `signal-untrack` - Use `untrack()` to read signals without tracking them as dependencies (ADR 0009)
 - `signal-conditional-deps` - Dependencies are re-tracked on every run; conditional reads track correctly
 - `signal-equality-object-is` - Signal equality uses `Object.is()`, not `===`
 
@@ -104,6 +107,7 @@ Reference these guidelines when:
 
 - `error-setup-boundary` - Setup errors render a fallback; sibling components unaffected
 - `error-effect-survives` - Effect errors are logged, not thrown; the effect stays alive
+- `error-effect-loop-guard` - Effects that re-run >100 times in 2s are auto-disposed (ADR 0009)
 - `error-handler-wrapped` - `@event` handlers are try/caught; broken handlers don't crash the UI
 - `error-cleanup-swallowed` - Cleanup/disposer errors are swallowed; disposal always completes
 - `error-circular-detection` - Both computed and DI have circular dependency detection

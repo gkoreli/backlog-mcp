@@ -359,17 +359,48 @@ function replaceMarkerWithBinding(
     disposers.push(() => result.dispose());
   } else if (value && typeof value === 'object' && '__type' in value && (value as any).__type === 'factory') {
     // Factory result — create child element
-    const factory = value as { tagName: string; props: Record<string, Signal<unknown>>; children?: TemplateResult };
+    const factory = value as {
+      tagName: string;
+      props: Record<string, unknown>;
+      hostAttrs?: { class?: unknown };
+    };
     const el = document.createElement(factory.tagName);
-    for (const [key, sig] of Object.entries(factory.props)) {
-      if (isSignal(sig)) {
+    for (const [key, raw] of Object.entries(factory.props)) {
+      if (isSignal(raw)) {
+        const sig = raw as ReadonlySignal<unknown>;
         (el as any)._setProp?.(key, sig.value);
         const unsub = sig.subscribe((newVal: unknown) => {
           (el as any)._setProp?.(key, newVal);
         });
         disposers.push(unsub);
       } else {
-        (el as any)._setProp?.(key, sig);
+        // Static value — set once, no subscription needed
+        (el as any)._setProp?.(key, raw);
+      }
+    }
+    // Apply host-level class attribute
+    if (factory.hostAttrs?.class != null) {
+      const classVal = factory.hostAttrs.class;
+      if (isSignal(classVal)) {
+        const sig = classVal as ReadonlySignal<string>;
+        let prevClasses: string[] = [];
+        const applyClasses = (raw: string) => {
+          const next = raw ? raw.split(/\s+/).filter(Boolean) : [];
+          for (const cls of prevClasses) {
+            if (!next.includes(cls)) el.classList.remove(cls);
+          }
+          for (const cls of next) {
+            if (!prevClasses.includes(cls)) el.classList.add(cls);
+          }
+          prevClasses = next;
+        };
+        applyClasses(sig.value);
+        const unsub = sig.subscribe(applyClasses);
+        disposers.push(unsub);
+      } else if (typeof classVal === 'string' && classVal) {
+        for (const cls of classVal.split(/\s+/).filter(Boolean)) {
+          el.classList.add(cls);
+        }
       }
     }
     parent.replaceChild(el, comment);

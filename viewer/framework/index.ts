@@ -22,6 +22,7 @@ export {
   batch,
   isSignal,
   flushEffects,
+  untrack,
   SIGNAL_BRAND,
   type Signal,
   type ReadonlySignal,
@@ -55,6 +56,8 @@ export {
   type SetupFunction,
   type ComponentFactory,
   type ComponentOptions,
+  type PropInput,
+  type HostAttrs,
 } from './component.js';
 
 // ── Template engine ─────────────────────────────────────────────────
