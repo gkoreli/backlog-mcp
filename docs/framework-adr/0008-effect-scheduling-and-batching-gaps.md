@@ -163,3 +163,18 @@ const icon = SvgIcon({ src: computed(() => url) }); // reactive — signal
 This would require the factory to detect whether a value is a signal and wrap
 plain values automatically. The `SIGNAL_BRAND` check already exists in the
 template engine for this purpose.
+
+
+## Migration Note: innerHTML Children Persist Under `mountTemplate`
+
+**This is NOT a framework gap** — it is a transient interop issue during
+migration. Once all consumers use factory composition, this disappears.
+
+**Situation**: `mountTemplate()` uses `appendChild`, so pre-existing innerHTML
+children from unmigrated consumers persist alongside the component template.
+For example, task-detail creates `<copy-button><task-badge>...</task-badge></copy-button>`
+via innerHTML — those children survive after CopyButton's template mounts.
+
+**Resolution**: Migrate the remaining innerHTML consumers (task-detail,
+system-info-modal, activity-panel, spotlight-search) to factory composition.
+Tagged `HACK:MOUNT_APPEND` in copy-button.ts for cleanup tracking.
