@@ -1,7 +1,7 @@
 # 0008. Effect Isolation and Loop Detection — Defense-in-Depth
 
 **Date**: 2026-02-09
-**Status**: Open — framework engineer action recommended
+**Status**: Resolved — all gaps implemented in ADR 0009
 **Triggered by**: UI freeze in task-list on page load (Phase 11 migration)
 **Depends on**: [0007-shared-services-and-each](./0007-shared-services-and-each.md)
 
@@ -71,33 +71,16 @@ Migration hacks must be replaced as soon as the proper primitive is available.
 
 ## Suggested Framework Improvements (Defense-in-Depth)
 
-### 1. Isolate `activeObserver` in `connectedCallback`
+### 1. Isolate `activeObserver` in `connectedCallback` — **RESOLVED in ADR 0009**
 
-Low severity — patterns avoid the dangerous case, but the leak causes
-unnecessary effect re-runs even in correct code.
+Implemented via `untrack()` in `signal.ts`, wrapping the entire `connectedCallback`
+body. See ADR 0009 for design rationale.
 
-```typescript
-connectedCallback() {
-  const prevObserver = activeObserver;
-  activeObserver = null;
-  try { /* setup, mountTemplate, runMountCallbacks */ }
-  finally { activeObserver = prevObserver; }
-}
-```
+### 2. Effect loop detection — **RESOLVED in ADR 0009**
 
-### 2. Effect loop detection
-
-Low severity — skill rules prevent the pattern, but a guard catches mistakes
-early instead of freezing the UI silently.
-
-```typescript
-if (++node.runCount > MAX_RERUNS) {
-  throw new Error(
-    `Effect exceeded maximum re-run limit (${MAX_RERUNS}). ` +
-    `This usually means the effect writes to a signal it reads.`
-  );
-}
-```
+Implemented via per-effect run counter with time-window reset. Effects that
+exceed 100 re-runs within 2 seconds are auto-disposed with a console error.
+See ADR 0009 for design rationale.
 
 ## Fixes Applied
 
@@ -106,63 +89,17 @@ if (++node.runCount > MAX_RERUNS) {
 3. Wrapped `setState()` signal writes in `batch()`
 
 
-## Gap 3: Factory `class` Prop Support
+## Gap 3: Factory `class` Prop Support — **RESOLVED in ADR 0009**
 
-**Severity**: Medium — every factory-composed component that needs external CSS
-classes requires an imperative workaround.
+Implemented via `HostAttrs` second argument to factory functions. The `class`
+attribute is applied to the host element via `classList.add/remove`, keeping
+it separate from component-internal class directives. See ADR 0009.
 
-**Problem**: When using factory composition (`comp-factory-composition`), there
-is no way to pass a CSS class to the created element. The factory only forwards
-declared props via `_setProp()`. Standard HTML attributes like `class` are not
-part of the component's typed props interface.
+## Gap 4: Static Props Require `signal()` Wrapper — **RESOLVED in ADR 0009**
 
-**Current workaround** (tagged `HACK:FACTORY_CLASS`):
-
-```typescript
-const icon = SvgIcon({ src: signal(ringIcon) });
-(icon as unknown as HTMLElement).classList.add('separator-icon');
-```
-
-This breaks the factory abstraction — the caller reaches into the returned
-element imperatively instead of declaratively.
-
-**Desired behavior**: Factory composition should support a `class` prop that
-any component can receive, applied via `classList` on the host element:
-
-```typescript
-// Option A: Built-in class support in ComponentFactory type
-const icon = SvgIcon({ src: signal(ringIcon), class: signal('separator-icon') });
-
-// Option B: Second argument to factory for host attributes
-const icon = SvgIcon({ src: signal(ringIcon) }, { class: 'separator-icon' });
-```
-
-**Why this matters**: The `comp-factory-composition` rule now mandates factory
-usage for ALL custom elements. Without `class` support, any component needing
-external styling requires an escape hatch that undermines the rule.
-
-## Gap 4: Static Props Require `signal()` Wrapper
-
-**Severity**: Low — verbose but not incorrect.
-
-**Problem**: Factory props are typed as `Signal<T>`. Passing a static value
-requires wrapping in `signal()` even when the value will never change:
-
-```typescript
-// ringIcon is a static import — will never change
-const icon = SvgIcon({ src: signal(ringIcon) });
-```
-
-**Desired behavior**: Accept both `Signal<T>` and plain `T`:
-
-```typescript
-const icon = SvgIcon({ src: ringIcon });           // static — no wrapper
-const icon = SvgIcon({ src: computed(() => url) }); // reactive — signal
-```
-
-This would require the factory to detect whether a value is a signal and wrap
-plain values automatically. The `SIGNAL_BRAND` check already exists in the
-template engine for this purpose.
+Implemented via `PropInput<T> = T | Signal<T> | ReadonlySignal<T>` type.
+Factory props now accept plain values which are auto-wrapped via `isSignal()`
+detection. See ADR 0009.
 
 
 ## Migration Note: innerHTML Children Persist Under `mountTemplate`

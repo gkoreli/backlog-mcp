@@ -13,7 +13,7 @@ export const TaskBadge = component<{ taskId: string }>('task-badge', (props, hos
 
   effect(() => { host.className = `task-badge type-${type.value}`; });
 
-  const icon = SvgIcon({ src: computed(() => config.value.icon), class: signal('task-badge-icon') });
+  const icon = SvgIcon({ src: computed(() => config.value.icon) }, { class: 'task-badge-icon' });
 
   return html`${icon}<span class="task-badge-id">${props.taskId}</span>`;
 });

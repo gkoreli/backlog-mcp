@@ -15,6 +15,7 @@ import {
   batch,
   flushEffects,
   isSignal,
+  untrack,
 } from './signal.js';
 import { html, when, type TemplateResult } from './template.js';
 import { inject, provide, resetInjector } from './injector.js';
@@ -624,5 +625,281 @@ describe('INVARIANT: query generation guard', () => {
     slowResolve.resolve('slow-stale');
     await new Promise(r => setTimeout(r, 10));
     expect(result.data.value).toBe('fast-result');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADR 0009 Gap 1: activeObserver isolation via untrack()
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: untrack() isolates activeObserver', () => {
+  it('signal reads inside untrack are not tracked by outer effect', () => {
+    const outer = signal(0);
+    const inner = signal(0);
+    let runCount = 0;
+
+    effect(() => {
+      outer.value; // tracked
+      untrack(() => {
+        inner.value; // NOT tracked
+      });
+      runCount++;
+    });
+    expect(runCount).toBe(1);
+
+    // Changing inner should NOT re-trigger the effect
+    inner.value = 1;
+    flushEffects();
+    expect(runCount).toBe(1);
+
+    // Changing outer SHOULD re-trigger the effect
+    outer.value = 1;
+    flushEffects();
+    expect(runCount).toBe(2);
+  });
+
+  it('restores activeObserver after untrack completes', () => {
+    const a = signal(0);
+    const b = signal(0);
+    const c = signal(0);
+    let runCount = 0;
+
+    effect(() => {
+      a.value; // tracked
+      untrack(() => { b.value; }); // NOT tracked
+      c.value; // tracked
+      runCount++;
+    });
+    expect(runCount).toBe(1);
+
+    c.value = 1;
+    flushEffects();
+    expect(runCount).toBe(2);
+  });
+
+  it('connectedCallback isolates child signal reads from parent effect', () => {
+    const tag = uniqueTag('iso');
+    const childSignal = signal('child-value');
+    let parentEffectRuns = 0;
+
+    // Create a component that reads childSignal during setup
+    component(tag, (_props) => {
+      const val = childSignal.value; // read during setup
+      return html`<span>${val}</span>`;
+    });
+
+    // Simulate: parent effect creates a child component
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    effect(() => {
+      parentEffectRuns++;
+      // This would normally be "inside" a parent effect
+      const el = document.createElement(tag);
+      container.appendChild(el);
+    });
+    expect(parentEffectRuns).toBe(1);
+
+    // Changing childSignal should NOT re-trigger parent effect
+    childSignal.value = 'updated';
+    flushEffects();
+    expect(parentEffectRuns).toBe(1);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADR 0009 Gap 2: Effect loop detection
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: effect loop detection', () => {
+  it('effect that writes to its own dependency is auto-disposed after MAX_RERUNS', () => {
+    const counter = signal(0);
+    const errors: string[] = [];
+    const origError = console.error;
+    console.error = (...args: unknown[]) => {
+      errors.push(String(args[0]));
+    };
+
+    try {
+      // This effect reads and writes the same signal — infinite loop
+      effect(() => {
+        counter.value = counter.value + 1;
+      });
+      // Initial run: counter goes 0→1. That triggers a re-run via microtask.
+      expect(counter.value).toBe(1);
+
+      // Simulate microtask flushes — each run writes to counter, which
+      // re-triggers the effect. After 100 re-runs, the guard kicks in.
+      for (let i = 0; i < 200; i++) {
+        flushEffects();
+      }
+
+      // The effect should have been disposed before reaching 200+ runs
+      expect(counter.value).toBeGreaterThan(1);
+      expect(counter.value).toBeLessThanOrEqual(102);
+      expect(errors.some(e => e.includes('maximum re-run limit'))).toBe(true);
+
+      // Verify the effect is truly dead — further flushes don't increment
+      const finalValue = counter.value;
+      flushEffects();
+      expect(counter.value).toBe(finalValue);
+    } finally {
+      console.error = origError;
+    }
+  });
+
+  it('normal effects are not affected by loop detection', () => {
+    const a = signal(0);
+    const b = signal('');
+    let runCount = 0;
+
+    // This effect reads a and writes b — no loop (different signals)
+    effect(() => {
+      b.value = `value-${a.value}`;
+      runCount++;
+    });
+    expect(runCount).toBe(1);
+    expect(b.value).toBe('value-0');
+
+    // Update a many times — each should work fine
+    for (let i = 1; i <= 50; i++) {
+      a.value = i;
+      flushEffects();
+    }
+    expect(runCount).toBe(51);
+    expect(b.value).toBe('value-50');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADR 0009 Gap 3: Factory class prop (HostAttrs)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: factory class prop via HostAttrs', () => {
+  /**
+   * Mount a factory result by embedding it in a parent template.
+   * Factory results are not TemplateResults — they need to be rendered
+   * via the template engine's expression slot handling.
+   */
+  function mountFactory(factoryResult: TemplateResult): { host: HTMLElement; el: Element } {
+    const wrapper = html`<div>${factoryResult}</div>`;
+    const host = document.createElement('div');
+    wrapper.mount(host);
+    document.body.appendChild(host);
+    const el = host.querySelector('div')!.children[0];
+    return { host, el };
+  }
+
+  it('static class is applied to the host element', () => {
+    const tag = uniqueTag('cls');
+    const Comp = component<{ label: string }>(tag, (props) => {
+      return html`<span>${props.label}</span>`;
+    });
+
+    const result = Comp({ label: signal('hi') }, { class: 'my-class extra' });
+    const { el } = mountFactory(result);
+    expect(el).toBeTruthy();
+    expect(el.classList.contains('my-class')).toBe(true);
+    expect(el.classList.contains('extra')).toBe(true);
+  });
+
+  it('reactive class updates the host element', () => {
+    const tag = uniqueTag('cls-rx');
+    const Comp = component<{ label: string }>(tag, (props) => {
+      return html`<span>${props.label}</span>`;
+    });
+
+    const cls = signal('initial-class');
+    const result = Comp({ label: signal('hi') }, { class: cls });
+    const { el } = mountFactory(result);
+    expect(el.classList.contains('initial-class')).toBe(true);
+
+    cls.value = 'new-class another';
+    flushEffects();
+    expect(el.classList.contains('initial-class')).toBe(false);
+    expect(el.classList.contains('new-class')).toBe(true);
+    expect(el.classList.contains('another')).toBe(true);
+  });
+
+  it('host class does not interfere with component internal classes', () => {
+    const tag = uniqueTag('cls-int');
+    const Comp = component<{ active: boolean }>(tag, (props, host) => {
+      effect(() => {
+        host.classList.toggle('internal-active', props.active.value);
+      });
+      return html`<span>content</span>`;
+    });
+
+    const active = signal(true);
+    const result = Comp({ active }, { class: 'external-class' });
+    const { el } = mountFactory(result);
+    expect(el.classList.contains('external-class')).toBe(true);
+    expect(el.classList.contains('internal-active')).toBe(true);
+
+    // Changing active should not remove external class
+    active.value = false;
+    // Cascading: flush subscription effect → prop update → flush internal effect
+    flushEffects();
+    flushEffects();
+    expect(el.classList.contains('external-class')).toBe(true);
+    expect(el.classList.contains('internal-active')).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADR 0009 Gap 4: Static prop auto-wrapping (PropInput<T>)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('INVARIANT: factory accepts plain values (auto-wrapping)', () => {
+  function mountFactory(factoryResult: TemplateResult): HTMLElement {
+    const wrapper = html`<div>${factoryResult}</div>`;
+    const host = document.createElement('div');
+    wrapper.mount(host);
+    document.body.appendChild(host);
+    return host;
+  }
+
+  it('plain value is auto-wrapped and forwarded as prop', () => {
+    const tag = uniqueTag('auto');
+    let receivedValue = '';
+    const Comp = component<{ name: string }>(tag, (props) => {
+      receivedValue = props.name.value;
+      return html`<span>${props.name}</span>`;
+    });
+
+    const result = Comp({ name: 'static-value' });
+    mountFactory(result);
+    expect(receivedValue).toBe('static-value');
+  });
+
+  it('signal value is forwarded without double-wrapping', () => {
+    const tag = uniqueTag('auto-sig');
+    const name = signal('reactive-value');
+    let receivedValue = '';
+    const Comp = component<{ name: string }>(tag, (props) => {
+      receivedValue = props.name.value;
+      return html`<span>${props.name}</span>`;
+    });
+
+    const result = Comp({ name });
+    mountFactory(result);
+    expect(receivedValue).toBe('reactive-value');
+  });
+
+  it('mixed static and signal props work together', () => {
+    const tag = uniqueTag('auto-mix');
+    const dynamic = signal('dynamic');
+    let staticVal = '';
+    let dynamicVal = '';
+    const Comp = component<{ label: string; title: string }>(tag, (props) => {
+      staticVal = props.label.value;
+      dynamicVal = props.title.value;
+      return html`<span>${props.label} ${props.title}</span>`;
+    });
+
+    const result = Comp({ label: 'fixed', title: dynamic });
+    mountFactory(result);
+    expect(staticVal).toBe('fixed');
+    expect(dynamicVal).toBe('dynamic');
   });
 });

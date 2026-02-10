@@ -134,8 +134,7 @@ export const TaskList = component('task-list', (_props, host) => {
 
   // ── Breadcrumb (factory composition) ───────────────────────────────
   const breadcrumb = Breadcrumb({ tasks: allTasks });
-  // HACK:FACTORY_CLASS — class prop must be added per-component until framework supports it (ADR 0008 Gap 3)
-  const separatorIcon = SvgIcon({ src: signal(ringIcon), class: signal('separator-icon') });
+  const separatorIcon = SvgIcon({ src: signal(ringIcon) }, { class: 'separator-icon' });
 
   // ── View pieces ──────────────────────────────────────────────────
   const taskItemFor = (task: ReadonlySignal<EnrichedTask>) =>

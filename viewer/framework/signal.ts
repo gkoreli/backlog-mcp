@@ -284,6 +284,21 @@ const computedAsReactiveNode = (c: ComputedImpl<unknown>): ReactiveNode => ({
 
 // ── Effect (side-effect, auto-tracks, auto-disposes) ────────────────
 
+/**
+ * Maximum consecutive re-runs within a time window before we assume an infinite loop.
+ * An effect that writes to a signal it reads will re-trigger itself
+ * on every flush. This guard prevents silent UI freezes.
+ * See ADR 0008 Gap 2 / ADR 0009.
+ */
+const MAX_EFFECT_RERUNS = 100;
+
+/**
+ * Time window (ms) for counting consecutive re-runs.
+ * If an effect runs MAX_EFFECT_RERUNS times within this window, it's a loop.
+ * Resets when the effect hasn't been re-triggered for longer than this window.
+ */
+const LOOP_WINDOW_MS = 2000;
+
 interface EffectNode extends ReactiveNode {
   fn: () => void | (() => void);
   cleanup: (() => void) | null;
@@ -291,6 +306,10 @@ interface EffectNode extends ReactiveNode {
   sources: Set<SignalNode<unknown> | ComputedNode<unknown>>;
   /** List of dispose callbacks registered by the component */
   disposers: (() => void)[];
+  /** Consecutive re-run counter for loop detection */
+  runCount: number;
+  /** Timestamp of first run in current counting window */
+  windowStart: number;
 }
 
 function createEffectNode(fn: () => void | (() => void)): EffectNode {
@@ -301,6 +320,8 @@ function createEffectNode(fn: () => void | (() => void)): EffectNode {
     disposed: false,
     sources: new Set(),
     disposers: [],
+    runCount: 0,
+    windowStart: 0,
     notify() {
       if (this.disposed) return;
       this.state = NodeState.Dirty;
@@ -314,6 +335,32 @@ function createEffectNode(fn: () => void | (() => void)): EffectNode {
 
 function runEffect(node: EffectNode): void {
   if (node.disposed) return;
+
+  // Loop detection: count consecutive re-runs within a time window.
+  // If the effect runs MAX_EFFECT_RERUNS times within LOOP_WINDOW_MS,
+  // it's almost certainly a write-to-own-dependency loop. Dispose it.
+  const now = Date.now();
+  if (now - node.windowStart > LOOP_WINDOW_MS) {
+    // New window — reset counter
+    node.runCount = 0;
+    node.windowStart = now;
+  }
+  node.runCount++;
+  if (node.runCount > MAX_EFFECT_RERUNS) {
+    console.error(
+      `Effect exceeded maximum re-run limit (${MAX_EFFECT_RERUNS}). ` +
+      `This usually means the effect writes to a signal it reads. ` +
+      `The effect has been disposed to prevent a UI freeze.`
+    );
+    node.disposed = true;
+    // Unsubscribe from all sources to stop further notifications
+    for (const source of node.sources) {
+      source.observers.delete(node);
+    }
+    node.sources.clear();
+    pendingEffects.delete(node);
+    return;
+  }
 
   // Run cleanup from previous execution
   if (node.cleanup) {
@@ -431,6 +478,26 @@ export function isSignal(value: unknown): value is ReadonlySignal<unknown> {
     typeof value === 'object' &&
     SIGNAL_BRAND in (value as Record<symbol, unknown>)
   );
+}
+
+// ── Observer isolation ───────────────────────────────────────────────
+
+/**
+ * Run a function with activeObserver set to null, preventing any
+ * signal reads inside `fn` from being tracked by an outer effect.
+ *
+ * Used by component.ts to isolate connectedCallback: child component
+ * setup signal reads must not leak into a parent effect's dependency
+ * set. See ADR 0008 Gap 1.
+ */
+export function untrack(fn: () => void): void {
+  const prev = activeObserver;
+  activeObserver = null;
+  try {
+    fn();
+  } finally {
+    activeObserver = prev;
+  }
 }
 
 // ── Test utilities ──────────────────────────────────────────────────
