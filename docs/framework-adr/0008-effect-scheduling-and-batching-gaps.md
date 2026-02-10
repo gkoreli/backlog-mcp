@@ -104,3 +104,62 @@ if (++node.runCount > MAX_RERUNS) {
 1. Replaced manual DOM effect with `each()` + `TaskItem` factory composition
 2. Removed duplicate `doFetch()` at setup
 3. Wrapped `setState()` signal writes in `batch()`
+
+
+## Gap 3: Factory `class` Prop Support
+
+**Severity**: Medium — every factory-composed component that needs external CSS
+classes requires an imperative workaround.
+
+**Problem**: When using factory composition (`comp-factory-composition`), there
+is no way to pass a CSS class to the created element. The factory only forwards
+declared props via `_setProp()`. Standard HTML attributes like `class` are not
+part of the component's typed props interface.
+
+**Current workaround** (tagged `HACK:FACTORY_CLASS`):
+
+```typescript
+const icon = SvgIcon({ src: signal(ringIcon) });
+(icon as unknown as HTMLElement).classList.add('separator-icon');
+```
+
+This breaks the factory abstraction — the caller reaches into the returned
+element imperatively instead of declaratively.
+
+**Desired behavior**: Factory composition should support a `class` prop that
+any component can receive, applied via `classList` on the host element:
+
+```typescript
+// Option A: Built-in class support in ComponentFactory type
+const icon = SvgIcon({ src: signal(ringIcon), class: signal('separator-icon') });
+
+// Option B: Second argument to factory for host attributes
+const icon = SvgIcon({ src: signal(ringIcon) }, { class: 'separator-icon' });
+```
+
+**Why this matters**: The `comp-factory-composition` rule now mandates factory
+usage for ALL custom elements. Without `class` support, any component needing
+external styling requires an escape hatch that undermines the rule.
+
+## Gap 4: Static Props Require `signal()` Wrapper
+
+**Severity**: Low — verbose but not incorrect.
+
+**Problem**: Factory props are typed as `Signal<T>`. Passing a static value
+requires wrapping in `signal()` even when the value will never change:
+
+```typescript
+// ringIcon is a static import — will never change
+const icon = SvgIcon({ src: signal(ringIcon) });
+```
+
+**Desired behavior**: Accept both `Signal<T>` and plain `T`:
+
+```typescript
+const icon = SvgIcon({ src: ringIcon });           // static — no wrapper
+const icon = SvgIcon({ src: computed(() => url) }); // reactive — signal
+```
+
+This would require the factory to detect whether a value is a signal and wrap
+plain values automatically. The `SIGNAL_BRAND` check already exists in the
+template engine for this purpose.
