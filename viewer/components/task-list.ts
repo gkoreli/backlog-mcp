@@ -16,6 +16,7 @@ import { getTypeConfig, getParentId } from '../type-registry.js';
 import { AppState } from '../services/app-state.js';
 import { TaskItem } from './task-item.js';
 import { Breadcrumb } from './breadcrumb.js';
+import { SvgIcon } from './svg-icon.js';
 import { ringIcon } from '../icons/index.js';
 
 function sortTasks(tasks: Task[], sort: string): Task[] {
@@ -133,6 +134,7 @@ export const TaskList = component('task-list', (_props, host) => {
 
   // ── Breadcrumb (factory composition) ───────────────────────────────
   const breadcrumb = Breadcrumb({ tasks: allTasks });
+  const separatorIcon = SvgIcon({ src: signal(ringIcon) });
 
   // ── View pieces ──────────────────────────────────────────────────
   const taskItemFor = (task: ReadonlySignal<EnrichedTask>) =>
@@ -169,7 +171,7 @@ export const TaskList = component('task-list', (_props, host) => {
         ${containerList}
         ${when(isScoped, html`
           <div class="epic-separator">
-            <svg-icon class="separator-icon" src="${signal(ringIcon)}"></svg-icon>
+            ${separatorIcon}
           </div>
         `)}
         ${childList}

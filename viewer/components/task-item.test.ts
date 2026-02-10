@@ -84,7 +84,7 @@ describe('task-item rendering', () => {
   it('renders task-badge with correct id', () => {
     const el = createTaskItem({ id: 'TASK-0042' });
     const badge = el.querySelector('task-badge');
-    expect(badge?.getAttribute('task-id')).toBe('TASK-0042');
+    expect(badge?.querySelector('.task-badge-id')?.textContent).toBe('TASK-0042');
   });
 
   it('renders status badge for status-bearing types', () => {

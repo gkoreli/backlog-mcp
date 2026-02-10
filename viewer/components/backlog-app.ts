@@ -6,11 +6,12 @@
  *
  * All state flows through AppState (ADR 0007 shared services).
  */
-import { effect, batch } from '../framework/signal.js';
+import { effect, batch, signal } from '../framework/signal.js';
 import { component } from '../framework/component.js';
 import { html } from '../framework/template.js';
 import { inject } from '../framework/injector.js';
 import { settingsIcon, activityIcon } from '../icons/index.js';
+import { SvgIcon } from './svg-icon.js';
 import { splitPane } from '../utils/split-pane.js';
 import { resizeService } from '../utils/resize.js';
 import { layoutService } from '../utils/layout.js';
@@ -22,6 +23,9 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
   const shortcut = isMac ? '⌘J' : 'Ctrl+J';
 
   // ── Actions ──────────────────────────────────────────────────────
+
+  const activityIconEl = SvgIcon({ src: signal(activityIcon), size: signal('16px') });
+  const settingsIconEl = SvgIcon({ src: signal(settingsIcon), size: signal('16px') });
 
   function handleHomeClick() {
     batch(() => {
@@ -87,10 +91,10 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
               <kbd>${shortcut}</kbd>
             </button>
             <button class="btn-outline activity-btn" title="Recent Activity" @click="${handleActivityClick}">
-              <svg-icon src="${activityIcon}" size="16px"></svg-icon>
+              ${activityIconEl}
             </button>
             <button class="btn-outline system-info-btn" title="System Info" @click="${handleSystemInfoClick}">
-              <svg-icon src="${settingsIcon}" size="16px"></svg-icon>
+              ${settingsIconEl}
             </button>
           </div>
         </div>

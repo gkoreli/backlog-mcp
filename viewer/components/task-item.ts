@@ -13,6 +13,7 @@ import { html, when } from '../framework/template.js';
 import { inject } from '../framework/injector.js';
 import { getTypeConfig } from '../type-registry.js';
 import { AppState } from '../services/app-state.js';
+import { TaskBadge } from './task-badge.js';
 
 export const TaskItem = component<{
   id: string;
@@ -70,10 +71,12 @@ export const TaskItem = component<{
     return html`<span class="status-badge status-${s}">${s.replace('_', ' ')}</span>`;
   });
 
+  const badge = TaskBadge({ taskId: props.id });
+
   // ── Template — all signals implicit ──────────────────────────────
   return html`
     <div class="task-item type-${props.type}" class:selected="${props.selected}" class:current-epic="${props.currentEpic}" @click="${handleItemClick}">
-      <task-badge task-id="${props.id}"></task-badge>
+      ${badge}
       <span class="task-title">${props.title}</span>
       ${dueDateHtml}
       ${childCountHtml}

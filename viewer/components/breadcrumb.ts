@@ -10,6 +10,7 @@ import { html, each } from '../framework/template.js';
 import { inject } from '../framework/injector.js';
 import { getTypeConfig, getParentId } from '../type-registry.js';
 import { AppState } from '../services/app-state.js';
+import { SvgIcon } from './svg-icon.js';
 import type { Task } from '../utils/api.js';
 
 interface BreadcrumbProps {
@@ -54,12 +55,12 @@ export const Breadcrumb = component<BreadcrumbProps>('epic-breadcrumb', (props) 
   const segments = each(path, s => s.id, (seg) => {
     const title = computed(() => seg.value.title);
     const type = computed(() => seg.value.type);
-    const icon = computed(() => getTypeConfig(seg.value.type).icon);
+    const icon = SvgIcon({ src: computed(() => getTypeConfig(seg.value.type).icon), size: computed(() => '12px') });
     return html`
       <span class="breadcrumb-separator">›</span>
       <button class="breadcrumb-segment" title="${title}"
               @click="${() => handleSegmentClick(seg.value.id)}">
-        <svg-icon src="${icon}" class="breadcrumb-type-icon type-${type}" size="12px"></svg-icon>
+        ${icon}
         ${title}
       </button>
     `;
