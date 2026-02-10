@@ -1,6 +1,7 @@
 import type { Task } from '../utils/api.js';
 import { getTypeConfig, getParentId } from '../type-registry.js';
-import { sidebarScope } from '../utils/sidebar-scope.js';
+import { inject } from '../framework/injector.js';
+import { AppState } from '../services/app-state.js';
 
 export class Breadcrumb extends HTMLElement {
   private currentScopeId: string | null = null;
@@ -52,7 +53,8 @@ export class Breadcrumb extends HTMLElement {
     this.querySelectorAll('.breadcrumb-segment').forEach(btn => {
       btn.addEventListener('click', () => {
         const scopeId = (btn as HTMLElement).dataset.scopeId || null;
-        sidebarScope.set(scopeId);
+        const app = inject(AppState);
+        app.scopeId.value = scopeId;
       });
     });
   }
