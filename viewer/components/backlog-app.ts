@@ -1,7 +1,7 @@
 /**
  * backlog-app.ts — Root component.
  *
- * Thin shell: mounts children, initializes layout services.
+ * Thin shell: mounts children, wires keyboard shortcuts.
  * All state flows through AppState (ADR 0007 shared services).
  *
  * task-detail owns its own pane header and reads AppState + SplitPaneState.
@@ -19,8 +19,7 @@ import { onMount } from '../framework/lifecycle.js';
 import { settingsIcon, activityIcon } from '../icons/index.js';
 import { SvgIcon } from './svg-icon.js';
 import { CopyButton } from './copy-button.js';
-import { resizeService } from '../utils/resize.js';
-import { layoutService } from '../utils/layout.js';
+import { ResizeHandle } from './resize-handle.js';
 import { AppState } from '../services/app-state.js';
 import { SplitPaneState } from '../services/split-pane-state.js';
 
@@ -131,26 +130,8 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
     }
   });
 
-  // ── Initialize layout services (runs once after mount) ───────────
+  // ── Keyboard shortcut (runs once after mount) ─────────────────────
   onMount(() => {
-    resizeService.init();
-    layoutService.init();
-
-    // Set up resize handle between task and resource panes
-    const rightPane = host.querySelector('#right-pane') as HTMLElement;
-    const taskPane = rightPane?.querySelector('.task-pane') as HTMLElement;
-    if (rightPane && taskPane) {
-      const savedWidth = localStorage.getItem('taskPaneWidth');
-      if (savedWidth) {
-        taskPane.style.width = savedWidth;
-      }
-      const handle = resizeService.createHandle(rightPane, taskPane, 'taskPaneWidth');
-      handle.dataset.storageKey = 'taskPaneWidth';
-      handle.classList.add('split-resize-handle');
-      taskPane.after(handle);
-    }
-
-    // Global keyboard shortcut for spotlight
     const onKeydown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
         e.preventDefault();
@@ -194,10 +175,13 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
         </div>
       </div>
 
+      ${ResizeHandle({ storageKey: signal('leftPaneWidth') })}
+
       <div class="right-pane" id="right-pane">
         <div class="task-pane">
           <task-detail></task-detail>
         </div>
+        ${ResizeHandle({ storageKey: signal('taskPaneWidth') })}
         ${splitPaneView}
       </div>
     </div>
