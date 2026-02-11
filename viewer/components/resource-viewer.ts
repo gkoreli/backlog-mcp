@@ -98,7 +98,9 @@ export const ResourceViewer = component('resource-viewer', (_props, host) => {
   });
 
   // ── Link interception ────────────────────────────────────────────
-  // After markdown renders, intercept file:// and mcp:// links
+  // GAP:LINK_INTERCEPT — md-block renders asynchronously outside
+  // our template engine. Uses queueMicrotask to catch rendered links.
+  // TODO: Migrate md-block or add a render callback to eliminate this.
   effect(() => {
     const d = data.value;
     if (!d || loadState.value !== 'loaded') return;

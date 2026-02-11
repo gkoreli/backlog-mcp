@@ -81,18 +81,17 @@ export const CopyButton = component<{ text: string; content?: TemplateResult }>(
     }
   };
 
-  // HACK:EXPOSE — task-detail pane header (HACK:CROSS_QUERY) and split-pane's
-  // createUriRow still set .text imperatively. Remove when pane header is
-  // refactored to use factory composition and split-pane is migrated.
+  // HACK:EXPOSE — old SplitPaneService (utils/split-pane.ts) createUriRow
+  // sets .text imperatively. Remove when that dead module is deleted.
+  // TODO: Delete utils/split-pane.ts (dead code, replaced by SplitPaneState).
   (host as any).text = '';
   Object.defineProperty(host, 'text', {
     set: (v: string) => { props.text.value = v; },
     get: () => props.text.value,
   });
 
-  // HACK:MOUNT_APPEND — mountTemplate appends instead of replacing host children.
-  // task-detail pane header (HACK:CROSS_QUERY) and split-pane create children
-  // via innerHTML that persist. Remove when all consumers use factory composition.
+  // Host-level click: needed because factory-composed copy-buttons inside
+  // templates may have child content that should also trigger copy.
   host.addEventListener('click', onClick);
 
   const icon = SvgIcon({ src: signal(copyIcon) });
