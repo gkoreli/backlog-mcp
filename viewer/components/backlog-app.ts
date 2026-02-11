@@ -4,15 +4,12 @@
  * Thin shell: mounts children, initializes layout services.
  * All state flows through AppState (ADR 0007 shared services).
  *
- * task-detail, system-info-modal, and spotlight-search are reactive —
- * they read AppState directly.
+ * task-detail owns its own pane header and reads AppState + SplitPaneState.
+ * resource-viewer and activity-panel read SplitPaneState directly.
+ * The split pane area is rendered reactively using computed views.
  *
- * resource-viewer and activity-panel are now reactive (Phase 14) —
- * they read SplitPaneState directly. The split pane area is rendered
- * reactively using computed views. No more imperative createElement/remove.
- *
- * HACK:DOC_EVENT — resource-open still dispatched by some external paths
- * (link clicks in md-block). Kept in main.ts bridge until md-block is migrated.
+ * HACK:DOC_EVENT — resource-open still dispatched by md-block link clicks
+ * (third-party wrapper, not migrated). Kept in main.ts bridge.
  */
 import { signal, computed, effect, batch } from '../framework/signal.js';
 import { component } from '../framework/component.js';
@@ -102,7 +99,7 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
     return html`<resource-viewer></resource-viewer>`;
   });
 
-  // Entire split pane area (reactive — replaces imperative GAP:IMPERATIVE_CHILD)
+  // Entire split pane area (reactive)
   const splitPaneView = computed(() => {
     const paneType = splitState.activePane.value;
     if (!paneType) return null;
@@ -199,12 +196,7 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
 
       <div class="right-pane" id="right-pane">
         <div class="task-pane">
-          <div class="pane-header" id="task-pane-header">
-            <div class="pane-title">Task Detail</div>
-          </div>
-          <div class="pane-content">
-            <task-detail></task-detail>
-          </div>
+          <task-detail></task-detail>
         </div>
         ${splitPaneView}
       </div>

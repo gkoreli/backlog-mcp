@@ -6,12 +6,6 @@
  *
  * Uses html:inner directive for trusted HTML (diff rendering from diff2html).
  * Uses each() for reactive list rendering of day groups and task groups.
- *
- * HACK:DOC_EVENT — task-selected dispatched on document for unmigrated
- * url-state listener. Remove when url-state reads AppState directly.
- *
- * GAP:INNERHTML_BINDING — diff2html output must use html:inner directive
- * for trusted HTML rendering. Handled by the new html:inner binding.
  */
 import * as Diff2Html from 'diff2html';
 import { createTwoFilesPatch } from 'diff';
@@ -152,8 +146,6 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
 
   function handleTaskClick(taskId: string) {
     app.selectTask(taskId);
-    // HACK:DOC_EVENT — url-state still listens on document
-    document.dispatchEvent(new CustomEvent('task-selected', { detail: { taskId } }));
   }
 
   function handleClearFilter() {

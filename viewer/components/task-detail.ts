@@ -4,13 +4,8 @@
  * Reads AppState.selectedTaskId to reactively load and display task data.
  * Uses query() for auto-fetching, factory composition for child components.
  *
- * HACK:CROSS_QUERY — Pane header (#task-pane-header) lives outside this
- * component's DOM tree. Updated imperatively via effect. Remove when the
- * pane header is owned by a parent framework component or a shared service.
- *
- * HACK:DOC_EVENT — activity-open event dispatched on document because
- * activity-panel is not yet migrated. Remove when activity-panel uses
- * a shared service signal.
+ * Owns its own pane header (Phase 15) — no cross-tree DOM updates.
+ * Opens activity via inject(SplitPaneState).openActivity() directly.
  */
 import { signal, computed, effect } from '../framework/signal.js';
 import { component } from '../framework/component.js';
@@ -22,6 +17,7 @@ import { fetchTask, fetchOperationCount, type TaskResponse, type Reference } fro
 import { backlogEvents } from '../services/event-source-client.js';
 import { getTypeFromId, getTypeConfig, getParentId } from '../type-registry.js';
 import { AppState } from '../services/app-state.js';
+import { SplitPaneState } from '../services/split-pane-state.js';
 import { CopyButton } from './copy-button.js';
 import { TaskBadge } from './task-badge.js';
 import { SvgIcon } from './svg-icon.js';
@@ -37,6 +33,7 @@ function formatDate(iso: string): string {
 
 export const TaskDetail = component('task-detail', (_props, host) => {
   const app = inject(AppState);
+  const splitState = inject(SplitPaneState);
 
   // ── Data loading — auto-fetches when selectedTaskId changes ─────
   const taskQuery = query<TaskResponse>(
@@ -109,6 +106,11 @@ export const TaskDetail = component('task-detail', (_props, host) => {
   const hasEvidence = computed(() => evidence.value.length > 0);
   const hasBlockedReasons = computed(() => blockedReasons.value.length > 0);
 
+  // ── Activity badge ──────────────────────────────────────────────
+  const opCount = computed(() => opCountQuery.data.value ?? 0);
+  const showBadge = computed(() => opCount.value > 0);
+  const badgeText = computed(() => opCount.value > 99 ? '99+' : String(opCount.value));
+
   // ── Actions ────────────────────────────────────────────────────
   function handleEpicClick(e: Event) {
     e.preventDefault();
@@ -119,58 +121,57 @@ export const TaskDetail = component('task-detail', (_props, host) => {
   function handleActivityClick() {
     const id = app.selectedTaskId.value;
     if (id) {
-      // HACK:DOC_EVENT — activity-panel not yet migrated
-      document.dispatchEvent(new CustomEvent('activity-open', { detail: { taskId: id } }));
+      splitState.openActivity(id);
     }
   }
 
-  // ── Pane header update (HACK:CROSS_QUERY) ──────────────────────
-  effect(() => {
+  function handleCopyMarkdown() {
+    const raw = task.value?.raw || '';
+    if (raw) navigator.clipboard.writeText(raw).catch(() => {});
+  }
+
+  // ── Pane header (reactive, owned by task-detail) ────────────────
+
+  const paneHeader = computed(() => {
     const t = task.value;
-    const paneHeader = document.getElementById('task-pane-header');
-    if (!paneHeader) return;
 
     if (!t) {
-      paneHeader.innerHTML = '<div class="pane-title">Task Detail</div>';
-      return;
+      return html`
+        <div class="pane-header" id="task-pane-header">
+          <div class="pane-title">Task Detail</div>
+        </div>
+      `;
     }
 
-    const pid = getParentId(t);
-    const type = t.type ?? 'task';
-    const config = getTypeConfig(type);
-
-    // Build header HTML imperatively (external DOM, can't use template)
-    paneHeader.innerHTML = `
-      <div class="task-header-left">
-        ${pid ? `<copy-button id="copy-parent-id" title="Copy Parent ID"><task-badge task-id="${pid}"></task-badge></copy-button>` : ''}
-        <copy-button id="copy-task-id" title="Copy ID"><task-badge task-id="${t.id}"></task-badge></copy-button>
-        ${config.hasStatus ? `<span class="status-badge status-${t.status || 'open'}">${(t.status || 'open').replace('_', ' ')}</span>` : ''}
-      </div>
-      <div class="task-header-right">
-        <button id="task-activity-btn" class="btn-outline activity-btn-with-badge" title="View activity for this task">
-          <svg-icon src="${activityIcon}" size="14px"></svg-icon>
-          <span id="activity-count-badge" class="activity-badge" style="display: none;"></span>
-        </button>
-        <copy-button id="copy-markdown" title="Copy markdown">Copy Markdown</copy-button>
+    return html`
+      <div class="pane-header" id="task-pane-header">
+        <div class="task-header-left">
+          ${when(parentId, html`
+            ${CopyButton({
+              text: parentId as any,
+              content: TaskBadge({ taskId: parentId as any }),
+            })}
+          `)}
+          ${CopyButton({
+            text: computed(() => t.id),
+            content: TaskBadge({ taskId: computed(() => t.id) }),
+          })}
+          ${when(hasStatus, html`
+            <span class="${statusClass}">${statusLabel}</span>
+          `)}
+        </div>
+        <div class="task-header-right">
+          <button class="btn-outline activity-btn-with-badge" title="View activity for this task"
+                  @click="${handleActivityClick}">
+            ${SvgIcon({ src: signal(activityIcon), size: signal('14px') })}
+            ${when(showBadge, html`
+              <span class="activity-badge">${badgeText}</span>
+            `)}
+          </button>
+          <button class="btn-outline" title="Copy markdown" @click="${handleCopyMarkdown}">Copy Markdown</button>
+        </div>
       </div>
     `;
-
-    // Set copy button text properties
-    const parentBtn = paneHeader.querySelector('#copy-parent-id') as any;
-    if (parentBtn) parentBtn.text = pid;
-    (paneHeader.querySelector('#copy-task-id') as any).text = t.id;
-    (paneHeader.querySelector('#copy-markdown') as any).text = t.raw || '';
-
-    // Activity button
-    paneHeader.querySelector('#task-activity-btn')?.addEventListener('click', handleActivityClick);
-
-    // Activity badge count
-    const count = opCountQuery.data.value;
-    const badge = paneHeader.querySelector('#activity-count-badge') as HTMLElement | null;
-    if (badge && count && count > 0) {
-      badge.textContent = count > 99 ? '99+' : String(count);
-      badge.style.display = 'flex';
-    }
   });
 
   // ── Reference list items (factory composition) ─────────────────
@@ -254,5 +255,10 @@ export const TaskDetail = component('task-detail', (_props, host) => {
   });
 
   // ── Template ───────────────────────────────────────────────────
-  return html`${content}`;
+  return html`
+    ${paneHeader}
+    <div class="pane-content">
+      ${content}
+    </div>
+  `;
 });

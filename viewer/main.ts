@@ -28,10 +28,8 @@ backlogEvents.connect();
 
 // ── Document-level events ───────────────────────────────────────────
 // HACK:DOC_EVENT — resource-open is still dispatched by md-block link
-// clicks (md-block is a third-party wrapper, not migrated) and by
-// task-detail resource links.
-// All other event bridges (resource-close, activity-open, activity-close,
-// activity-clear-filter, resource-loaded) have been removed — resource-viewer,
+// clicks (md-block is a third-party wrapper, not migrated).
+// All other event bridges have been removed — task-detail, resource-viewer,
 // activity-panel, and spotlight-search now inject(SplitPaneState) directly.
 
 document.addEventListener('resource-open', ((e: CustomEvent) => {
@@ -40,11 +38,4 @@ document.addEventListener('resource-open', ((e: CustomEvent) => {
   } else if (e.detail.path) {
     splitState.openResource(e.detail.path);
   }
-}) as EventListener);
-
-// HACK:DOC_EVENT — activity-open is still dispatched by task-detail
-// (for the "View Activity" button). Remove when task-detail uses
-// inject(SplitPaneState) directly.
-document.addEventListener('activity-open', ((e: CustomEvent) => {
-  splitState.openActivity(e.detail?.taskId);
 }) as EventListener);

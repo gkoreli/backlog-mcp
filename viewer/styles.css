@@ -762,10 +762,13 @@
   padding: 8px 12px;
 }
 
-/* md-block with GitHub styling - load after github-markdown.css */
+/* task-detail now owns its pane-header + pane-content (Phase 15) */
 task-detail {
-  display: block;
-  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 task-detail .markdown-body {
   min-height: 100%;

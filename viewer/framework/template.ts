@@ -299,6 +299,54 @@ function processAttributes(
   }
 }
 
+/**
+ * Mount a factory result (from component() factory functions) into a DOM element.
+ * Handles prop forwarding (with signal subscriptions) and host-level class attrs.
+ */
+function mountFactoryResult(
+  factory: { tagName: string; props: Record<string, unknown>; hostAttrs?: { class?: unknown } },
+  disposers: (() => void)[],
+): HTMLElement {
+  const el = document.createElement(factory.tagName);
+  for (const [key, raw] of Object.entries(factory.props)) {
+    if (isSignal(raw)) {
+      const sig = raw as ReadonlySignal<unknown>;
+      (el as any)._setProp?.(key, sig.value);
+      const unsub = sig.subscribe((newVal: unknown) => {
+        (el as any)._setProp?.(key, newVal);
+      });
+      disposers.push(unsub);
+    } else {
+      (el as any)._setProp?.(key, raw);
+    }
+  }
+  if (factory.hostAttrs?.class != null) {
+    const classVal = factory.hostAttrs.class;
+    if (isSignal(classVal)) {
+      const sig = classVal as ReadonlySignal<string>;
+      let prevClasses: string[] = [];
+      const applyClasses = (raw: string) => {
+        const next = raw ? raw.split(/\s+/).filter(Boolean) : [];
+        for (const cls of prevClasses) {
+          if (!next.includes(cls)) el.classList.remove(cls);
+        }
+        for (const cls of next) {
+          if (!prevClasses.includes(cls)) el.classList.add(cls);
+        }
+        prevClasses = next;
+      };
+      applyClasses(sig.value);
+      const unsub = sig.subscribe(applyClasses);
+      disposers.push(unsub);
+    } else if (typeof classVal === 'string' && classVal) {
+      for (const cls of classVal.split(/\s+/).filter(Boolean)) {
+        el.classList.add(cls);
+      }
+    }
+  }
+  return el;
+}
+
 function replaceMarkerWithBinding(
   comment: Comment,
   value: unknown,
@@ -311,39 +359,72 @@ function replaceMarkerWithBinding(
   if (isSignal(value)) {
     const signalValue = (value as ReadonlySignal<unknown>).value;
 
-    // Check if the signal holds a TemplateResult (e.g., from reactive when())
-    if (signalValue && typeof signalValue === 'object' && '__templateResult' in signalValue
-        || signalValue === null || signalValue === undefined) {
+    // Check if the signal holds a TemplateResult, factory, null, undefined, or array
+    // (e.g., from reactive when(), computed(() => items.map(renderFn)), or factory results)
+    const isReactiveSlot = signalValue === null || signalValue === undefined
+      || (signalValue && typeof signalValue === 'object' && '__templateResult' in signalValue)
+      || (signalValue && typeof signalValue === 'object' && '__type' in signalValue)
+      || Array.isArray(signalValue);
+
+    if (isReactiveSlot) {
       // Reactive template slot — mount/unmount templates as signal changes
-      const startMarker = document.createComment('when-start');
-      const endMarker = document.createComment('when-end');
+      const startMarker = document.createComment('slot-start');
+      const endMarker = document.createComment('slot-end');
       parent.replaceChild(endMarker, comment);
       parent.insertBefore(startMarker, endMarker);
 
-      let currentResult: TemplateResult | null = null;
+      let currentResults: TemplateResult[] = [];
       let currentNodes: Node[] = [];
 
       const dispose = effect(() => {
         const newValue = (value as ReadonlySignal<unknown>).value;
 
         // Remove previous content
-        if (currentResult?.dispose) {
-          try { currentResult.dispose(); } catch (_) {}
+        for (const r of currentResults) {
+          try { r.dispose(); } catch (_) {}
         }
         for (const node of currentNodes) {
           node.parentNode?.removeChild(node);
         }
         currentNodes = [];
-        currentResult = null;
+        currentResults = [];
 
-        // Mount new content if truthy
-        if (newValue && typeof newValue === 'object' && '__templateResult' in newValue) {
-          currentResult = newValue as TemplateResult;
+        if (newValue == null) {
+          // null/undefined — nothing to mount
+        } else if (Array.isArray(newValue)) {
+          // Array of TemplateResults (or mixed content)
+          for (const item of newValue) {
+            if (item && typeof item === 'object' && '__templateResult' in item) {
+              const tpl = item as TemplateResult;
+              const wrapper = document.createDocumentFragment();
+              tpl.mount(wrapper as unknown as HTMLElement);
+              const nodes = [...wrapper.childNodes];
+              currentNodes.push(...nodes);
+              currentResults.push(tpl);
+              parent.insertBefore(wrapper, endMarker);
+            } else if (item && typeof item === 'object' && '__type' in item && (item as any).__type === 'factory') {
+              const el = mountFactoryResult(item as any, disposers);
+              currentNodes.push(el);
+              parent.insertBefore(el, endMarker);
+            } else if (item != null && item !== false) {
+              const textNode = document.createTextNode(String(item));
+              currentNodes.push(textNode);
+              parent.insertBefore(textNode, endMarker);
+            }
+          }
+        } else if (typeof newValue === 'object' && '__templateResult' in newValue) {
+          // Single TemplateResult
+          const tpl = newValue as TemplateResult;
           const wrapper = document.createDocumentFragment();
-          currentResult.mount(wrapper as unknown as HTMLElement);
-          // Capture the nodes before inserting
+          tpl.mount(wrapper as unknown as HTMLElement);
           currentNodes = [...wrapper.childNodes];
+          currentResults.push(tpl);
           parent.insertBefore(wrapper, endMarker);
+        } else if (typeof newValue === 'object' && '__type' in newValue && (newValue as any).__type === 'factory') {
+          // Factory result — create child element
+          const el = mountFactoryResult(newValue as any, disposers);
+          currentNodes.push(el);
+          parent.insertBefore(el, endMarker);
         }
       });
       disposers.push(dispose);
@@ -377,50 +458,7 @@ function replaceMarkerWithBinding(
     disposers.push(() => result.dispose());
   } else if (value && typeof value === 'object' && '__type' in value && (value as any).__type === 'factory') {
     // Factory result — create child element
-    const factory = value as {
-      tagName: string;
-      props: Record<string, unknown>;
-      hostAttrs?: { class?: unknown };
-    };
-    const el = document.createElement(factory.tagName);
-    for (const [key, raw] of Object.entries(factory.props)) {
-      if (isSignal(raw)) {
-        const sig = raw as ReadonlySignal<unknown>;
-        (el as any)._setProp?.(key, sig.value);
-        const unsub = sig.subscribe((newVal: unknown) => {
-          (el as any)._setProp?.(key, newVal);
-        });
-        disposers.push(unsub);
-      } else {
-        // Static value — set once, no subscription needed
-        (el as any)._setProp?.(key, raw);
-      }
-    }
-    // Apply host-level class attribute
-    if (factory.hostAttrs?.class != null) {
-      const classVal = factory.hostAttrs.class;
-      if (isSignal(classVal)) {
-        const sig = classVal as ReadonlySignal<string>;
-        let prevClasses: string[] = [];
-        const applyClasses = (raw: string) => {
-          const next = raw ? raw.split(/\s+/).filter(Boolean) : [];
-          for (const cls of prevClasses) {
-            if (!next.includes(cls)) el.classList.remove(cls);
-          }
-          for (const cls of next) {
-            if (!prevClasses.includes(cls)) el.classList.add(cls);
-          }
-          prevClasses = next;
-        };
-        applyClasses(sig.value);
-        const unsub = sig.subscribe(applyClasses);
-        disposers.push(unsub);
-      } else if (typeof classVal === 'string' && classVal) {
-        for (const cls of classVal.split(/\s+/).filter(Boolean)) {
-          el.classList.add(cls);
-        }
-      }
-    }
+    const el = mountFactoryResult(value as any, disposers);
     parent.replaceChild(el, comment);
   } else if (Array.isArray(value)) {
     // Array of template results
