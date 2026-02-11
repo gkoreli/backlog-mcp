@@ -85,6 +85,12 @@ interface EventBinding {
   modifiers: string[];
 }
 
+interface InnerHtmlBinding {
+  type: 'innerHtml';
+  element: Element;
+  dispose?: () => void;
+}
+
 interface ChildBinding {
   type: 'child';
   startMarker: Comment;
@@ -93,7 +99,7 @@ interface ChildBinding {
   dispose?: () => void;
 }
 
-type Binding = TextBinding | AttributeBinding | ClassBinding | EventBinding | ChildBinding;
+type Binding = TextBinding | AttributeBinding | ClassBinding | EventBinding | InnerHtmlBinding | ChildBinding;
 
 // ── html tagged template ────────────────────────────────────────────
 
@@ -234,6 +240,18 @@ function processAttributes(
         const index = Number(markerMatch[1]);
         const value = values[index];
         bindClass(el, className, value, bindings, disposers);
+      }
+      attrsToRemove.push(name);
+      continue;
+    }
+
+    // Check for html:inner binding (trusted HTML rendering)
+    if (name === 'html:inner') {
+      const markerMatch = attrValue.match(/<!--bk-(\d+)-->/);
+      if (markerMatch) {
+        const index = Number(markerMatch[1]);
+        const value = values[index];
+        bindInnerHtml(el, value, bindings, disposers);
       }
       attrsToRemove.push(name);
       continue;
@@ -574,6 +592,39 @@ function bindClass(
     disposers.push(dispose);
   } else {
     el.classList.toggle(className, !!value);
+  }
+}
+
+/**
+ * Bind trusted HTML content to an element's innerHTML.
+ *
+ * WARNING: This is for trusted content only (e.g., highlighted search results
+ * from @orama/highlight, diff2html output). NEVER use with user-generated input.
+ *
+ * Supports both static strings and reactive Signal<string> values.
+ * When the signal changes, innerHTML is updated reactively.
+ *
+ * Usage in templates:
+ *   html`<span html:inner="${highlightedHtml}"></span>`
+ */
+function bindInnerHtml(
+  el: Element,
+  value: unknown,
+  bindings: Binding[],
+  disposers: (() => void)[],
+): void {
+  if (isSignal(value)) {
+    const binding: InnerHtmlBinding = { type: 'innerHtml', element: el };
+    bindings.push(binding);
+
+    const dispose = effect(() => {
+      const v = (value as ReadonlySignal<unknown>).value;
+      el.innerHTML = v == null ? '' : String(v);
+    });
+    binding.dispose = dispose;
+    disposers.push(dispose);
+  } else {
+    el.innerHTML = value == null ? '' : String(value);
   }
 }
 

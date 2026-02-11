@@ -27,10 +27,12 @@ const splitState = inject(SplitPaneState);
 backlogEvents.connect();
 
 // ── Document-level events ───────────────────────────────────────────
-// These bridge unmigrated components (resource-viewer, activity-panel,
-// task-detail) with the reactive SplitPaneState service.
-// Remove event listeners as components are migrated to read/write
-// SplitPaneState directly via inject().
+// HACK:DOC_EVENT — resource-open is still dispatched by md-block link
+// clicks (md-block is a third-party wrapper, not migrated) and by
+// task-detail resource links.
+// All other event bridges (resource-close, activity-open, activity-close,
+// activity-clear-filter, resource-loaded) have been removed — resource-viewer,
+// activity-panel, and spotlight-search now inject(SplitPaneState) directly.
 
 document.addEventListener('resource-open', ((e: CustomEvent) => {
   if (e.detail.uri) {
@@ -40,25 +42,9 @@ document.addEventListener('resource-open', ((e: CustomEvent) => {
   }
 }) as EventListener);
 
-document.addEventListener('resource-close', () => {
-  splitState.close();
-});
-
-document.addEventListener('activity-close', () => {
-  splitState.close();
-});
-
+// HACK:DOC_EVENT — activity-open is still dispatched by task-detail
+// (for the "View Activity" button). Remove when task-detail uses
+// inject(SplitPaneState) directly.
 document.addEventListener('activity-open', ((e: CustomEvent) => {
   splitState.openActivity(e.detail?.taskId);
-}) as EventListener);
-
-document.addEventListener('activity-clear-filter', () => {
-  splitState.clearActivityFilter();
-});
-
-document.addEventListener('resource-loaded', ((e: CustomEvent) => {
-  const { title, fileUri, mcpUri } = e.detail;
-  if (fileUri) {
-    splitState.setHeaderWithUris(title, fileUri, mcpUri);
-  }
 }) as EventListener);

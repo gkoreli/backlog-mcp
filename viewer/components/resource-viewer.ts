@@ -1,227 +1,217 @@
-export class ResourceViewer extends HTMLElement {
-  private data: { frontmatter?: any; content: string; path?: string; ext?: string } | null = null;
-  private metadataRenderer?: (frontmatter: any) => HTMLElement;
-  private _showHeader: boolean = true;
+/**
+ * resource-viewer.ts — Reactive resource viewer component (Phase 14).
+ *
+ * Reads SplitPaneState signals directly to know what resource to load.
+ * Replaces the class-based ResourceViewer with signal-driven reactivity.
+ *
+ * Uses html:inner directive for trusted HTML (markdown metadata rendering).
+ * See ADR 0011 Gap 1 for the html:inner directive rationale.
+ */
+import { signal, computed, effect, batch } from '../framework/signal.js';
+import { component } from '../framework/component.js';
+import { html } from '../framework/template.js';
+import { inject } from '../framework/injector.js';
+import { SplitPaneState } from '../services/split-pane-state.js';
 
-  connectedCallback() {
-    this.className = 'resource-viewer';
-    if (!this.data) {
-      this.showEmpty();
-    }
-  }
+interface ResourceData {
+  frontmatter?: Record<string, unknown>;
+  content: string;
+  path?: string;
+  ext?: string;
+  fileUri?: string;
+  mcpUri?: string | null;
+}
 
-  showEmpty() {
-    this.innerHTML = `
-      <div class="resource-empty">
-        <div class="resource-empty-icon">📄</div>
-        <div>Click a file reference to view</div>
-      </div>
-    `;
-  }
+type LoadState = 'empty' | 'loading' | 'loaded' | 'error';
 
-  setMetadataRenderer(renderer: (frontmatter: any) => HTMLElement) {
-    this.metadataRenderer = renderer;
-  }
+export const ResourceViewer = component('resource-viewer', (_props, host) => {
+  const splitState = inject(SplitPaneState);
 
-  setShowHeader(show: boolean) {
-    this._showHeader = show;
-  }
+  // ── Local state ──────────────────────────────────────────────────
+  const loadState = signal<LoadState>('empty');
+  const data = signal<ResourceData | null>(null);
+  const errorMessage = signal('');
 
-  loadData(data: { frontmatter?: any; content: string; path?: string; ext?: string; fileUri?: string; mcpUri?: string | null }) {
-    this.data = data;
-    this.render();
-    
-    // Dispatch event with URI info for header update
-    if (data.fileUri || data.mcpUri) {
-      this.dispatchEvent(new CustomEvent('resource-loaded', {
-        detail: {
-          title: data.path?.split('/').pop() || 'Resource',
-          fileUri: data.fileUri,
-          mcpUri: data.mcpUri
-        },
-        bubbles: true
-      }));
-    }
-  }
-
-  async loadResource(path: string) {
-    const filename = path.split('/').pop() || path;
-    
-    this.innerHTML = `
-      <div class="resource-header">
-        <span class="resource-filename" title="${path}">${filename}</span>
-        <button class="resource-close" title="Close (Cmd+W)">✕</button>
-      </div>
-      <div class="resource-content">
-        <div class="resource-loading">Loading...</div>
-      </div>
-    `;
-
-    this.querySelector('.resource-close')?.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent('resource-close', { bubbles: true }));
-    });
-
+  // ── Data loading ─────────────────────────────────────────────────
+  async function loadResource(path: string) {
+    loadState.value = 'loading';
     try {
       const res = await fetch(`/resource?path=${encodeURIComponent(path)}`);
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to load resource');
-      }
-
-      this.loadData(data);
-    } catch (error) {
-      const contentDiv = this.querySelector('.resource-content');
-      if (contentDiv) {
-        contentDiv.innerHTML = `
-          <div class="resource-error">
-            <div>Failed to load file</div>
-            <div class="resource-error-detail">${(error as Error).message}</div>
-          </div>
-        `;
-      }
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to load resource');
+      batch(() => {
+        data.value = json;
+        loadState.value = 'loaded';
+      });
+      updateHeaderFromData(json);
+    } catch (err) {
+      batch(() => {
+        errorMessage.value = (err as Error).message;
+        loadState.value = 'error';
+      });
     }
   }
 
-  async loadMcpResource(uri: string) {
-    const filename = uri.split('/').pop() || uri;
-    
-    this.innerHTML = `
-      <div class="resource-header">
-        <span class="resource-filename" title="${uri}">${filename}</span>
-        <button class="resource-close" title="Close (Cmd+W)">✕</button>
-      </div>
-      <div class="resource-content">
-        <div class="resource-loading">Loading...</div>
-      </div>
-    `;
-
-    this.querySelector('.resource-close')?.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent('resource-close', { bubbles: true }));
-    });
-
+  async function loadMcpResource(uri: string) {
+    loadState.value = 'loading';
     try {
       const res = await fetch(`/mcp/resource?uri=${encodeURIComponent(uri)}`);
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to load resource');
-      }
-
-      this.loadData(data);
-    } catch (error) {
-      const contentDiv = this.querySelector('.resource-content');
-      if (contentDiv) {
-        contentDiv.innerHTML = `
-          <div class="resource-error">
-            <div>Failed to load MCP resource</div>
-            <div class="resource-error-detail">${(error as Error).message}</div>
-          </div>
-        `;
-      }
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to load resource');
+      batch(() => {
+        data.value = json;
+        loadState.value = 'loaded';
+      });
+      updateHeaderFromData(json);
+    } catch (err) {
+      batch(() => {
+        errorMessage.value = (err as Error).message;
+        loadState.value = 'error';
+      });
     }
   }
 
-  private render() {
-    if (!this.data) return;
+  function updateHeaderFromData(d: ResourceData) {
+    if (d.fileUri || d.mcpUri) {
+      splitState.setHeaderWithUris(
+        d.path?.split('/').pop() || 'Resource',
+        d.fileUri || '',
+        d.mcpUri || undefined,
+      );
+    }
+  }
 
-    this.innerHTML = '';
-    this.className = 'resource-viewer';
-
-    // Render based on file type
-    if (this.data.ext === 'md' || this.data.frontmatter) {
-      this.appendChild(this.renderMarkdownDocument());
-    } else if (this.data.ext && ['ts', 'js', 'json', 'txt'].includes(this.data.ext)) {
-      this.appendChild(this.renderCode());
+  // ── React to SplitPaneState changes ──────────────────────────────
+  effect(() => {
+    const paneType = splitState.activePane.value;
+    if (paneType === 'resource') {
+      const path = splitState.resourcePath.value;
+      if (path) loadResource(path).catch(() => {});
+    } else if (paneType === 'mcp') {
+      const uri = splitState.mcpUri.value;
+      if (uri) loadMcpResource(uri).catch(() => {});
     } else {
-      const pre = document.createElement('pre');
-      pre.textContent = this.data.content;
-      this.appendChild(pre);
+      // Reset when pane closes or switches to activity
+      data.value = null;
+      loadState.value = 'empty';
     }
-  }
+  });
 
-  private renderMarkdownDocument(): HTMLElement {
-    const article = document.createElement('article');
-    article.className = 'markdown-body';
+  // ── Link interception ────────────────────────────────────────────
+  // After markdown renders, intercept file:// and mcp:// links
+  effect(() => {
+    const d = data.value;
+    if (!d || loadState.value !== 'loaded') return;
+    if (d.ext !== 'md' && !d.frontmatter) return;
 
-    // Render metadata
-    if (this.data!.frontmatter && Object.keys(this.data!.frontmatter).length > 0) {
-      if (this.metadataRenderer) {
-        article.appendChild(this.metadataRenderer(this.data!.frontmatter));
-      } else {
-        article.appendChild(this.renderDefaultMetadata(this.data!.frontmatter));
-      }
-    }
-
-    // Render markdown content
-    const mdBlock = document.createElement('md-block');
-    mdBlock.textContent = this.data!.content;
-    article.appendChild(mdBlock);
-
-    // Intercept file:// and mcp:// links
-    setTimeout(() => {
-      article.querySelectorAll('a[href^="file://"], a[href^="mcp://"]').forEach(link => {
+    // Wait for md-block to render
+    queueMicrotask(() => {
+      host.querySelectorAll('a[href^="file://"], a[href^="mcp://"]').forEach(link => {
+        if ((link as any).__resourceIntercepted) return;
+        (link as any).__resourceIntercepted = true;
         const href = link.getAttribute('href')!;
         link.addEventListener('click', (e) => {
           e.preventDefault();
           if (href.startsWith('file://')) {
-            const path = href.replace('file://', '');
-            this.dispatchEvent(new CustomEvent('resource-open', { 
-              detail: { path },
-              bubbles: true 
-            }));
+            splitState.openResource(href.replace('file://', ''));
           } else if (href.startsWith('mcp://')) {
-            this.dispatchEvent(new CustomEvent('resource-open', { 
-              detail: { uri: href },
-              bubbles: true 
-            }));
+            splitState.openMcpResource(href);
           }
         });
       });
-    }, 0);
+    });
+  });
 
-    return article;
+  // ── Rendering helpers ────────────────────────────────────────────
+
+  function escapeHtml(str: string): string {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  private renderDefaultMetadata(frontmatter: any): HTMLElement {
-    const metaDiv = document.createElement('div');
-    metaDiv.className = 'frontmatter-meta';
-    metaDiv.innerHTML = `
+  function formatValue(value: unknown): string {
+    if (Array.isArray(value)) {
+      return `<ul>${value.map(v => `<li>${formatValue(v)}</li>`).join('')}</ul>`;
+    }
+    if (typeof value === 'object' && value !== null) {
+      return `<pre>${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
+    }
+    return escapeHtml(String(value));
+  }
+
+  // ── Computed metadata HTML (trusted, from frontmatter) ───────────
+  const metadataHtml = computed(() => {
+    const d = data.value;
+    if (!d?.frontmatter || Object.keys(d.frontmatter).length === 0) return '';
+    return `
       <dl class="frontmatter-list">
-        ${Object.entries(frontmatter).map(([key, value]) => `
+        ${Object.entries(d.frontmatter).map(([key, value]) => `
           <div class="frontmatter-item">
-            <dt>${key}</dt>
-            <dd>${this.formatValue(value)}</dd>
+            <dt>${escapeHtml(key)}</dt>
+            <dd>${formatValue(value)}</dd>
           </div>
         `).join('')}
       </dl>
     `;
-    return metaDiv;
-  }
+  });
 
-  private renderCode(): HTMLElement {
-    const pre = document.createElement('pre');
-    const code = document.createElement('code');
-    code.className = `language-${this.data!.ext}`;
-    code.textContent = this.data!.content;
-    pre.appendChild(code);
-    
-    if ((window as any).hljs) {
-      (window as any).hljs.highlightElement(code);
-    }
-    
-    return pre;
-  }
+  // ── Computed content view ────────────────────────────────────────
+  const contentView = computed(() => {
+    const state = loadState.value;
+    const d = data.value;
 
-  private formatValue(value: any): string {
-    if (Array.isArray(value)) {
-      return `<ul>${value.map(v => `<li>${this.formatValue(v)}</li>`).join('')}</ul>`;
+    if (state === 'empty') {
+      return html`
+        <div class="resource-empty">
+          <div class="resource-empty-icon">📄</div>
+          <div>Click a file reference to view</div>
+        </div>
+      `;
     }
-    if (typeof value === 'object' && value !== null) {
-      return `<pre>${JSON.stringify(value, null, 2)}</pre>`;
-    }
-    return String(value);
-  }
-}
 
-customElements.define('resource-viewer', ResourceViewer);
+    if (state === 'loading') {
+      return html`
+        <div class="resource-content">
+          <div class="resource-loading">Loading...</div>
+        </div>
+      `;
+    }
+
+    if (state === 'error') {
+      return html`
+        <div class="resource-content">
+          <div class="resource-error">
+            <div>Failed to load resource</div>
+            <div class="resource-error-detail">${errorMessage}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    if (!d) return html`<div></div>`;
+
+    // Markdown document
+    if (d.ext === 'md' || d.frontmatter) {
+      return html`
+        <article class="markdown-body">
+          <div class="frontmatter-meta" html:inner="${metadataHtml}"></div>
+          <md-block>${computed(() => data.value?.content || '')}</md-block>
+        </article>
+      `;
+    }
+
+    // Code file
+    if (d.ext && ['ts', 'js', 'json', 'txt'].includes(d.ext)) {
+      return html`
+        <pre><code class="language-${d.ext}">${computed(() => data.value?.content || '')}</code></pre>
+      `;
+    }
+
+    // Plain text fallback
+    return html`
+      <pre>${computed(() => data.value?.content || '')}</pre>
+    `;
+  });
+
+  // ── Template ─────────────────────────────────────────────────────
+  return html`<div class="resource-viewer">${contentView}</div>`;
+}, { class: 'resource-viewer' });
