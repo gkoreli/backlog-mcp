@@ -82,12 +82,14 @@ export const MetadataCard = component<MetadataCardProps>('metadata-card', (props
   const items = each(entries, (e) => e.key, (entry) => {
     const key = computed(() => entry.value.key);
     const val = computed(() => entry.value.value);
+    const isList = computed(() => Array.isArray(val.value) || (typeof val.value === 'object' && val.value !== null && !isReference(val.value)));
+    const entryClass = computed(() => isList.value ? 'meta-entry meta-entry--list' : 'meta-entry meta-entry--scalar');
 
     // Re-render value when it changes
     const renderedValue = computed(() => renderValue(val.value, splitState));
 
     return html`
-      <div class="meta-entry">
+      <div class="${entryClass}" data-key="${key}">
         <dt class="meta-key">${key}</dt>
         <dd class="meta-value">${renderedValue}</dd>
       </div>
