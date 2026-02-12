@@ -8,6 +8,7 @@
  * Uses each() for reactive list rendering of day groups and task groups.
  */
 import * as Diff2Html from 'diff2html';
+import { ColorSchemeType } from 'diff2html/lib/types';
 import { createTwoFilesPatch } from 'diff';
 import { signal, computed, effect, batch } from '../framework/signal.js';
 import { component } from '../framework/component.js';
@@ -62,10 +63,10 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
   const expandedOpId = signal<string | null>(null);
   const expandedTaskGroups = signal(new Set<string>());
   const selectedDate = signal(getTodayKey());
-  const mode = signal<ViewMode>(() => {
+  const mode = signal<ViewMode>((() => {
     const saved = localStorage.getItem(MODE_STORAGE_KEY) as ViewMode | null;
     return (saved === 'timeline' || saved === 'journal') ? saved : 'timeline';
-  });
+  })());
 
   // ── SSE listener ─────────────────────────────────────────────────
   const changeHandler: ChangeCallback = () => loadOperations();
@@ -246,7 +247,7 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
       if (combinedDiff) {
         return Diff2Html.html(combinedDiff, {
           drawFileList: false, matching: 'lines',
-          outputFormat: 'line-by-line', diffStyle: 'word', colorScheme: 'dark',
+          outputFormat: 'line-by-line', diffStyle: 'word', colorScheme: ColorSchemeType.DARK,
         });
       }
     } else if (op.params.operation) {
@@ -257,7 +258,7 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
         const unifiedDiff = createUnifiedDiff(operation.old_str, operation.new_str, filename);
         return Diff2Html.html(unifiedDiff, {
           drawFileList: false, matching: 'lines',
-          outputFormat: 'line-by-line', diffStyle: 'word', colorScheme: 'dark',
+          outputFormat: 'line-by-line', diffStyle: 'word', colorScheme: ColorSchemeType.DARK,
         });
       } else {
         return null; // Will render type label instead

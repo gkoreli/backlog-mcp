@@ -37,7 +37,7 @@
   ],
   "scripts": {
     "build": "pnpm typecheck && tsdown && pnpm build:viewer",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p viewer/tsconfig.json --noEmit",
     "build:viewer": "esbuild viewer/main.ts --bundle --format=esm --outdir=dist/viewer --loader:.svg=file --loader:.css=css --asset-names=[name]-[hash]",
     "dev": "concurrently \"esbuild viewer/main.ts --bundle --format=esm --outdir=dist/viewer --loader:.svg=file --loader:.css=css --asset-names=[name]-[hash] --watch\" \"tsx watch --env-file=.env src/server/fastify-server.ts\"",
     "clean": "rm -rf dist",

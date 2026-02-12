@@ -135,9 +135,9 @@ export function html(
       let quoteChar: string | null = null;
 
       for (let i = 0; i < strings.length; i++) {
-        const s = strings[i];
+        const s = strings[i] ?? '';
         for (let c = 0; c < s.length; c++) {
-          const ch = s[c];
+          const ch = s.charAt(c);
           if (quoteChar) { if (ch === quoteChar) quoteChar = null; }
           else if (inTag) {
             if (ch === '>') inTag = false;
@@ -228,7 +228,7 @@ function processAttributes(
     // Check for @event bindings
     if (name.startsWith('@')) {
       const eventParts = name.slice(1).split('.');
-      const eventName = eventParts[0];
+      const eventName = eventParts[0] ?? '';
       const modifiers = eventParts.slice(1);
 
       // The value should be a marker containing the handler
@@ -289,9 +289,10 @@ function processAttributes(
     if (attrValue.includes(MARKER_PREFIX)) {
       const markers = [...attrValue.matchAll(/<!--bk-(\d+)-->/g)];
       if (markers.length) {
+        const first = markers[0];
         // Single expression = entire value: preserve raw type and signal
-        if (markers.length === 1 && attrValue === markers[0][0]) {
-          bindAttribute(el, name, values[Number(markers[0][1])], bindings, disposers);
+        if (markers.length === 1 && first && attrValue === first[0]) {
+          bindAttribute(el, name, values[Number(first[1])], bindings, disposers);
         } else {
           // Mixed static + dynamic: resolve markers into string
           const resolve = () => attrValue.replace(/<!--bk-(\d+)-->/g, (_, i) => {
@@ -844,7 +845,7 @@ export function each<T>(
     const newKeys = new Set<string | number>();
 
     for (let i = 0; i < newItems.length; i++) {
-      const item = newItems[i];
+      const item = newItems[i] as T;
       const key = keyFn(item, i);
       newKeys.add(key);
 

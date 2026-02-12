@@ -279,13 +279,13 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
   function selectTabItemByIndex(index: number) {
     if (activeTab.value === 'searches') {
       const items = recentSearches.value;
-      if (index < 0 || index >= items.length) return;
       const item = items[index];
+      if (!item) return;
       selectItem(item.id, item.type);
     } else {
       const items = recentActivity.value;
-      if (index < 0 || index >= items.length) return;
       const result = items[index];
+      if (!result) return;
       if (result.type === 'resource') {
         const resource = result.item as Resource;
         selectItem(resource.id, 'resource');
