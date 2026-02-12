@@ -22,7 +22,8 @@ export interface OperationEntry {
 
 export interface OperationFilter {
   taskId?: string;
-  date?: string; // YYYY-MM-DD - filter by date
+  date?: string; // YYYY-MM-DD - filter by local date
+  tzOffset?: number; // Client timezone offset in minutes (e.g. -480 for PST)
   limit?: number;
 }
 

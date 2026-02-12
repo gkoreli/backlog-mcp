@@ -82,7 +82,7 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
     if (taskId) {
       url = `/operations?task=${encodeURIComponent(taskId)}&limit=100`;
     } else if (currentMode === 'journal') {
-      url = `/operations?date=${selectedDate.value}`;
+      url = `/operations?date=${selectedDate.value}&tz=${new Date().getTimezoneOffset()}`;
     } else {
       url = '/operations?limit=100';
     }

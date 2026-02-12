@@ -58,7 +58,7 @@ export class OperationStorage {
    * Query operations with optional filtering.
    */
   query(filter: OperationFilter = {}): OperationEntry[] {
-    const { taskId, date, limit = 50 } = filter;
+    const { taskId, date, tzOffset, limit = 50 } = filter;
     
     let entries = this.readAll();
 
@@ -67,8 +67,13 @@ export class OperationStorage {
     }
 
     if (date) {
-      // Filter by date (YYYY-MM-DD matches start of ISO timestamp)
-      entries = entries.filter(e => e.ts.startsWith(date));
+      entries = entries.filter(e => {
+        // Convert UTC timestamp to client's local date for comparison
+        const d = new Date(e.ts);
+        if (tzOffset != null) d.setMinutes(d.getMinutes() - tzOffset);
+        const localDate = d.toISOString().slice(0, 10);
+        return localDate === date;
+      });
     }
 
     // Return most recent first, limited
