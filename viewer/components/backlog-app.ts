@@ -11,7 +11,7 @@
  * All document event bridges eliminated (ADR 0013). md-block link
  * interception uses useHostEvent('md-render') in consumers.
  */
-import { signal, computed, effect, batch } from '../framework/signal.js';
+import { signal, computed, effect } from '../framework/signal.js';
 import { component } from '../framework/component.js';
 import { html } from '../framework/template.js';
 import { inject } from '../framework/injector.js';
@@ -35,10 +35,8 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
   const settingsIconEl = SvgIcon({ src: signal(settingsIcon), size: signal('16px') });
 
   function handleHomeClick() {
-    batch(() => {
-      app.scopeId.value = null;
-      app.selectedTaskId.value = null;
-    });
+    app.scopeId.value = null;
+    app.selectedTaskId.value = null;
   }
 
   function handleSpotlightClick() {

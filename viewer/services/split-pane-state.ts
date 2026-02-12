@@ -10,7 +10,7 @@
  *
  * See ADR 0010 Gap 2, ADR 0011 for design rationale.
  */
-import { signal, batch } from '../framework/signal.js';
+import { signal } from '../framework/signal.js';
 
 export type PaneContent = 'resource' | 'mcp' | 'activity';
 
@@ -47,72 +47,62 @@ export class SplitPaneState {
 
   /** Open a file resource in the split pane */
   openResource(path: string) {
-    batch(() => {
-      this.activePane.value = 'resource';
-      this.resourcePath.value = path;
-      this.mcpUri.value = null;
-      this.activityTaskId.value = null;
-      this.headerTitle.value = path.split('/').pop() || path;
-      this.headerSubtitle.value = path;
-      this.headerFileUri.value = null;
-      this.headerMcpUri.value = null;
-    });
+    this.activePane.value = 'resource';
+    this.resourcePath.value = path;
+    this.mcpUri.value = null;
+    this.activityTaskId.value = null;
+    this.headerTitle.value = path.split('/').pop() || path;
+    this.headerSubtitle.value = path;
+    this.headerFileUri.value = null;
+    this.headerMcpUri.value = null;
     this.persist(path);
   }
 
   /** Open an MCP resource in the split pane */
   openMcpResource(uri: string) {
-    batch(() => {
-      this.activePane.value = 'mcp';
-      this.mcpUri.value = uri;
-      this.resourcePath.value = null;
-      this.activityTaskId.value = null;
-      this.headerTitle.value = uri.split('/').pop() || uri;
-      this.headerSubtitle.value = uri;
-      this.headerFileUri.value = null;
-      this.headerMcpUri.value = null;
-    });
+    this.activePane.value = 'mcp';
+    this.mcpUri.value = uri;
+    this.resourcePath.value = null;
+    this.activityTaskId.value = null;
+    this.headerTitle.value = uri.split('/').pop() || uri;
+    this.headerSubtitle.value = uri;
+    this.headerFileUri.value = null;
+    this.headerMcpUri.value = null;
     this.persist(uri);
   }
 
   /** Open the activity panel, optionally filtered to a task */
   openActivity(taskId?: string) {
-    batch(() => {
-      this.activePane.value = 'activity';
-      this.activityTaskId.value = taskId || null;
-      this.resourcePath.value = null;
-      this.mcpUri.value = null;
-      this.headerTitle.value = taskId ? `Activity: ${taskId}` : 'Recent Activity';
-      this.headerSubtitle.value = null;
-      this.headerFileUri.value = null;
-      this.headerMcpUri.value = null;
-    });
+    this.activePane.value = 'activity';
+    this.activityTaskId.value = taskId || null;
+    this.resourcePath.value = null;
+    this.mcpUri.value = null;
+    this.headerTitle.value = taskId ? `Activity: ${taskId}` : 'Recent Activity';
+    this.headerSubtitle.value = null;
+    this.headerFileUri.value = null;
+    this.headerMcpUri.value = null;
     this.persist(`activity:${taskId || ''}`);
   }
 
   /** Close the split pane */
   close() {
-    batch(() => {
-      this.activePane.value = null;
-      this.resourcePath.value = null;
-      this.mcpUri.value = null;
-      this.activityTaskId.value = null;
-      this.headerTitle.value = '';
-      this.headerSubtitle.value = null;
-      this.headerFileUri.value = null;
-      this.headerMcpUri.value = null;
-    });
+    this.activePane.value = null;
+    this.resourcePath.value = null;
+    this.mcpUri.value = null;
+    this.activityTaskId.value = null;
+    this.headerTitle.value = '';
+    this.headerSubtitle.value = null;
+    this.headerFileUri.value = null;
+    this.headerMcpUri.value = null;
     this.persist(null);
   }
 
   /** Update header with URI info (called after resource loads) */
   setHeaderWithUris(title: string, fileUri: string, mcpUri?: string) {
-    batch(() => {
-      this.headerTitle.value = title;
-      this.headerSubtitle.value = null;
-      this.headerFileUri.value = fileUri;
-      this.headerMcpUri.value = mcpUri || null;
-    });
+    this.headerTitle.value = title;
+    this.headerSubtitle.value = null;
+    this.headerFileUri.value = fileUri;
+    this.headerMcpUri.value = mcpUri || null;
   }
 
   /** Clear the activity task filter (show all activity) */

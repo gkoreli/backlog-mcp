@@ -4,7 +4,7 @@
  * Reads scopeId from AppState, receives tasks as prop from task-list.
  * Uses each() for the path segments, @click to set scope.
  */
-import { computed, batch, type ReadonlySignal } from '../framework/signal.js';
+import { computed, type ReadonlySignal } from '../framework/signal.js';
 import { component } from '../framework/component.js';
 import { html, each } from '../framework/template.js';
 import { inject } from '../framework/injector.js';
@@ -45,10 +45,8 @@ export const Breadcrumb = component<BreadcrumbProps>('epic-breadcrumb', (props) 
     if (segmentId) {
       app.selectTask(segmentId);
     } else {
-      batch(() => {
-        app.scopeId.value = null;
-        app.selectedTaskId.value = null;
-      });
+      app.scopeId.value = null;
+      app.selectedTaskId.value = null;
     }
   }
 

@@ -10,7 +10,7 @@
 import * as Diff2Html from 'diff2html';
 import { ColorSchemeType } from 'diff2html/lib/types';
 import { createTwoFilesPatch } from 'diff';
-import { signal, computed, effect, batch } from '../framework/signal.js';
+import { signal, computed, effect } from '../framework/signal.js';
 import { component } from '../framework/component.js';
 import { html, when, each } from '../framework/template.js';
 import { inject } from '../framework/injector.js';
@@ -115,10 +115,8 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
 
   // ── Actions ──────────────────────────────────────────────────────
   function setMode(newMode: ViewMode) {
-    batch(() => {
-      mode.value = newMode;
-      expandedOpId.value = null;
-    });
+    mode.value = newMode;
+    expandedOpId.value = null;
   }
 
   function navigateDate(action: 'prev' | 'next' | 'today') {

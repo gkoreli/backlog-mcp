@@ -5,7 +5,7 @@
  * Delegates markdown rendering to DocumentView (link interception,
  * MetadataCard, md-block). Handles code/text files directly.
  */
-import { signal, computed, effect, batch } from '../framework/signal.js';
+import { signal, computed, effect } from '../framework/signal.js';
 import { component } from '../framework/component.js';
 import { html } from '../framework/template.js';
 import { inject } from '../framework/injector.js';
@@ -38,16 +38,12 @@ export const ResourceViewer = component('resource-viewer', () => {
       const res = await fetch(`/resource?path=${encodeURIComponent(path)}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load resource');
-      batch(() => {
-        data.value = json;
-        loadState.value = 'loaded';
-      });
+      data.value = json;
+      loadState.value = 'loaded';
       updateHeaderFromData(json);
     } catch (err) {
-      batch(() => {
-        errorMessage.value = (err as Error).message;
-        loadState.value = 'error';
-      });
+      errorMessage.value = (err as Error).message;
+      loadState.value = 'error';
     }
   }
 
@@ -57,16 +53,12 @@ export const ResourceViewer = component('resource-viewer', () => {
       const res = await fetch(`/mcp/resource?uri=${encodeURIComponent(uri)}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load resource');
-      batch(() => {
-        data.value = json;
-        loadState.value = 'loaded';
-      });
+      data.value = json;
+      loadState.value = 'loaded';
       updateHeaderFromData(json);
     } catch (err) {
-      batch(() => {
-        errorMessage.value = (err as Error).message;
-        loadState.value = 'error';
-      });
+      errorMessage.value = (err as Error).message;
+      loadState.value = 'error';
     }
   }
 

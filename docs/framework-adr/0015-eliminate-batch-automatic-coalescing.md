@@ -1,7 +1,7 @@
 # 0015. Eliminate explicit batch() — automatic signal coalescing
 
 **Date**: 2026-02-11
-**Status**: Proposed
+**Status**: Accepted
 **Backlog Item**: TASK-0280
 
 ## Context
