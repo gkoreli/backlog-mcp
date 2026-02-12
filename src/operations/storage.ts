@@ -6,6 +6,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { paths } from '@/utils/paths.js';
+import { utcToLocalDateKey } from '@/utils/date.js';
 import type { OperationEntry, OperationFilter } from './types.js';
 
 export class OperationStorage {
@@ -68,10 +69,9 @@ export class OperationStorage {
 
     if (date) {
       entries = entries.filter(e => {
-        // Convert UTC timestamp to client's local date for comparison
-        const d = new Date(e.ts);
-        if (tzOffset != null) d.setMinutes(d.getMinutes() - tzOffset);
-        const localDate = d.toISOString().slice(0, 10);
+        const localDate = tzOffset != null
+          ? utcToLocalDateKey(e.ts, tzOffset)
+          : e.ts.slice(0, 10);
         return localDate === date;
       });
     }
