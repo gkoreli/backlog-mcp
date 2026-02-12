@@ -256,6 +256,82 @@ This is a language-level guarantee (spec §13.2.8.3). If the slot handler could 
 
 All three preserve DOM when the template structure hasn't changed.
 
+## Scope of change
+
+These are the specific touch points in `viewer/framework/template.ts`. The agent implementing this should read each one.
+
+### 1. `TemplateResult` interface (line 25) — add identity
+
+Currently:
+```ts
+export interface TemplateResult {
+  mount(host: HTMLElement): void;
+  dispose(): void;
+  __templateResult: true;
+}
+```
+
+Needs to expose `strings` and `values` so the slot handler can compare identity and patch:
+```ts
+export interface TemplateResult {
+  readonly strings: TemplateStringsArray;  // template identity
+  readonly values: unknown[];              // current dynamic values
+  mount(host: HTMLElement): void;
+  dispose(): void;
+  __templateResult: true;
+}
+```
+
+### 2. `html()` function (line 118) — expose strings and values on the returned object
+
+The `html()` tagged template function creates the `TemplateResult` closure. It already has `strings` and `values` via parameters — just needs to store them as properties on the returned object.
+
+### 3. `templateCache` WeakMap (line 41) — wire it up
+
+Dead code today. Should be used in `mount()` to avoid re-parsing `template.innerHTML` for same-shape templates. Key: `TemplateStringsArray`, Value: parsed `HTMLTemplateElement`.
+
+### 4. Reactive slot effect (line 396) — add identity check before nuke
+
+The core change. Currently unconditionally destroys and rebuilds. Needs a branch:
+
+```
+if (newValue is TemplateResult && currentResults[0] is TemplateResult
+    && newValue.strings === currentResults[0].strings) {
+  → PATCH: update bindings with new values
+} else {
+  → REBUILD: existing nuke-and-rebuild path (unchanged)
+}
+```
+
+### 5. Binding types (lines 60-103) — add update capability
+
+Six binding types exist. Each has `dispose()` for teardown. Each needs an update path for patching:
+
+| Binding | What to update | How |
+|---------|---------------|-----|
+| `TextBinding` | `node.data` | Set new text if `Object.is` differs |
+| `AttributeBinding` | `element.setAttribute()` | Set new value if differs |
+| `ClassBinding` | `element.classList.toggle()` | Toggle if boolean differs |
+| `EventBinding` | `element.removeEventListener` + `addEventListener` | Swap handler reference |
+| `InnerHtmlBinding` | `element.innerHTML` | Set new HTML if differs |
+| `ChildBinding` | Recursive — child slot may itself be a signal/template | Recurse into child slot reconciliation |
+
+`ChildBinding` is the recursive case — a patched template may contain `${someComputed}` child slots that are themselves reactive. These inner slots already manage themselves via their own effects and should be left alone during an outer patch.
+
+### 6. `processNode()` (line 185) — bindings must be addressable by position
+
+Currently bindings are pushed into a flat array during `mount()`. For patching, the slot handler needs to map value index → binding so it can update the right binding with the new value. This may require bindings to track their value index, or the mount path to return a position-indexed structure.
+
+## Verification
+
+After implementation, this specific user action should produce zero DOM node removals in the activity list:
+
+1. Open the viewer, navigate to a task, click "Recent Activity" (opens activity panel filtered to that task)
+2. Click the ✕ button to clear the filter (switches to global activity)
+3. Observe in Chrome DevTools Elements panel: the `pane-title` div should update its text content in-place, not flash/rebuild
+
+The `mainContent` computed will still rebuild because the data changes (different operations for task vs global) — that's expected. But `paneHeaderContent` (same template shape, different title text) should patch in-place.
+
 ## Invariants
 
 Any solution MUST preserve these guarantees. Violating any of them is a regression.
