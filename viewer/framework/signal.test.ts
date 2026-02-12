@@ -9,8 +9,8 @@ import {
   signal,
   computed,
   effect,
-  batch,
   isSignal,
+  flush,
   flushEffects,
   SIGNAL_BRAND,
 } from './signal.js';
@@ -270,7 +270,7 @@ describe('effect()', () => {
     expect(fn).toHaveBeenCalledTimes(2); // just one re-run for all three
   });
 
-  it('explicit batch() coalesces into single effect run', () => {
+  it('microtask coalescing: multiple writes produce one effect run', async () => {
     const a = signal(0);
     const b = signal(0);
     const fn = vi.fn(() => {
@@ -279,30 +279,27 @@ describe('effect()', () => {
     effect(fn);
     fn.mockClear();
 
-    batch(() => {
-      a.value = 1;
-      b.value = 2;
-    });
-    // batch() flushes synchronously at the end
+    a.value = 1;
+    b.value = 2;
+    // Effects haven't run yet — scheduled on microtask
+    expect(fn).not.toHaveBeenCalled();
+
+    await new Promise(r => queueMicrotask(r));
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
-  it('nested batch() only flushes at outermost level', () => {
+  it('flush() synchronously executes pending effects', () => {
     const a = signal(0);
-    const fn = vi.fn(() => { a.value; });
+    const b = signal(0);
+    const fn = vi.fn(() => {
+      a.value + b.value;
+    });
     effect(fn);
     fn.mockClear();
 
-    batch(() => {
-      a.value = 1;
-      batch(() => {
-        a.value = 2;
-      });
-      // Inner batch returns but we're still inside outer batch
-      expect(fn).not.toHaveBeenCalled();
-      a.value = 3;
-    });
-    // Outer batch flushes
+    a.value = 1;
+    b.value = 2;
+    flush();
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
@@ -485,10 +482,9 @@ describe('integration', () => {
     });
     expect(results).toEqual(['sum=3, product=2']);
 
-    batch(() => {
-      a.value = 3;
-      b.value = 4;
-    });
+    a.value = 3;
+    b.value = 4;
+    flush();
     expect(results).toEqual(['sum=3, product=2', 'sum=7, product=12']);
   });
 

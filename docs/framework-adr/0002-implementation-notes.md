@@ -31,8 +31,8 @@ Signal writes (line ~136) and computed value comparisons (line ~218) use `Object
 **4. Dependencies are fully re-tracked on every execution.**
 Before computed re-evaluates or effect re-runs, ALL previous source subscriptions are removed (lines ~206-210, ~309-313). Dependencies are discovered fresh on each run. This is what makes conditional dependencies work: `flag.value ? a.value : b.value` tracks `a` or `b` depending on `flag`, and switching `flag` correctly drops the unused signal. If you skip the "unsubscribe from previous sources" step, stale dependencies will trigger spurious updates.
 
-**5. Batch only flushes at the outermost level.**
-`batchDepth` counts nesting. `flushPendingEffects()` only runs when `batchDepth` drops to 0. Nested `batch()` calls must NOT trigger a flush. Without this, `batch(() => { a.value = 1; batch(() => { b.value = 2; }); c.value = 3; })` would flush after `b.value = 2`, defeating the purpose.
+**5. Effect scheduling uses microtask coalescing only.**
+Multiple synchronous signal writes schedule a single microtask. Effects run once per microtask cycle with the final signal values. Use `flush()` when synchronous effect execution is needed (e.g., imperative DOM measurement). See ADR 0015.
 
 **6. Effect errors are logged, not thrown, and the effect stays alive.**
 Line ~324: if an effect throws, `console.error` and continue. The effect is NOT disposed. This is deliberate — a temporary failure (network timeout, missing element) shouldn't permanently kill the effect. It will re-run on the next signal change and may succeed.

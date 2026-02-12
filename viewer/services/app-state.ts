@@ -7,7 +7,7 @@
  *
  * See ADR 0007 for design rationale.
  */
-import { signal, batch, effect } from '../framework/signal.js';
+import { signal, effect } from '../framework/signal.js';
 import { getTypeConfig, getTypeFromId } from '../type-registry.js';
 import { UrlState } from './url-state.js';
 
@@ -71,10 +71,8 @@ export class AppState {
 
   /** Select a task; auto-scopes into containers. */
   selectTask(id: string) {
-    batch(() => {
-      this.selectedTaskId.value = id;
-      this.deriveScope(id);
-    });
+    this.selectedTaskId.value = id;
+    this.deriveScope(id);
   }
 
   /**

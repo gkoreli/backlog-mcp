@@ -60,27 +60,10 @@ let activeObserver: ReactiveNode | null = null;
  */
 let globalEpoch = 0;
 
-// ── Batching ────────────────────────────────────────────────────────
+// ── Effect scheduling ────────────────────────────────────────────────
 
-let batchDepth = 0;
 const pendingEffects = new Set<EffectNode>();
 let flushScheduled = false;
-
-/**
- * Group multiple signal writes into a single update pass.
- * Nested batch() calls are supported — only the outermost triggers the flush.
- */
-export function batch(fn: () => void): void {
-  batchDepth++;
-  try {
-    fn();
-  } finally {
-    batchDepth--;
-    if (batchDepth === 0) {
-      flushPendingEffects();
-    }
-  }
-}
 
 function scheduleFlush(): void {
   if (!flushScheduled) {
@@ -326,9 +309,7 @@ function createEffectNode(fn: () => void | (() => void)): EffectNode {
       if (this.disposed) return;
       this.state = NodeState.Dirty;
       pendingEffects.add(this);
-      if (batchDepth === 0) {
-        scheduleFlush();
-      }
+      scheduleFlush();
     },
   };
 }
@@ -500,12 +481,20 @@ export function untrack(fn: () => void): void {
   }
 }
 
-// ── Test utilities ──────────────────────────────────────────────────
+// ── Synchronous flush ───────────────────────────────────────────────
 
 /**
- * Flush all pending effects synchronously. Used in tests to avoid
- * needing to await microtasks.
+ * Synchronously execute all pending effects.
+ *
+ * In normal usage, effects run automatically on the next microtask.
+ * Use flush() only when you need effects to have executed before
+ * the next line — e.g., imperative DOM measurement after state change.
+ *
+ * flush() is idempotent: calling it with no pending effects is a no-op.
  */
-export function flushEffects(): void {
+export function flush(): void {
   flushPendingEffects();
 }
+
+/** Backward compat alias for tests. */
+export { flush as flushEffects };

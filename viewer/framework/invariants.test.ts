@@ -12,7 +12,6 @@ import {
   signal,
   computed,
   effect,
-  batch,
   flushEffects,
   isSignal,
   untrack,
@@ -510,28 +509,26 @@ describe('INVARIANT: emitter.on() auto-disposes in component context', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-// INVARIANT: Batch only flushes at outermost level
-// ADR 0002 — signal.ts invariant 5
+// INVARIANT: Microtask coalescing — multiple writes, one effect run
+// ADR 0015 — batch() removed, microtask scheduling only
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('INVARIANT: batch nesting', () => {
-  it('inner batch does not flush — only outermost flushes', () => {
+describe('INVARIANT: microtask coalescing', () => {
+  it('multiple synchronous writes coalesce into one effect run', () => {
     const s = signal(0);
     const values: number[] = [];
     effect(() => { values.push(s.value); });
     values.length = 0; // clear initial run
 
-    batch(() => {
-      s.value = 1;
-      batch(() => {
-        s.value = 2;
-      });
-      // Inner batch returned — effect should NOT have run yet
-      expect(values).toEqual([]);
-      s.value = 3;
-    });
-    // Outer batch flushes
-    expect(values).toEqual([3]); // one run with final value
+    s.value = 1;
+    s.value = 2;
+    s.value = 3;
+    // Effects haven't run yet — scheduled on microtask
+    expect(values).toEqual([]);
+
+    flushEffects();
+    // One run with final value
+    expect(values).toEqual([3]);
   });
 });
 

@@ -5,7 +5,7 @@
  *
  * ```ts
  * import {
- *   signal, computed, effect, batch,
+ *   signal, computed, effect, flush,
  *   component, html, when,
  *   inject, provide,
  *   Emitter,
@@ -19,7 +19,7 @@ export {
   signal,
   computed,
   effect,
-  batch,
+  flush,
   isSignal,
   flushEffects,
   untrack,
