@@ -11,8 +11,7 @@
  * Works for known entities (task, epic, milestone, artifact, folder)
  * and arbitrary markdown files with frontmatter.
  */
-import { computed } from '../framework/signal.js';
-import { component } from '../framework/component.js';
+import { computed } from '../framework/signal.js';import { component } from '../framework/component.js';
 import { html, when } from '../framework/template.js';
 import { inject } from '../framework/injector.js';
 import { useResourceLinks } from '../framework/lifecycle.js';
@@ -23,8 +22,8 @@ import { MetadataCard } from './metadata-card.js';
 import type { ReadonlySignal } from '../framework/signal.js';
 
 interface DocumentViewProps {
-  frontmatter: ReadonlySignal<Record<string, unknown>>;
-  content: ReadonlySignal<string>;
+  frontmatter: Record<string, unknown>;
+  content: string;
   onNavigate?: (id: string) => void;
 }
 
@@ -84,7 +83,8 @@ export const DocumentView = component<DocumentViewProps>('document-view', (props
   function handleParentClick(e: Event) {
     e.preventDefault();
     const pid = parentId.value;
-    if (pid && onNav) onNav(pid);
+    const nav = onNav?.value;
+    if (pid && nav) nav(pid);
   }
 
   // ── Extra entries for MetadataCard (everything not in header) ────

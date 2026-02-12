@@ -164,6 +164,7 @@ export function mergeConsecutiveEdits(operations: OperationEntry[]): OperationEn
   
   while (i < operations.length) {
     const current = operations[i];
+    if (!current) { i++; continue; }
     
     if (!isStrReplace(current)) {
       result.push(current);
@@ -179,10 +180,12 @@ export function mergeConsecutiveEdits(operations: OperationEntry[]): OperationEn
     // Collect consecutive str_replace ops on same URI within time window
     while (j < operations.length) {
       const next = operations[j];
-      if (!isStrReplace(next) || next.params.uri !== uri) break;
+      if (!next || !isStrReplace(next) || next.params.uri !== uri) break;
       
       // Check time gap (operations are newest-first, so group[last] is older)
-      const newerTs = new Date(group[group.length - 1].ts).getTime();
+      const prev = group[group.length - 1];
+      if (!prev) break;
+      const newerTs = new Date(prev.ts).getTime();
       const olderTs = new Date(next.ts).getTime();
       if (newerTs - olderTs > MERGE_WINDOW_MS) break;
       
@@ -194,8 +197,8 @@ export function mergeConsecutiveEdits(operations: OperationEntry[]): OperationEn
       result.push(current);
     } else {
       // Create merged operation with all individual ops for stacked rendering
-      const newest = group[0];
-      const oldest = group[group.length - 1];
+      const newest = group[0] ?? current;
+      const oldest = group[group.length - 1] ?? current;
       
       const merged: OperationEntry = {
         ...newest,
