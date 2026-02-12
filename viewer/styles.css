@@ -737,31 +737,6 @@
   color: #d4d4d4;
 }
 
-.task-meta-section {
-  margin-top: 12px;
-  font-size: 13px;
-}
-.task-meta-section-label {
-  font-weight: 600;
-  color: #8b949e;
-  margin-bottom: 4px;
-}
-.task-meta-section ul {
-  margin: 0;
-  padding-left: 20px;
-}
-.task-meta-section li {
-  margin: 6px 0;
-  line-height: 1.4;
-}
-.blocked-reason-section {
-  border-left: 3px solid #f85149;
-  padding-left: 12px;
-  background: rgba(248, 81, 73, 0.1);
-  border-radius: 0 6px 6px 0;
-  padding: 8px 12px;
-}
-
 /* task-detail now owns its pane-header + pane-content (Phase 15) */
 task-detail {
   display: flex;
@@ -919,33 +894,45 @@ metadata-card {
   display: block;
 }
 .meta-grid {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin: 0;
 }
 .meta-entry {
-  display: grid;
-  grid-template-columns: 150px 1fr;
-  gap: 12px;
-  align-items: start;
+  font-size: 13px;
 }
 .meta-key {
   font-weight: 600;
   color: #8b949e;
-  font-size: 13px;
   text-transform: capitalize;
+}
+.meta-key::after {
+  content: ':';
+  margin-right: 6px;
+}
+.meta-entry--scalar {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+}
+.meta-entry--scalar .meta-value {
+  color: #d4d4d4;
+}
+.meta-entry--list .meta-key {
+  display: block;
+  margin-bottom: 4px;
 }
 .meta-value {
   color: #d4d4d4;
-  font-size: 13px;
   word-break: break-word;
 }
 .meta-list {
   margin: 0;
-  padding-left: 20px;
+  padding-left: 18px;
 }
 .meta-list li {
-  margin: 4px 0;
+  margin: 3px 0;
   line-height: 1.4;
 }
 .meta-pre {
@@ -958,6 +945,14 @@ metadata-card {
 }
 .meta-empty {
   color: #484f58;
+}
+.meta-entry[data-key="blocked"] {
+  border-left: 3px solid #f85149;
+  padding-left: 10px;
+  background: rgba(248, 81, 73, 0.08);
+  border-radius: 0 4px 4px 0;
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 
 
