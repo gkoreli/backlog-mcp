@@ -1,14 +1,13 @@
 /**
- * Token estimation and budgeting for context hydration (ADR-0074, ADR-0075, ADR-0076).
+ * Token estimation and budgeting for context hydration (ADR-0074, ADR-0075, ADR-0076, ADR-0077).
  *
  * KNOWN HACK: Uses character-based approximation (1 token ≈ 4 chars).
  * This is within ±20% for English prose — sufficient for budgeting decisions.
  * See ADR-0074 "Known Hacks" section 1 for rationale and future fix path.
  *
- * Phase 3 changes (ADR-0076):
- *   - 10-level priority (added session summary, ancestors, descendants)
- *   - Session summary budgeting (between parent and children)
- *   - graph_depth preserved through downgrading
+ * Phase 4 changes (ADR-0077):
+ *   - 11-level priority (added cross-referenced entities at priority 6)
+ *   - Cross-referenced entities are explicit links — higher priority than ancestors
  */
 
 import type { ContextEntity, ContextResource, ContextActivity, SessionSummary, Fidelity } from './types.js';
@@ -191,17 +190,18 @@ export function downgradeResource(resource: ContextResource, to: Fidelity): Cont
 /**
  * Apply token budget to a set of context items.
  *
- * Priority order (highest first) — Phase 3, ADR-0076:
+ * Priority order (highest first) — Phase 4, ADR-0077:
  *   1. Focal entity (never dropped, always full fidelity)
  *   2. Parent entity (never dropped, summary fidelity)
  *   3. Session summary (high priority — tells agent what happened last)
  *   4. Children (summary, downgrade to reference if needed)
  *   5. Siblings (summary, downgrade to reference if needed)
- *   6. Ancestors (reference fidelity — breadcrumb context)
- *   7. Descendants (reference fidelity — structural awareness)
- *   8. Semantically related entities (summary, downgrade to reference if needed)
- *   9. Resources (summary, downgrade to reference if needed)
- *  10. Activity (fixed cost, drop entries if needed)
+ *   6. Cross-referenced entities (summary, downgrade to reference if needed)  ← NEW
+ *   7. Ancestors (reference fidelity — breadcrumb context)
+ *   8. Descendants (reference fidelity — structural awareness)
+ *   9. Semantically related entities (summary, downgrade to reference if needed)
+ *  10. Resources (summary, downgrade to reference if needed)
+ *  11. Activity (fixed cost, drop entries if needed)
  *
  * Items are first tried at their current fidelity. If the budget is
  * exceeded, lower-priority items are downgraded before higher-priority
@@ -212,6 +212,7 @@ export function applyBudget(
   parent: ContextEntity | null,
   children: ContextEntity[],
   siblings: ContextEntity[],
+  crossReferenced: ContextEntity[],
   ancestors: ContextEntity[],
   descendants: ContextEntity[],
   related: ContextEntity[],
@@ -290,22 +291,27 @@ export function applyBudget(
     if (!tryFitEntity(sibling)) break;
   }
 
-  // 6. Ancestors (already at reference fidelity from expansion)
+  // 6. Cross-referenced entities at summary fidelity (Phase 4, ADR-0077)
+  for (const xref of crossReferenced) {
+    if (!tryFitEntity(xref)) break;
+  }
+
+  // 7. Ancestors (already at reference fidelity from expansion)
   for (const ancestor of ancestors) {
     if (!tryFitEntity(ancestor)) break;
   }
 
-  // 7. Descendants (already at reference fidelity from expansion)
+  // 8. Descendants (already at reference fidelity from expansion)
   for (const descendant of descendants) {
     if (!tryFitEntity(descendant)) break;
   }
 
-  // 8. Semantically related entities at summary fidelity
+  // 9. Semantically related entities at summary fidelity
   for (const rel of related) {
     if (!tryFitEntity(rel)) break;
   }
 
-  // 9. Resources at summary fidelity
+  // 10. Resources at summary fidelity
   for (const resource of resources) {
     const cost = estimateResourceTokens(resource);
     if (tokensUsed + cost <= maxTokens) {
@@ -325,7 +331,7 @@ export function applyBudget(
     }
   }
 
-  // 10. Activity entries
+  // 11. Activity entries
   for (const act of activities) {
     const cost = estimateActivityTokens(act);
     if (tokensUsed + cost <= maxTokens) {

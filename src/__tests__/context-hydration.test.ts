@@ -18,6 +18,7 @@ import type { Task } from '../storage/schema.js';
 import type { Resource } from '../search/types.js';
 import { resolveFocal, taskToContextEntity } from '../context/stages/focal-resolution.js';
 import { expandRelations, type RelationalExpansionDeps } from '../context/stages/relational-expansion.js';
+import { traverseCrossReferences, extractEntityIds, type CrossReferenceTraversalDeps } from '../context/stages/cross-reference-traversal.js';
 import { enrichSemantic, type SemanticEnrichmentDeps } from '../context/stages/semantic-enrichment.js';
 import { overlayTemporal, type TemporalOverlayDeps } from '../context/stages/temporal-overlay.js';
 import {
@@ -804,14 +805,14 @@ describe('Token budget application', () => {
   ];
 
   it('includes all items when budget is large', () => {
-    const result = applyBudget(focal, parent, children, siblings, [], [], related, resources, [], null, 100000);
+    const result = applyBudget(focal, parent, children, siblings, [], [], [], related, resources, [], null, 100000);
     expect(result.truncated).toBe(false);
     expect(result.entities.length).toBe(1 + 1 + 2 + 2 + 2); // focal + parent + children + siblings + related
     expect(result.resources.length).toBe(1);
   });
 
   it('focal and parent are always included', () => {
-    const result = applyBudget(focal, parent, [], [], [], [], [], [], [], null, 100000);
+    const result = applyBudget(focal, parent, [], [], [], [], [], [], [], [], null, 100000);
     expect(result.entities.length).toBe(2);
     expect(result.entities[0]!.id).toBe(focal.id);
     expect(result.entities[1]!.id).toBe(parent!.id);
@@ -822,7 +823,7 @@ describe('Token budget application', () => {
     const parentCost = estimateEntityTokens(parent);
     const tightBudget = focalCost + parentCost + 50 + 10;
 
-    const result = applyBudget(focal, parent, children, siblings, [], [], related, resources, [], null, tightBudget);
+    const result = applyBudget(focal, parent, children, siblings, [], [], [], related, resources, [], null, tightBudget);
     expect(result.truncated).toBe(true);
     expect(result.entities[0]!.id).toBe(focal.id);
     expect(result.entities[1]!.id).toBe(parent!.id);
@@ -837,7 +838,7 @@ describe('Token budget application', () => {
     const budget = focalCost + parentCost + 50 + refChildCost * 2 + 20;
 
     if (budget < focalCost + parentCost + 50 + summaryChildCost * 2) {
-      const result = applyBudget(focal, parent, children, [], [], [], [], [], [], null, budget);
+      const result = applyBudget(focal, parent, children, [], [], [], [], [], [], [], null, budget);
       const childEntities = result.entities.filter(e => e.id === 'TASK-0043' || e.id === 'TASK-0044');
       if (childEntities.length > 0) {
         const hasReference = childEntities.some(e => e.fidelity === 'reference');
@@ -855,7 +856,7 @@ describe('Token budget application', () => {
     const siblingCosts = siblings.reduce((sum, s) => sum + estimateEntityTokens(s), 0);
     const budget = focalCost + parentCost + childCosts + siblingCosts + 50 + 5;
 
-    const result = applyBudget(focal, parent, children, siblings, [], [], related, [], [], null, budget);
+    const result = applyBudget(focal, parent, children, siblings, [], [], [], related, [], [], null, budget);
     const entityIds = result.entities.map(e => e.id);
 
     // Children and siblings should be present before related
@@ -873,12 +874,12 @@ describe('Token budget application', () => {
       { ts: '2026-02-14T08:00:00Z', tool: 'backlog_update', entity_id: 'TASK-0043', actor: 'claude', summary: 'Updated TASK-0043' },
     ];
 
-    const result = applyBudget(focal, parent, children, siblings, [], [], related, resources, activities, null, 100000);
+    const result = applyBudget(focal, parent, children, siblings, [], [], [], related, resources, activities, null, 100000);
     expect(result.activities.length).toBe(2);
   });
 
   it('tokensUsed is always positive', () => {
-    const result = applyBudget(focal, null, [], [], [], [], [], [], [], null, 100000);
+    const result = applyBudget(focal, null, [], [], [], [], [], [], [], [], null, 100000);
     expect(result.tokensUsed).toBeGreaterThan(0);
   });
 });
@@ -1200,6 +1201,7 @@ describe('Context response contract invariants', () => {
       (result!.parent ? 1 : 0) +
       result!.children.length +
       result!.siblings.length +
+      result!.cross_referenced.length +
       result!.ancestors.length +
       result!.descendants.length +
       result!.related_resources.length +
@@ -1261,12 +1263,13 @@ describe('Context response contract invariants', () => {
     expect(result2!.metadata.stages_executed).not.toContain('temporal_overlay');
   });
 
-  it('response includes ancestors and descendants arrays (Phase 3)', async () => {
+  it('response includes ancestors, descendants, and cross_referenced arrays (Phase 3+4)', async () => {
     const deps = makeDeps();
     const result = await hydrateContext({ task_id: 'TASK-0042', include_related: false, include_activity: false }, deps);
     expect(result).not.toBeNull();
     expect(Array.isArray(result!.ancestors)).toBe(true);
     expect(Array.isArray(result!.descendants)).toBe(true);
+    expect(Array.isArray(result!.cross_referenced)).toBe(true);
   });
 
   it('response includes session_summary field (Phase 3)', async () => {
@@ -1617,7 +1620,7 @@ describe('Phase 3: Token budget with new priority levels', () => {
     const siblingCosts = siblings.reduce((sum, s) => sum + estimateEntityTokens(s), 0);
     const budget = focalCost + parentCost + childCosts + siblingCosts + 50 + 5;
 
-    const result = applyBudget(focal, parent, children, siblings, ancestors, descendants, [], [], [], null, budget);
+    const result = applyBudget(focal, parent, children, siblings, [], ancestors, descendants, [], [], [], null, budget);
     const entityIds = result.entities.map(e => e.id);
 
     // All children and siblings should be in, ancestors should be dropped
@@ -1627,7 +1630,7 @@ describe('Phase 3: Token budget with new priority levels', () => {
   });
 
   it('descendants are budgeted after ancestors', () => {
-    const result = applyBudget(focal, parent, children, siblings, ancestors, descendants, [], [], [], null, 100000);
+    const result = applyBudget(focal, parent, children, siblings, [], ancestors, descendants, [], [], [], null, 100000);
     const entityIds = result.entities.map(e => e.id);
 
     // All should be included with large budget
@@ -1637,7 +1640,7 @@ describe('Phase 3: Token budget with new priority levels', () => {
   });
 
   it('session summary is budgeted before children', () => {
-    const result = applyBudget(focal, parent, children, siblings, [], [], [], [], [], mockSession, 100000);
+    const result = applyBudget(focal, parent, children, siblings, [], [], [], [], [], [], mockSession, 100000);
     expect(result.sessionSummary).not.toBeNull();
     expect(result.sessionSummary!.actor).toBe('claude');
   });
@@ -1648,7 +1651,7 @@ describe('Phase 3: Token budget with new priority levels', () => {
     // Budget that barely fits focal + parent + metadata
     const tinyBudget = focalCost + parentCost + 50 + 5;
 
-    const result = applyBudget(focal, parent, [], [], [], [], [], [], [], mockSession, tinyBudget);
+    const result = applyBudget(focal, parent, [], [], [], [], [], [], [], [], mockSession, tinyBudget);
     expect(result.sessionSummary).toBeNull();
     expect(result.truncated).toBe(true);
   });
@@ -1716,6 +1719,7 @@ describe('Phase 3: Contract invariants', () => {
       ...(result!.parent ? [result!.parent.id] : []),
       ...result!.children.map(c => c.id),
       ...result!.siblings.map(s => s.id),
+      ...result!.cross_referenced.map(x => x.id),
       ...result!.ancestors.map(a => a.id),
       ...result!.descendants.map(d => d.id),
     ];
@@ -1749,13 +1753,14 @@ describe('Phase 3: Contract invariants', () => {
     }
   });
 
-  it('total_items includes ancestors + descendants + session_summary', async () => {
+  it('total_items includes ancestors + descendants + cross_referenced + session_summary', async () => {
     const deps = makeDeps(DEEP_TASKS, ALL_RESOURCES, { includeOps: true });
     const result = await hydrateContext({ task_id: 'TASK-0042', depth: 2, include_related: false, include_activity: true, max_tokens: 100000 }, deps);
     const expectedTotal = 1 +
       (result!.parent ? 1 : 0) +
       result!.children.length +
       result!.siblings.length +
+      result!.cross_referenced.length +
       result!.ancestors.length +
       result!.descendants.length +
       result!.related_resources.length +
@@ -1771,5 +1776,431 @@ describe('Phase 3: Contract invariants', () => {
     if (result!.session_summary) {
       expect(result!.metadata.stages_executed).toContain('session_memory');
     }
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// Phase 4: Cross-Reference Traversal (ADR-0077)
+// ══════════════════════════════════════════════════════════════════════
+
+// Cross-reference test data: tasks with references[] pointing to other entities
+const TASK_WITH_XREFS = makeTask({
+  id: 'TASK-0060',
+  title: 'Task with cross-references',
+  parent_id: 'EPIC-0005',
+  description: 'This task references several other tasks.',
+  references: [
+    { url: 'TASK-0099', title: 'Unrelated feature' },
+    { url: 'https://github.com/org/repo/issues/TASK-0050', title: 'Related GH issue' },
+    { url: 'TASK-0051', title: 'Agent memory' },
+    { url: 'https://example.com/plain-url', title: 'No entity ID here' },
+    { url: 'mcp://backlog/resources/doc.md', title: 'Resource link' },
+  ],
+});
+
+const TASK_WITH_SELF_REF = makeTask({
+  id: 'TASK-0061',
+  title: 'Task that references itself and its parent',
+  parent_id: 'EPIC-0005',
+  references: [
+    { url: 'TASK-0061', title: 'Self reference' },
+    { url: 'EPIC-0005', title: 'Parent reference' },
+  ],
+});
+
+const TASK_NO_REFS = makeTask({
+  id: 'TASK-0062',
+  title: 'Task with no references',
+  parent_id: 'EPIC-0005',
+});
+
+const PARENT_WITH_REFS = makeTask({
+  ...EPIC,
+  references: [
+    { url: 'TASK-0050', title: 'Research task' },
+    { url: 'TASK-0099', title: 'Unrelated' },
+  ],
+});
+
+// Tasks that include cross-reference test data alongside the standard set
+const XREF_TASKS: Task[] = [
+  ...ALL_TASKS,
+  TASK_WITH_XREFS,
+  TASK_WITH_SELF_REF,
+  TASK_NO_REFS,
+];
+
+const XREF_TASKS_WITH_PARENT_REFS: Task[] = [
+  PARENT_WITH_REFS, // replaces EPIC at index 0
+  ...ALL_TASKS.filter(t => t.id !== 'EPIC-0005'),
+  TASK_WITH_XREFS,
+  TASK_WITH_SELF_REF,
+  TASK_NO_REFS,
+];
+
+// ── Stage 2.5: Cross-Reference Traversal (unit tests) ────────────────
+
+describe('Phase 4: extractEntityIds', () => {
+  it('extracts a direct entity ID', () => {
+    expect(extractEntityIds('TASK-0041')).toEqual(['TASK-0041']);
+  });
+
+  it('extracts entity ID from a URL', () => {
+    expect(extractEntityIds('https://github.com/org/repo/issues/TASK-0041')).toEqual(['TASK-0041']);
+  });
+
+  it('extracts multiple entity IDs from one string', () => {
+    const ids = extractEntityIds('TASK-0041 and EPIC-0005 are related');
+    expect(ids).toEqual(['TASK-0041', 'EPIC-0005']);
+  });
+
+  it('returns empty for plain URLs with no entity ID', () => {
+    expect(extractEntityIds('https://example.com/issues/42')).toEqual([]);
+  });
+
+  it('returns empty for resource URIs', () => {
+    expect(extractEntityIds('mcp://backlog/resources/doc.md')).toEqual([]);
+  });
+
+  it('handles all entity type prefixes', () => {
+    expect(extractEntityIds('FLDR-0001')).toEqual(['FLDR-0001']);
+    expect(extractEntityIds('ARTF-0010')).toEqual(['ARTF-0010']);
+    expect(extractEntityIds('MLST-0003')).toEqual(['MLST-0003']);
+  });
+
+  it('requires at least 4 digits', () => {
+    expect(extractEntityIds('TASK-01')).toEqual([]);
+    expect(extractEntityIds('TASK-001')).toEqual([]);
+    expect(extractEntityIds('TASK-0001')).toEqual(['TASK-0001']);
+  });
+});
+
+describe('Phase 4: traverseCrossReferences (unit tests)', () => {
+  const getTask = makeGetTask(XREF_TASKS);
+  const xrefDeps: CrossReferenceTraversalDeps = { getTask };
+
+  it('resolves entity IDs from focal references', () => {
+    const visited = new Set<string>(['TASK-0060', 'EPIC-0005']);
+    const result = traverseCrossReferences(TASK_WITH_XREFS, null, visited, xrefDeps);
+
+    // Should resolve TASK-0099, TASK-0050, TASK-0051 (3 unique entity IDs from references)
+    expect(result.cross_referenced.length).toBe(3);
+    const ids = result.cross_referenced.map(e => e.id);
+    expect(ids).toContain('TASK-0099');
+    expect(ids).toContain('TASK-0050');
+    expect(ids).toContain('TASK-0051');
+  });
+
+  it('returns entities at summary fidelity', () => {
+    const visited = new Set<string>(['TASK-0060', 'EPIC-0005']);
+    const result = traverseCrossReferences(TASK_WITH_XREFS, null, visited, xrefDeps);
+
+    for (const entity of result.cross_referenced) {
+      expect(entity.fidelity).toBe('summary');
+    }
+  });
+
+  it('deduplicates against visited set', () => {
+    // TASK-0099 is already in context
+    const visited = new Set<string>(['TASK-0060', 'EPIC-0005', 'TASK-0099']);
+    const result = traverseCrossReferences(TASK_WITH_XREFS, null, visited, xrefDeps);
+
+    const ids = result.cross_referenced.map(e => e.id);
+    expect(ids).not.toContain('TASK-0099');
+    expect(ids).toContain('TASK-0050');
+    expect(ids).toContain('TASK-0051');
+  });
+
+  it('adds resolved IDs to the visited set', () => {
+    const visited = new Set<string>(['TASK-0060', 'EPIC-0005']);
+    traverseCrossReferences(TASK_WITH_XREFS, null, visited, xrefDeps);
+
+    expect(visited.has('TASK-0099')).toBe(true);
+    expect(visited.has('TASK-0050')).toBe(true);
+    expect(visited.has('TASK-0051')).toBe(true);
+  });
+
+  it('skips self-references and already-visited entities', () => {
+    // TASK-0061 references itself and its parent (EPIC-0005, already visited)
+    const visited = new Set<string>(['TASK-0061', 'EPIC-0005']);
+    const result = traverseCrossReferences(TASK_WITH_SELF_REF, null, visited, xrefDeps);
+
+    expect(result.cross_referenced.length).toBe(0);
+  });
+
+  it('returns empty when focal has no references', () => {
+    const visited = new Set<string>(['TASK-0062', 'EPIC-0005']);
+    const result = traverseCrossReferences(TASK_NO_REFS, null, visited, xrefDeps);
+
+    expect(result.cross_referenced).toEqual([]);
+  });
+
+  it('collects references from parent as well', () => {
+    const visited = new Set<string>(['TASK-0060', 'EPIC-0005']);
+    const parentTask = PARENT_WITH_REFS;
+    const result = traverseCrossReferences(TASK_WITH_XREFS, parentTask, visited, xrefDeps);
+
+    const ids = result.cross_referenced.map(e => e.id);
+    // TASK-0099 and TASK-0050 from focal, TASK-0051 from focal,
+    // Parent refs: TASK-0050 (already from focal — deduped), TASK-0099 (already from focal — deduped)
+    expect(ids).toContain('TASK-0099');
+    expect(ids).toContain('TASK-0050');
+    expect(ids).toContain('TASK-0051');
+    // No duplicates
+    expect(ids.filter(id => id === 'TASK-0099').length).toBe(1);
+    expect(ids.filter(id => id === 'TASK-0050').length).toBe(1);
+  });
+
+  it('skips references pointing to non-existent entities', () => {
+    const taskWithBadRef = makeTask({
+      id: 'TASK-0070',
+      title: 'Bad ref task',
+      references: [
+        { url: 'TASK-9999', title: 'Does not exist' },
+        { url: 'TASK-0099', title: 'Exists' },
+      ],
+    });
+    const visited = new Set<string>(['TASK-0070']);
+    const result = traverseCrossReferences(taskWithBadRef, null, visited, xrefDeps);
+
+    expect(result.cross_referenced.length).toBe(1);
+    expect(result.cross_referenced[0]!.id).toBe('TASK-0099');
+  });
+
+  it('caps at MAX_CROSS_REFS (10)', () => {
+    // Create a task with 15 references to different entities
+    const manyRefTask = makeTask({
+      id: 'TASK-0071',
+      title: 'Many refs',
+      references: Array.from({ length: 15 }, (_, i) => ({
+        url: `TASK-${String(2000 + i).padStart(4, '0')}`,
+        title: `Ref ${i}`,
+      })),
+    });
+    // Create tasks for all referenced IDs
+    const tasks = [
+      ...XREF_TASKS,
+      manyRefTask,
+      ...Array.from({ length: 15 }, (_, i) =>
+        makeTask({ id: `TASK-${String(2000 + i).padStart(4, '0')}`, title: `Target ${i}` }),
+      ),
+    ];
+    const deps: CrossReferenceTraversalDeps = { getTask: makeGetTask(tasks) };
+    const visited = new Set<string>(['TASK-0071']);
+    const result = traverseCrossReferences(manyRefTask, null, visited, deps);
+
+    expect(result.cross_referenced.length).toBeLessThanOrEqual(10);
+  });
+});
+
+// ── Stage 2.5: Pipeline integration tests ──────────────────────────────
+
+describe('Phase 4: Cross-reference traversal in pipeline', () => {
+  it('cross_referenced populated when focal has entity references', async () => {
+    const deps = makeDeps(XREF_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0060', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+
+    expect(result).not.toBeNull();
+    expect(result!.cross_referenced.length).toBeGreaterThan(0);
+    const xrefIds = result!.cross_referenced.map(e => e.id);
+    expect(xrefIds).toContain('TASK-0099');
+  });
+
+  it('cross_referenced is empty when focal has no entity references', async () => {
+    const deps = makeDeps(XREF_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0062', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+
+    expect(result).not.toBeNull();
+    expect(result!.cross_referenced).toEqual([]);
+  });
+
+  it('cross_referenced does not include entities already in relational graph', async () => {
+    // TASK-0061 references itself and its parent EPIC-0005 — both are in visited
+    const deps = makeDeps(XREF_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0061', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+
+    expect(result).not.toBeNull();
+    // Self and parent should NOT appear in cross_referenced
+    const xrefIds = result!.cross_referenced.map(e => e.id);
+    expect(xrefIds).not.toContain('TASK-0061');
+    expect(xrefIds).not.toContain('EPIC-0005');
+  });
+
+  it('cross_referenced entities excluded from semantic enrichment dedup', async () => {
+    const deps = makeDeps(XREF_TASKS, ALL_RESOURCES, { includeSearch: true });
+    const result = await hydrateContext({ task_id: 'TASK-0060', include_related: true, include_activity: false, max_tokens: 100000 }, deps);
+
+    expect(result).not.toBeNull();
+    // Cross-referenced IDs should not appear in semantic related
+    const xrefIds = new Set(result!.cross_referenced.map(e => e.id));
+    for (const rel of result!.related) {
+      expect(xrefIds.has(rel.id)).toBe(false);
+    }
+  });
+
+  it('stages_executed includes cross_reference_traversal when refs found', async () => {
+    const deps = makeDeps(XREF_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0060', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+
+    expect(result!.metadata.stages_executed).toContain('cross_reference_traversal');
+  });
+
+  it('stages_executed omits cross_reference_traversal when no refs resolved', async () => {
+    const deps = makeDeps(XREF_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0062', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+
+    expect(result!.metadata.stages_executed).not.toContain('cross_reference_traversal');
+  });
+
+  it('parent references are also traversed', async () => {
+    const deps = makeDeps(XREF_TASKS_WITH_PARENT_REFS, ALL_RESOURCES);
+    // TASK-0043 has parent TASK-0042, which has parent EPIC-0005 (with refs to TASK-0050, TASK-0099)
+    // Actually TASK-0043's parent is TASK-0042 which has refs to github issue only (no entity ID)
+    // Use TASK-0040 whose parent is EPIC-0005 (PARENT_WITH_REFS has refs to TASK-0050 and TASK-0099)
+    const result = await hydrateContext({ task_id: 'TASK-0040', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+
+    expect(result).not.toBeNull();
+    // Parent (EPIC-0005) has references to TASK-0050 and TASK-0099
+    // TASK-0040 is a sibling of TASK-0042 under EPIC-0005
+    // TASK-0050 and TASK-0099 should appear in cross_referenced (if not already siblings)
+    const xrefIds = result!.cross_referenced.map(e => e.id);
+    // TASK-0099 is not a sibling of TASK-0040, so it should be cross-referenced
+    expect(xrefIds).toContain('TASK-0099');
+  });
+});
+
+// ── Phase 4: Token budget with cross-references ─────────────────────
+
+describe('Phase 4: Token budget with cross-referenced entities', () => {
+  const focal = taskToContextEntity(TASK_FOCAL, 'full');
+  const parent = taskToContextEntity(EPIC, 'summary');
+  const children = [TASK_CHILD_1, TASK_CHILD_2].map(t => taskToContextEntity(t, 'summary'));
+  const siblings = [TASK_SIBLING_1, TASK_SIBLING_2].map(t => taskToContextEntity(t, 'summary'));
+  const xrefs = [TASK_SEMANTIC_1, TASK_SEMANTIC_2].map(t => taskToContextEntity(t, 'summary'));
+  const ancestors = [taskToContextEntity(EPIC_GRANDPARENT, 'reference')].map(e => ({ ...e, graph_depth: 2 })) as ContextEntity[];
+
+  it('cross-referenced entities included with large budget', () => {
+    const result = applyBudget(focal, parent, children, siblings, xrefs, ancestors, [], [], [], [], null, 100000);
+    const entityIds = result.entities.map(e => e.id);
+    expect(entityIds).toContain('TASK-0050');
+    expect(entityIds).toContain('TASK-0051');
+  });
+
+  it('cross-referenced entities budgeted after siblings', () => {
+    const focalCost = estimateEntityTokens(focal);
+    const parentCost = estimateEntityTokens(parent);
+    const childCosts = children.reduce((sum, c) => sum + estimateEntityTokens(c), 0);
+    const siblingCosts = siblings.reduce((sum, s) => sum + estimateEntityTokens(s), 0);
+    // Budget that fits siblings but not cross-refs
+    const budget = focalCost + parentCost + childCosts + siblingCosts + 50 + 5;
+
+    const result = applyBudget(focal, parent, children, siblings, xrefs, [], [], [], [], [], null, budget);
+    const entityIds = result.entities.map(e => e.id);
+
+    // Siblings should be present
+    for (const s of siblings) expect(entityIds).toContain(s.id);
+    // Cross-refs may be truncated/dropped
+    expect(result.truncated).toBe(true);
+  });
+
+  it('cross-referenced entities budgeted before ancestors', () => {
+    const result = applyBudget(focal, parent, [], [], xrefs, ancestors, [], [], [], [], null, 100000);
+    const entityIds = result.entities.map(e => e.id);
+
+    // Both cross-refs and ancestors should be in with large budget
+    expect(entityIds).toContain('TASK-0050');
+    expect(entityIds).toContain('EPIC-0001');
+
+    // Cross-refs should appear before ancestors in the entity list
+    const xrefIdx = entityIds.indexOf('TASK-0050');
+    const ancestorIdx = entityIds.indexOf('EPIC-0001');
+    expect(xrefIdx).toBeLessThan(ancestorIdx);
+  });
+});
+
+// ── Phase 4: Contract invariants ────────────────────────────────────
+
+describe('Phase 4: Contract invariants', () => {
+  it('cross_referenced entities are always summary fidelity', async () => {
+    const deps = makeDeps(XREF_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0060', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+
+    for (const entity of result!.cross_referenced) {
+      expect(entity.fidelity).toBe('summary');
+    }
+  });
+
+  it('cross_referenced entities do not duplicate any relational graph entities', async () => {
+    const deps = makeDeps(XREF_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0060', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+
+    const graphIds = new Set([
+      result!.focal.id,
+      ...(result!.parent ? [result!.parent.id] : []),
+      ...result!.children.map(c => c.id),
+      ...result!.siblings.map(s => s.id),
+      ...result!.ancestors.map(a => a.id),
+      ...result!.descendants.map(d => d.id),
+    ]);
+
+    for (const xref of result!.cross_referenced) {
+      expect(graphIds.has(xref.id)).toBe(false);
+    }
+  });
+
+  it('cross_referenced entities do not duplicate semantic related entities', async () => {
+    const deps = makeDeps(XREF_TASKS, ALL_RESOURCES, { includeSearch: true });
+    const result = await hydrateContext({ task_id: 'TASK-0060', include_related: true, include_activity: false, max_tokens: 100000 }, deps);
+
+    const xrefIds = new Set(result!.cross_referenced.map(e => e.id));
+    for (const rel of result!.related) {
+      expect(xrefIds.has(rel.id)).toBe(false);
+    }
+  });
+
+  it('no entity ID appears in more than one role (extended with cross_referenced)', async () => {
+    const deps = makeDeps(XREF_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0060', depth: 2, include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+
+    const allIds: string[] = [
+      result!.focal.id,
+      ...(result!.parent ? [result!.parent.id] : []),
+      ...result!.children.map(c => c.id),
+      ...result!.siblings.map(s => s.id),
+      ...result!.cross_referenced.map(x => x.id),
+      ...result!.ancestors.map(a => a.id),
+      ...result!.descendants.map(d => d.id),
+    ];
+    const unique = new Set(allIds);
+    expect(allIds.length).toBe(unique.size);
+  });
+
+  it('total_items includes cross_referenced entities', async () => {
+    const deps = makeDeps(XREF_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0060', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+
+    const expectedTotal = 1 +
+      (result!.parent ? 1 : 0) +
+      result!.children.length +
+      result!.siblings.length +
+      result!.cross_referenced.length +
+      result!.ancestors.length +
+      result!.descendants.length +
+      result!.related_resources.length +
+      result!.related.length +
+      result!.activity.length +
+      (result!.session_summary ? 1 : 0);
+    expect(result!.metadata.total_items).toBe(expectedTotal);
+  });
+
+  it('cross_referenced is always an array (never undefined)', async () => {
+    const deps = makeDeps(XREF_TASKS, ALL_RESOURCES);
+
+    const result1 = await hydrateContext({ task_id: 'TASK-0060', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+    expect(Array.isArray(result1!.cross_referenced)).toBe(true);
+
+    const result2 = await hydrateContext({ task_id: 'TASK-0062', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+    expect(Array.isArray(result2!.cross_referenced)).toBe(true);
+    expect(result2!.cross_referenced.length).toBe(0);
   });
 });
