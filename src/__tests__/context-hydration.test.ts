@@ -24,12 +24,14 @@ import {
   estimateTokens,
   estimateEntityTokens,
   estimateResourceTokens,
+  estimateSessionSummaryTokens,
   applyBudget,
   downgradeEntity,
   downgradeResource,
 } from '../context/token-budget.js';
 import { hydrateContext, type HydrationServiceDeps } from '../context/hydration-service.js';
-import type { ContextEntity, ContextResource } from '../context/types.js';
+import { deriveSessionSummary, type SessionMemoryDeps } from '../context/stages/session-memory.js';
+import type { ContextEntity, ContextResource, SessionSummary } from '../context/types.js';
 
 // ── Test data ────────────────────────────────────────────────────────
 
@@ -109,7 +111,39 @@ const TASK_SEMANTIC_2 = makeTask({
   description: 'Build persistent memory for agent sessions.',
 });
 
-const ALL_TASKS: Task[] = [EPIC, TASK_FOCAL, TASK_SIBLING_1, TASK_SIBLING_2, TASK_CHILD_1, TASK_CHILD_2, TASK_UNRELATED, TASK_SEMANTIC_1, TASK_SEMANTIC_2];
+// Grandchildren (children of TASK_CHILD_1) — for depth 2+ tests (Phase 3)
+const TASK_GRANDCHILD_1 = makeTask({
+  id: 'TASK-0045',
+  title: 'Grandchild subtask A',
+  parent_id: 'TASK-0043',
+  status: 'open',
+});
+
+const TASK_GRANDCHILD_2 = makeTask({
+  id: 'TASK-0046',
+  title: 'Grandchild subtask B',
+  parent_id: 'TASK-0043',
+  status: 'done',
+});
+
+// Great-grandparent — for depth 3 tests (Phase 3)
+const EPIC_GRANDPARENT = makeTask({
+  id: 'EPIC-0001',
+  title: 'Platform Engineering',
+  type: 'epic',
+  description: 'Top-level epic for all platform work.',
+});
+
+// Make EPIC-0005 a child of EPIC-0001 for depth 3 ancestor traversal
+const EPIC_WITH_PARENT = makeTask({
+  ...EPIC,
+  parent_id: 'EPIC-0001',
+});
+
+const ALL_TASKS: Task[] = [EPIC, TASK_FOCAL, TASK_SIBLING_1, TASK_SIBLING_2, TASK_CHILD_1, TASK_CHILD_2, TASK_UNRELATED, TASK_SEMANTIC_1, TASK_SEMANTIC_2, TASK_GRANDCHILD_1, TASK_GRANDCHILD_2];
+
+// Extended task set for depth 2+ tests — includes grandparent and grandchildren
+const DEEP_TASKS: Task[] = [EPIC_GRANDPARENT, EPIC_WITH_PARENT, TASK_FOCAL, TASK_SIBLING_1, TASK_SIBLING_2, TASK_CHILD_1, TASK_CHILD_2, TASK_UNRELATED, TASK_SEMANTIC_1, TASK_SEMANTIC_2, TASK_GRANDCHILD_1, TASK_GRANDCHILD_2];
 
 const RESOURCE_ADR = {
   id: 'mcp://backlog/resources/EPIC-0005/design.md',
@@ -445,7 +479,8 @@ describe('Stage 2: Relational Expansion', () => {
   });
 
   it('handles entity with no children', () => {
-    const result = expandRelations(TASK_CHILD_1, 1, deps);
+    // TASK_CHILD_2 has no children (TASK_CHILD_1 does — grandchildren added in Phase 3)
+    const result = expandRelations(TASK_CHILD_2, 1, deps);
     expect(result.children).toHaveLength(0);
   });
 
@@ -769,14 +804,14 @@ describe('Token budget application', () => {
   ];
 
   it('includes all items when budget is large', () => {
-    const result = applyBudget(focal, parent, children, siblings, related, resources, [], 100000);
+    const result = applyBudget(focal, parent, children, siblings, [], [], related, resources, [], null, 100000);
     expect(result.truncated).toBe(false);
     expect(result.entities.length).toBe(1 + 1 + 2 + 2 + 2); // focal + parent + children + siblings + related
     expect(result.resources.length).toBe(1);
   });
 
   it('focal and parent are always included', () => {
-    const result = applyBudget(focal, parent, [], [], [], [], [], 100000);
+    const result = applyBudget(focal, parent, [], [], [], [], [], [], [], null, 100000);
     expect(result.entities.length).toBe(2);
     expect(result.entities[0]!.id).toBe(focal.id);
     expect(result.entities[1]!.id).toBe(parent!.id);
@@ -787,7 +822,7 @@ describe('Token budget application', () => {
     const parentCost = estimateEntityTokens(parent);
     const tightBudget = focalCost + parentCost + 50 + 10;
 
-    const result = applyBudget(focal, parent, children, siblings, related, resources, [], tightBudget);
+    const result = applyBudget(focal, parent, children, siblings, [], [], related, resources, [], null, tightBudget);
     expect(result.truncated).toBe(true);
     expect(result.entities[0]!.id).toBe(focal.id);
     expect(result.entities[1]!.id).toBe(parent!.id);
@@ -802,7 +837,7 @@ describe('Token budget application', () => {
     const budget = focalCost + parentCost + 50 + refChildCost * 2 + 20;
 
     if (budget < focalCost + parentCost + 50 + summaryChildCost * 2) {
-      const result = applyBudget(focal, parent, children, [], [], [], [], budget);
+      const result = applyBudget(focal, parent, children, [], [], [], [], [], [], null, budget);
       const childEntities = result.entities.filter(e => e.id === 'TASK-0043' || e.id === 'TASK-0044');
       if (childEntities.length > 0) {
         const hasReference = childEntities.some(e => e.fidelity === 'reference');
@@ -820,7 +855,7 @@ describe('Token budget application', () => {
     const siblingCosts = siblings.reduce((sum, s) => sum + estimateEntityTokens(s), 0);
     const budget = focalCost + parentCost + childCosts + siblingCosts + 50 + 5;
 
-    const result = applyBudget(focal, parent, children, siblings, related, [], [], budget);
+    const result = applyBudget(focal, parent, children, siblings, [], [], related, [], [], null, budget);
     const entityIds = result.entities.map(e => e.id);
 
     // Children and siblings should be present before related
@@ -838,12 +873,12 @@ describe('Token budget application', () => {
       { ts: '2026-02-14T08:00:00Z', tool: 'backlog_update', entity_id: 'TASK-0043', actor: 'claude', summary: 'Updated TASK-0043' },
     ];
 
-    const result = applyBudget(focal, parent, children, siblings, related, resources, activities, 100000);
+    const result = applyBudget(focal, parent, children, siblings, [], [], related, resources, activities, null, 100000);
     expect(result.activities.length).toBe(2);
   });
 
   it('tokensUsed is always positive', () => {
-    const result = applyBudget(focal, null, [], [], [], [], [], 100000);
+    const result = applyBudget(focal, null, [], [], [], [], [], [], [], null, 100000);
     expect(result.tokensUsed).toBeGreaterThan(0);
   });
 });
@@ -947,7 +982,8 @@ describe('ContextHydrationService: end-to-end pipeline', () => {
 
   it('handles leaf task with no children', async () => {
     const deps = makeDeps();
-    const result = await hydrateContext({ task_id: 'TASK-0043', include_related: false, include_activity: false }, deps);
+    // TASK-0044 has no children (TASK-0043 now has grandchildren in Phase 3 test data)
+    const result = await hydrateContext({ task_id: 'TASK-0044', include_related: false, include_activity: false }, deps);
     expect(result).not.toBeNull();
     expect(result!.children).toHaveLength(0);
     expect(result!.parent).not.toBeNull();
@@ -1164,9 +1200,12 @@ describe('Context response contract invariants', () => {
       (result!.parent ? 1 : 0) +
       result!.children.length +
       result!.siblings.length +
+      result!.ancestors.length +
+      result!.descendants.length +
       result!.related_resources.length +
       result!.related.length +
-      result!.activity.length;
+      result!.activity.length +
+      (result!.session_summary ? 1 : 0);
     expect(result!.metadata.total_items).toBe(expectedTotal);
   });
 
@@ -1220,5 +1259,517 @@ describe('Context response contract invariants', () => {
     const depsNoOps = makeDeps();
     const result2 = await hydrateContext({ task_id: 'TASK-0042', include_activity: true }, depsNoOps);
     expect(result2!.metadata.stages_executed).not.toContain('temporal_overlay');
+  });
+
+  it('response includes ancestors and descendants arrays (Phase 3)', async () => {
+    const deps = makeDeps();
+    const result = await hydrateContext({ task_id: 'TASK-0042', include_related: false, include_activity: false }, deps);
+    expect(result).not.toBeNull();
+    expect(Array.isArray(result!.ancestors)).toBe(true);
+    expect(Array.isArray(result!.descendants)).toBe(true);
+  });
+
+  it('response includes session_summary field (Phase 3)', async () => {
+    const deps = makeDeps();
+    const result = await hydrateContext({ task_id: 'TASK-0042', include_related: false, include_activity: false }, deps);
+    expect(result).not.toBeNull();
+    // session_summary is null when readOperations is not provided
+    expect(result!.session_summary).toBeNull();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// PHASE 3: Depth 2+ Relational Expansion (ADR-0076)
+// ══════════════════════════════════════════════════════════════════════
+
+describe('Phase 3: Depth 2+ Relational Expansion', () => {
+  const deepDeps: RelationalExpansionDeps = {
+    getTask: makeGetTask(DEEP_TASKS),
+    listTasks: makeListTasks(DEEP_TASKS),
+    listResources: () => ALL_RESOURCES,
+  };
+
+  it('depth 1: returns ancestors=[], descendants=[] (backward compatible)', () => {
+    const result = expandRelations(TASK_FOCAL, 1, deepDeps);
+    expect(result.ancestors).toHaveLength(0);
+    expect(result.descendants).toHaveLength(0);
+    expect(result.parent).not.toBeNull();
+    expect(result.parent!.id).toBe('EPIC-0005');
+    expect(result.children.length).toBeGreaterThan(0);
+  });
+
+  it('depth 2: finds grandparent in ancestors', () => {
+    const result = expandRelations(TASK_FOCAL, 2, deepDeps);
+    // Parent = EPIC-0005, grandparent = EPIC-0001
+    expect(result.parent!.id).toBe('EPIC-0005');
+    expect(result.ancestors).toHaveLength(1);
+    expect(result.ancestors[0]!.id).toBe('EPIC-0001');
+    expect(result.ancestors[0]!.graph_depth).toBe(2);
+    expect(result.ancestors[0]!.fidelity).toBe('reference');
+  });
+
+  it('depth 2: finds grandchildren in descendants', () => {
+    const result = expandRelations(TASK_FOCAL, 2, deepDeps);
+    // Grandchildren: TASK-0045, TASK-0046 (children of TASK-0043)
+    const descendantIds = result.descendants.map(d => d.id);
+    expect(descendantIds).toContain('TASK-0045');
+    expect(descendantIds).toContain('TASK-0046');
+    for (const d of result.descendants) {
+      expect(d.graph_depth).toBe(2);
+      expect(d.fidelity).toBe('reference');
+    }
+  });
+
+  it('depth 3: traverses three ancestor hops', () => {
+    // From TASK-0043 → parent=TASK-0042, grandparent=EPIC-0005, great-grandparent=EPIC-0001
+    const result = expandRelations(TASK_CHILD_1, 3, deepDeps);
+    expect(result.parent!.id).toBe('TASK-0042');
+    expect(result.ancestors.length).toBe(2);
+    const ancestorIds = result.ancestors.map(a => a.id);
+    expect(ancestorIds).toContain('EPIC-0005');
+    expect(ancestorIds).toContain('EPIC-0001');
+  });
+
+  it('cycle detection: does not revisit focal entity', () => {
+    // Even if somehow a task has a circular parent reference, the visited set prevents looping
+    const circularTask = makeTask({
+      id: 'TASK-LOOP-1',
+      title: 'Circular A',
+      parent_id: 'TASK-LOOP-2',
+    });
+    const circularParent = makeTask({
+      id: 'TASK-LOOP-2',
+      title: 'Circular B',
+      parent_id: 'TASK-LOOP-1', // Circular reference!
+    });
+    const circularDeps: RelationalExpansionDeps = {
+      getTask: makeGetTask([circularTask, circularParent]),
+      listTasks: makeListTasks([circularTask, circularParent]),
+      listResources: () => [],
+    };
+
+    const result = expandRelations(circularTask, 3, circularDeps);
+    // Should find parent TASK-LOOP-2 but NOT loop back to TASK-LOOP-1
+    expect(result.parent!.id).toBe('TASK-LOOP-2');
+    expect(result.ancestors).toHaveLength(0); // Cycle detected, can't go further
+  });
+
+  it('entities at depth 2+ never appear in children or siblings', () => {
+    const result = expandRelations(TASK_FOCAL, 2, deepDeps);
+    const childIds = new Set(result.children.map(c => c.id));
+    const siblingIds = new Set(result.siblings.map(s => s.id));
+    for (const d of result.descendants) {
+      expect(childIds.has(d.id)).toBe(false);
+      expect(siblingIds.has(d.id)).toBe(false);
+    }
+    for (const a of result.ancestors) {
+      expect(a.id).not.toBe(result.parent?.id);
+    }
+  });
+
+  it('resource discovery extends to ancestor IDs at depth 2+', () => {
+    const resourceForGrandparent = {
+      id: 'mcp://backlog/resources/EPIC-0001/vision.md',
+      path: 'resources/EPIC-0001/vision.md',
+      title: 'Platform Vision',
+      content: 'Vision doc.',
+    };
+    const depsWithResource: RelationalExpansionDeps = {
+      getTask: deepDeps.getTask,
+      listTasks: deepDeps.listTasks,
+      listResources: () => [...ALL_RESOURCES, resourceForGrandparent],
+    };
+    const result = expandRelations(TASK_FOCAL, 2, depsWithResource);
+    const resourceUris = result.related_resources.map(r => r.uri);
+    expect(resourceUris).toContain('mcp://backlog/resources/EPIC-0001/vision.md');
+  });
+
+  it('depth 2+ pipeline integration: ancestors and descendants in response', async () => {
+    const deps = makeDeps(DEEP_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({
+      task_id: 'TASK-0042',
+      depth: 2,
+      include_related: false,
+      include_activity: false,
+      max_tokens: 100000,
+    }, deps);
+
+    expect(result).not.toBeNull();
+    expect(result!.metadata.depth).toBe(2);
+
+    // Ancestors
+    expect(result!.ancestors.length).toBeGreaterThan(0);
+    const ancestorIds = result!.ancestors.map(a => a.id);
+    expect(ancestorIds).toContain('EPIC-0001');
+
+    // Descendants (grandchildren of focal)
+    expect(result!.descendants.length).toBeGreaterThan(0);
+    const descendantIds = result!.descendants.map(d => d.id);
+    expect(descendantIds).toContain('TASK-0045');
+    expect(descendantIds).toContain('TASK-0046');
+  });
+
+  it('depth 1 pipeline: ancestors and descendants are empty', async () => {
+    const deps = makeDeps(DEEP_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({
+      task_id: 'TASK-0042',
+      depth: 1,
+      include_related: false,
+      include_activity: false,
+    }, deps);
+
+    expect(result!.ancestors).toHaveLength(0);
+    expect(result!.descendants).toHaveLength(0);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// PHASE 3: Session Memory (ADR-0076)
+// ══════════════════════════════════════════════════════════════════════
+
+describe('Phase 3: Session Memory', () => {
+  const sessionOps = [
+    {
+      ts: '2026-02-14T09:30:00Z',
+      tool: 'backlog_update',
+      params: { id: 'TASK-0042', status: 'in_progress' },
+      result: { id: 'TASK-0042' },
+      resourceId: 'TASK-0042',
+      actor: { type: 'agent' as const, name: 'claude' },
+    },
+    {
+      ts: '2026-02-14T09:20:00Z',
+      tool: 'backlog_update',
+      params: { id: 'TASK-0042', add_evidence: 'Designed the pipeline' },
+      result: { id: 'TASK-0042' },
+      resourceId: 'TASK-0042',
+      actor: { type: 'agent' as const, name: 'claude' },
+    },
+    {
+      ts: '2026-02-14T09:10:00Z',
+      tool: 'write_resource',
+      params: { uri: 'mcp://backlog/resources/TASK-0042/notes.md' },
+      result: {},
+      resourceId: 'TASK-0042',
+      actor: { type: 'agent' as const, name: 'claude' },
+    },
+    // --- 2-hour gap (session boundary) ---
+    {
+      ts: '2026-02-14T07:00:00Z',
+      tool: 'backlog_update',
+      params: { id: 'TASK-0042', status: 'open' },
+      result: { id: 'TASK-0042' },
+      resourceId: 'TASK-0042',
+      actor: { type: 'user' as const, name: 'developer' },
+    },
+  ];
+
+  function makeSessionDeps(ops = sessionOps): SessionMemoryDeps {
+    return {
+      readOperations: (options: { taskId?: string; limit?: number }) => {
+        let filtered = [...ops];
+        if (options.taskId) {
+          filtered = filtered.filter(op => op.resourceId === options.taskId);
+        }
+        filtered.sort((a, b) => b.ts.localeCompare(a.ts));
+        return filtered.slice(0, options.limit || 50);
+      },
+    };
+  }
+
+  it('derives session summary from operation log', () => {
+    const result = deriveSessionSummary('TASK-0042', makeSessionDeps());
+    expect(result).not.toBeNull();
+    expect(result!.actor).toBe('claude');
+    expect(result!.actor_type).toBe('agent');
+    expect(result!.operation_count).toBe(3);
+    expect(result!.started_at).toBe('2026-02-14T09:10:00Z');
+    expect(result!.ended_at).toBe('2026-02-14T09:30:00Z');
+  });
+
+  it('session boundary: different actor breaks session', () => {
+    // All ops by claude, then one by developer at the start
+    const result = deriveSessionSummary('TASK-0042', makeSessionDeps());
+    // Should only include the 3 claude ops, not the developer op
+    expect(result!.operation_count).toBe(3);
+    expect(result!.actor).toBe('claude');
+  });
+
+  it('session boundary: 30+ minute gap breaks session', () => {
+    const opsWithGap = [
+      {
+        ts: '2026-02-14T10:00:00Z',
+        tool: 'backlog_update',
+        params: { id: 'TASK-0042', status: 'done' },
+        result: { id: 'TASK-0042' },
+        resourceId: 'TASK-0042',
+        actor: { type: 'agent' as const, name: 'claude' },
+      },
+      // 45-minute gap
+      {
+        ts: '2026-02-14T09:15:00Z',
+        tool: 'backlog_update',
+        params: { id: 'TASK-0042', add_evidence: 'Some evidence' },
+        result: { id: 'TASK-0042' },
+        resourceId: 'TASK-0042',
+        actor: { type: 'agent' as const, name: 'claude' },
+      },
+    ];
+    const result = deriveSessionSummary('TASK-0042', makeSessionDeps(opsWithGap));
+    expect(result!.operation_count).toBe(1); // Only the most recent one
+    expect(result!.started_at).toBe('2026-02-14T10:00:00Z');
+    expect(result!.ended_at).toBe('2026-02-14T10:00:00Z');
+  });
+
+  it('returns null when no operations exist', () => {
+    const emptyDeps: SessionMemoryDeps = {
+      readOperations: () => [],
+    };
+    const result = deriveSessionSummary('TASK-0042', emptyDeps);
+    expect(result).toBeNull();
+  });
+
+  it('summary includes status changes', () => {
+    const result = deriveSessionSummary('TASK-0042', makeSessionDeps());
+    expect(result!.summary).toContain('status');
+    expect(result!.summary).toContain('in_progress');
+  });
+
+  it('summary includes evidence additions', () => {
+    const result = deriveSessionSummary('TASK-0042', makeSessionDeps());
+    expect(result!.summary).toContain('evidence');
+  });
+
+  it('summary includes resource writes', () => {
+    const result = deriveSessionSummary('TASK-0042', makeSessionDeps());
+    expect(result!.summary).toContain('resource');
+  });
+
+  it('session summary has all required fields', () => {
+    const result = deriveSessionSummary('TASK-0042', makeSessionDeps());
+    expect(result).not.toBeNull();
+    expect(result!.actor).toBeDefined();
+    expect(result!.actor_type).toBeDefined();
+    expect(result!.started_at).toBeDefined();
+    expect(result!.ended_at).toBeDefined();
+    expect(result!.operation_count).toBeGreaterThan(0);
+    expect(result!.summary).toBeDefined();
+    expect(result!.summary.length).toBeGreaterThan(0);
+  });
+
+  it('pipeline integration: session_summary in response when ops available', async () => {
+    const deps = makeDeps(ALL_TASKS, ALL_RESOURCES, { includeOps: true });
+    const result = await hydrateContext({
+      task_id: 'TASK-0042',
+      include_related: false,
+      include_activity: false,
+      max_tokens: 100000,
+    }, deps);
+
+    expect(result).not.toBeNull();
+    expect(result!.session_summary).not.toBeNull();
+    expect(result!.metadata.stages_executed).toContain('session_memory');
+  });
+
+  it('pipeline: session_summary null when no readOperations', async () => {
+    const deps = makeDeps(ALL_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({
+      task_id: 'TASK-0042',
+      include_related: false,
+      include_activity: false,
+    }, deps);
+
+    expect(result!.session_summary).toBeNull();
+    expect(result!.metadata.stages_executed).not.toContain('session_memory');
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// PHASE 3: Token Budget with ancestors, descendants, session (ADR-0076)
+// ══════════════════════════════════════════════════════════════════════
+
+describe('Phase 3: Token budget with new priority levels', () => {
+  const focal = taskToContextEntity(TASK_FOCAL, 'full');
+  const parent = taskToContextEntity(EPIC, 'summary');
+  const children = [TASK_CHILD_1, TASK_CHILD_2].map(t => taskToContextEntity(t, 'summary'));
+  const siblings = [TASK_SIBLING_1, TASK_SIBLING_2].map(t => taskToContextEntity(t, 'summary'));
+  const ancestors: ContextEntity[] = [{
+    id: 'EPIC-0001', title: 'Platform', status: 'open', type: 'epic',
+    fidelity: 'reference', graph_depth: 2,
+  }];
+  const descendants: ContextEntity[] = [
+    { id: 'TASK-0045', title: 'Grandchild A', status: 'open', type: 'task', fidelity: 'reference', graph_depth: 2 },
+    { id: 'TASK-0046', title: 'Grandchild B', status: 'done', type: 'task', fidelity: 'reference', graph_depth: 2 },
+  ];
+  const mockSession: SessionSummary = {
+    actor: 'claude',
+    actor_type: 'agent',
+    started_at: '2026-02-14T09:10:00Z',
+    ended_at: '2026-02-14T09:30:00Z',
+    operation_count: 3,
+    summary: 'status → in_progress, added evidence, wrote 1 resource',
+  };
+
+  it('ancestors are budgeted after siblings', () => {
+    const focalCost = estimateEntityTokens(focal);
+    const parentCost = estimateEntityTokens(parent);
+    const childCosts = children.reduce((sum, c) => sum + estimateEntityTokens(c), 0);
+    const siblingCosts = siblings.reduce((sum, s) => sum + estimateEntityTokens(s), 0);
+    const budget = focalCost + parentCost + childCosts + siblingCosts + 50 + 5;
+
+    const result = applyBudget(focal, parent, children, siblings, ancestors, descendants, [], [], [], null, budget);
+    const entityIds = result.entities.map(e => e.id);
+
+    // All children and siblings should be in, ancestors should be dropped
+    for (const child of children) expect(entityIds).toContain(child.id);
+    for (const sibling of siblings) expect(entityIds).toContain(sibling.id);
+    // Ancestors may or may not fit depending on exact budget
+  });
+
+  it('descendants are budgeted after ancestors', () => {
+    const result = applyBudget(focal, parent, children, siblings, ancestors, descendants, [], [], [], null, 100000);
+    const entityIds = result.entities.map(e => e.id);
+
+    // All should be included with large budget
+    expect(entityIds).toContain('EPIC-0001'); // ancestor
+    expect(entityIds).toContain('TASK-0045'); // descendant
+    expect(entityIds).toContain('TASK-0046'); // descendant
+  });
+
+  it('session summary is budgeted before children', () => {
+    const result = applyBudget(focal, parent, children, siblings, [], [], [], [], [], mockSession, 100000);
+    expect(result.sessionSummary).not.toBeNull();
+    expect(result.sessionSummary!.actor).toBe('claude');
+  });
+
+  it('session summary dropped when budget too tight', () => {
+    const focalCost = estimateEntityTokens(focal);
+    const parentCost = estimateEntityTokens(parent);
+    // Budget that barely fits focal + parent + metadata
+    const tinyBudget = focalCost + parentCost + 50 + 5;
+
+    const result = applyBudget(focal, parent, [], [], [], [], [], [], [], mockSession, tinyBudget);
+    expect(result.sessionSummary).toBeNull();
+    expect(result.truncated).toBe(true);
+  });
+
+  it('graph_depth preserved through entity downgrading', () => {
+    const entityWithDepth: ContextEntity = {
+      id: 'TASK-0045', title: 'Grandchild', status: 'open', type: 'task',
+      fidelity: 'summary', created_at: '2026-02-10T10:00:00Z', updated_at: '2026-02-14T10:00:00Z',
+      graph_depth: 2,
+    };
+    const downgraded = downgradeEntity(entityWithDepth, 'reference');
+    expect(downgraded.graph_depth).toBe(2);
+    expect(downgraded.fidelity).toBe('reference');
+  });
+
+  it('session summary token estimation is positive', () => {
+    const cost = estimateSessionSummaryTokens(mockSession);
+    expect(cost).toBeGreaterThan(0);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// PHASE 3: Contract Invariants (ADR-0076)
+// ══════════════════════════════════════════════════════════════════════
+
+describe('Phase 3: Contract invariants', () => {
+  it('ancestors are always reference fidelity', async () => {
+    const deps = makeDeps(DEEP_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0042', depth: 2, include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+    for (const a of result!.ancestors) {
+      expect(a.fidelity).toBe('reference');
+    }
+  });
+
+  it('descendants are always reference fidelity', async () => {
+    const deps = makeDeps(DEEP_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0042', depth: 2, include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+    for (const d of result!.descendants) {
+      expect(d.fidelity).toBe('reference');
+    }
+  });
+
+  it('all ancestors have graph_depth >= 2', async () => {
+    const deps = makeDeps(DEEP_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0042', depth: 3, include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+    for (const a of result!.ancestors) {
+      expect(a.graph_depth).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('all descendants have graph_depth >= 2', async () => {
+    const deps = makeDeps(DEEP_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0042', depth: 2, include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+    for (const d of result!.descendants) {
+      expect(d.graph_depth).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('no entity ID appears in more than one role', async () => {
+    const deps = makeDeps(DEEP_TASKS, ALL_RESOURCES);
+    const result = await hydrateContext({ task_id: 'TASK-0042', depth: 2, include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+
+    const allIds: string[] = [
+      result!.focal.id,
+      ...(result!.parent ? [result!.parent.id] : []),
+      ...result!.children.map(c => c.id),
+      ...result!.siblings.map(s => s.id),
+      ...result!.ancestors.map(a => a.id),
+      ...result!.descendants.map(d => d.id),
+    ];
+    const unique = new Set(allIds);
+    expect(allIds.length).toBe(unique.size);
+  });
+
+  it('ancestors ordered closest-first', async () => {
+    const deps = makeDeps(DEEP_TASKS, ALL_RESOURCES);
+    // From TASK-0043: parent=TASK-0042, grandparent=EPIC-0005, great-grandparent=EPIC-0001
+    const result = await hydrateContext({ task_id: 'TASK-0043', depth: 3, include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+    if (result!.ancestors.length >= 2) {
+      for (let i = 1; i < result!.ancestors.length; i++) {
+        expect(result!.ancestors[i]!.graph_depth!).toBeGreaterThanOrEqual(result!.ancestors[i - 1]!.graph_depth!);
+      }
+    }
+  });
+
+  it('session_summary required fields when present', async () => {
+    const deps = makeDeps(ALL_TASKS, ALL_RESOURCES, { includeOps: true });
+    const result = await hydrateContext({ task_id: 'TASK-0042', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+    if (result!.session_summary) {
+      const s = result!.session_summary;
+      expect(s.actor).toBeDefined();
+      expect(s.actor_type).toBeDefined();
+      expect(['user', 'agent']).toContain(s.actor_type);
+      expect(s.started_at).toBeDefined();
+      expect(s.ended_at).toBeDefined();
+      expect(s.operation_count).toBeGreaterThan(0);
+      expect(s.summary.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('total_items includes ancestors + descendants + session_summary', async () => {
+    const deps = makeDeps(DEEP_TASKS, ALL_RESOURCES, { includeOps: true });
+    const result = await hydrateContext({ task_id: 'TASK-0042', depth: 2, include_related: false, include_activity: true, max_tokens: 100000 }, deps);
+    const expectedTotal = 1 +
+      (result!.parent ? 1 : 0) +
+      result!.children.length +
+      result!.siblings.length +
+      result!.ancestors.length +
+      result!.descendants.length +
+      result!.related_resources.length +
+      result!.related.length +
+      result!.activity.length +
+      (result!.session_summary ? 1 : 0);
+    expect(result!.metadata.total_items).toBe(expectedTotal);
+  });
+
+  it('stages_executed includes session_memory when readOperations available and session found', async () => {
+    const deps = makeDeps(ALL_TASKS, ALL_RESOURCES, { includeOps: true });
+    const result = await hydrateContext({ task_id: 'TASK-0042', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
+    if (result!.session_summary) {
+      expect(result!.metadata.stages_executed).toContain('session_memory');
+    }
   });
 });

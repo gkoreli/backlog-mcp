@@ -64,7 +64,7 @@ export function registerViewerRoutes(app: FastifyInstance) {
     return results;
   });
 
-  // Context hydration API — single-call context for agents and viewer (ADR-0074, ADR-0075)
+  // Context hydration API — single-call context for agents and viewer (ADR-0074, ADR-0075, ADR-0076)
   app.get('/context', async (request, reply) => {
     const { task_id, query, depth, max_tokens, include_related, include_activity } = request.query as {
       task_id?: string;

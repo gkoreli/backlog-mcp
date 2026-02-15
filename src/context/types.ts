@@ -48,6 +48,8 @@ export interface ContextEntity {
   updated_at?: string;
   /** Relevance score from semantic search. Present only for semantically discovered entities. */
   relevance_score?: number;
+  /** Distance from focal entity in the relational graph (1 = direct, 2 = two hops, etc.). Phase 3, ADR-0076. */
+  graph_depth?: number;
 }
 
 export interface ContextResource {
@@ -72,6 +74,24 @@ export interface ContextActivity {
   summary: string;
 }
 
+// ── Session memory ──────────────────────────────────────────────────
+
+/** Summary of the last work session on this entity. Phase 3, ADR-0076. */
+export interface SessionSummary {
+  /** Who last worked on this entity */
+  actor: string;
+  /** Whether the actor was a user or agent */
+  actor_type: 'user' | 'agent';
+  /** When the last session started (ISO timestamp) */
+  started_at: string;
+  /** When the last session ended (ISO timestamp) */
+  ended_at: string;
+  /** Number of operations in the last session */
+  operation_count: number;
+  /** Human-readable summary of what was done */
+  summary: string;
+}
+
 // ── Response ─────────────────────────────────────────────────────────
 
 export interface ContextResponse {
@@ -83,12 +103,18 @@ export interface ContextResponse {
   children: ContextEntity[];
   /** Siblings (same parent as focal, excluding focal itself) */
   siblings: ContextEntity[];
+  /** Ancestors beyond direct parent (grandparent, great-grandparent). Ordered closest-first. Phase 3, ADR-0076. */
+  ancestors: ContextEntity[];
+  /** Descendants beyond direct children (grandchildren, etc.). Phase 3, ADR-0076. */
+  descendants: ContextEntity[];
   /** Resources related to the focal entity or its parent */
   related_resources: ContextResource[];
   /** Semantically related entities not in the direct graph (Stage 3, ADR-0075). */
   related: ContextEntity[];
   /** Recent operations on focal and related items (Stage 4, ADR-0075). */
   activity: ContextActivity[];
+  /** Session memory — who last worked on this and what they did (Stage 3.5, ADR-0076). */
+  session_summary: SessionSummary | null;
   /** Pipeline execution metadata */
   metadata: ContextMetadata;
 }
