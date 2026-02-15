@@ -1,23 +1,23 @@
 /**
  * ContextHydrationService — Pipeline orchestrator for agent context hydration.
- * ADR-0074 (Phase 1), ADR-0075 (Phase 2), ADR-0076 (Phase 3).
+ * ADR-0074 (Phase 1), ADR-0075 (Phase 2), ADR-0076 (Phase 3), ADR-0077 (Phase 4).
  *
  * Composes existing services (TaskStorage, SearchService, ResourceManager,
  * OperationLogger) into a multi-stage context pipeline. This service is
  * stateless — it reads from existing stores and does not own any data.
  *
  * Pipeline stages:
- *   Stage 1: Focal Resolution    — resolve task ID or query → full entity
- *   Stage 2: Relational Expansion — parent, children, siblings, ancestors, descendants, resources
- *   Stage 3: Semantic Enrichment  — search for related items not in graph
- *   Stage 3.5: Session Memory     — derive last work session from operation log
- *   Stage 4: Temporal Overlay     — recent activity on focal + related
- *   Stage 5: Token Budgeting      — prioritize, truncate to fit budget
+ *   Stage 1:   Focal Resolution          — resolve task ID or query → full entity
+ *   Stage 2:   Relational Expansion      — parent, children, siblings, ancestors, descendants, resources
+ *   Stage 2.5: Cross-Reference Traversal — follow references[] to resolve linked entities (Phase 4)
+ *   Stage 3:   Semantic Enrichment       — search for related items not in graph
+ *   Stage 3.5: Session Memory            — derive last work session from operation log
+ *   Stage 4:   Temporal Overlay          — recent activity on focal + related
+ *   Stage 5:   Token Budgeting           — prioritize, truncate to fit budget
  *
- * Phase 3 changes (ADR-0076):
- *   - Depth 2+ relational expansion (ancestors, descendants)
- *   - Session memory enrichment (who last worked on this, what they did)
- *   - Token budget extended with 9-level priority (added ancestors, descendants)
+ * Phase 4 changes (ADR-0077):
+ *   - Cross-reference traversal (Stage 2.5): follows references[] links
+ *   - Token budget extended with 11-level priority (added cross-referenced at priority 6)
  */
 
 import type { Task } from '@/storage/schema.js';
@@ -28,6 +28,7 @@ import { expandRelations, type RelationalExpansionDeps } from './stages/relation
 import { enrichSemantic, type SemanticEnrichmentDeps } from './stages/semantic-enrichment.js';
 import { overlayTemporal, type TemporalOverlayDeps } from './stages/temporal-overlay.js';
 import { deriveSessionSummary, type SessionMemoryDeps } from './stages/session-memory.js';
+import { traverseCrossReferences } from './stages/cross-reference-traversal.js';
 import { applyBudget } from './token-budget.js';
 
 export interface HydrationServiceDeps {
@@ -85,18 +86,36 @@ export async function hydrateContext(
   const expansion = expandRelations(focalTask, depth, expansionDeps);
   stagesExecuted.push('relational_expansion');
 
+  // ── Stage 2.5: Cross-Reference Traversal (Phase 4, ADR-0077) ──
+  // Build a visited set from Stages 1-2 output for dedup
+  const visited = new Set<string>([focal.id]);
+  if (expansion.parent) visited.add(expansion.parent.id);
+  for (const c of expansion.children) visited.add(c.id);
+  for (const s of expansion.siblings) visited.add(s.id);
+  for (const a of expansion.ancestors) visited.add(a.id);
+  for (const d of expansion.descendants) visited.add(d.id);
+
+  // Resolve the parent Task for reference collection (parent is summary fidelity
+  // from Stage 2, but we need the raw Task for its references field)
+  const parentTask = expansion.parent ? deps.getTask(expansion.parent.id) ?? null : null;
+
+  const crossRefResult = traverseCrossReferences(
+    focalTask,
+    parentTask,
+    visited,   // Mutated: resolved cross-ref IDs are added
+    { getTask: deps.getTask },
+  );
+  if (crossRefResult.cross_referenced.length > 0) {
+    stagesExecuted.push('cross_reference_traversal');
+  }
+
   // ── Stage 3: Semantic Enrichment ───────────────────────────────
   let semanticEntities: ContextResponse['related'] = [];
   let semanticResources: ContextResponse['related_resources'] = [];
 
   if (includeRelated && deps.searchUnified) {
-    // Build the set of IDs already in context (for deduplication)
-    const existingIds = new Set<string>([focal.id]);
-    if (expansion.parent) existingIds.add(expansion.parent.id);
-    for (const c of expansion.children) existingIds.add(c.id);
-    for (const s of expansion.siblings) existingIds.add(s.id);
-    for (const a of expansion.ancestors) existingIds.add(a.id);
-    for (const d of expansion.descendants) existingIds.add(d.id);
+    // Reuse the visited set (now includes cross-referenced IDs) for dedup
+    const existingIds = visited;
 
     const existingResourceUris = new Set<string>(
       expansion.related_resources.map(r => r.uri),
@@ -152,6 +171,7 @@ export async function hydrateContext(
     expansion.parent,
     expansion.children,
     expansion.siblings,
+    crossRefResult.cross_referenced,
     expansion.ancestors,
     expansion.descendants,
     semanticEntities,
@@ -177,12 +197,14 @@ export async function hydrateContext(
   // Use sets for role separation
   const childIds = new Set(expansion.children.map(c => c.id));
   const siblingIds = new Set(expansion.siblings.map(s => s.id));
+  const crossRefIds = new Set(crossRefResult.cross_referenced.map(x => x.id));
   const ancestorIds = new Set(expansion.ancestors.map(a => a.id));
   const descendantIds = new Set(expansion.descendants.map(d => d.id));
   const semanticIds = new Set(semanticEntities.map(r => r.id));
 
   const budgetedChildren: ContextResponse['children'] = [];
   const budgetedSiblings: ContextResponse['siblings'] = [];
+  const budgetedCrossReferenced: ContextResponse['cross_referenced'] = [];
   const budgetedAncestors: ContextResponse['ancestors'] = [];
   const budgetedDescendants: ContextResponse['descendants'] = [];
   const budgetedRelated: ContextResponse['related'] = [];
@@ -193,6 +215,8 @@ export async function hydrateContext(
       budgetedChildren.push(e);
     } else if (siblingIds.has(e.id)) {
       budgetedSiblings.push(e);
+    } else if (crossRefIds.has(e.id)) {
+      budgetedCrossReferenced.push(e);
     } else if (ancestorIds.has(e.id)) {
       budgetedAncestors.push(e);
     } else if (descendantIds.has(e.id)) {
@@ -206,6 +230,7 @@ export async function hydrateContext(
     (budgetedParent ? 1 : 0) +
     budgetedChildren.length +
     budgetedSiblings.length +
+    budgetedCrossReferenced.length +
     budgetedAncestors.length +
     budgetedDescendants.length +
     budget.resources.length +
@@ -218,6 +243,7 @@ export async function hydrateContext(
     parent: budgetedParent,
     children: budgetedChildren,
     siblings: budgetedSiblings,
+    cross_referenced: budgetedCrossReferenced,
     ancestors: budgetedAncestors,
     descendants: budgetedDescendants,
     related_resources: budget.resources,

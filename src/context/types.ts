@@ -1,5 +1,5 @@
 /**
- * Types for the agent context hydration pipeline (ADR-0074, ADR-0075).
+ * Types for the agent context hydration pipeline (ADR-0074, ADR-0075, ADR-0076, ADR-0077).
  *
  * The pipeline assembles context for agents working on backlog tasks.
  * Each stage adds a layer of context; token budgeting ensures the
@@ -107,6 +107,8 @@ export interface ContextResponse {
   ancestors: ContextEntity[];
   /** Descendants beyond direct children (grandchildren, etc.). Phase 3, ADR-0076. */
   descendants: ContextEntity[];
+  /** Entities explicitly referenced by focal's references[] field. Phase 4, ADR-0077. */
+  cross_referenced: ContextEntity[];
   /** Resources related to the focal entity or its parent */
   related_resources: ContextResource[];
   /** Semantically related entities not in the direct graph (Stage 3, ADR-0075). */
