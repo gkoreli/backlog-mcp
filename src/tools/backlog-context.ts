@@ -6,18 +6,17 @@ import { operationLogger } from '../operations/index.js';
 import { hydrateContext, type ContextResponse } from '../context/index.js';
 
 /**
- * backlog_context — Agent context hydration tool (ADR-0074, ADR-0075).
+ * backlog_context — Agent context hydration tool (ADR-0074, ADR-0075, ADR-0076).
  *
  * Provides a single-call context bundle for agents working on backlog tasks.
  * Replaces the 5-10 manual tool calls an agent would otherwise need to
  * understand a task's full context (parent, siblings, children, resources,
- * semantically related items, and recent activity).
+ * semantically related items, recent activity, and session memory).
  *
- * Phase 2 additions (ADR-0075):
- *   - query parameter: resolve a natural language query to a focal entity
- *   - Semantic enrichment: finds related items not in the direct graph
- *   - Temporal overlay: surfaces recent activity on focal + related items
- *   - include_related / include_activity toggles
+ * Phase 3 additions (ADR-0076):
+ *   - Depth 2+ expansion: ancestors (grandparent chain), descendants (grandchildren)
+ *   - Session memory: who last worked on this entity and what they did
+ *   - graph_depth on entities indicating distance from focal
  *
  * Use backlog_context for:
  *   - "I'm about to work on TASK-X, give me everything I need to know"
@@ -25,6 +24,7 @@ import { hydrateContext, type ContextResponse } from '../context/index.js';
  *   - Discovering related resources (ADRs, design docs) attached to a task or its epic
  *   - Finding semantically related tasks across the backlog
  *   - Seeing recent activity (who changed what, when)
+ *   - Understanding what the last agent did on this task
  *
  * Use backlog_search for:
  *   - Finding items matching a query (discovery)
@@ -36,11 +36,11 @@ export function registerBacklogContextTool(server: McpServer) {
   server.registerTool(
     'backlog_context',
     {
-      description: 'Get full context for working on a task — parent epic, sibling tasks, children, related resources, semantically related items, and recent activity in a single call. Use this before starting work on any task to understand its context.',
+      description: 'Get full context for working on a task — parent epic, sibling tasks, children, ancestors, descendants, related resources, semantically related items, recent activity, and session memory in a single call. Use this before starting work on any task to understand its context.',
       inputSchema: z.object({
         task_id: z.string().optional().describe('Task or epic ID to get context for. Example: "TASK-0042" or "EPIC-0005". Mutually exclusive with query.'),
         query: z.string().optional().describe('Natural language query to find the most relevant entity. Example: "search ranking improvements". Mutually exclusive with task_id.'),
-        depth: z.number().min(1).max(3).optional().describe('Relational expansion depth. 1 = direct relations (default). Depth 2+ reserved for future use.'),
+        depth: z.number().min(1).max(3).optional().describe('Relational expansion depth. 1 = direct relations (default). 2 = grandparent/grandchildren. 3 = three hops.'),
         max_tokens: z.number().min(500).max(32000).optional().describe('Token budget for the response. Default: 4000. Increase for more detail, decrease for conciseness.'),
         include_related: z.boolean().optional().describe('Include semantically related items (default: true). Set false to skip semantic search and reduce latency.'),
         include_activity: z.boolean().optional().describe('Include recent activity timeline (default: true). Set false to skip activity and reduce response size.'),
@@ -108,6 +108,14 @@ function formatResponse(ctx: ContextResponse) {
     response.siblings = ctx.siblings.map(formatEntity);
   }
 
+  if (ctx.ancestors.length > 0) {
+    response.ancestors = ctx.ancestors.map(formatEntity);
+  }
+
+  if (ctx.descendants.length > 0) {
+    response.descendants = ctx.descendants.map(formatEntity);
+  }
+
   if (ctx.related_resources.length > 0) {
     response.related_resources = ctx.related_resources.map(formatResource);
   }
@@ -118,6 +126,10 @@ function formatResponse(ctx: ContextResponse) {
 
   if (ctx.activity.length > 0) {
     response.activity = ctx.activity;
+  }
+
+  if (ctx.session_summary) {
+    response.session_summary = ctx.session_summary;
   }
 
   response.metadata = ctx.metadata;
@@ -140,6 +152,7 @@ function formatEntity(entity: ContextResponse['focal']) {
   if (entity.created_at) out.created_at = entity.created_at;
   if (entity.updated_at) out.updated_at = entity.updated_at;
   if (entity.relevance_score != null) out.relevance_score = entity.relevance_score;
+  if (entity.graph_depth != null) out.graph_depth = entity.graph_depth;
   return out;
 }
 

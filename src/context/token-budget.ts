@@ -1,12 +1,17 @@
 /**
- * Token estimation and budgeting for context hydration (ADR-0074, ADR-0075).
+ * Token estimation and budgeting for context hydration (ADR-0074, ADR-0075, ADR-0076).
  *
  * KNOWN HACK: Uses character-based approximation (1 token ≈ 4 chars).
  * This is within ±20% for English prose — sufficient for budgeting decisions.
  * See ADR-0074 "Known Hacks" section 1 for rationale and future fix path.
+ *
+ * Phase 3 changes (ADR-0076):
+ *   - 10-level priority (added session summary, ancestors, descendants)
+ *   - Session summary budgeting (between parent and children)
+ *   - graph_depth preserved through downgrading
  */
 
-import type { ContextEntity, ContextResource, ContextActivity, Fidelity } from './types.js';
+import type { ContextEntity, ContextResource, ContextActivity, SessionSummary, Fidelity } from './types.js';
 
 // ── Token estimation ─────────────────────────────────────────────────
 
@@ -93,6 +98,19 @@ export function estimateActivityTokens(activity: ContextActivity): number {
     15;
 }
 
+/**
+ * Estimate token cost of a SessionSummary.
+ */
+export function estimateSessionSummaryTokens(session: SessionSummary): number {
+  return estimateTokens(session.actor) +
+    estimateTokens(session.actor_type) +
+    estimateTokens(session.started_at) +
+    estimateTokens(session.ended_at) +
+    estimateTokens(session.summary) +
+    10 + // operation_count number + JSON overhead
+    20;  // JSON keys overhead
+}
+
 // ── Budgeting ────────────────────────────────────────────────────────
 
 export interface BudgetResult {
@@ -102,6 +120,8 @@ export interface BudgetResult {
   resources: ContextResource[];
   /** Activity entries to include in the response */
   activities: ContextActivity[];
+  /** Session summary (null if dropped for budget or not available) */
+  sessionSummary: SessionSummary | null;
   /** Total estimated tokens used */
   tokensUsed: number;
   /** Whether items were dropped or downgraded */
@@ -111,6 +131,7 @@ export interface BudgetResult {
 /**
  * Downgrade an entity to a lower fidelity level.
  * Returns a new entity with reduced fields.
+ * Preserves graph_depth and relevance_score through downgrading.
  */
 export function downgradeEntity(entity: ContextEntity, to: Fidelity): ContextEntity {
   if (to === 'reference') {
@@ -121,6 +142,7 @@ export function downgradeEntity(entity: ContextEntity, to: Fidelity): ContextEnt
       type: entity.type,
       parent_id: entity.parent_id,
       fidelity: 'reference',
+      graph_depth: entity.graph_depth,
     };
   }
   if (to === 'summary') {
@@ -135,6 +157,7 @@ export function downgradeEntity(entity: ContextEntity, to: Fidelity): ContextEnt
       created_at: entity.created_at,
       updated_at: entity.updated_at,
       relevance_score: entity.relevance_score,
+      graph_depth: entity.graph_depth,
     };
   }
   return entity;
@@ -168,14 +191,17 @@ export function downgradeResource(resource: ContextResource, to: Fidelity): Cont
 /**
  * Apply token budget to a set of context items.
  *
- * Priority order (highest first):
+ * Priority order (highest first) — Phase 3, ADR-0076:
  *   1. Focal entity (never dropped, always full fidelity)
  *   2. Parent entity (never dropped, summary fidelity)
- *   3. Children (summary, downgrade to reference if needed)
- *   4. Siblings (summary, downgrade to reference if needed)
- *   5. Semantically related entities (summary, downgrade to reference if needed)
- *   6. Resources (summary, downgrade to reference if needed)
- *   7. Activity (fixed cost, drop entries if needed)
+ *   3. Session summary (high priority — tells agent what happened last)
+ *   4. Children (summary, downgrade to reference if needed)
+ *   5. Siblings (summary, downgrade to reference if needed)
+ *   6. Ancestors (reference fidelity — breadcrumb context)
+ *   7. Descendants (reference fidelity — structural awareness)
+ *   8. Semantically related entities (summary, downgrade to reference if needed)
+ *   9. Resources (summary, downgrade to reference if needed)
+ *  10. Activity (fixed cost, drop entries if needed)
  *
  * Items are first tried at their current fidelity. If the budget is
  * exceeded, lower-priority items are downgraded before higher-priority
@@ -186,9 +212,12 @@ export function applyBudget(
   parent: ContextEntity | null,
   children: ContextEntity[],
   siblings: ContextEntity[],
+  ancestors: ContextEntity[],
+  descendants: ContextEntity[],
   related: ContextEntity[],
   resources: ContextResource[],
   activities: ContextActivity[],
+  sessionSummary: SessionSummary | null,
   maxTokens: number,
 ): BudgetResult {
   let tokensUsed = 0;
@@ -198,6 +227,7 @@ export function applyBudget(
     entities: [],
     resources: [],
     activities: [],
+    sessionSummary: null,
     tokensUsed: 0,
     truncated: false,
   };
@@ -216,6 +246,17 @@ export function applyBudget(
     const parentCost = estimateEntityTokens(parent);
     tokensUsed += parentCost;
     result.entities.push(parent);
+  }
+
+  // 3. Session summary (high priority — tells agent about last session)
+  if (sessionSummary) {
+    const sessionCost = estimateSessionSummaryTokens(sessionSummary);
+    if (tokensUsed + sessionCost <= maxTokens) {
+      tokensUsed += sessionCost;
+      result.sessionSummary = sessionSummary;
+    } else {
+      truncated = true;
+    }
   }
 
   // Helper: try to fit an entity at current fidelity, then reference
@@ -239,22 +280,32 @@ export function applyBudget(
     return false;
   }
 
-  // 3. Children at summary fidelity
+  // 4. Children at summary fidelity
   for (const child of children) {
     if (!tryFitEntity(child)) break;
   }
 
-  // 4. Siblings at summary fidelity
+  // 5. Siblings at summary fidelity
   for (const sibling of siblings) {
     if (!tryFitEntity(sibling)) break;
   }
 
-  // 5. Semantically related entities at summary fidelity
+  // 6. Ancestors (already at reference fidelity from expansion)
+  for (const ancestor of ancestors) {
+    if (!tryFitEntity(ancestor)) break;
+  }
+
+  // 7. Descendants (already at reference fidelity from expansion)
+  for (const descendant of descendants) {
+    if (!tryFitEntity(descendant)) break;
+  }
+
+  // 8. Semantically related entities at summary fidelity
   for (const rel of related) {
     if (!tryFitEntity(rel)) break;
   }
 
-  // 6. Resources at summary fidelity
+  // 9. Resources at summary fidelity
   for (const resource of resources) {
     const cost = estimateResourceTokens(resource);
     if (tokensUsed + cost <= maxTokens) {
@@ -274,7 +325,7 @@ export function applyBudget(
     }
   }
 
-  // 7. Activity entries
+  // 10. Activity entries
   for (const act of activities) {
     const cost = estimateActivityTokens(act);
     if (tokensUsed + cost <= maxTokens) {
