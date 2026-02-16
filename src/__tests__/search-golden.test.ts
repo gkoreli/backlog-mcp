@@ -343,63 +343,136 @@ describe('Search Golden Benchmark', () => {
 
   /**
    * ===========================================
-   * RANKING BEHAVIOR: Document actual ranking
+   * RANKING: Position-aware assertions (ADR-0081)
+   *
+   * These test actual ranking order, not just presence.
+   * With linear fusion, scores are [0,1]. Tests assert
+   * positions and relative ordering — the things that
+   * matter for search quality.
    * ===========================================
    */
-  describe('📊 Ranking Behavior', () => {
-    it('returns scores in descending order', async () => {
+  describe('📊 Ranking (ADR-0081)', () => {
+    // ── Structural invariants ──────────────────────────────────
+
+    it('scores are in [0,1] range (linear fusion property)', async () => {
+      for (const q of ['search', 'keyboard', 'fix', 'backlog']) {
+        const results = await service.search(q);
+        for (const r of results) {
+          expect(r.score).toBeGreaterThanOrEqual(0);
+          expect(r.score).toBeLessThanOrEqual(1.0);
+        }
+      }
+    });
+
+    it('scores are in descending order', async () => {
       const results = await service.search('search');
       for (let i = 1; i < results.length; i++) {
         expect(results[i - 1].score).toBeGreaterThanOrEqual(results[i].score);
       }
     });
 
-    it('exact title match scores highest', async () => {
+    // ── Position assertions: exact title matches rank #1 ──────
+
+    it('"feature store" → TASK-0009 (FeatureStore) ranks #1', async () => {
+      // THE critical test. This is the failure that motivated TASK-0302.
+      // Previously ranked 18th due to shadow scoring double-boosting title matches.
+      const results = await service.search('feature store');
+      expect(results[0].task.id).toBe('TASK-0009');
+    });
+
+    it('"keyboard shortcuts" → TASK-0003 ranks #1', async () => {
+      const results = await service.search('keyboard shortcuts');
+      expect(results[0].task.id).toBe('TASK-0003');
+    });
+
+    it('"Spotlight search UI" → TASK-0001 ranks #1', async () => {
+      const results = await service.search('Spotlight search UI');
+      expect(results[0].task.id).toBe('TASK-0001');
+    });
+
+    it('"database migration" → TASK-0004 ranks #1', async () => {
+      const results = await service.search('database migration');
+      expect(results[0].task.id).toBe('TASK-0004');
+    });
+
+    it('"SearchService abstraction layer" → TASK-0005 ranks #1', async () => {
       const results = await service.search('SearchService abstraction layer');
       expect(results[0].task.id).toBe('TASK-0005');
     });
 
-    it('more matching words = higher score', async () => {
-      const results = await service.search('Spotlight search UI');
-      // TASK-0001 has all three words
+    it('"authentication" → TASK-0002 ranks #1', async () => {
+      const results = await service.search('authentication');
+      expect(results[0].task.id).toBe('TASK-0002');
+    });
+
+    it('"backlog" → EPIC-0001 ranks #1', async () => {
+      const results = await service.search('backlog');
+      expect(results[0].task.id).toBe('EPIC-0001');
+    });
+
+    it('"backlog mcp" → EPIC-0001 ranks #1 (title match beats body-only mentions)', async () => {
+      // Both terms appear in EPIC-0001's title "backlog-mcp 10x".
+      // Other tasks may mention "backlog" and "mcp" in description/references
+      // but title coordination should push the exact title match to #1.
+      const results = await service.search('backlog mcp');
+      expect(results[0].task.id).toBe('EPIC-0001');
+    });
+
+    it('"DBA approval" → TASK-0004 ranks #1', async () => {
+      const results = await service.search('DBA approval');
+      expect(results[0].task.id).toBe('TASK-0004');
+    });
+
+    // ── Relative ordering assertions ──────────────────────────
+
+    it('"search" → EPIC-0002 ranks above TASK-0005', async () => {
+      // Both have "search" in title. EPIC-0002 has shorter title → higher BM25 term density.
+      const results = await service.search('search');
+      const epicIdx = results.findIndex(r => r.task.id === 'EPIC-0002');
+      const taskIdx = results.findIndex(r => r.task.id === 'TASK-0005');
+      expect(epicIdx).toBeGreaterThanOrEqual(0);
+      expect(taskIdx).toBeGreaterThanOrEqual(0);
+      expect(epicIdx).toBeLessThan(taskIdx);
+    });
+
+    it('"search" → title matches rank above description-only matches', async () => {
+      // TASK-0001 has "search" in title. TASK-0003 has "search" only in description.
+      const results = await service.search('search');
+      const titleMatch = results.findIndex(r => r.task.id === 'TASK-0001');
+      const descMatch = results.findIndex(r => r.task.id === 'TASK-0003');
+      if (titleMatch >= 0 && descMatch >= 0) {
+        expect(titleMatch).toBeLessThan(descMatch);
+      }
+    });
+
+    it('"Spotlight search" → multi-field match ranks above single-field match', async () => {
+      // TASK-0001 has "Spotlight" in title AND "search" in title → both terms match
+      // EPIC-0002 has "Search" in title but not "Spotlight"
+      const results = await service.search('Spotlight search');
       expect(results[0].task.id).toBe('TASK-0001');
     });
 
-    it('all results have positive scores', async () => {
+    // ── Top-N assertions (looser, for queries with ambiguous ranking) ──
+
+    it('"feature store" → TASK-0009 in top 1 (not buried at 18th)', async () => {
+      // Regression guard: the original bug had TASK-0009 at position 18.
+      const results = await service.search('feature store');
+      const idx = results.findIndex(r => r.task.id === 'TASK-0009');
+      expect(idx).toBe(0);
+    });
+
+    it('"keyboard" → TASK-0003 in top 2', async () => {
+      // TASK-0003 "Add keyboard shortcuts" has "keyboard" in title
       const results = await service.search('keyboard');
-      expect(results.every(r => r.score > 0)).toBe(true);
+      const idx = results.findIndex(r => r.task.id === 'TASK-0003');
+      expect(idx).toBeLessThan(2);
     });
 
-    it('title match ranks higher than description-only match (ADR-0050)', async () => {
-      // EPIC-0001 has "backlog" in title: "backlog-mcp 10x"
-      // Other tasks may have "backlog" only in description
-      const results = await service.search('backlog');
-      const epic = results.find(r => r.task.id === 'EPIC-0001');
-      expect(epic).toBeDefined();
-      // Epic with title match should have multiplier applied (normalized score > 1.0)
-      expect(epic!.score).toBeGreaterThan(1.0);
-    });
-
-    it('epic with title match ranks above task with same title match (ADR-0051)', async () => {
-      // EPIC-0002 "Search & Discovery" and TASK-0005 "SearchService abstraction layer"
-      // both have "search" in title, but epic should rank higher
-      const results = await service.search('search');
-      const epic = results.find(r => r.task.id === 'EPIC-0002');
-      const task = results.find(r => r.task.id === 'TASK-0005');
-      expect(epic).toBeDefined();
-      expect(task).toBeDefined();
-      // Epic should have higher score due to epic bonus
-      expect(epic!.score).toBeGreaterThan(task!.score);
-    });
-
-    it('title-starts-with-query gets highest bonus (ADR-0072)', async () => {
-      // EPIC-0001 title starts with "backlog": "backlog-mcp 10x"
-      const results = await service.search('backlog');
-      const epic = results.find(r => r.task.id === 'EPIC-0001');
-      expect(epic).toBeDefined();
-      // Should have title-starts-with multiplier (1.3) + epic multiplier (1.1) + recency
-      // Normalized score × multipliers > 1.3
-      expect(epic!.score).toBeGreaterThan(1.3);
+    it('"fix" → both fix tasks in top 3', async () => {
+      const results = await service.search('fix');
+      const ids = results.slice(0, 3).map(r => r.task.id);
+      expect(ids).toContain('TASK-0002'); // "Fix authentication bug"
+      expect(ids).toContain('TASK-0006'); // "Fix first-time user onboarding"
     });
   });
 });

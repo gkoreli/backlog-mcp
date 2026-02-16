@@ -13,7 +13,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { join } from 'node:path';
 import { OramaSearchService, type SearchSnippet } from '../search/index.js';
-import { generateTaskSnippet, generateResourceSnippet } from '../search/orama-search-service.js';
+import { generateTaskSnippet, generateResourceSnippet } from '../search/snippets.js';
 import type { Task } from '../storage/schema.js';
 import type { Resource } from '../search/types.js';
 

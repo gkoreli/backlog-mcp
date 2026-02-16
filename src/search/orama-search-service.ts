@@ -1,52 +1,19 @@
-import { create, insert, insertMultiple, remove, search, save, load, type Orama, type Results, type Tokenizer } from '@orama/orama';
+import { create, insert, insertMultiple, remove, search, save, load, type Results } from '@orama/orama';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { Task } from '@/storage/schema.js';
 import type { SearchService, SearchOptions, SearchResult, Resource, ResourceSearchResult, SearchableType, SearchSnippet } from './types.js';
-import { EmbeddingService, EMBEDDING_DIMENSIONS } from './embedding-service.js';
-
-type OramaDoc = {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  type: string;
-  epic_id: string;
-  evidence: string;
-  blocked_reason: string;
-  references: string;
-  path: string;
-  updated_at: string;  // ADR-0080: for native sortBy
-};
-
-type OramaDocWithEmbeddings = OramaDoc & {
-  embeddings: number[];
-};
-
-const schema = {
-  id: 'string',
-  title: 'string',
-  description: 'string',
-  status: 'enum',
-  type: 'enum',
-  epic_id: 'enum',
-  evidence: 'string',
-  blocked_reason: 'string',
-  references: 'string',
-  path: 'string',
-  updated_at: 'string',  // ADR-0080: enables native sortBy for "recent" mode
-} as const;
-
-const schemaWithEmbeddings = {
-  ...schema,
-  embeddings: `vector[${EMBEDDING_DIMENSIONS}]`,
-} as const;
-
-type OramaInstance = Orama<typeof schema>;
-type OramaInstanceWithEmbeddings = Orama<typeof schemaWithEmbeddings>;
-
-/** Bump when tokenizer or schema changes to force index rebuild. */
-const INDEX_VERSION = 4;  // ADR-0080: added updated_at, unsortableProperties
+import { EmbeddingService } from './embedding-service.js';
+import { compoundWordTokenizer } from './tokenizer.js';
+import { generateTaskSnippet, generateResourceSnippet } from './snippets.js';
+import {
+  type OramaDoc, type OramaDocWithEmbeddings,
+  type OramaInstance, type OramaInstanceWithEmbeddings,
+  schema, schemaWithEmbeddings,
+  INDEX_VERSION, TEXT_PROPERTIES, UNSORTABLE_PROPERTIES, ENUM_FACETS,
+  buildWhereClause,
+} from './orama-schema.js';
+import { minmaxNormalize, linearFusion, applyCoordinationBonus, type ScoredHit } from './scoring.js';
 
 export interface OramaSearchOptions {
   cachePath: string;
@@ -55,304 +22,11 @@ export interface OramaSearchOptions {
 }
 
 /**
- * Text-searchable properties (ADR-0079). Excludes enum fields (status, type, epic_id)
- * which are filtered via `where` clause, not full-text searched.
- * Also excludes updated_at which is only used for sorting.
- */
-const TEXT_PROPERTIES = ['id', 'title', 'description', 'evidence', 'blocked_reason', 'references', 'path'] as const;
-
-/**
- * Properties that should NOT have sort indexes (ADR-0080).
- * Only `updated_at` needs a sort index for native "recent" mode.
- */
-const UNSORTABLE_PROPERTIES = ['id', 'title', 'description', 'evidence', 'blocked_reason', 'references', 'path'] as const;
-
-/**
- * Facet configuration for enum fields (ADR-0080).
- * Orama returns counts per value automatically for enum facets.
- */
-const ENUM_FACETS = { status: {}, type: {}, epic_id: {} } as const;
-
-/**
- * Build Orama `where` clause from SearchOptions filters and docTypes (ADR-0079).
- * Returns undefined if no filters apply (Orama treats undefined where as no filter).
- */
-function buildWhereClause(filters?: SearchOptions['filters'], docTypes?: SearchableType[]): Record<string, any> | undefined {
-  const where: Record<string, any> = {};
-  if (filters?.status?.length) where.status = { in: filters.status };
-  if (filters?.type) where.type = { eq: filters.type };
-  if (filters?.epic_id) where.epic_id = { eq: filters.epic_id };
-  if (filters?.parent_id) where.epic_id = { eq: filters.parent_id };
-  if (docTypes?.length) where.type = { in: docTypes };
-  return Object.keys(where).length > 0 ? where : undefined;
-}
-
-/**
- * Split a word on camelCase/PascalCase boundaries.
- * "FeatureStore" → ["Feature", "Store"]
- * "getHTTPResponse" → ["get", "HTTP", "Response"]
- * "simple" → ["simple"] (no split)
- */
-function splitCamelCase(word: string): string[] {
-  // Insert boundary marker between lowercase→uppercase and acronym→word transitions
-  return word
-    .replace(/([a-z\d])([A-Z])/g, '$1\0$2')
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1\0$2')
-    .split('\0')
-    .filter(Boolean);
-}
-
-/**
- * Custom tokenizer that expands compound words (hyphens + camelCase).
- * "FeatureStore" → ["featurestore", "feature", "store"]
- * "keyboard-first" → ["keyboard-first", "keyboard", "first"]
- */
-const compoundWordTokenizer: Tokenizer = {
-  language: 'english',
-  normalizationCache: new Map(),
-  tokenize(input: string): string[] {
-    if (typeof input !== 'string') return [];
-    // Split on non-alphanumeric (keeping hyphens/apostrophes) BEFORE lowercasing
-    const rawTokens = input.split(/[^a-zA-Z0-9'-]+/).filter(Boolean);
-    const expanded: string[] = [];
-    for (const raw of rawTokens) {
-      const lower = raw.toLowerCase();
-      expanded.push(lower);
-      // Expand hyphens: "keyboard-first" → + ["keyboard", "first"]
-      if (raw.includes('-')) {
-        expanded.push(...lower.split(/-+/).filter(Boolean));
-      }
-      // Expand camelCase: "FeatureStore" → + ["feature", "store"]
-      const camelParts = splitCamelCase(raw);
-      if (camelParts.length > 1) {
-        for (const part of camelParts) {
-          expanded.push(part.toLowerCase());
-        }
-      }
-    }
-    return [...new Set(expanded)];
-  },
-};
-
-/**
- * Calculate recency multiplier based on days since last update (ADR-0072).
- * Returns 1.0-1.15 — recent items get a small proportional boost.
- */
-function getRecencyMultiplier(updatedAt: string | undefined): number {
-  if (!updatedAt) return 1.0;
-  const daysSinceUpdate = (Date.now() - new Date(updatedAt).getTime()) / (1000 * 60 * 60 * 24);
-  if (daysSinceUpdate < 1) return 1.15;
-  if (daysSinceUpdate < 7) return 1.10;
-  if (daysSinceUpdate < 30) return 1.05;
-  if (daysSinceUpdate < 90) return 1.02;
-  return 1.0;
-}
-
-/**
- * Normalize scores to 0-1 range by dividing by the maximum score (ADR-0072).
- * This makes scores magnitude-independent, working identically for
- * BM25-only (unbounded) and hybrid (already 0-1) modes.
- */
-function normalizeScores<T extends { score: number }>(results: T[]): T[] {
-  if (results.length === 0) return results;
-  const maxScore = Math.max(...results.map(r => r.score));
-  if (maxScore === 0) return results;
-  return results.map(r => ({ ...r, score: r.score / maxScore }));
-}
-
-/**
- * Ranking signal multipliers for re-ranking (ADR-0072, supersedes ADR-0051).
- * Multiple signals combine additively to determine final ranking.
+ * Orama-backed search service with independent BM25 + vector retrievers
+ * fused via linear combination (ADR-0081).
  *
- * Bonus values are tuned so that:
- * - Title matches rank above description-only matches
- * - Scores are normalized to 0-1 before applying domain signals
- * - Multiplicative factors ensure signals scale with relevance
- * - Title coverage and position amplify Orama's base relevance
- * - Epics get a small boost only when they have strong title matches
- * - Recent items get a boost but don't overwhelm relevance
- */
-
-/**
- * Re-rank results using normalize-then-multiply pipeline (ADR-0072).
- *
- * Stage 1: Normalize Orama scores to 0-1 (divide by max)
- * Stage 2: Apply multiplicative domain signals:
- *   - Title word coverage (prefix-aware): up to 1.5x
- *   - Title starts-with-query: additional +0.3 (up to 1.8x total)
- *   - Epic with title match: ×1.1
- *   - Recency: ×1.0-1.15
- * Stage 3: All-terms-present coordination bonus (additive +1.5)
- *   - For multi-word queries only
- *   - Checks title + description/content for ALL query terms
- *   - Compensates for OR-mode (threshold=1) where partial title matches
- *     dominate full body matches (TASK-0296)
- *
- * @param results - Search results with score and item (task or resource)
- * @param query - Original search query
- * @returns Re-ranked results sorted by adjusted score
- */
-function rerankWithSignals<T extends { score: number; item: { title?: string; description?: string; content?: string; type?: string; updated_at?: string } }>(
-  results: T[],
-  query: string
-): T[] {
-  if (!query.trim()) return results;
-
-  // Stage 1: Normalize to 0-1
-  const normalized = normalizeScores(results);
-  const queryLower = query.toLowerCase().trim();
-  const queryWords = queryLower.split(/\s+/);
-
-  // Stage 2: Multiplicative domain signals + coordination bonus
-  return normalized.map(r => {
-    let multiplier = 1.0;
-    const title = r.item.title?.toLowerCase() || '';
-    const titleWords = title.split(/\W+/).filter(Boolean);
-
-    // Prefix-aware title word matching: "produc" matches "product"
-    const matchingQueryWords = queryWords.filter(qw =>
-      titleWords.some(tw => tw.startsWith(qw) || qw.startsWith(tw))
-    );
-    const matchCount = matchingQueryWords.length;
-
-    // Title word coverage: proportion of query words found in title
-    const titleCoverage = queryWords.length > 0 ? matchCount / queryWords.length : 0;
-    multiplier += titleCoverage * 0.5; // up to 1.5x for perfect coverage
-
-    // Title starts-with-query bonus
-    if (queryWords.some(qw => title.startsWith(qw))) {
-      multiplier += 0.3; // up to 1.8x total
-    }
-
-    // Epic with title match: small proportional boost
-    const hasTitleMatch = matchCount > 0 || queryWords.some(qw => title.includes(qw));
-    if (r.item.type === 'epic' && hasTitleMatch) {
-      multiplier *= 1.1;
-    }
-
-    // Recency multiplier
-    multiplier *= getRecencyMultiplier(r.item.updated_at);
-
-    let score = r.score * multiplier;
-
-    // Stage 3: All-terms-present coordination bonus (TASK-0296, ADR-0080)
-    // In OR mode (threshold=1), partial title matches dominate multi-term body matches.
-    // E.g. "feature store" → "Feature: Daily Discovery Game" (1/2 terms in title) outranks
-    // a task with "FeatureStore" in description (2/2 terms). This flat additive bonus
-    // ensures documents matching ALL query terms rank above partial-match documents.
-    if (queryWords.length > 1) {
-      const bodyText = (title + ' ' + (r.item.description || '') + ' ' + (r.item.content || '')).toLowerCase();
-      if (queryWords.every(qw => bodyText.includes(qw))) {
-        score += 1.5;
-      }
-    }
-
-    return { ...r, score };
-  }).sort((a, b) => b.score - a.score);
-}
-
-// ── Server-side snippet generation (ADR-0073) ──────────────────────
-//
-// Generates plain-text snippets server-side so both MCP tools and HTTP
-// endpoints return consistent match context. This is the single source
-// of truth for snippet generation — the UI's client-side @orama/highlight
-// can still be used for HTML rendering, but the server snippet provides
-// the canonical match context for MCP tool consumers.
-
-const SNIPPET_WINDOW = 120; // chars of context around match
-
-/**
- * Generate a plain-text snippet for a task, showing where the query matched.
- */
-export function generateTaskSnippet(task: Task, query: string): SearchSnippet {
-  const fields: { name: string; value: string }[] = [
-    { name: 'title', value: task.title },
-    { name: 'description', value: task.description || '' },
-    { name: 'evidence', value: (task.evidence || []).join(' ') },
-    { name: 'blocked_reason', value: (task.blocked_reason || []).join(' ') },
-    { name: 'references', value: (task.references || []).map(r => `${r.title || ''} ${r.url}`).join(' ') },
-  ];
-  return generateSnippetFromFields(fields, query);
-}
-
-/**
- * Generate a plain-text snippet for a resource.
- */
-export function generateResourceSnippet(resource: Resource, query: string): SearchSnippet {
-  const fields: { name: string; value: string }[] = [
-    { name: 'title', value: resource.title },
-    { name: 'content', value: resource.content },
-  ];
-  return generateSnippetFromFields(fields, query);
-}
-
-/**
- * Core snippet generation: finds the first field containing a query match,
- * extracts a window of context around it, and lists all matched fields.
- */
-function generateSnippetFromFields(
-  fields: { name: string; value: string }[],
-  query: string,
-): SearchSnippet {
-  const queryLower = query.toLowerCase().trim();
-  const queryWords = queryLower.split(/\s+/).filter(Boolean);
-  const matchedFields: string[] = [];
-  let firstField = '';
-  let firstText = '';
-
-  for (const { name, value } of fields) {
-    if (!value) continue;
-    const valueLower = value.toLowerCase();
-    // Check if any query word appears in this field
-    const hasMatch = queryWords.some(w => valueLower.includes(w));
-    if (!hasMatch) continue;
-
-    matchedFields.push(name);
-
-    if (!firstField) {
-      firstField = name;
-      // Find first query word position and extract window
-      let earliestPos = valueLower.length;
-      for (const w of queryWords) {
-        const pos = valueLower.indexOf(w);
-        if (pos !== -1 && pos < earliestPos) earliestPos = pos;
-      }
-
-      const windowStart = Math.max(0, earliestPos - 30);
-      const windowEnd = Math.min(value.length, windowStart + SNIPPET_WINDOW);
-      let text = value.slice(windowStart, windowEnd).trim();
-      // Add ellipsis if we truncated
-      if (windowStart > 0) text = '...' + text;
-      if (windowEnd < value.length) text = text + '...';
-      // Collapse whitespace for clean output
-      firstText = text.replace(/\s+/g, ' ');
-    }
-  }
-
-  if (!firstField) {
-    // No match found — fallback to title
-    return { field: 'title', text: fields[0]?.value || '', matched_fields: [] };
-  }
-
-  return { field: firstField, text: firstText, matched_fields: matchedFields };
-}
-
-// ── Internal search params for _executeSearch (ADR-0080 DRY) ───────
-
-interface InternalSearchParams {
-  query: string;
-  limit: number;
-  boost: Record<string, number>;
-  where?: Record<string, any>;
-  /** Use native sortBy instead of relevance scoring. Skips re-ranking. */
-  sortBy?: { property: string; order: 'ASC' | 'DESC' };
-}
-
-/**
- * Orama-backed search service with optional hybrid search (BM25 + vector).
  * Gracefully falls back to BM25-only if embeddings fail to load.
- *
- * ADR-0080: Uses threshold=0 (AND mode), native sortBy, facets, unsortableProperties.
+ * Uses native filtering (ADR-0079), sortBy, facets (ADR-0080).
  */
 export class OramaSearchService implements SearchService {
   private db: OramaInstance | OramaInstanceWithEmbeddings | null = null;
@@ -402,6 +76,8 @@ export class OramaSearchService implements SearchService {
     return this.embeddingsInitPromise;
   }
 
+  // ── Document conversion ─────────────────────────────────────────
+
   private getTextForEmbedding(task: Task): string {
     return `${task.title} ${task.description || ''}`.trim();
   }
@@ -434,12 +110,18 @@ export class OramaSearchService implements SearchService {
       blocked_reason: '',
       references: '',
       path: resource.path,
-      updated_at: '',  // Resources don't have updated_at  // Resources don't have updated_at
+      updated_at: '',  // Resources don't have updated_at
     };
   }
 
   private getResourceTextForEmbedding(resource: Resource): string {
     return `${resource.title} ${resource.content}`.trim();
+  }
+
+  private async taskToDocWithEmbeddings(task: Task): Promise<OramaDocWithEmbeddings> {
+    const doc = this.taskToDoc(task);
+    const embeddings = await this.embedder!.embed(this.getTextForEmbedding(task));
+    return { ...doc, embeddings };
   }
 
   private async resourceToDocWithEmbeddings(resource: Resource): Promise<OramaDocWithEmbeddings> {
@@ -448,11 +130,7 @@ export class OramaSearchService implements SearchService {
     return { ...doc, embeddings };
   }
 
-  private async taskToDocWithEmbeddings(task: Task): Promise<OramaDocWithEmbeddings> {
-    const doc = this.taskToDoc(task);
-    const embeddings = await this.embedder!.embed(this.getTextForEmbedding(task));
-    return { ...doc, embeddings };
-  }
+  // ── Index lifecycle ─────────────────────────────────────────────
 
   private scheduleSave(): void {
     if (this.saveTimeout) clearTimeout(this.saveTimeout);
@@ -539,47 +217,20 @@ export class OramaSearchService implements SearchService {
     this.persistToDisk();
   }
 
+  // ── Independent retrievers (ADR-0081) ───────────────────────────
+
   /**
-   * Core search execution — single code path for all search methods (ADR-0080 DRY).
-   *
-   * Handles: guard checks, hybrid detection, Orama param construction,
-   * threshold=0 (AND mode), facets, and native sortBy.
-   *
-   * BM25 relevance: keep defaults (k:1.2, b:0.75, d:0.5) — ADR-0079.
+   * BM25 fulltext retriever — runs Orama in default mode (no `mode` param).
+   * Returns raw BM25 scores (unbounded, higher = more relevant).
    */
-  private async _executeSearch(params: InternalSearchParams): Promise<Results<OramaDoc | OramaDocWithEmbeddings>> {
+  private async _executeBM25Search(params: {
+    query: string;
+    limit: number;
+    boost: Record<string, number>;
+    where?: Record<string, any>;
+    sortBy?: { property: string; order: 'ASC' | 'DESC' };
+  }): Promise<Results<OramaDoc | OramaDocWithEmbeddings>> {
     const { query, limit, boost, where, sortBy } = params;
-    // Determine if we can use hybrid search
-    const canUseHybrid = this.hasEmbeddingsInIndex && (await this.ensureEmbeddings());
-
-    // ADR-0080: threshold=0 = AND mode (only docs matching ALL query terms).
-    // Orama docs: "threshold: 1 (default) returns ALL results; threshold: 0 returns only exact matches."
-    // NOTE: Orama v3 threshold interacts with tolerance in complex ways.
-    // Testing shows threshold=0 with tolerance=1 can produce unexpected ranking.
-    // We omit threshold (default=1) and rely on re-ranking (ADR-0072) for relevance.
-    // This is a deliberate choice — see TASK-0298 threshold anomaly investigation.
-
-    if (canUseHybrid) {
-      // Hybrid search: BM25 + vector
-      // Prioritize BM25 (exact/fuzzy matches) over vector (semantic)
-      // This ensures exact matches rank highest while semantic matches are still found
-      const queryVector = await this.embedder!.embed(query);
-      return search(this.db as OramaInstanceWithEmbeddings, {
-        term: query,
-        properties: [...TEXT_PROPERTIES],
-        mode: 'hybrid',
-        vector: { value: queryVector, property: 'embeddings' },
-        hybridWeights: { text: 0.8, vector: 0.2 },
-        similarity: 0.2,
-        limit,
-        boost,
-        tolerance: 1,
-        where,
-        facets: ENUM_FACETS,  // ADR-0080: free facet counts
-        ...(sortBy ? { sortBy } : {}),
-      });
-    }
-
     return search(this.db!, {
       term: query,
       properties: [...TEXT_PROPERTIES],
@@ -592,36 +243,190 @@ export class OramaSearchService implements SearchService {
     });
   }
 
+  /**
+   * Vector retriever — runs Orama in vector-only mode.
+   * Returns similarity scores [0,1]. Returns null if embeddings unavailable.
+   */
+  private async _executeVectorSearch(params: {
+    query: string;
+    limit: number;
+    where?: Record<string, any>;
+  }): Promise<Results<OramaDoc | OramaDocWithEmbeddings> | null> {
+    const canUseVector = this.hasEmbeddingsInIndex && (await this.ensureEmbeddings());
+    if (!canUseVector) return null;
+
+    const queryVector = await this.embedder!.embed(params.query);
+    return search(this.db as OramaInstanceWithEmbeddings, {
+      mode: 'vector',
+      vector: { value: queryVector, property: 'embeddings' },
+      similarity: 0.2,
+      limit: params.limit,
+      where: params.where,
+    });
+  }
+
+  /**
+   * Run independent retrievers and fuse results via linear combination (ADR-0081).
+   *
+   * BM25 and vector retrievers run independently. Results are MinMax-normalized
+   * per-retriever, then combined: score = 0.7 * norm_bm25 + 0.3 * norm_vector.
+   *
+   * When embeddings are unavailable, degenerates to pure BM25 ranking.
+   * When sortBy is specified (e.g., "recent" mode), skips fusion entirely.
+   */
+  private async _fusedSearch(params: {
+    query: string;
+    limit: number;
+    boost: Record<string, number>;
+    where?: Record<string, any>;
+    sortBy?: { property: string; order: 'ASC' | 'DESC' };
+  }): Promise<{ hits: Array<{ id: string; score: number }>; bm25Results: Results<OramaDoc | OramaDocWithEmbeddings> }> {
+    const { query, limit, boost, where, sortBy } = params;
+
+    // Native sortBy mode (ADR-0080) — skip fusion, use Orama's sort directly
+    if (sortBy) {
+      const results = await this._executeBM25Search({ query, limit, boost, where, sortBy });
+      return {
+        hits: results.hits.map(h => ({ id: h.document.id, score: h.score })),
+        bm25Results: results,
+      };
+    }
+
+    // Over-fetch for better fusion coverage
+    const fetchLimit = limit * 2;
+
+    // Run retrievers independently
+    const [bm25Results, vectorResults] = await Promise.all([
+      this._executeBM25Search({ query, limit: fetchLimit, boost, where }),
+      this._executeVectorSearch({ query, limit: fetchLimit, where }),
+    ]);
+
+    // Extract scored hits for fusion
+    const bm25Hits: ScoredHit[] = bm25Results.hits.map(h => ({ id: h.document.id, score: h.score }));
+    const vectorHits: ScoredHit[] = vectorResults
+      ? vectorResults.hits.map(h => ({ id: h.document.id, score: h.score }))
+      : [];
+
+    // MinMax normalize each retriever independently, then fuse
+    const fused = linearFusion(minmaxNormalize(bm25Hits), minmaxNormalize(vectorHits));
+
+    // Post-fusion coordination bonus for multi-term queries (ADR-0081)
+    const coordinated = applyCoordinationBonus(
+      fused, query,
+      id => this._getSearchableText(id),
+      id => this._getTitle(id),
+    );
+
+    return { hits: coordinated.slice(0, limit), bm25Results };
+  }
+
+  // ── Search methods ──────────────────────────────────────────────
+
+  /**
+   * Get searchable text for a document (task or resource) by ID.
+   * Used by post-fusion coordination bonus to check term presence.
+   */
+  private _getSearchableText(id: string): string {
+    const task = this.taskCache.get(id);
+    if (task) {
+      return [task.title, task.description || '', (task.evidence || []).join(' ')].join(' ');
+    }
+    const resource = this.resourceCache.get(id);
+    if (resource) {
+      return [resource.title, resource.content].join(' ');
+    }
+    return '';
+  }
+
+  /** Get title for a document by ID. Used by coordination bonus for title weighting. */
+  private _getTitle(id: string): string {
+    return this.taskCache.get(id)?.title || this.resourceCache.get(id)?.title || '';
+  }
+
   async search(query: string, options?: SearchOptions): Promise<SearchResult[]> {
     if (!this.db || !query.trim()) return [];
 
     const limit = options?.limit ?? 20;
-    const results = await this._executeSearch({
+    const { hits } = await this._fusedSearch({
       query,
       limit,
-      boost: options?.boost ?? { id: 10, title: 5 },
+      boost: options?.boost ?? { id: 10, title: 3 },
       where: buildWhereClause(options?.filters),
     });
 
-    let hits = results.hits.map(hit => ({
-      id: hit.document.id,
-      score: hit.score,
-      task: this.taskCache.get(hit.document.id)!,
-    }));
-
-    // Re-rank with normalize-then-multiply pipeline (ADR-0072)
-    const reranked = rerankWithSignals(
-      hits.map(h => ({ score: h.score, item: h.task })),
-      query
-    );
-    hits = reranked.map(r => ({
-      id: hits.find(h => h.task === r.item)!.id,
-      score: r.score,
-      task: r.item,
-    }));
-
-    return hits.slice(0, limit);
+    return hits
+      .map(h => ({ id: h.id, score: h.score, task: this.taskCache.get(h.id)! }))
+      .filter(h => h.task);
   }
+
+  /**
+   * Search all document types with optional type filtering.
+   * Returns results sorted by relevance across all types.
+   *
+   * This is the canonical search method — both MCP tools and HTTP endpoints
+   * should call this (via BacklogService.searchUnified). (ADR-0073)
+   *
+   * ADR-0080: Uses native sortBy for "recent" mode instead of JS post-sort.
+   * ADR-0081: Uses independent retrievers + linear fusion for relevance mode.
+   */
+  async searchAll(query: string, options?: SearchOptions): Promise<Array<{ id: string; score: number; type: SearchableType; item: Task | Resource; snippet: SearchSnippet }>> {
+    if (!this.db || !query.trim()) return [];
+
+    const limit = options?.limit ?? 20;
+    const sortMode = options?.sort ?? 'relevant';
+    const where = buildWhereClause(options?.filters, options?.docTypes);
+
+    const { hits } = await this._fusedSearch({
+      query,
+      limit,
+      boost: options?.boost ?? { id: 10, title: 3 },
+      where,
+      ...(sortMode === 'recent' ? { sortBy: { property: 'updated_at', order: 'DESC' as const } } : {}),
+    });
+
+    return hits
+      .map(h => {
+        const task = this.taskCache.get(h.id);
+        const resource = this.resourceCache.get(h.id);
+        const item = task || resource;
+        if (!item) return null;
+        const isResource = !task;
+        const docType = (isResource ? 'resource' : (item as Task).type || 'task') as SearchableType;
+        const snippet = isResource
+          ? generateResourceSnippet(item as Resource, query)
+          : generateTaskSnippet(item as Task, query);
+        return { id: h.id, score: h.score, type: docType, item, snippet };
+      })
+      .filter((h): h is NonNullable<typeof h> => h !== null);
+  }
+
+  /**
+   * Search for resources only.
+   */
+  async searchResources(query: string, options?: { limit?: number }): Promise<ResourceSearchResult[]> {
+    if (!this.db || !query.trim()) return [];
+
+    const limit = options?.limit ?? 20;
+    const { hits } = await this._fusedSearch({
+      query,
+      limit,
+      boost: { title: 2, description: 1 },
+      where: { type: { eq: 'resource' } },
+    });
+
+    return hits
+      .map(h => ({ id: h.id, score: h.score, resource: this.resourceCache.get(h.id)! }))
+      .filter(h => h.resource);
+  }
+
+  /**
+   * Check if hybrid search is currently active.
+   */
+  isHybridSearchActive(): boolean {
+    return this.hasEmbeddingsInIndex && this.embeddingsReady;
+  }
+
+  // ── Document CRUD ───────────────────────────────────────────────
 
   async addDocument(task: Task): Promise<void> {
     if (!this.db) return;
@@ -668,12 +473,7 @@ export class OramaSearchService implements SearchService {
     this.scheduleSave();
   }
 
-  /**
-   * Check if hybrid search is currently active.
-   */
-  isHybridSearchActive(): boolean {
-    return this.hasEmbeddingsInIndex && this.embeddingsReady;
-  }
+  // ── Resource CRUD ───────────────────────────────────────────────
 
   /**
    * Index resources into the search index.
@@ -694,7 +494,6 @@ export class OramaSearchService implements SearchService {
           insert(this.db as OramaInstanceWithEmbeddings, doc);
         } catch (e: any) {
           if (e?.code === 'DOCUMENT_ALREADY_EXISTS') {
-            // Update existing resource
             await this.updateResource(resource);
           }
           // Ignore other errors - continue indexing
@@ -719,90 +518,6 @@ export class OramaSearchService implements SearchService {
       }
     }
     this.scheduleSave();
-  }
-
-  /**
-   * Search for resources only.
-   */
-  async searchResources(query: string, options?: { limit?: number }): Promise<ResourceSearchResult[]> {
-    if (!this.db || !query.trim()) return [];
-
-    const limit = options?.limit ?? 20;
-    const results = await this._executeSearch({
-      query,
-      limit,
-      boost: { title: 2, description: 1 },
-      where: { type: { eq: 'resource' } },
-    });
-
-    let resourceHits = results.hits
-      .map(hit => ({
-        id: hit.document.id,
-        score: hit.score,
-        resource: this.resourceCache.get(hit.document.id)!,
-      }))
-      .filter(h => h.resource);
-
-    // Re-rank with normalize-then-multiply pipeline (ADR-0072) - resources have title for matching
-    const reranked = rerankWithSignals(
-      resourceHits.map(h => ({ score: h.score, item: h.resource })),
-      query
-    );
-    resourceHits = reranked.map(r => ({
-      id: (r.item as Resource).id,
-      score: r.score,
-      resource: r.item as Resource,
-    }));
-
-    return resourceHits.slice(0, limit);
-  }
-
-  /**
-   * Search all document types with optional type filtering.
-   * Returns results sorted by relevance across all types.
-   *
-   * This is the canonical search method — both MCP tools and HTTP endpoints
-   * should call this (via BacklogService.searchUnified). (ADR-0073)
-   *
-   * ADR-0080: Uses native sortBy for "recent" mode instead of JS post-sort.
-   */
-  async searchAll(query: string, options?: SearchOptions): Promise<Array<{ id: string; score: number; type: SearchableType; item: Task | Resource; snippet: SearchSnippet }>> {
-    if (!this.db || !query.trim()) return [];
-
-    const limit = options?.limit ?? 20;
-    const sortMode = options?.sort ?? 'relevant';
-    const where = buildWhereClause(options?.filters, options?.docTypes);
-
-    const results = await this._executeSearch({
-      query,
-      limit,
-      boost: options?.boost ?? { id: 10, title: 5 },
-      where,
-      // ADR-0080: native sortBy for "recent" mode — replaces manual JS sort
-      ...(sortMode === 'recent' ? { sortBy: { property: 'updated_at', order: 'DESC' as const } } : {}),
-    });
-
-    let hits = results.hits.map(hit => {
-      const docType = hit.document.type as SearchableType;
-      const isResource = docType === 'resource';
-      const item = isResource
-        ? this.resourceCache.get(hit.document.id)!
-        : this.taskCache.get(hit.document.id)!;
-      // Generate server-side snippet (ADR-0073)
-      const snippet = item
-        ? (isResource
-            ? generateResourceSnippet(item as Resource, query)
-            : generateTaskSnippet(item as Task, query))
-        : { field: 'title', text: '', matched_fields: [] };
-      return { id: hit.document.id, score: hit.score, type: docType, item, snippet };
-    }).filter(h => h.item);
-
-    // Only re-rank in relevance mode; "recent" mode uses native sortBy (ADR-0080)
-    if (sortMode === 'relevant') {
-      hits = rerankWithSignals(hits, query);
-    }
-
-    return hits.slice(0, limit);
   }
 
   async addResource(resource: Resource): Promise<void> {
