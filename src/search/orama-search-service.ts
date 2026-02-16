@@ -15,7 +15,8 @@ type OramaDoc = {
   evidence: string;
   blocked_reason: string;
   references: string;
-  path: string;  // For resources: relative path
+  path: string;
+  updated_at: string;  // ADR-0080: for native sortBy
 };
 
 type OramaDocWithEmbeddings = OramaDoc & {
@@ -33,6 +34,7 @@ const schema = {
   blocked_reason: 'string',
   references: 'string',
   path: 'string',
+  updated_at: 'string',  // ADR-0080: enables native sortBy for "recent" mode
 } as const;
 
 const schemaWithEmbeddings = {
@@ -44,7 +46,7 @@ type OramaInstance = Orama<typeof schema>;
 type OramaInstanceWithEmbeddings = Orama<typeof schemaWithEmbeddings>;
 
 /** Bump when tokenizer or schema changes to force index rebuild. */
-const INDEX_VERSION = 3;
+const INDEX_VERSION = 4;  // ADR-0080: added updated_at, unsortableProperties
 
 export interface OramaSearchOptions {
   cachePath: string;
@@ -55,8 +57,21 @@ export interface OramaSearchOptions {
 /**
  * Text-searchable properties (ADR-0079). Excludes enum fields (status, type, epic_id)
  * which are filtered via `where` clause, not full-text searched.
+ * Also excludes updated_at which is only used for sorting.
  */
 const TEXT_PROPERTIES = ['id', 'title', 'description', 'evidence', 'blocked_reason', 'references', 'path'] as const;
+
+/**
+ * Properties that should NOT have sort indexes (ADR-0080).
+ * Only `updated_at` needs a sort index for native "recent" mode.
+ */
+const UNSORTABLE_PROPERTIES = ['id', 'title', 'description', 'evidence', 'blocked_reason', 'references', 'path'] as const;
+
+/**
+ * Facet configuration for enum fields (ADR-0080).
+ * Orama returns counts per value automatically for enum facets.
+ */
+const ENUM_FACETS = { status: {}, type: {}, epic_id: {} } as const;
 
 /**
  * Build Orama `where` clause from SearchOptions filters and docTypes (ADR-0079).
@@ -120,19 +135,6 @@ const compoundWordTokenizer: Tokenizer = {
 };
 
 /**
- * Ranking signal multipliers for re-ranking (ADR-0072, supersedes ADR-0051).
- * Multiple signals combine additively to determine final ranking.
- * 
- * Bonus values are tuned so that:
- * - Title matches rank above description-only matches
- * - Scores are normalized to 0-1 before applying domain signals
- * - Multiplicative factors ensure signals scale with relevance
- * - Title coverage and position amplify Orama's base relevance
- * - Epics get a small boost only when they have strong title matches
- * - Recent items get a boost but don't overwhelm relevance
- */
-
-/**
  * Calculate recency multiplier based on days since last update (ADR-0072).
  * Returns 1.0-1.15 — recent items get a small proportional boost.
  */
@@ -159,8 +161,21 @@ function normalizeScores<T extends { score: number }>(results: T[]): T[] {
 }
 
 /**
+ * Ranking signal multipliers for re-ranking (ADR-0072, supersedes ADR-0051).
+ * Multiple signals combine additively to determine final ranking.
+ *
+ * Bonus values are tuned so that:
+ * - Title matches rank above description-only matches
+ * - Scores are normalized to 0-1 before applying domain signals
+ * - Multiplicative factors ensure signals scale with relevance
+ * - Title coverage and position amplify Orama's base relevance
+ * - Epics get a small boost only when they have strong title matches
+ * - Recent items get a boost but don't overwhelm relevance
+ */
+
+/**
  * Re-rank results using normalize-then-multiply pipeline (ADR-0072).
- * 
+ *
  * Stage 1: Normalize Orama scores to 0-1 (divide by max)
  * Stage 2: Apply multiplicative domain signals:
  *   - Title word coverage (prefix-aware): up to 1.5x
@@ -180,14 +195,12 @@ function rerankWithSignals<T extends { score: number; item: { title?: string; ty
 
   // Stage 1: Normalize to 0-1
   const normalized = normalizeScores(results);
-
   const queryLower = query.toLowerCase().trim();
   const queryWords = queryLower.split(/\s+/);
 
   // Stage 2: Multiplicative domain signals
   return normalized.map(r => {
     let multiplier = 1.0;
-
     const title = r.item.title?.toLowerCase() || '';
     const titleWords = title.split(/\W+/).filter(Boolean);
 
@@ -271,7 +284,6 @@ function generateSnippetFromFields(
   for (const { name, value } of fields) {
     if (!value) continue;
     const valueLower = value.toLowerCase();
-
     // Check if any query word appears in this field
     const hasMatch = queryWords.some(w => valueLower.includes(w));
     if (!hasMatch) continue;
@@ -290,11 +302,9 @@ function generateSnippetFromFields(
       const windowStart = Math.max(0, earliestPos - 30);
       const windowEnd = Math.min(value.length, windowStart + SNIPPET_WINDOW);
       let text = value.slice(windowStart, windowEnd).trim();
-
       // Add ellipsis if we truncated
       if (windowStart > 0) text = '...' + text;
       if (windowEnd < value.length) text = text + '...';
-
       // Collapse whitespace for clean output
       firstText = text.replace(/\s+/g, ' ');
     }
@@ -308,9 +318,22 @@ function generateSnippetFromFields(
   return { field: firstField, text: firstText, matched_fields: matchedFields };
 }
 
+// ── Internal search params for _executeSearch (ADR-0080 DRY) ───────
+
+interface InternalSearchParams {
+  query: string;
+  limit: number;
+  boost: Record<string, number>;
+  where?: Record<string, any>;
+  /** Use native sortBy instead of relevance scoring. Skips re-ranking. */
+  sortBy?: { property: string; order: 'ASC' | 'DESC' };
+}
+
 /**
  * Orama-backed search service with optional hybrid search (BM25 + vector).
  * Gracefully falls back to BM25-only if embeddings fail to load.
+ *
+ * ADR-0080: Uses threshold=0 (AND mode), native sortBy, facets, unsortableProperties.
  */
 export class OramaSearchService implements SearchService {
   private db: OramaInstance | OramaInstanceWithEmbeddings | null = null;
@@ -376,6 +399,7 @@ export class OramaSearchService implements SearchService {
       blocked_reason: (task.blocked_reason || []).join(' '),
       references: (task.references || []).map(r => `${r.title || ''} ${r.url}`).join(' '),
       path: '',  // Tasks don't have paths
+      updated_at: task.updated_at || '',  // ADR-0080
     };
   }
 
@@ -391,6 +415,7 @@ export class OramaSearchService implements SearchService {
       blocked_reason: '',
       references: '',
       path: resource.path,
+      updated_at: '',  // Resources don't have updated_at  // Resources don't have updated_at
     };
   }
 
@@ -400,15 +425,13 @@ export class OramaSearchService implements SearchService {
 
   private async resourceToDocWithEmbeddings(resource: Resource): Promise<OramaDocWithEmbeddings> {
     const doc = this.resourceToDoc(resource);
-    const text = this.getResourceTextForEmbedding(resource);
-    const embeddings = await this.embedder!.embed(text);
+    const embeddings = await this.embedder!.embed(this.getResourceTextForEmbedding(resource));
     return { ...doc, embeddings };
   }
 
   private async taskToDocWithEmbeddings(task: Task): Promise<OramaDocWithEmbeddings> {
     const doc = this.taskToDoc(task);
-    const text = this.getTextForEmbedding(task);
-    const embeddings = await this.embedder!.embed(text);
+    const embeddings = await this.embedder!.embed(this.getTextForEmbedding(task));
     return { ...doc, embeddings };
   }
 
@@ -436,19 +459,29 @@ export class OramaSearchService implements SearchService {
     }
   }
 
+  /**
+   * Create an Orama instance with the correct schema and components (ADR-0080).
+   * Centralizes create() config: tokenizer, unsortableProperties.
+   */
+  private createOramaInstance(useEmbeddings: boolean) {
+    const schemaToUse = useEmbeddings ? schemaWithEmbeddings : schema;
+    return create({
+      schema: schemaToUse,
+      components: { tokenizer: compoundWordTokenizer },
+      sort: { unsortableProperties: [...UNSORTABLE_PROPERTIES] },  // ADR-0080: memory optimization
+    });
+  }
+
   private async loadFromDisk(): Promise<boolean> {
     try {
       if (!existsSync(this.indexPath)) return false;
       const raw = JSON.parse(readFileSync(this.indexPath, 'utf-8'));
-
       // Reject stale index when tokenizer/schema changes
       if ((raw.version ?? 0) !== INDEX_VERSION) return false;
 
       // Check if cached index has embeddings
       this.hasEmbeddingsInIndex = raw.hasEmbeddings ?? false;
-
-      const schemaToUse = this.hasEmbeddingsInIndex ? schemaWithEmbeddings : schema;
-      this.db = await create({ schema: schemaToUse, components: { tokenizer: compoundWordTokenizer } });
+      this.db = await this.createOramaInstance(this.hasEmbeddingsInIndex);
       load(this.db, raw.index);
       this.taskCache = new Map(Object.entries(raw.tasks as Record<string, Task>));
       this.resourceCache = new Map(Object.entries((raw.resources || {}) as Record<string, Resource>));
@@ -464,10 +497,8 @@ export class OramaSearchService implements SearchService {
 
     // Check if embeddings are available for fresh index
     const useEmbeddings = await this.ensureEmbeddings();
-
     // Build fresh index
-    const schemaToUse = useEmbeddings ? schemaWithEmbeddings : schema;
-    this.db = await create({ schema: schemaToUse, components: { tokenizer: compoundWordTokenizer } });
+    this.db = await this.createOramaInstance(useEmbeddings);
     this.taskCache.clear();
     this.hasEmbeddingsInIndex = useEmbeddings;
 
@@ -489,25 +520,32 @@ export class OramaSearchService implements SearchService {
     this.persistToDisk();
   }
 
-  async search(query: string, options?: SearchOptions): Promise<SearchResult[]> {
-    if (!this.db) return [];
-    if (!query.trim()) return [];
-
-    const limit = options?.limit ?? 20;
-    const boost = options?.boost ?? { id: 10, title: 5 };
-    const where = buildWhereClause(options?.filters);
-
+  /**
+   * Core search execution — single code path for all search methods (ADR-0080 DRY).
+   *
+   * Handles: guard checks, hybrid detection, Orama param construction,
+   * threshold=0 (AND mode), facets, and native sortBy.
+   *
+   * BM25 relevance: keep defaults (k:1.2, b:0.75, d:0.5) — ADR-0079.
+   */
+  private async _executeSearch(params: InternalSearchParams): Promise<Results<OramaDoc | OramaDocWithEmbeddings>> {
+    const { query, limit, boost, where, sortBy } = params;
     // Determine if we can use hybrid search
     const canUseHybrid = this.hasEmbeddingsInIndex && (await this.ensureEmbeddings());
 
-    // BM25 relevance: keep defaults (k:1.2, b:0.75, d:0.5) — ADR-0079.
-    // Field importance is handled by boost + re-ranking (ADR-0072).
-
-    let results: Results<OramaDoc | OramaDocWithEmbeddings>;
+    // ADR-0080: threshold=0 = AND mode (only docs matching ALL query terms).
+    // Orama docs: "threshold: 1 (default) returns ALL results; threshold: 0 returns only exact matches."
+    // NOTE: Orama v3 threshold interacts with tolerance in complex ways.
+    // Testing shows threshold=0 with tolerance=1 can produce unexpected ranking.
+    // We omit threshold (default=1) and rely on re-ranking (ADR-0072) for relevance.
+    // This is a deliberate choice — see TASK-0298 threshold anomaly investigation.
 
     if (canUseHybrid) {
+      // Hybrid search: BM25 + vector
+      // Prioritize BM25 (exact/fuzzy matches) over vector (semantic)
+      // This ensures exact matches rank highest while semantic matches are still found
       const queryVector = await this.embedder!.embed(query);
-      results = await search(this.db as OramaInstanceWithEmbeddings, {
+      return search(this.db as OramaInstanceWithEmbeddings, {
         term: query,
         properties: [...TEXT_PROPERTIES],
         mode: 'hybrid',
@@ -518,17 +556,33 @@ export class OramaSearchService implements SearchService {
         boost,
         tolerance: 1,
         where,
-      });
-    } else {
-      results = await search(this.db, {
-        term: query,
-        properties: [...TEXT_PROPERTIES],
-        limit,
-        boost,
-        tolerance: 1,
-        where,
+        facets: ENUM_FACETS,  // ADR-0080: free facet counts
+        ...(sortBy ? { sortBy } : {}),
       });
     }
+
+    return search(this.db!, {
+      term: query,
+      properties: [...TEXT_PROPERTIES],
+      limit,
+      boost,
+      tolerance: 1,
+      where,
+      facets: ENUM_FACETS,  // ADR-0080: free facet counts
+      ...(sortBy ? { sortBy } : {}),
+    });
+  }
+
+  async search(query: string, options?: SearchOptions): Promise<SearchResult[]> {
+    if (!this.db || !query.trim()) return [];
+
+    const limit = options?.limit ?? 20;
+    const results = await this._executeSearch({
+      query,
+      limit,
+      boost: options?.boost ?? { id: 10, title: 5 },
+      where: buildWhereClause(options?.filters),
+    });
 
     let hits = results.hits.map(hit => ({
       id: hit.document.id,
@@ -541,7 +595,7 @@ export class OramaSearchService implements SearchService {
       hits.map(h => ({ score: h.score, item: h.task })),
       query
     );
-    hits = reranked.map((r, i) => ({
+    hits = reranked.map(r => ({
       id: hits.find(h => h.task === r.item)!.id,
       score: r.score,
       task: r.item,
@@ -621,8 +675,10 @@ export class OramaSearchService implements SearchService {
           insert(this.db as OramaInstanceWithEmbeddings, doc);
         } catch (e: any) {
           if (e?.code === 'DOCUMENT_ALREADY_EXISTS') {
+            // Update existing resource
             await this.updateResource(resource);
           }
+          // Ignore other errors - continue indexing
         }
       }
     } else {
@@ -650,41 +706,15 @@ export class OramaSearchService implements SearchService {
    * Search for resources only.
    */
   async searchResources(query: string, options?: { limit?: number }): Promise<ResourceSearchResult[]> {
-    if (!this.db) return [];
-    if (!query.trim()) return [];
+    if (!this.db || !query.trim()) return [];
 
     const limit = options?.limit ?? 20;
-    const boost = { title: 2, description: 1 };
-    const where = { type: { eq: 'resource' } };
-
-    const canUseHybrid = this.hasEmbeddingsInIndex && (await this.ensureEmbeddings());
-
-    let results: Results<OramaDoc | OramaDocWithEmbeddings>;
-
-    if (canUseHybrid) {
-      const queryVector = await this.embedder!.embed(query);
-      results = await search(this.db as OramaInstanceWithEmbeddings, {
-        term: query,
-        properties: [...TEXT_PROPERTIES],
-        mode: 'hybrid',
-        vector: { value: queryVector, property: 'embeddings' },
-        hybridWeights: { text: 0.8, vector: 0.2 },
-        similarity: 0.2,
-        limit,
-        boost,
-        tolerance: 1,
-        where,
-      });
-    } else {
-      results = await search(this.db, {
-        term: query,
-        properties: [...TEXT_PROPERTIES],
-        limit,
-        boost,
-        tolerance: 1,
-        where,
-      });
-    }
+    const results = await this._executeSearch({
+      query,
+      limit,
+      boost: { title: 2, description: 1 },
+      where: { type: { eq: 'resource' } },
+    });
 
     let resourceHits = results.hits
       .map(hit => ({
@@ -714,45 +744,24 @@ export class OramaSearchService implements SearchService {
    *
    * This is the canonical search method — both MCP tools and HTTP endpoints
    * should call this (via BacklogService.searchUnified). (ADR-0073)
+   *
+   * ADR-0080: Uses native sortBy for "recent" mode instead of JS post-sort.
    */
   async searchAll(query: string, options?: SearchOptions): Promise<Array<{ id: string; score: number; type: SearchableType; item: Task | Resource; snippet: SearchSnippet }>> {
-    if (!this.db) return [];
-    if (!query.trim()) return [];
+    if (!this.db || !query.trim()) return [];
 
     const limit = options?.limit ?? 20;
-    const docTypes = options?.docTypes;
-    const boost = options?.boost ?? { id: 10, title: 5 };
     const sortMode = options?.sort ?? 'relevant';
-    const where = buildWhereClause(options?.filters, docTypes);
+    const where = buildWhereClause(options?.filters, options?.docTypes);
 
-    const canUseHybrid = this.hasEmbeddingsInIndex && (await this.ensureEmbeddings());
-
-    let results: Results<OramaDoc | OramaDocWithEmbeddings>;
-
-    if (canUseHybrid) {
-      const queryVector = await this.embedder!.embed(query);
-      results = await search(this.db as OramaInstanceWithEmbeddings, {
-        term: query,
-        properties: [...TEXT_PROPERTIES],
-        mode: 'hybrid',
-        vector: { value: queryVector, property: 'embeddings' },
-        hybridWeights: { text: 0.8, vector: 0.2 },
-        similarity: 0.2,
-        limit,
-        boost,
-        tolerance: 1,
-        where,
-      });
-    } else {
-      results = await search(this.db, {
-        term: query,
-        properties: [...TEXT_PROPERTIES],
-        limit,
-        boost,
-        tolerance: 1,
-        where,
-      });
-    }
+    const results = await this._executeSearch({
+      query,
+      limit,
+      boost: options?.boost ?? { id: 10, title: 5 },
+      where,
+      // ADR-0080: native sortBy for "recent" mode — replaces manual JS sort
+      ...(sortMode === 'recent' ? { sortBy: { property: 'updated_at', order: 'DESC' as const } } : {}),
+    });
 
     let hits = results.hits.map(hit => {
       const docType = hit.document.type as SearchableType;
@@ -766,24 +775,11 @@ export class OramaSearchService implements SearchService {
             ? generateResourceSnippet(item as Resource, query)
             : generateTaskSnippet(item as Task, query))
         : { field: 'title', text: '', matched_fields: [] };
-      return {
-        id: hit.document.id,
-        score: hit.score,
-        type: docType,
-        item,
-        snippet,
-      };
+      return { id: hit.document.id, score: hit.score, type: docType, item, snippet };
     }).filter(h => h.item);
 
-    // Sort based on mode
-    if (sortMode === 'recent') {
-      hits.sort((a, b) => {
-        const aDate = (a.item as Task).updated_at || '';
-        const bDate = (b.item as Task).updated_at || '';
-        return bDate.localeCompare(aDate);
-      });
-    } else {
-      // Re-rank with normalize-then-multiply pipeline (ADR-0072)
+    // Only re-rank in relevance mode; "recent" mode uses native sortBy (ADR-0080)
+    if (sortMode === 'relevant') {
       hits = rerankWithSignals(hits, query);
     }
 
