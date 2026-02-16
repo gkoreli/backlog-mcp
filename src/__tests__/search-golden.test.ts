@@ -97,6 +97,13 @@ const GOLDEN_TASKS: Task[] = [
     title: 'Real-time collaboration',
     description: 'WebSocket-based real-time updates for multi-user editing',
   }),
+  // CamelCase compound word task (mirrors real TASK-0273 pattern)
+  makeTask({
+    id: 'TASK-0009',
+    title: 'Create YavapaiMFE ownership transfer documentation',
+    description: 'Create comprehensive starter doc for new team taking ownership of FeatureStore (YavapaiMFE).\n\nMFE ID: `featurestore`\nFeature flag: `featureStore`\nMain package: RhinestoneMonarchYavapaiMFE',
+    status: 'done',
+  }),
 ];
 
 describe('Search Golden Benchmark', () => {
@@ -188,6 +195,28 @@ describe('Search Golden Benchmark', () => {
         const mixed = await service.search('SpOtLiGhT');
         expect(lower[0].task.id).toBe(upper[0].task.id);
         expect(lower[0].task.id).toBe(mixed[0].task.id);
+      });
+    });
+
+    describe('camelCase compound words', () => {
+      it('"feature store" finds task with "FeatureStore" in description', async () => {
+        const results = await service.search('feature store');
+        expect(results.some(r => r.task.id === 'TASK-0009')).toBe(true);
+      });
+
+      it('"featurestore" (no space) still finds the task', async () => {
+        const results = await service.search('featurestore');
+        expect(results.some(r => r.task.id === 'TASK-0009')).toBe(true);
+      });
+
+      it('"feature store mfe" finds the task', async () => {
+        const results = await service.search('feature store mfe');
+        expect(results.some(r => r.task.id === 'TASK-0009')).toBe(true);
+      });
+
+      it('PascalCase in title: "YavapaiMFE" splits into searchable parts', async () => {
+        const results = await service.search('Yavapai');
+        expect(results.some(r => r.task.id === 'TASK-0009')).toBe(true);
       });
     });
   });

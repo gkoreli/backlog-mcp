@@ -43,6 +43,9 @@ const schemaWithEmbeddings = {
 type OramaInstance = Orama<typeof schema>;
 type OramaInstanceWithEmbeddings = Orama<typeof schemaWithEmbeddings>;
 
+/** Bump when tokenizer or schema changes to force index rebuild. */
+const INDEX_VERSION = 2;
+
 export interface OramaSearchOptions {
   cachePath: string;
   /** Enable hybrid search with local embeddings. Default: true */
@@ -50,19 +53,46 @@ export interface OramaSearchOptions {
 }
 
 /**
- * Custom tokenizer that expands hyphenated words while preserving originals.
+ * Split a word on camelCase/PascalCase boundaries.
+ * "FeatureStore" → ["Feature", "Store"]
+ * "getHTTPResponse" → ["get", "HTTP", "Response"]
+ * "simple" → ["simple"] (no split)
  */
-const hyphenAwareTokenizer: Tokenizer = {
+function splitCamelCase(word: string): string[] {
+  // Insert boundary marker between lowercase→uppercase and acronym→word transitions
+  return word
+    .replace(/([a-z\d])([A-Z])/g, '$1\0$2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1\0$2')
+    .split('\0')
+    .filter(Boolean);
+}
+
+/**
+ * Custom tokenizer that expands compound words (hyphens + camelCase).
+ * "FeatureStore" → ["featurestore", "feature", "store"]
+ * "keyboard-first" → ["keyboard-first", "keyboard", "first"]
+ */
+const compoundWordTokenizer: Tokenizer = {
   language: 'english',
   normalizationCache: new Map(),
   tokenize(input: string): string[] {
     if (typeof input !== 'string') return [];
-    const tokens = input.toLowerCase().split(/[^a-z0-9'-]+/gi).filter(Boolean);
+    // Split on non-alphanumeric (keeping hyphens/apostrophes) BEFORE lowercasing
+    const rawTokens = input.split(/[^a-zA-Z0-9'-]+/).filter(Boolean);
     const expanded: string[] = [];
-    for (const token of tokens) {
-      expanded.push(token);
-      if (token.includes('-')) {
-        expanded.push(...token.split(/-+/).filter(Boolean));
+    for (const raw of rawTokens) {
+      const lower = raw.toLowerCase();
+      expanded.push(lower);
+      // Expand hyphens: "keyboard-first" → + ["keyboard", "first"]
+      if (raw.includes('-')) {
+        expanded.push(...lower.split(/-+/).filter(Boolean));
+      }
+      // Expand camelCase: "FeatureStore" → + ["feature", "store"]
+      const camelParts = splitCamelCase(raw);
+      if (camelParts.length > 1) {
+        for (const part of camelParts) {
+          expanded.push(part.toLowerCase());
+        }
       }
     }
     return [...new Set(expanded)];
@@ -374,6 +404,7 @@ export class OramaSearchService implements SearchService {
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
       const data = save(this.db);
       const serialized = JSON.stringify({
+        version: INDEX_VERSION,
         index: data,
         tasks: Object.fromEntries(this.taskCache),
         resources: Object.fromEntries(this.resourceCache),
@@ -390,11 +421,14 @@ export class OramaSearchService implements SearchService {
       if (!existsSync(this.indexPath)) return false;
       const raw = JSON.parse(readFileSync(this.indexPath, 'utf-8'));
 
+      // Reject stale index when tokenizer/schema changes
+      if ((raw.version ?? 0) !== INDEX_VERSION) return false;
+
       // Check if cached index has embeddings
       this.hasEmbeddingsInIndex = raw.hasEmbeddings ?? false;
 
       const schemaToUse = this.hasEmbeddingsInIndex ? schemaWithEmbeddings : schema;
-      this.db = await create({ schema: schemaToUse, components: { tokenizer: hyphenAwareTokenizer } });
+      this.db = await create({ schema: schemaToUse, components: { tokenizer: compoundWordTokenizer } });
       load(this.db, raw.index);
       this.taskCache = new Map(Object.entries(raw.tasks as Record<string, Task>));
       this.resourceCache = new Map(Object.entries((raw.resources || {}) as Record<string, Resource>));
@@ -413,7 +447,7 @@ export class OramaSearchService implements SearchService {
 
     // Build fresh index
     const schemaToUse = useEmbeddings ? schemaWithEmbeddings : schema;
-    this.db = await create({ schema: schemaToUse, components: { tokenizer: hyphenAwareTokenizer } });
+    this.db = await create({ schema: schemaToUse, components: { tokenizer: compoundWordTokenizer } });
     this.taskCache.clear();
     this.hasEmbeddingsInIndex = useEmbeddings;
 

@@ -1,66 +1,69 @@
-# Research: Search Ranking Architecture (TASK-0285)
+# Research: CamelCase Compound Word Search (TASK-0296)
 
-## Current Architecture
+## Problem Statement
 
-### Two Competing Scoring Systems
+Searching "feature store" doesn't find TASK-0273, which contains "FeatureStore" (PascalCase) and `featurestore` (MFE ID) throughout its description. Only "feature store mfe transfer" finds it — as 2nd result.
 
-1. **Orama BM25** — produces base scores across all indexed fields
-2. **`rerankWithSignals()`** — adds fixed-point bonuses on top
+## Codebase Analysis
 
-### Orama BM25 Internals (v3.1.18)
+### Current Tokenizer (`orama-search-service.ts:58-69`)
 
-Formula: `idf * (d + tf * (k+1)) / (tf + k * (1 - b + b * fieldLength / avgFieldLength))`
-- Default params: k=1.2, b=0.75, d=0.5
-- Configurable via `relevance` search option: `{ k, b, d }`
-
-Score accumulation across fields:
-```
-docScore = Σ(BM25(field, term) × boost[field])  // for each field, for each query term
-```
-
-When a term matches in multiple fields, scores are additive. When multiple query terms match, scores accumulate with a 1.5x multiplier for documents matching multiple terms.
-
-### Current Boost Configuration
-```ts
-const boost = { id: 10, title: 2 };  // all other fields default to 1
+```typescript
+const hyphenAwareTokenizer: Tokenizer = {
+  tokenize(input: string): string[] {
+    const tokens = input.toLowerCase().split(/[^a-z0-9'-]+/gi).filter(Boolean);
+    // ... expands hyphens only
+  },
+};
 ```
 
-Title matches are only 2x description matches — far too low for task management search.
+**Critical flaw**: Lowercases BEFORE splitting, destroying camelCase boundaries.
 
-### Reranker Bonuses (Fixed Additive)
-```
-TITLE_STARTS_WITH: 20
-TITLE_EXACT_WORD: 10
-TITLE_PARTIAL: 3
-MULTI_WORD_MATCH: 8 per additional word
-EPIC_WITH_TITLE_MATCH: 5
-RECENCY: 1-5
-```
-Max possible bonus: ~49 points (starts-with + 4 extra words + epic + recency)
+### Token Flow — Current Behavior
 
-### The Magnitude Mismatch
+| Input | Tokens Produced | Problem |
+|-------|----------------|---------|
+| `"FeatureStore"` (indexed) | `["featurestore"]` | Single compound token |
+| `"feature store"` (query) | `["feature", "store"]` | Neither matches `"featurestore"` |
+| `"keyboard-first"` (indexed) | `["keyboard-first", "keyboard", "first"]` | ✅ Hyphens work |
 
-BM25 scores are **unbounded** — they depend on IDF, TF, document length, and field count. For our dataset:
-- Short documents, rare terms: BM25 ≈ 1-5
-- Long documents, common terms: BM25 ≈ 10-50+
-- With boost=2 on title: title contribution ≈ 2-10
+### Why Orama Can't Find It
 
-The reranker's fixed bonuses (max ~49) sometimes dominate (small BM25 scores) and sometimes get overwhelmed (large BM25 scores). This is the root cause of unpredictable ranking.
+1. BM25 does exact token matching (with tolerance=1 for fuzzy)
+2. `"feature"` (7 chars) vs `"featurestore"` (12 chars) = edit distance 5 → exceeds tolerance
+3. Document is invisible to the search engine for this query
 
-### Hybrid Mode Makes It Worse
+### Snippet Generation (Secondary Issue)
 
-In hybrid mode, Orama internally normalizes BM25 scores to 0-1 (min-max normalization), then blends with vector scores: `text * 0.8 + vector * 0.2`. Final scores are 0-1. The reranker then adds 5-49 points on top of 0-1 scores, meaning **the reranker ALWAYS dominates in hybrid mode** — the opposite problem from BM25-only mode.
+`generateSnippetFromFields` uses `valueLower.includes(w)` — substring matching. "feature" IS a substring of "featurestore", so snippets would work IF Orama found the document. But it doesn't.
 
-## Orama's Available Knobs
+### Re-ranking (Not the Issue)
 
-| Knob | What it does | Useful? |
-|------|-------------|---------|
-| `boost` per field | Multiplicative factor on BM25 per field | ✅ Yes — primary lever for title importance |
-| `relevance: {k, b, d}` | BM25 parameters | ⚠️ Global only, not per-field |
-| `tolerance` | Fuzzy matching (Levenshtein distance) | ✅ Already using (=1) |
-| `beforeSearch` / `afterSearch` hooks | Modify params or results | ⚠️ No per-field score access |
-| `threshold` | Min keyword match ratio | ✅ Already using default |
+The `rerankWithSignals` function operates on results Orama already found. Since Orama never returns TASK-0273, re-ranking can't help.
 
-Orama does NOT support: custom scoring functions, per-field BM25 params, score normalization API, or function-score queries.
+### Index Caching
 
-<insight>The fundamental problem is that additive bonuses on unbounded scores create unpredictable behavior. Normalizing scores to 0-1 first, then applying multiplicative domain signals, makes the two systems work together instead of fighting. The reranker should amplify Orama's relevance signal, not compete with it.</insight>
+Orama index is persisted to disk (`persistToDisk`/`loadFromDisk`). Any tokenizer change requires cache invalidation — stale indexes will have old tokenization.
+
+## Existing Patterns
+
+The hyphen expansion pattern is the exact precedent:
+- `"keyboard-first"` → `["keyboard-first", "keyboard", "first"]`
+- Preserves compound + adds components
+
+CamelCase should follow the same pattern:
+- `"FeatureStore"` → `["featurestore", "feature", "store"]`
+
+## Scope of Impact
+
+- All PascalCase/camelCase words in task titles, descriptions, evidence, references
+- Common in codebase: package names (`RhinestoneMonarchYavapaiMFE`), feature flags (`featureStore`), MFE IDs
+- Affects both indexing (document tokens) and querying (query tokens) symmetrically
+
+## Constraints
+
+- Must not break existing search behavior (hyphen expansion, fuzzy matching, ranking)
+- Must handle index cache invalidation
+- Tokenizer is shared between indexing and querying — changes are symmetric
+
+<insight>The tokenizer lowercases before splitting, destroying camelCase boundaries. CamelCase compound words like "FeatureStore" become single tokens ("featurestore") that can't match space-separated query words ("feature", "store"). The fix is to split camelCase boundaries before lowercasing, mirroring the existing hyphen-expansion pattern.</insight>
