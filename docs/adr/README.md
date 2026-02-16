@@ -8,9 +8,13 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0081. Independent Retrievers with Linear Fusion Scoring](./0081-independent-retrievers-linear-fusion.md) - Replace hybrid mode + shadow re-ranking with independent BM25/vector retrievers and linear fusion - 2026-02-16
 - [0080. Orama Search Best Practices Alignment](./0080-orama-search-best-practices.md) - Native sortBy, facets, unsortableProperties, DRY search execution, updated_at schema - 2026-02-16
 - [0079. Use Orama Native Filtering and Schema Best Practices](./0079-orama-native-filtering.md) - Migrate to enum schema types, native where filtering, properties restriction, insertMultiple - 2026-02-16
-- [0072. Normalize-Then-Multiply Search Scoring Architecture](./0072-normalize-then-multiply-scoring.md) - Replace additive reranking with normalized multiplicative scoring pipeline - 2026-02-12
+
+### Superseded
+
+- ~~[0072. Normalize-Then-Multiply Search Scoring Architecture](./0072-normalize-then-multiply-scoring.md)~~ - Superseded by ADR-0081 - 2026-02-12
 - [0071. Migrate spotlight-search innerHTML to html:inner directive](./0071-migrate-spotlight-search-innerhtml-to-html-inner-directive.md) - Replace imperative DOM manipulation with html:inner directives and text bindings - 2026-02-12
 - [0070. Shared Resource Link Routing Hook](./0070-shared-resource-link-routing-hook.md) - Shared useResourceLinks hook for file:// and mcp:// link interception - 2026-02-11
 - [0069. Template Engine Auto-Quoting for Unquoted Attribute Expressions](./0069-template-auto-quoting-unquoted-attributes.md) - Context-aware state machine to auto-quote markers in unquoted attribute positions - 2026-02-11
