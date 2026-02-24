@@ -61,6 +61,10 @@ jobs:
         if: steps.version.outputs.changed == 'true'
         run: pnpm test
 
+      - name: Upgrade npm (required for OIDC trusted publishing)
+        if: steps.version.outputs.changed == 'true'
+        run: npm install -g npm@latest
+
       - name: Create and push tag
         if: steps.version.outputs.changed == 'true'
         run: |
