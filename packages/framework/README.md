@@ -53,7 +53,6 @@ when(condition, () => html`...`)
 each(items, (item) => html`...`)
 
 // Dependency Injection
-const Token = createToken<T>('name')
 provide(Token, instance)
 inject(Token)
 
