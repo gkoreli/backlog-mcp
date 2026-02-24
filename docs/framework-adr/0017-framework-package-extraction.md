@@ -18,7 +18,7 @@ The framework was the odd one out: a self-contained library with its own tests, 
 
 ## Decision
 
-Extract the framework into `packages/framework/` as `@backlog-mcp/framework` — a private workspace package with:
+Extract the framework into `packages/framework/` as `nisli` — a private workspace package with:
 
 - **Zero dependencies** — pure TypeScript, no npm packages
 - **Single barrel export** — `"." → "./src/index.ts"`, consistent with `@backlog-mcp/shared`
@@ -26,12 +26,12 @@ Extract the framework into `packages/framework/` as `@backlog-mcp/framework` —
 - **Own test suite** — 215 tests across 11 files, running independently via vitest
 - **`publishConfig`** — ready for future npm publish if the framework is ever released standalone
 
-The viewer imports the framework as `@backlog-mcp/framework` — the real package name, no aliases.
+The viewer imports the framework as `nisli` — the real package name, no aliases.
 
 ### Dependency graph
 
 ```
-@backlog-mcp/shared ────→ @backlog-mcp/viewer ←──── @backlog-mcp/framework
+@backlog-mcp/shared ────→ @backlog-mcp/viewer ←──── nisli
                                ↓ (static file copy)
                           backlog-mcp (server)
 ```
@@ -50,7 +50,7 @@ Framework and shared are independent leaf packages. Viewer depends on both. Serv
 
 ## Vision
 
-`@backlog-mcp/framework` is a minimal, zero-dependency reactive web component framework. It is intentionally small and opinionated:
+`nisli` is a minimal, zero-dependency reactive web component framework. It is intentionally small and opinionated:
 
 - **Signals over virtual DOM** — fine-grained reactivity without diffing
 - **Tagged templates over JSX** — no build transform required
@@ -62,7 +62,7 @@ The framework exists to prove that you don't need a large runtime to build react
 
 ## Consequences
 
-- All viewer imports changed from `@framework/*` (path alias) to `@backlog-mcp/framework` (real package)
+- All viewer imports changed from `@framework/*` (path alias) to `nisli` (real package)
 - The `@framework` alias was removed from tsconfig, vitest config, and esbuild config
 - Multi-line deep imports were consolidated into single barrel imports per file (net -75 lines)
 - `useHostEvent` was added to the barrel export (was previously only accessible via deep import)

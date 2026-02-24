@@ -76,9 +76,6 @@ importers:
 
   packages/viewer:
     dependencies:
-      '@backlog-mcp/framework':
-        specifier: workspace:*
-        version: link:../framework
       '@backlog-mcp/shared':
         specifier: workspace:*
         version: link:../shared
@@ -106,6 +103,9 @@ importers:
       mermaid:
         specifier: ^11.12.3
         version: 11.12.3
+      nisli:
+        specifier: workspace:*
+        version: link:../framework
     devDependencies:
       happy-dom:
         specifier: ^20.5.3

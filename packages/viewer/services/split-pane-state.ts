@@ -10,7 +10,7 @@
  *
  * See ADR 0010 Gap 2, ADR 0011 for design rationale.
  */
-import { signal } from '@backlog-mcp/framework';
+import { signal } from 'nisli';
 
 export type PaneContent = 'resource' | 'mcp' | 'activity';
 

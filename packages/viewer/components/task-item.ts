@@ -7,7 +7,7 @@
  *
  * Uses: component, computed, html, when, inject, Emitter
  */
-import { computed, component, html, when, inject } from '@backlog-mcp/framework';
+import { computed, component, html, when, inject } from 'nisli';
 import { getTypeConfig } from '../type-registry.js';
 import { AppState } from '../services/app-state.js';
 import { TaskBadge } from './task-badge.js';

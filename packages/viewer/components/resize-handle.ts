@@ -10,7 +10,7 @@
  * <div class="right-pane">...</div>
  * ```
  */
-import { component, html, onMount, onCleanup, useHostEvent } from '@backlog-mcp/framework';
+import { component, html, onMount, onCleanup, useHostEvent } from 'nisli';
 
 type ResizeHandleProps = {
   storageKey: string;

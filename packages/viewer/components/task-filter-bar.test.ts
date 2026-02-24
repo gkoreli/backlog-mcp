@@ -7,7 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { flushEffects, resetInjector, provide, inject } from '@backlog-mcp/framework';
+import { flushEffects, resetInjector, provide, inject } from 'nisli';
 import { AppState } from '../services/app-state.js';
 
 // ── Mock TYPE_REGISTRY before importing component ────────────────────

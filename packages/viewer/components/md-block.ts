@@ -9,7 +9,7 @@
  */
 
 import { marked } from '../services/markdown.js';
-import { computed, effect, component, html, useHostEvent, ref } from '@backlog-mcp/framework';
+import { computed, effect, component, html, useHostEvent, ref } from 'nisli';
 
 export type MdBlockProps = {
   content: string;

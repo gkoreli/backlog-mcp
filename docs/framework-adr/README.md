@@ -1,6 +1,6 @@
 # Framework Architecture Decision Records
 
-ADRs for the `@backlog-mcp/framework` reactive web component library (`packages/framework/`).
+ADRs for the `nisli` reactive web component library (`packages/framework/`).
 
 These are separate from the main project ADRs in `docs/adr/` because the framework is a self-contained subsystem with its own design trajectory.
 

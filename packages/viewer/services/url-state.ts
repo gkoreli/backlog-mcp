@@ -5,7 +5,7 @@
  * Reads URL → signals. Writes signals → URL. Handles popstate.
  * No localStorage, no scope derivation, no domain logic.
  */
-import { signal, effect } from '@backlog-mcp/framework';
+import { signal, effect } from 'nisli';
 
 export class UrlState {
   readonly filter = signal('active');
