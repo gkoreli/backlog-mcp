@@ -26,38 +26,45 @@ const Counter = component('x-counter', () => {
 ## Features
 
 - **Signals** — Fine-grained reactivity with `signal`, `computed`, `effect`
-- **Components** — Web Components with reactive setup functions
+- **Components** — Web Components with a composition-style setup function
 - **Templates** — Tagged template literals with automatic signal binding
-- **Dependency Injection** — `provide` / `inject` with typed tokens
-- **Queries** — Declarative async data loading with caching
-- **Event Emitters** — Typed custom event dispatching
+- **Dependency Injection** — `inject` any class as a singleton, `provide` overrides for testing
+- **Queries** — Declarative async data loading with caching and auto-refetch
+- **Event Emitters** — Typed event bus with auto-disposal in component context
 - **Lifecycle** — `onMount`, `onCleanup`, `useHostEvent`
 - **Refs** — Direct element access via `ref()`
-- **Control Flow** — `when()` and `each()` for conditional and list rendering
+- **Control Flow** — `when()` for toggles, `each()` for keyed list rendering
 
 ## API
 
 ```typescript
 // Reactivity
-signal(value)           // Create a reactive signal
-computed(() => expr)    // Derived signal
+signal(value)           // Reactive signal
+computed(() => expr)    // Derived signal (lazy, cached)
 effect(() => { ... })   // Side effect that tracks dependencies
 
 // Components
-component('tag-name', setupFn)
-component('tag-name', { props: [...], shadow: true }, setupFn)
+component('tag-name', (props, host) => html`...`)
+component<Props>('tag-name', { props: [...] }, (props, host) => html`...`)
 
-// Templates
-html`<div>${signal}</div>`
+// Templates — signals are implicit, no .value needed
+html`<div>${count}</div>`
+html`<button @click=${handler}>Go</button>`
+html`<div class:active=${isActive}>...</div>`
+
+// Control flow
 when(condition, () => html`...`)
-each(items, (item) => html`...`)
+each(items, item => item.id, (item) => html`...`)
 
-// Dependency Injection
-provide(Token, instance)
-inject(Token)
+// Dependency injection — class IS the token
+inject(MyService)                    // Auto-creates singleton
+provide(MyService, () => mock)       // Override (testing)
 
 // Queries
-const { data, loading, error } = query(() => fetch(url))
+const { data, loading, error } = query(
+  () => ['tasks', id.value],         // Cache key (tracked)
+  () => api.getTasks(id.value),      // Fetcher
+)
 
 // Lifecycle
 onMount(() => { ... })
@@ -69,8 +76,9 @@ const el = ref<HTMLDivElement>()
 html`<div ${el}>...</div>`
 
 // Events
-const clicked = new Emitter<MouseEvent>(host, 'clicked')
-clicked.emit(event)
+class Nav extends Emitter<{ select: { id: string } }> {}
+inject(Nav).emit('select', { id })
+inject(Nav).on('select', ({ id }) => { ... })
 ```
 
 ## Size
