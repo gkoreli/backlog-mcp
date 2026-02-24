@@ -36,11 +36,7 @@ Add to your MCP config (`.mcp.json` or your MCP client config):
 
 ## Web Viewer
 
-Start the server and open `http://localhost:3030` for a visual task browser:
-
-```bash
-npx backlog-mcp serve
-```
+The web viewer is always available when the server is running — open `http://localhost:3030` in your browser. No separate command needed; the MCP server and viewer are the same process.
 
 Features:
 - Split pane layout with task list and detail view
@@ -183,12 +179,14 @@ write_resource uri="mcp://backlog/resources/log.md" \
 ## CLI
 
 ```bash
-backlog-mcp              # stdio MCP server (default, for MCP clients)
-backlog-mcp serve        # HTTP server with web viewer
+backlog-mcp              # stdio MCP server (default — auto-spawns HTTP server, bridges stdio to it)
+backlog-mcp serve        # Run HTTP server directly (MCP + viewer, no stdio bridge)
 backlog-mcp version      # Show version
 backlog-mcp status       # Server status (port, version, task count, uptime)
 backlog-mcp stop         # Stop the server
 ```
+
+The default mode auto-spawns a persistent HTTP server that serves both the MCP endpoint (`/mcp`) and the web viewer (`/`). The stdio bridge connects your MCP client to it. The HTTP server persists across sessions so multiple clients can share it.
 
 ## Configuration
 
