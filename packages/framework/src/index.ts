@@ -79,6 +79,7 @@ export {
 export {
   onMount,
   onCleanup,
+  useHostEvent,
 } from './lifecycle.js';
 
 // ── Declarative data loading ────────────────────────────────────────
