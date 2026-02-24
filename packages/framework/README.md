@@ -82,11 +82,11 @@ clicked.emit(event)
 
 nisli stands on the shoulders of giants:
 
-- [React](https://react.dev) — Component model, hooks-style setup functions, declarative UI
+- [React](https://react.dev) — Component model, declarative UI
 - [Solid](https://www.solidjs.com) — Signals, fine-grained reactivity, no virtual DOM
 - [Lit](https://lit.dev) — Web Components, tagged template literals
 - [Angular](https://angular.dev) — Dependency injection, typed tokens
-- [Vue](https://vuejs.org) — Reactive system design, computed properties
+- [Vue](https://vuejs.org) — Composition-style setup functions, reactive system design
 
 ## License
 
