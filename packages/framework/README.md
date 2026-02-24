@@ -78,6 +78,16 @@ clicked.emit(event)
 
 ~2,600 lines of TypeScript. Zero dependencies.
 
+## Inspiration
+
+nisli stands on the shoulders of giants:
+
+- [React](https://react.dev) — Component model, hooks-style setup functions, declarative UI
+- [Solid](https://www.solidjs.com) — Signals, fine-grained reactivity, no virtual DOM
+- [Lit](https://lit.dev) — Web Components, tagged template literals
+- [Angular](https://angular.dev) — Dependency injection, typed tokens
+- [Vue](https://vuejs.org) — Reactive system design, computed properties
+
 ## License
 
 MIT
