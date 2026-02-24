@@ -1,5 +1,5 @@
 /**
- * viewer/framework/ — Public API barrel export
+ * packages/framework/ — Public API barrel export
  *
  * This is the single import point for all framework primitives.
  *

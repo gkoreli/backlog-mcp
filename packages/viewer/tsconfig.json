@@ -7,7 +7,7 @@
     "sourceMap": false,
     "baseUrl": ".",
     "paths": {
-      "@framework/*": ["./framework/*"]
+      "@framework/*": ["../framework/src/*"]
     }
   },
   "include": ["**/*.ts"],

@@ -7,7 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       // Manual alias needed: vite-tsconfig-paths doesn't rewrite .js → .ts extensions
-      '@framework': resolve(__dirname, './framework'),
+      '@framework': resolve(__dirname, '../framework/src'),
     },
   },
   test: {

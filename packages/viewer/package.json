@@ -14,6 +14,7 @@
     "happy-dom": "^20.5.3"
   },
   "dependencies": {
+    "@backlog-mcp/framework": "workspace:*",
     "@backlog-mcp/shared": "workspace:*",
     "@orama/highlight": "^0.1.9",
     "diff": "^8.0.3",

@@ -11,7 +11,7 @@ const shared = {
   splitting: true,
   outdir: 'dist',
   assetNames: '[name]-[hash]',
-  alias: { '@framework': './framework' },
+  alias: { '@framework': '../framework/src' },
   loader: {
     '.css': 'css',
     '.svg': 'file',

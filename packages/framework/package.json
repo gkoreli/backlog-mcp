@@ -1,0 +1,14 @@
+{
+  "name": "@backlog-mcp/framework",
+  "version": "0.42.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}
