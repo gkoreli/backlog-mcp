@@ -186,12 +186,36 @@ The HTTP server persists across agent sessions — multiple MCP clients can shar
 All commands via npx:
 
 ```bash
-npx backlog-mcp              # Start stdio bridge + auto-spawn HTTP server (default)
-npx backlog-mcp serve        # Run HTTP server directly, no stdio bridge (optional)
-npx backlog-mcp status       # Server status (port, version, task count, uptime)
-npx backlog-mcp stop         # Stop the server
-npx backlog-mcp version      # Show version
+npx backlog-mcp                # Start stdio bridge + auto-spawn HTTP server (default)
+npx backlog-mcp status         # Check server status
+npx backlog-mcp stop           # Stop the server
+npx backlog-mcp version        # Show version
+npx backlog-mcp serve          # Run HTTP server in foreground (optional, see below)
 ```
+
+Sample outputs:
+
+```
+$ npx backlog-mcp status
+Server is running on port 3030
+Version: 0.44.0
+Data directory: /Users/you/.backlog
+Task count: 451
+Uptime: 3515s
+Viewer: http://localhost:3030/
+MCP endpoint: http://localhost:3030/mcp
+
+$ npx backlog-mcp stop
+Stopping server on port 3030...
+Server stopped
+
+$ npx backlog-mcp status
+Server is not running
+```
+
+The CLI exists for humans to inspect and manage the background server that agents use. Since the default mode spawns a detached process, you need `status` to check it and `stop` to shut it down.
+
+`serve` runs the HTTP server in the foreground instead of detached — useful for debugging, Docker containers, or running without an MCP client. In normal usage you never need it; the default command handles everything.
 
 ## Configuration
 
