@@ -15,39 +15,23 @@ export function registerWriteResourceTool(server: McpServer, service: IBacklogSe
  * The \`new_str\` parameter should contain the edited lines that should replace the \`old_str\``,
       inputSchema: z.object({
         id: z.string().describe('Task or epic ID, e.g. TASK-0001 or EPIC-0002'),
-        operation: z.preprocess(
-          // Workaround: MCP clients stringify object params with $ref/oneOf schemas
-          // https://github.com/anthropics/claude-code/issues/18260
-          (val) => typeof val === 'string' ? JSON.parse(val) : val,
-          z.discriminatedUnion('type', [
-            z.object({
-              type: z.literal('str_replace'),
-              old_str: z.string().describe('String in the body to replace (must match exactly)'),
-              new_str: z.string().describe('New string to replace old_str with'),
-            }),
-            z.object({
-              type: z.literal('insert'),
-              insert_line: z.number().describe('Line number after which new_str will be inserted'),
-              new_str: z.string().describe('String to insert'),
-            }),
-            z.object({
-              type: z.literal('append'),
-              new_str: z.string().describe('Content to append to the body'),
-            }),
-          ])
-        ).describe('Operation to apply to the body'),
+        type: z.enum(['str_replace', 'insert', 'append']).describe('Operation type'),
+        old_str: z.string().optional().describe('str_replace: exact string to replace'),
+        new_str: z.string().optional().describe('str_replace/insert/append: replacement or new content'),
+        insert_line: z.number().optional().describe('insert: line number to insert after'),
       }),
     },
-    async ({ id, operation }) => {
+    async ({ id, type, old_str, new_str, insert_line }) => {
       const task = await service.get(id);
       if (!task) {
         return { content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: `Task not found: ${id}` }) }] };
       }
 
       try {
+        const operation = { type, old_str, new_str: new_str ?? '', insert_line } as any;
         const newBody = applyOperation(task.description ?? '', operation);
         await service.save({ ...task, description: newBody, updated_at: new Date().toISOString() });
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ success: true, message: `Successfully applied ${operation.type} to ${id}` }) }] };
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ success: true, message: `Successfully applied ${type} to ${id}` }) }] };
       } catch (err) {
         return { content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) }) }] };
       }
