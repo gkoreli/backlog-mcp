@@ -6,11 +6,16 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import type { IBacklogService } from '../storage/service-types.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';
-import { withOperationLogging } from '../operations/index.js';
-import { paths } from '../utils/paths.js';
+// Note: paths.ts and operations/index.ts are NOT imported here — they pull in
+// Node.js modules (import.meta.url, fs, path) that break the Workers bundle.
+// name/version and the MCP server wrapper are injected via AppDeps.
 
 export interface AppDeps extends ToolDeps {
+  // Server identity — passed explicitly to avoid importing paths.ts in Workers
+  name?: string;
+  version?: string;
   // Node.js-only
+  wrapMcpServer?: (server: McpServer) => McpServer; // e.g. withOperationLogging
   staticMiddleware?: any;  // result of serveStatic({ root: '...' }) from @hono/node-server/serve-static
   eventBus?: any;          // for SSE push
   // Operation log — one of these is provided
@@ -37,14 +42,14 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   app.get('/health', (c) => c.json({ status: 'ok' }));
 
   // Version
-  app.get('/version', (c) => c.json(paths.getVersion()));
+  app.get('/version', (c) => c.json(deps?.version ?? '0.0.0'));
 
   // MCP endpoint — WebStandardStreamableHTTPServerTransport works on Node.js + Workers
   app.all('/mcp', async (c) => {
-    let server = new McpServer({ name: paths.packageJson.name, version: paths.getVersion() });
+    let server = new McpServer({ name: deps?.name ?? 'backlog-mcp', version: deps?.version ?? '0.0.0' });
     // Apply operation logging when operationLogger is available (local Node.js mode)
-    if (deps?.operationLogger) {
-      server = withOperationLogging(server);
+    if (deps?.wrapMcpServer) {
+      server = deps.wrapMcpServer(server);
     }
     registerTools(server, service, deps);
     if (deps?.resourceManager) {
@@ -112,7 +117,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   app.get('/api/status', async (c) => {
     const counts = await service.counts();
     return c.json({
-      version: paths.getVersion(),
+      version: deps?.version ?? '0.0.0',
       mode: deps?.db ? 'cloudflare-worker' : 'local',
       taskCount: counts.total_tasks + counts.total_epics,
     });

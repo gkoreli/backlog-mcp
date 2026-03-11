@@ -12,7 +12,7 @@ export interface WorkerEnv {
 export default {
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
     const service = new D1BacklogService(env.DB);
-    const app = createApp(service, { db: env.DB });
+    const app = createApp(service, { name: 'backlog-mcp', version: '0.46.0', db: env.DB });
     return app.fetch(request);
   },
 };
