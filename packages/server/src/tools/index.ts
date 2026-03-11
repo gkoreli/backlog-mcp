@@ -21,7 +21,7 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
   registerBacklogUpdateTool(server, service);
   registerBacklogDeleteTool(server, service);
   registerBacklogSearchTool(server, service);
-  registerWriteResourceTool(server, service, deps);
+  registerWriteResourceTool(server, service);
   if (deps?.resourceManager && deps?.operationLogger) {
     registerBacklogContextTool(server, service, { resourceManager: deps.resourceManager, operationLogger: deps.operationLogger });
   }

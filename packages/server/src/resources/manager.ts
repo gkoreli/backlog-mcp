@@ -1,11 +1,8 @@
-import { readFileSync, existsSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'node:fs';
-import { join, dirname, relative, basename } from 'node:path';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import matter from 'gray-matter';
-import { z } from 'zod';
 import { paths } from '@/utils/paths.js';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { Operation, WriteResourceResult } from './types.js';
-import { applyOperation } from './operations.js';
 import type { Resource } from '@/search/types.js';
 
 export interface ResourceContent {
@@ -143,71 +140,6 @@ export class ResourceManager {
   }
 
   /**
-   * Check if a URI points to a task file.
-   */
-  private isTaskUri(uri: string): boolean {
-    return uri.startsWith('mcp://backlog/tasks/');
-  }
-
-  /**
-   * Update the updated_at timestamp in task frontmatter.
-   */
-  private updateTaskTimestamp(content: string): string {
-    const parsed = matter(content);
-    if (parsed.data && typeof parsed.data === 'object') {
-      parsed.data.updated_at = new Date().toISOString();
-      return matter.stringify(parsed.content, parsed.data);
-    }
-    return content;
-  }
-
-  /**
-   * Write/modify resource content.
-   * Applies operations like str_replace, append, insert, etc.
-   * For task files, automatically updates the updated_at timestamp.
-   * 
-   * @param uri MCP URI
-   * @param operation Operation to apply
-   * @returns Result with success status and message
-   */
-  write(uri: string, operation: Operation): WriteResourceResult {
-    try {
-      const filePath = this.resolve(uri);
-      const isTask = this.isTaskUri(uri);
-      
-      if (!existsSync(filePath)) {
-        return {
-          success: false,
-          message: 'File not found',
-          error: `Resource not found: ${uri} (${operation.type} requires existing file). Use backlog_create to create new entities.`,
-        };
-      }
-
-      const fileContent = readFileSync(filePath, 'utf-8');
-
-      let newContent = applyOperation(fileContent, operation);
-      
-      // Update timestamp for task files
-      if (isTask) {
-        newContent = this.updateTaskTimestamp(newContent);
-      }
-      
-      writeFileSync(filePath, newContent, 'utf-8');
-
-      return {
-        success: true,
-        message: `Successfully applied ${operation.type} to ${uri}`,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Operation failed',
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
-  }
-
-  /**
    * Convert file path to MCP URI.
    * Pure mapping: {dataDir}/path/file.md → mcp://backlog/path/file.md
    * 
@@ -244,52 +176,6 @@ export class ResourceManager {
             mimeType: resource.mimeType, 
             text: resource.content 
           }] 
-        };
-      }
-    );
-  }
-
-  /**
-   * Register write_resource MCP tool.
-   */
-  registerWriteTool(server: McpServer) {
-    server.registerTool(
-      'write_resource',
-      {
-        description: `Edit existing files on the MCP server. All file creation goes through backlog_create.
- * The \`append\` command will add content to the end of an existing file, automatically adding a newline if the file doesn't end with one.
- Notes for using the \`str_replace\` command:
- * The \`old_str\` parameter should match EXACTLY one or more consecutive lines from the original file. Be mindful of whitespaces!
- * If the \`old_str\` parameter is not unique in the file, the replacement will not be performed. Make sure to include enough context in \`old_str\` to make it unique
- * The \`new_str\` parameter should contain the edited lines that should replace the \`old_str\``,
-        inputSchema: z.object({
-          uri: z.string().describe('MCP resource URI, e.g. mcp://backlog/path/to/file.md'),
-          operation: z.preprocess(
-            // Workaround: MCP clients stringify object params with $ref/oneOf schemas
-            // https://github.com/anthropics/claude-code/issues/18260
-            (val) => typeof val === 'string' ? JSON.parse(val) : val,
-            z.discriminatedUnion('type', [
-            z.object({
-              type: z.literal('str_replace'),
-              old_str: z.string().describe('String in file to replace (must match exactly)'),
-              new_str: z.string().describe('New string to replace old_str with'),
-            }),
-            z.object({
-              type: z.literal('insert'),
-              insert_line: z.number().describe('Line number after which new_str will be inserted'),
-              new_str: z.string().describe('String to insert'),
-            }),
-            z.object({
-              type: z.literal('append'),
-              new_str: z.string().describe('Content to append to the file'),
-            }),
-          ])).describe('Operation to apply'),
-        }),
-      },
-      async ({ uri, operation }) => {
-        const result = this.write(uri, operation);
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
         };
       }
     );
