@@ -673,7 +673,9 @@ registerTools(server, new D1BacklogService(env.DB))
 | `GET /resource`, `GET /mcp/resource` | Reads local filesystem files | Not available — no filesystem |
 | `GET /events` SSE | Live push via `eventBus` | Heartbeat-only `ReadableStream` (no Durable Objects) |
 | Static file serving | `serveStatic` from `@hono/node-server` | Served by Cloudflare Pages |
-| `backlog_context` MCP tool | Full — resourceManager + operationLogger | Full — service-injected, adapters differ |
+| `backlog_context` MCP tool | Full — resourceManager + operationLogger | Not registered (requires both deps) |
+| `write_resource` MCP tool — task URIs | Full via service | Full via `IBacklogService` |
+| `write_resource` MCP tool — resource URIs | Full via resourceManager (filesystem) | Returns clear error — no filesystem |
 | All other MCP tools | Full | Full — same `registerTools()` call, different `IBacklogService` adapter |
 
 **Notes:**
@@ -681,6 +683,7 @@ registerTools(server, new D1BacklogService(env.DB))
 - SSE is critical for the viewer UI auto-refresh (no manual reload when an agent mutates tasks). In Workers, real-time push requires Durable Objects (future work). Local mode delivers full SSE push.
 - `backlog_context` uses `service.getSync?.(id)` (optional sync lookup) for its synchronous hydration path. In cloud mode, the optional is absent and the async path runs. All functionality is preserved via the `IBacklogService` abstraction.
 - `GET /open/:id` (open file in OS editor) was removed — confirmed dead code, not used by any client.
+- `write_resource` was originally gated behind `resourceManager` — fixed by moving registration into `registerTools()` and routing task URIs through `IBacklogService`. See Phase 6 below.
 
 The app factory accepts an optional `deps` object: `createApp(service, { eventBus?, resourceManager?, operationLogger?, staticMiddleware?, wrapMcpServer? })`. Routes that require deps are only registered when deps are provided.
 
@@ -780,6 +783,35 @@ If neither `API_KEY` nor `JWT_SECRET` is configured, auth is disabled (local dev
 - **Web Crypto API is sufficient** — `crypto.subtle` covers HMAC-SHA256 (JWT signing) and SHA-256 (PKCE), no library needed, portable across all runtimes.
 - **Two secrets, three jobs** — `API_KEY` doubles as the authorization form password and direct Bearer credential. `JWT_SECRET` is server-internal only.
 - **Dual-path auth is additive** — Claude Desktop (direct Bearer) and Claude.ai web (OAuth JWT) coexist; neither breaks the other.
+
+---
+
+## Phase 6 — write_resource in Cloud Mode
+
+### Problem
+
+`write_resource` was registered only inside `hono-app.ts` when `deps?.resourceManager` was present. `ResourceManager` is filesystem-only (`node:fs`). In cloud mode, `resourceManager` is never injected → tool is silently absent from the Worker's tool list.
+
+### Root cause: wrong layer of responsibility
+
+The tool was implemented as part of the local filesystem layer (`ResourceManager.registerWriteTool()`), not as a service layer tool. This was the same singleton-coupling mistake that drove the Hono migration — the tool was coupled to one concrete implementation instead of the abstract `IBacklogService`.
+
+For task URIs (`mcp://backlog/tasks/TASK-XXXX.md`), `write_resource` is simply: read body → apply text operation → write back. `IBacklogService` already provides `getMarkdown()` and `save()` for exactly this.
+
+### Solution
+
+- Move `write_resource` into `registerTools()` — registered always, backed by `IBacklogService`
+- **Task URIs**: `service.getMarkdown()` → `applyOperation()` → `service.save()` — works in both modes
+- **Resource URIs** (ADRs, docs): delegate to `resourceManager` if present (local only); return clear error in cloud
+- Remove `resourceManager.registerWriteTool()` from `hono-app.ts` — no longer needed
+
+`applyOperation()` from `resources/operations.ts` is a pure text transform — no filesystem dependency — safe to import from the tools layer.
+
+### Distilled insights
+
+- **Tool registration belongs in `registerTools()`, always** — any tool gated behind a dep-check in the app factory is a smell; it means the tool is coupled to infrastructure rather than the service interface.
+- **`IBacklogService` is the right abstraction boundary** — if an operation can be expressed as `get` + transform + `save`, it belongs in the service layer. Filesystem details are the adapter's concern.
+- **Partial availability is better than silent absence** — `write_resource` in cloud mode works for task URIs and returns a clear, actionable error for resource URIs. Never silently omit a tool.
 
 ---
 

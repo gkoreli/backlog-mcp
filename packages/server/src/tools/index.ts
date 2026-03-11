@@ -7,6 +7,7 @@ import { registerBacklogUpdateTool } from './backlog-update.js';
 import { registerBacklogDeleteTool } from './backlog-delete.js';
 import { registerBacklogSearchTool } from './backlog-search.js';
 import { registerBacklogContextTool } from './backlog-context.js';
+import { registerWriteResourceTool } from './backlog-write-resource.js';
 
 export interface ToolDeps {
   resourceManager?: any;
@@ -20,6 +21,7 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
   registerBacklogUpdateTool(server, service);
   registerBacklogDeleteTool(server, service);
   registerBacklogSearchTool(server, service);
+  registerWriteResourceTool(server, service, deps);
   if (deps?.resourceManager && deps?.operationLogger) {
     registerBacklogContextTool(server, service, { resourceManager: deps.resourceManager, operationLogger: deps.operationLogger });
   }

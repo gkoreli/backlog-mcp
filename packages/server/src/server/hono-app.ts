@@ -235,7 +235,6 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     registerTools(server, service, deps);
     if (deps?.resourceManager) {
       deps.resourceManager.registerResource(server);
-      deps.resourceManager.registerWriteTool(server);
     }
 
     const transport = new WebStandardStreamableHTTPServerTransport({
