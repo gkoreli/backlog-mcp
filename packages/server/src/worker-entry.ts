@@ -13,6 +13,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { D1BacklogService } from './storage/d1-backlog-service.js';
 import { D1OperationLog } from './operations/d1-operation-log.js';
 import { registerWorkerTools } from './tools/worker-tools.js';
+import { handleApiRequest } from './worker-api-routes.js';
 
 export interface WorkerEnv {
   /** Cloudflare D1 database binding (configured in wrangler.jsonc) */
@@ -32,6 +33,10 @@ export default {
         },
       );
     }
+
+    // REST API routes
+    const apiResponse = await handleApiRequest(request, env);
+    if (apiResponse) return apiResponse;
 
     // MCP endpoint
     if (url.pathname === '/mcp') {

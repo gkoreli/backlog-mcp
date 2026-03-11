@@ -1,5 +1,10 @@
-// API URL dynamically uses the current page's port (works for both dev:3031 and prod:3030)
-export const API_URL = `http://localhost:${window.location.port || 3030}`;
+// Build-time injection via esbuild define (see build.mjs).
+// Falls back to current host/port for local mode.
+declare const __API_URL__: string | undefined;
+export const API_URL =
+  (typeof __API_URL__ !== 'undefined' && __API_URL__)
+    ? __API_URL__
+    : `http://localhost:${window.location.port || 3030}`;
 
 export interface Reference {
   url: string;

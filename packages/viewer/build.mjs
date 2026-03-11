@@ -16,6 +16,9 @@ const shared = {
     '.svg': 'file',
     '.html': 'copy',
   },
+  define: {
+    '__API_URL__': JSON.stringify(process.env.API_URL || ''),
+  },
 };
 
 // Per-entry loader override: logo.svg uses copy, all other .svg uses file

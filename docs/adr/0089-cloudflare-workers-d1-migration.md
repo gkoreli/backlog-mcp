@@ -1,7 +1,7 @@
 # 0089. Cloudflare Workers + D1 Migration — Serverless, Free, Edge
 
 **Date**: 2026-03-10
-**Status**: Proposed
+**Status**: Accepted — Phases 1–3 complete
 
 ## Context
 
@@ -261,11 +261,67 @@ interface Env {
 
 ### 11. Web Viewer (Cloudflare Pages)
 
+The viewer is a Vanilla-TS SPA built with esbuild (not Vite). It calls a set of REST endpoints on the server — **not** the MCP protocol endpoint. For cloud deployment, the Worker must expose these REST routes.
+
+#### REST endpoints the viewer calls
+
+| Path | Used by |
+|---|---|
+| `GET /tasks?filter=&q=&limit=` | Task list + search |
+| `GET /tasks/:id` | Task detail (returns task + `raw` markdown + `children[]` + `parentTitle`) |
+| `GET /operations?limit=&task=` | Activity panel |
+| `GET /operations/count/:taskId` | Badge count |
+| `GET /events` | SSE stream for real-time updates |
+| `GET /api/status` | System info modal |
+| `GET /search?q=` | Unified search (spotlight) |
+
+#### API URL — build-time injection
+
+The viewer uses esbuild's `define` feature to inject the API base URL at build time. The viewer checks a build-time constant before falling back to localhost:
+
+```typescript
+// utils/api.ts
+declare const __API_URL__: string;
+export const API_URL =
+  (typeof __API_URL__ !== 'undefined' && __API_URL__)
+    ? __API_URL__
+    : `http://localhost:${window.location.port || 3030}`;
+```
+
+```js
+// build.mjs — define block added
+define: {
+  '__API_URL__': JSON.stringify(process.env.API_URL || ''),
+}
+```
+
+For **local mode** (`npm run dev`): no env var → falls back to `http://localhost:<port>` (unchanged behaviour).
+For **Pages build**: set `API_URL=https://backlog-mcp.gogakoreli.workers.dev` → inlined at compile time.
+
+#### CORS
+
+Since the Pages domain (`backlog-mcp.pages.dev`) and Worker domain (`backlog-mcp.workers.dev`) differ, all Worker REST responses must include:
+```
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, POST, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Accept
+```
+Handle `OPTIONS` preflight with 204.
+
+#### SSE in Workers (heartbeat only — no push)
+
+Cloudflare Workers are stateless. There is no in-process event bus. The `/events` endpoint returns a `ReadableStream` SSE response that emits a heartbeat every 30 seconds but no change events. The viewer's `BacklogEvents` client connects successfully; it just never receives `task_changed`/`task_created` events.
+
+This means the cloud viewer is **pull-only** in Phase 3 — it does not auto-refresh when an agent mutates a task. Durable Objects would enable real-time push (Phase 4).
+
+#### Cloudflare Pages setup
+
 | Setting | Value |
 |---|---|
-| Build command | `pnpm --filter viewer build` |
+| Build command | `pnpm --filter @backlog-mcp/viewer build` |
 | Output directory | `packages/viewer/dist` |
-| Env var | `VITE_MCP_URL=https://backlog-mcp.<account>.workers.dev` |
+| Root directory | `/` (monorepo root) |
+| Env var | `API_URL=https://backlog-mcp.gogakoreli.workers.dev` |
 
 Pages auto-deploys on every push to `main`.
 
@@ -485,6 +541,61 @@ The filesystem implementation of `backlog_create` accepts a `source_path` param 
 
 **No Orama, no embeddings in Worker.**
 `worker-tools.ts` and `worker-entry.ts` import nothing from `@orama/orama`, `@huggingface/transformers`, `fastify`, `gray-matter`, or any `node:*` module. `backlog_search` in cloud mode uses `D1StorageAdapter.search()` (FTS5 `MATCH`) instead of Orama's hybrid BM25+vector pipeline. Vector search via Vectorize is Phase 3.
+
+---
+
+---
+
+## Implementation Notes (Phase 3 — completed 2026-03-10)
+
+Phase 3 connects the web viewer to the deployed Worker. Two work streams: **Worker REST API** and **viewer API URL injection**.
+
+### Worker REST API (`worker-api-routes.ts`)
+
+A new file `packages/server/src/worker-api-routes.ts` handles all viewer REST routes:
+
+```
+GET /tasks?filter=(active|completed|all)&q=&limit=       → D1BacklogService.list() / search()
+GET /tasks/:id                                            → get + children query + parentTitle
+GET /operations?limit=&task=                             → SELECT FROM operations
+GET /operations/count/:taskId                            → COUNT(*) WHERE task_id = ?
+GET /events                                              → ReadableStream SSE, heartbeat only
+GET /api/status                                          → {version, taskCount, mode: 'cloudflare-worker'}
+GET /search?q=&types=&limit=                             → D1BacklogService.searchUnified()
+OPTIONS *                                                → CORS preflight 204
+```
+
+All responses include CORS headers (`Access-Control-Allow-Origin: *`).
+
+`worker-entry.ts` is updated to dispatch to `handleApiRequest()` for paths other than `/mcp` and `/health`.
+
+### Viewer API URL
+
+`packages/viewer/utils/api.ts` replaces the hardcoded `http://localhost:PORT` with a build-time constant `__API_URL__` that falls back to localhost. `build.mjs` adds the `define` block, reading `process.env.API_URL`.
+
+### Files created / modified
+
+| File | Action |
+|---|---|
+| `packages/server/src/worker-api-routes.ts` | Created — REST API handler for viewer: `/tasks`, `/tasks/:id`, `/operations`, `/operations/count/:taskId`, `/events`, `/api/status`, `/search` |
+| `packages/server/src/worker-entry.ts` | Updated — dispatches to `handleApiRequest()` before MCP block |
+| `packages/viewer/utils/api.ts` | Updated — `API_URL` uses build-time `__API_URL__` constant with localhost fallback |
+| `packages/viewer/build.mjs` | Updated — `define: { '__API_URL__': JSON.stringify(process.env.API_URL || '') }` |
+| `wrangler.jsonc` (root) | Deleted — was a placeholder with wrong DB ID, caused Pages warnings; deploy via `packages/server/` |
+
+**Live viewer**: `https://backlog-mcp-viewer.pages.dev`
+
+### Key decisions / gotchas for Phase 3
+
+- **`/tasks/:id` children**: done with a second `D1BacklogService.list({ parent_id: id })` call — no join needed.
+- **`/operations` enrichment**: for each op with a `task_id`, fetch the task title and epic title from D1 via `service.get()` calls. Use a `Map` cache within the request to avoid duplicate lookups.
+- **SSE**: `ReadableStream` with 30s `setInterval` heartbeat. Workers support long-lived streaming responses; the heartbeat interval is I/O (not CPU), so it doesn't count against the 10ms CPU budget.
+- **No static file serving in Worker**: the Worker is pure API. Pages serves the built HTML/JS/CSS.
+- **CORS preflight**: `OPTIONS *` → 204 + CORS headers. Every JSON response also carries `Access-Control-Allow-Origin: *` to avoid preflight for cross-origin GETs.
+- **`/search` returns `SearchResult[]`**: uses `service.searchUnified()` (returns `{ item, score, type }[]`) — not `service.list()` which returns `Entity[]`. The viewer's spotlight uses this format.
+- **Build-time URL injection**: `API_URL=https://backlog-mcp.gogakoreli.workers.dev node build.mjs` bakes the URL into the bundle. No runtime env vars in the browser. Local mode with no `API_URL` set defaults to `http://localhost:3030`.
+- **Pages project created via**: `wrangler pages project create backlog-mcp-viewer --production-branch main`
+- **Pages deploy command**: `API_URL=https://backlog-mcp.gogakoreli.workers.dev npx wrangler pages deploy packages/viewer/dist --project-name backlog-mcp-viewer --commit-dirty=true`
 
 ---
 
