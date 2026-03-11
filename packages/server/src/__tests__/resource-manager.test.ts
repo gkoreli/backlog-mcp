@@ -145,56 +145,6 @@ describe('ResourceManager - Pure Catch-All Design', () => {
     });
   });
 
-  describe('write() - Edit resource content (no create)', () => {
-    it('should fail on non-existing file', () => {
-      const result = manager.write('mcp://backlog/tasks/TASK-9999.md', {
-        type: 'str_replace',
-        old_str: 'anything',
-        new_str: 'something',
-      });
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('not found');
-      expect(result.error).toContain('backlog_create');
-    });
-
-    it('should allow str_replace on task files', () => {
-      const result = manager.write('mcp://backlog/tasks/TASK-0001.md', {
-        type: 'str_replace',
-        old_str: '# Task 1',
-        new_str: '# Task 1 Updated',
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it('should allow append on existing resource files', () => {
-      const result = manager.write('mcp://backlog/resources/test.md', {
-        type: 'append',
-        new_str: '\n## New Section',
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it('should fail append on non-existing file', () => {
-      const result = manager.write('mcp://backlog/resources/nonexistent.md', {
-        type: 'append',
-        new_str: 'content',
-      });
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('not found');
-    });
-
-    it('should preserve frontmatter after str_replace', () => {
-      manager.write('mcp://backlog/tasks/TASK-0001.md', {
-        type: 'str_replace',
-        old_str: '# Task 1',
-        new_str: '# Task 1 Updated',
-      });
-      const resource = manager.read('mcp://backlog/tasks/TASK-0001.md');
-      expect(resource.frontmatter?.id).toBe('TASK-0001');
-      expect(resource.content).toContain('# Task 1 Updated');
-    });
-  });
-
   describe('Round-trip consistency', () => {
     it('should round-trip URI → path → URI', () => {
       const originalUri = 'mcp://backlog/tasks/TASK-0001.md';

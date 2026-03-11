@@ -17,10 +17,7 @@ const extractors: Record<string, Extractor> = {
 
   backlog_delete: (params) => params.id as string | undefined,
 
-  write_resource: (params) => {
-    const uri = params.uri as string | undefined;
-    return uri ? ID_RE.exec(uri)?.[0] : undefined;
-  },
+  write_resource: (params) => params.id as string | undefined,
 };
 
 /**

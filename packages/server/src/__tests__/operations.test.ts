@@ -45,14 +45,12 @@ describe('Operations Module', () => {
       expect(extractResourceId('backlog_delete', { id: 'TASK-0001' }, {})).toBe('TASK-0001');
     });
 
-    it('extracts ID from write_resource URI', () => {
-      const params = { uri: 'mcp://backlog/tasks/TASK-0055.md' };
-      expect(extractResourceId('write_resource', params, {})).toBe('TASK-0055');
+    it('extracts ID from write_resource', () => {
+      expect(extractResourceId('write_resource', { id: 'TASK-0055' }, {})).toBe('TASK-0055');
     });
 
-    it('extracts EPIC ID from write_resource URI', () => {
-      const params = { uri: 'mcp://backlog/tasks/EPIC-0003.md' };
-      expect(extractResourceId('write_resource', params, {})).toBe('EPIC-0003');
+    it('extracts EPIC ID from write_resource', () => {
+      expect(extractResourceId('write_resource', { id: 'EPIC-0003' }, {})).toBe('EPIC-0003');
     });
 
     it('returns undefined for unknown tool', () => {
@@ -64,9 +62,8 @@ describe('Operations Module', () => {
       expect(extractResourceId('backlog_create', {}, result)).toBeUndefined();
     });
 
-    it('returns undefined for write_resource without task ID in URI', () => {
-      const params = { uri: 'mcp://backlog/resources/notes.md' };
-      expect(extractResourceId('write_resource', params, {})).toBeUndefined();
+    it('returns undefined for write_resource without id', () => {
+      expect(extractResourceId('write_resource', {}, {})).toBeUndefined();
     });
   });
 
