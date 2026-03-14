@@ -95,4 +95,39 @@ export interface Entity {
   // Artifact
   content_type?: string;
   path?: string;
+  // Eisenhower Matrix (ADR-0084)
+  urgency?: number;     // 1=no time pressure, 5=critical/blocking/deadline
+  importance?: number;  // 1=nice-to-have, 5=directly impacts goals/results
+}
+
+// ============================================================================
+// Eisenhower Matrix (ADR-0084)
+// ============================================================================
+
+/** Q1=Do now, Q2=Schedule, Q3=Quick-handle, Q4=Park */
+export type Quadrant = 'q1' | 'q2' | 'q3' | 'q4';
+
+export const QUADRANT_LABELS: Record<Quadrant, string> = {
+  q1: 'Do now',
+  q2: 'Schedule',
+  q3: 'Quick-handle',
+  q4: 'Park',
+};
+
+/**
+ * Derive Eisenhower quadrant from urgency + importance.
+ * Threshold >= 3 on a 1-5 scale — both fields are optional, defaults to q4.
+ */
+export function getQuadrant(urgency?: number, importance?: number): Quadrant {
+  const urgent = (urgency ?? 0) >= 3;
+  const important = (importance ?? 0) >= 3;
+  if (urgent && important) return 'q1';
+  if (!urgent && important) return 'q2';
+  if (urgent && !important) return 'q3';
+  return 'q4';
+}
+
+/** Composite priority score for sorting: higher = do first. */
+export function getPriorityScore(urgency?: number, importance?: number): number {
+  return (urgency ?? 0) + (importance ?? 0);
 }

@@ -13,7 +13,7 @@ import {
   INDEX_VERSION, TEXT_PROPERTIES, UNSORTABLE_PROPERTIES, ENUM_FACETS,
   buildWhereClause,
 } from './orama-schema.js';
-import { minmaxNormalize, linearFusion, applyCoordinationBonus, type ScoredHit } from './scoring.js';
+import { minmaxNormalize, rankNormalize, linearFusion, applyCoordinationBonus, type ScoredHit } from './scoring.js';
 
 export interface OramaSearchOptions {
   cachePath: string;
@@ -74,6 +74,26 @@ export class OramaSearchService implements SearchService {
     })();
 
     return this.embeddingsInitPromise;
+  }
+
+  // ── Private insert helpers (DRY, used by CRUD methods) ─────────
+
+  private async _insertDoc(task: Entity): Promise<void> {
+    if (this.hasEmbeddingsInIndex && this.embeddingsReady) {
+      const doc = await this.taskToDocWithEmbeddings(task);
+      await insert(this.db as OramaInstanceWithEmbeddings, doc);
+    } else {
+      await insert(this.db as OramaInstance, this.taskToDoc(task));
+    }
+  }
+
+  private async _insertResource(resource: Resource): Promise<void> {
+    if (this.hasEmbeddingsInIndex && this.embeddingsReady) {
+      const doc = await this.resourceToDocWithEmbeddings(resource);
+      await insert(this.db as OramaInstanceWithEmbeddings, doc);
+    } else {
+      await insert(this.db as OramaInstance, this.resourceToDoc(resource));
+    }
   }
 
   // ── Document conversion ─────────────────────────────────────────
@@ -178,6 +198,11 @@ export class OramaSearchService implements SearchService {
 
       // Check if cached index has embeddings
       this.hasEmbeddingsInIndex = raw.hasEmbeddings ?? false;
+      // NOTE (ADR-0083): a mismatch between config (hybridEnabled) and cached index
+      // (hasEmbeddingsInIndex) is intentionally tolerated here. Forcing a rebuild
+      // would trigger embedding init on every cold start where the model is unavailable
+      // (tests, cold Cloudflare worker). The index naturally upgrades on the next
+      // full rebuild cycle when embeddings ARE available.
       this.db = await this.createOramaInstance(this.hasEmbeddingsInIndex);
       load(this.db, raw.index);
       this.taskCache = new Map(Object.entries(raw.tasks as Record<string, Entity>));
@@ -206,8 +231,7 @@ export class OramaSearchService implements SearchService {
     if (useEmbeddings) {
       // Sequential: each doc needs async embedding call
       for (const task of tasks) {
-        const doc = await this.taskToDocWithEmbeddings(task);
-        insert(this.db as OramaInstanceWithEmbeddings, doc);
+        await this._insertDoc(task);
       }
     } else {
       // Batch insert for BM25-only mode (ADR-0079)
@@ -307,8 +331,10 @@ export class OramaSearchService implements SearchService {
       ? vectorResults.hits.map(h => ({ id: h.document.id, score: h.score }))
       : [];
 
-    // MinMax normalize each retriever independently, then fuse
-    const fused = linearFusion(minmaxNormalize(bm25Hits), minmaxNormalize(vectorHits));
+    // ADR-0083: use rank-based normalization in BM25-only mode to prevent
+    // MinMax from mapping the lowest-BM25 (but possibly most relevant) doc to 0.0.
+    const normBm25 = vectorHits.length > 0 ? minmaxNormalize(bm25Hits) : rankNormalize(bm25Hits);
+    const fused = linearFusion(normBm25, minmaxNormalize(vectorHits));
 
     // Post-fusion coordination bonus for multi-term queries (ADR-0081)
     const coordinated = applyCoordinationBonus(
@@ -316,6 +342,10 @@ export class OramaSearchService implements SearchService {
       id => this._getSearchableText(id),
       id => this._getTitle(id),
     );
+
+    // ADR-0083: exact phrase title match — pin navigational queries to the top.
+    // When all query tokens appear in a document's title, that document ranks first.
+    this._pinExactTitleMatch(query, coordinated);
 
     return { hits: coordinated.slice(0, limit), bm25Results };
   }
@@ -343,15 +373,52 @@ export class OramaSearchService implements SearchService {
     return this.taskCache.get(id)?.title || this.resourceCache.get(id)?.title || '';
   }
 
+  /**
+   * Pin the first result whose title contains all query tokens to the top (ADR-0083).
+   *
+   * Handles ~30% of searches that are navigational (user looking for a specific item).
+   * BM25 cannot distinguish "about X" from "mentions X" — when the query is a phrase
+   * match in a title, that document should always rank first regardless of BM25 score.
+   *
+   * Mutates the hits array in-place for efficiency.
+   */
+  private _pinExactTitleMatch(query: string, hits: ScoredHit[]): void {
+    if (hits.length <= 1) return;
+    const queryTokens = compoundWordTokenizer.tokenize(query);
+    if (queryTokens.length === 0) return;
+
+    const matchIdx = hits.findIndex(h => {
+      const titleTokens = new Set(compoundWordTokenizer.tokenize(this._getTitle(h.id)));
+      return queryTokens.every(qt => titleTokens.has(qt));
+    });
+
+    if (matchIdx > 0) {
+      const removed = hits.splice(matchIdx, 1);
+      const match = removed[0];
+      if (match) {
+        // Boost score above everything else to make the pin stable after any re-sort
+        hits.unshift({ id: match.id, score: match.score + 2.0 });
+      }
+    }
+  }
+
   async search(query: string, options?: SearchOptions): Promise<SearchResult[]> {
     if (!this.db || !query.trim()) return [];
 
     const limit = options?.limit ?? 20;
+    // ADR-0083: exclude resources natively (no id boost — it polluted every query
+    // containing "task"/"epic" through text-searchable IDs).
+    const baseWhere = buildWhereClause(options?.filters);
+    // Exclude resources so they don't consume limit budget (taskCache post-filter
+    // already removes them, but native filter is more efficient).
+    const where = baseWhere
+      ? { ...baseWhere, type: (baseWhere as any).type ?? { nin: ['resource'] } }
+      : { type: { nin: ['resource'] } };
     const { hits } = await this._fusedSearch({
       query,
       limit,
-      boost: options?.boost ?? { id: 10, title: 3 },
-      where: buildWhereClause(options?.filters),
+      boost: options?.boost ?? { title: 3 },
+      where,
     });
 
     return hits
@@ -379,7 +446,7 @@ export class OramaSearchService implements SearchService {
     const { hits } = await this._fusedSearch({
       query,
       limit,
-      boost: options?.boost ?? { id: 10, title: 3 },
+      boost: options?.boost ?? { title: 3 },
       where,
       ...(sortMode === 'recent' ? { sortBy: { property: 'updated_at', order: 'DESC' as const } } : {}),
     });
@@ -431,14 +498,8 @@ export class OramaSearchService implements SearchService {
   async addDocument(task: Entity): Promise<void> {
     if (!this.db) return;
     this.taskCache.set(task.id, task);
-
     try {
-      if (this.hasEmbeddingsInIndex && this.embeddingsReady) {
-        const doc = await this.taskToDocWithEmbeddings(task);
-        await insert(this.db as OramaInstanceWithEmbeddings, doc);
-      } else {
-        await insert(this.db as OramaInstance, this.taskToDoc(task));
-      }
+      await this._insertDoc(task);
     } catch (e: any) {
       if (e?.code === 'DOCUMENT_ALREADY_EXISTS') {
         await this.updateDocument(task);
@@ -460,15 +521,27 @@ export class OramaSearchService implements SearchService {
     }
   }
 
+  /**
+   * Atomically update a document (ADR-0083: fix non-atomic remove→insert pattern).
+   *
+   * Saves the previous version, removes from index, re-inserts. If insert fails,
+   * restores the previous version to keep cache and index consistent.
+   */
   async updateDocument(task: Entity): Promise<void> {
+    if (!this.db) return;
+    const previous = this.taskCache.get(task.id);
     await this.removeDocument(task.id);
     this.taskCache.set(task.id, task);
-
-    if (this.hasEmbeddingsInIndex && this.embeddingsReady) {
-      const doc = await this.taskToDocWithEmbeddings(task);
-      await insert(this.db as OramaInstanceWithEmbeddings, doc);
-    } else {
-      await insert(this.db as OramaInstance, this.taskToDoc(task));
+    try {
+      await this._insertDoc(task);
+    } catch (e) {
+      // Restore previous state on failure to keep cache/index consistent
+      this.taskCache.delete(task.id);
+      if (previous) {
+        this.taskCache.set(previous.id, previous);
+        try { await this._insertDoc(previous); } catch { /* index already inconsistent */ }
+      }
+      throw e;
     }
     this.scheduleSave();
   }
@@ -490,8 +563,7 @@ export class OramaSearchService implements SearchService {
       // Sequential: each doc needs async embedding call
       for (const resource of resources) {
         try {
-          const doc = await this.resourceToDocWithEmbeddings(resource);
-          insert(this.db as OramaInstanceWithEmbeddings, doc);
+          await this._insertResource(resource);  // ADR-0083: was missing await
         } catch (e: any) {
           if (e?.code === 'DOCUMENT_ALREADY_EXISTS') {
             await this.updateResource(resource);
@@ -503,12 +575,12 @@ export class OramaSearchService implements SearchService {
       // Batch insert for BM25-only mode (ADR-0079)
       const docs = resources.map(r => this.resourceToDoc(r));
       try {
-        insertMultiple(this.db as OramaInstance, docs);
+        await insertMultiple(this.db as OramaInstance, docs);
       } catch {
         // Fallback to individual inserts if batch fails (e.g. duplicates)
         for (const resource of resources) {
           try {
-            insert(this.db as OramaInstance, this.resourceToDoc(resource));
+            await insert(this.db as OramaInstance, this.resourceToDoc(resource));
           } catch (e: any) {
             if (e?.code === 'DOCUMENT_ALREADY_EXISTS') {
               await this.updateResource(resource);
@@ -523,14 +595,8 @@ export class OramaSearchService implements SearchService {
   async addResource(resource: Resource): Promise<void> {
     if (!this.db) return;
     this.resourceCache.set(resource.id, resource);
-
     try {
-      if (this.hasEmbeddingsInIndex && this.embeddingsReady) {
-        const doc = await this.resourceToDocWithEmbeddings(resource);
-        await insert(this.db as OramaInstanceWithEmbeddings, doc);
-      } else {
-        await insert(this.db as OramaInstance, this.resourceToDoc(resource));
-      }
+      await this._insertResource(resource);
     } catch (e: any) {
       if (e?.code === 'DOCUMENT_ALREADY_EXISTS') {
         await this.updateResource(resource);
@@ -552,15 +618,23 @@ export class OramaSearchService implements SearchService {
     }
   }
 
+  /**
+   * Atomically update a resource (ADR-0083: fix non-atomic remove→insert pattern).
+   */
   async updateResource(resource: Resource): Promise<void> {
+    if (!this.db) return;
+    const previous = this.resourceCache.get(resource.id);
     await this.removeResource(resource.id);
     this.resourceCache.set(resource.id, resource);
-
-    if (this.hasEmbeddingsInIndex && this.embeddingsReady) {
-      const doc = await this.resourceToDocWithEmbeddings(resource);
-      await insert(this.db as OramaInstanceWithEmbeddings, doc);
-    } else {
-      await insert(this.db as OramaInstance, this.resourceToDoc(resource));
+    try {
+      await this._insertResource(resource);
+    } catch (e) {
+      this.resourceCache.delete(resource.id);
+      if (previous) {
+        this.resourceCache.set(previous.id, previous);
+        try { await this._insertResource(previous); } catch { /* index already inconsistent */ }
+      }
+      throw e;
     }
     this.scheduleSave();
   }

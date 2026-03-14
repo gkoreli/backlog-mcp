@@ -2212,3 +2212,36 @@ copy-button {
 .activity-journal-epic-group .activity-journal-item {
   padding: 6px 0;
 }
+
+/* ── Eisenhower Matrix (ADR-0084) ───────────────────────────────────── */
+
+.filter-bar.quadrant-filter {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #3e3e42;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.quadrant-btn {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.quadrant-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+/* Q1: Do now — red (urgent + important) */
+.quadrant-q1 { background: #cf222e; color: white; }
+/* Q2: Schedule — blue (important, not urgent) */
+.quadrant-q2 { background: #1f6feb; color: white; }
+/* Q3: Quick-handle — amber (urgent, not important) */
+.quadrant-q3 { background: #d97706; color: white; }
+/* Q4: Park — muted (neither) */
+.quadrant-q4 { background: #57606a; color: white; }

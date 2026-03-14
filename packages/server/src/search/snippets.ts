@@ -1,5 +1,6 @@
 import type { Entity } from '@backlog-mcp/shared';
 import type { Resource, SearchSnippet } from './types.js';
+import { compoundWordTokenizer } from './tokenizer.js';
 
 // ── Server-side snippet generation (ADR-0073) ──────────────────────
 //
@@ -46,6 +47,9 @@ function generateSnippetFromFields(
 ): SearchSnippet {
   const queryLower = query.toLowerCase().trim();
   const queryWords = queryLower.split(/\s+/).filter(Boolean);
+  // ADR-0083: tokenize query terms the same way Orama does so compound words
+  // like "FeatureStore" expand to ["featurestore", "feature", "store"].
+  const queryTokens = compoundWordTokenizer.tokenize(query);
   const matchedFields: string[] = [];
   let firstField = '';
   let firstText = '';
@@ -53,8 +57,11 @@ function generateSnippetFromFields(
   for (const { name, value } of fields) {
     if (!value) continue;
     const valueLower = value.toLowerCase();
-    // Check if any query word appears in this field
-    const hasMatch = queryWords.some(w => valueLower.includes(w));
+    const valueTokens = new Set(compoundWordTokenizer.tokenize(value));
+    // Match if any query token appears in tokenized field (handles compound expansion)
+    // OR as a direct substring (handles partial words and punctuation)
+    const hasMatch = queryTokens.some(qt => valueTokens.has(qt)) ||
+      queryWords.some(w => valueLower.includes(w));
     if (!hasMatch) continue;
 
     matchedFields.push(name);

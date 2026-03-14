@@ -570,7 +570,7 @@ function b64urlDecode(s: string): Uint8Array {
   return Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 }
 
-async function hmacKey(secret: string, usage: KeyUsage) {
+async function hmacKey(secret: string, usage: 'sign' | 'verify') {
   return crypto.subtle.importKey('raw', new TextEncoder().encode(secret),
     { name: 'HMAC', hash: 'SHA-256' }, false, [usage]);
 }
@@ -589,6 +589,7 @@ async function verifyJWT(token: string, secret: string): Promise<Record<string, 
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [h, p, s] = parts;
+  if (!h || !p || !s) return null;
   const key = await hmacKey(secret, 'verify');
   const valid = await crypto.subtle.verify('HMAC', key, b64urlDecode(s),
     new TextEncoder().encode(`${h}.${p}`));

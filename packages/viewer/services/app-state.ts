@@ -14,7 +14,17 @@ import { UrlState } from './url-state.js';
 
 const SCOPE_STORAGE_KEY = 'backlog:sidebar-scope';
 const SORT_STORAGE_KEY = 'backlog:sort';
-const VALID_SORTS = ['updated', 'created_desc', 'created_asc'];
+const QUADRANT_STORAGE_KEY = 'backlog:quadrant';
+const VALID_SORTS = ['updated', 'created_desc', 'created_asc', 'priority'];
+const VALID_QUADRANTS = ['all', 'q1', 'q2', 'q3', 'q4'];
+
+function loadSavedQuadrant(): string {
+  try {
+    const saved = localStorage.getItem(QUADRANT_STORAGE_KEY);
+    if (saved && VALID_QUADRANTS.includes(saved)) return saved;
+  } catch { /* */ }
+  return 'all';
+}
 
 function loadSavedSort(): string {
   try {
@@ -35,6 +45,7 @@ export class AppState {
 
   // ── Local state ──────────────────────────────────────────────────
   readonly sort = signal(loadSavedSort());
+  readonly quadrant = signal(loadSavedQuadrant());
   readonly scopeId = signal<string | null>(null);
   readonly isSystemInfoOpen = signal(false);
   readonly isSpotlightOpen = signal(false);
@@ -66,6 +77,12 @@ export class AppState {
     // Persist sort to localStorage
     effect(() => {
       try { localStorage.setItem(SORT_STORAGE_KEY, this.sort.value); }
+      catch { /* */ }
+    });
+
+    // Persist quadrant filter to localStorage
+    effect(() => {
+      try { localStorage.setItem(QUADRANT_STORAGE_KEY, this.quadrant.value); }
       catch { /* */ }
     });
   }

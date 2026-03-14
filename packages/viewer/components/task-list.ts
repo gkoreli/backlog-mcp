@@ -9,6 +9,7 @@ import { signal, computed, effect, type ReadonlySignal, component, html, each, w
 import { fetchTasks, type Task } from '../utils/api.js';
 import { backlogEvents } from '../services/event-source-client.js';
 import { getTypeConfig, getParentId } from '../type-registry.js';
+import { getQuadrant, getPriorityScore } from '@backlog-mcp/shared';
 import { AppState } from '../services/app-state.js';
 import { TaskItem } from './task-item.js';
 import { Breadcrumb } from './breadcrumb.js';
@@ -22,6 +23,10 @@ function sortTasks(tasks: Task[], sort: string): Task[] {
       return sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     case 'created_asc':
       return sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    case 'priority':
+      return sorted.sort((a, b) =>
+        getPriorityScore(b.urgency, b.importance) - getPriorityScore(a.urgency, a.importance)
+      );
     default:
       return sorted.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
   }
@@ -68,6 +73,15 @@ export const TaskList = component('task-list', (_props, host) => {
       tasks = tasks.filter(t => (t.type ?? 'task') === app.type.value);
     }
 
+    // Quadrant filter (ADR-0084): only show tasks with urgency/importance set
+    const q = app.quadrant.value;
+    if (q && q !== 'all') {
+      tasks = tasks.filter(t =>
+        (t.urgency !== undefined || t.importance !== undefined) &&
+        getQuadrant(t.urgency, t.importance) === q
+      );
+    }
+
     tasks = sortTasks(tasks, app.sort.value);
 
     const scope = app.scopeId.value;
@@ -96,6 +110,7 @@ export const TaskList = component('task-list', (_props, host) => {
   type EnrichedTask = {
     id: string; title: string; status: string; type: string;
     childCount: number; dueDate: string; selected: boolean; currentEpic: boolean;
+    urgency: number | undefined; importance: number | undefined;
   };
 
   const allEnriched = computed<EnrichedTask[]>(() => {
@@ -112,6 +127,8 @@ export const TaskList = component('task-list', (_props, host) => {
         dueDate: task.due_date || '',
         selected: sel === task.id,
         currentEpic: scope === task.id,
+        urgency: task.urgency,
+        importance: task.importance,
       };
     });
   });
@@ -143,6 +160,8 @@ export const TaskList = component('task-list', (_props, host) => {
       dueDate: computed(() => task.value.dueDate),
       selected: computed(() => task.value.selected),
       currentEpic: computed(() => task.value.currentEpic),
+      urgency: computed(() => task.value.urgency),
+      importance: computed(() => task.value.importance),
     });
 
   const containerList = each(containerItem, t => t.id, (task) =>

@@ -30,12 +30,14 @@ export function registerBacklogCreateTool(server: McpServer, service: IBacklogSe
         epic_id: z.string().optional().describe('Parent epic ID to link this task to'),
         parent_id: z.string().optional().describe('Parent ID (any entity). Supports subtasks (task→task), epic membership, folder organization, milestone grouping.'),
         references: z.array(z.object({ url: z.string(), title: z.string().optional() })).optional().describe('Reference links. Formats: external URLs (https://...), task refs (mcp://backlog/tasks/TASK-XXXX.md), resources (mcp://backlog/resources/{path}). Local files must include extension (file:///path/to/file.md)'),
+        urgency: z.number().int().min(1).max(5).optional().describe('Eisenhower urgency axis: 1=no time pressure, 3=moderate, 5=critical/deadline. Use >=3 for "urgent". Diagnostic: Is there a real deadline or blocking consequence if this slips?'),
+        importance: z.number().int().min(1).max(5).optional().describe('Eisenhower importance axis: 1=nice-to-have, 3=moderate, 5=directly impacts goals/results. Use >=3 for "important". Diagnostic: Does this move the needle on core outcomes?'),
       }).refine(
         (data) => !(data.description && data.source_path),
         { message: 'Cannot provide both description and source_path — use one or the other' },
       ),
     },
-    async ({ title, description, source_path, type, epic_id, parent_id, references }) => {
+    async ({ title, description, source_path, type, epic_id, parent_id, references, urgency, importance }) => {
       let resolvedDescription = description;
       if (source_path) {
         try {
@@ -51,6 +53,8 @@ export function registerBacklogCreateTool(server: McpServer, service: IBacklogSe
       const task = createTask({ id, title, description: resolvedDescription, type, parent_id: resolvedParent, references });
       // Write epic_id too for backward compat when caller used epic_id
       if (epic_id && !parent_id) task.epic_id = epic_id;
+      if (urgency !== undefined) task.urgency = urgency;
+      if (importance !== undefined) task.importance = importance;
       await service.add(task);
       return { content: [{ type: 'text', text: `Created ${task.id}` }] };
     }

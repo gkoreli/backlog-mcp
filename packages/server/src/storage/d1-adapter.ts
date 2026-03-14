@@ -37,6 +37,8 @@ interface TaskRow {
   body: string | null;           // markdown body / description
   created_at: string;
   updated_at: string;
+  urgency: number | null;        // Eisenhower urgency 1-5 (ADR-0084)
+  importance: number | null;     // Eisenhower importance 1-5 (ADR-0084)
 }
 
 interface CountRow {
@@ -82,6 +84,8 @@ function rowToEntity(row: TaskRow): Entity {
   if (row.references) {
     try { entity.references = JSON.parse(row.references); } catch { /* ignore */ }
   }
+  if (row.urgency != null) entity.urgency = row.urgency;
+  if (row.importance != null) entity.importance = row.importance;
 
   return entity;
 }
@@ -171,8 +175,9 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
           `INSERT INTO tasks
             (id, type, title, status, epic_id, parent_id,
              blocked_reason, evidence, "references",
-             due_date, content_type, path, body, created_at, updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+             due_date, content_type, path, body, created_at, updated_at,
+             urgency, importance)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
         )
         .bind(
           task.id,
@@ -190,6 +195,8 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
           body,
           task.created_at,
           task.updated_at,
+          task.urgency ?? null,
+          task.importance ?? null,
         ),
       // Sync FTS5 index
       this.db
@@ -209,7 +216,8 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
           `UPDATE tasks SET
             type = ?, title = ?, status = ?, epic_id = ?, parent_id = ?,
             blocked_reason = ?, evidence = ?, "references" = ?,
-            due_date = ?, content_type = ?, path = ?, body = ?, updated_at = ?
+            due_date = ?, content_type = ?, path = ?, body = ?, updated_at = ?,
+            urgency = ?, importance = ?
            WHERE id = ?`
         )
         .bind(
@@ -226,6 +234,8 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
           toNull(task.path),
           body,
           task.updated_at,
+          task.urgency ?? null,
+          task.importance ?? null,
           task.id,
         ),
       // Remove old FTS5 entry

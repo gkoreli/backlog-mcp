@@ -27,6 +27,8 @@ export interface Task {
   due_date?: string;
   content_type?: string;
   path?: string;
+  urgency?: number;     // Eisenhower urgency 1-5 (ADR-0084)
+  importance?: number;  // Eisenhower importance 1-5 (ADR-0084)
 }
 
 export interface TaskResponse extends Task {

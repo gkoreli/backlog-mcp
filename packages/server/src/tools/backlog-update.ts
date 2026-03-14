@@ -19,9 +19,11 @@ export function registerBacklogUpdateTool(server: McpServer, service: IBacklogSe
         references: z.array(z.object({ url: z.string(), title: z.string().optional() })).optional().describe('Reference links. Formats: external URLs (https://...), task refs (mcp://backlog/tasks/TASK-XXXX.md), resources (mcp://backlog/resources/{path}). Local files must include extension (file:///path/to/file.md)'),
         due_date: z.union([z.string(), z.null()]).optional().describe('Due date for milestones (ISO 8601). Null to clear.'),
         content_type: z.union([z.string(), z.null()]).optional().describe('Content type for artifacts (e.g. text/markdown). Null to clear.'),
+        urgency: z.union([z.number().int().min(1).max(5), z.null()]).optional().describe('Eisenhower urgency 1-5 (null to clear). 1=no time pressure, 5=critical/deadline.'),
+        importance: z.union([z.number().int().min(1).max(5), z.null()]).optional().describe('Eisenhower importance 1-5 (null to clear). 1=nice-to-have, 5=directly impacts goals.'),
       }),
     },
-    async ({ id, epic_id, parent_id, due_date, content_type, ...updates }) => {
+    async ({ id, epic_id, parent_id, due_date, content_type, urgency, importance, ...updates }) => {
       const task = await service.get(id);
       if (!task) return { content: [{ type: 'text', text: `Task ${id} not found` }], isError: true };
 
@@ -43,8 +45,8 @@ export function registerBacklogUpdateTool(server: McpServer, service: IBacklogSe
         }
       }
 
-      // Nullable type-specific fields: null clears, string sets
-      for (const [key, val] of Object.entries({ due_date, content_type })) {
+      // Nullable type-specific fields: null clears, value sets
+      for (const [key, val] of Object.entries({ due_date, content_type, urgency, importance })) {
         if (val === null) delete (task as any)[key];
         else if (val !== undefined) (task as any)[key] = val;
       }

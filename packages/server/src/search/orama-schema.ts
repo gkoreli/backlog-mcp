@@ -46,16 +46,17 @@ export type OramaInstance = import('@orama/orama').Orama<typeof schema>;
 export type OramaInstanceWithEmbeddings = import('@orama/orama').Orama<typeof schemaWithEmbeddings>;
 
 /** Bump when tokenizer or schema changes to force index rebuild. */
-export const INDEX_VERSION = 4;  // ADR-0080: added updated_at, unsortableProperties
+export const INDEX_VERSION = 5;  // ADR-0083: removed id from TEXT_PROPERTIES
 
 // ── Search constants ────────────────────────────────────────────────
 
 /**
- * Text-searchable properties (ADR-0079). Excludes enum fields (status, type, epic_id)
+ * Text-searchable properties (ADR-0079, ADR-0083). Excludes enum fields (status, type, epic_id)
  * which are filtered via `where` clause, not full-text searched.
- * Also excludes updated_at which is only used for sorting.
+ * Also excludes `id` (ADR-0083: id:10 boost caused every "task"/"epic" query to match all IDs)
+ * and `updated_at` which is only used for sorting.
  */
-export const TEXT_PROPERTIES = ['id', 'title', 'description', 'evidence', 'blocked_reason', 'references', 'path'] as const;
+export const TEXT_PROPERTIES = ['title', 'description', 'evidence', 'blocked_reason', 'references', 'path'] as const;
 
 /**
  * Properties that should NOT have sort indexes (ADR-0080).
@@ -81,6 +82,8 @@ export function buildWhereClause(filters?: SearchOptions['filters'], docTypes?: 
   if (filters?.type) where.type = { eq: filters.type };
   if (filters?.epic_id) where.epic_id = { eq: filters.epic_id };
   if (filters?.parent_id) where.epic_id = { eq: filters.parent_id };
+  // NOTE: docTypes intentionally overwrites filters.type — callers that need
+  // both must merge them before passing. docTypes is the authoritative set when present.
   if (docTypes?.length) where.type = { in: docTypes };
   return Object.keys(where).length > 0 ? where : undefined;
 }

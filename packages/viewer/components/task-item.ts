@@ -9,6 +9,7 @@
  */
 import { computed, component, html, when, inject } from '@nisli/core';
 import { getTypeConfig } from '../type-registry.js';
+import { getQuadrant, QUADRANT_LABELS } from '@backlog-mcp/shared';
 import { AppState } from '../services/app-state.js';
 import { TaskBadge } from './task-badge.js';
 
@@ -21,6 +22,8 @@ export const TaskItem = component<{
   dueDate: string;
   selected: boolean;
   currentEpic: boolean;
+  urgency: number | undefined;
+  importance: number | undefined;
 }>('task-item', (props, host) => {
   const app = inject(AppState);
 
@@ -70,12 +73,22 @@ export const TaskItem = component<{
 
   const badge = TaskBadge({ taskId: props.id });
 
+  const quadrantHtml = computed(() => {
+    const u = props.urgency.value;
+    const i = props.importance.value;
+    if (u === undefined && i === undefined) return null;
+    const q = getQuadrant(u, i);
+    const label = QUADRANT_LABELS[q];
+    return html`<span class="quadrant-badge quadrant-${q}" title="Urgency: ${u ?? '—'} / Importance: ${i ?? '—'}">${q.toUpperCase()}</span>`;
+  });
+
   // ── Template — all signals implicit ──────────────────────────────
   return html`
     <div class="task-item type-${props.type}" class:selected="${props.selected}" class:current-epic="${props.currentEpic}" @click="${handleItemClick}">
       ${badge}
       <span class="task-title">${props.title}</span>
       ${dueDateHtml}
+      ${quadrantHtml}
       ${childCountHtml}
       ${enterIconHtml}
       ${statusHtml}

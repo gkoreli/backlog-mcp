@@ -1,7 +1,7 @@
 # 0083. Search Service Architectural Review & Next-Generation Search
 
 **Date**: 2026-02-17
-**Status**: Proposed
+**Status**: Accepted — Immediate fixes implemented; architecture improvements (exact title match, rank normalization, atomic updates, DRY insert helpers) complete
 
 ## Context
 

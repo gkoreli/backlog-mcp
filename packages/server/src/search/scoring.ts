@@ -43,6 +43,22 @@ export function minmaxNormalize(hits: ScoredHit[]): ScoredHit[] {
 }
 
 /**
+ * Rank-based normalization: score by position rather than by value.
+ *
+ * Fixes the MinMax zero-score problem (ADR-0083): when the relevant document
+ * has the lowest BM25 score, MinMax maps it to 0.0, making it invisible to
+ * downstream scoring. Rank normalization gives every result a positive score.
+ *
+ * 1st → 1.0, 2nd → 1 - 1/n, ..., last → 1/n
+ * Use in BM25-only mode where MinMax provides no benefit (nothing to fuse).
+ */
+export function rankNormalize(hits: ScoredHit[]): ScoredHit[] {
+  if (hits.length === 0) return [];
+  const n = hits.length;
+  return hits.map((h, i) => ({ ...h, score: 1.0 - i / n }));
+}
+
+/**
  * Linear fusion: weighted combination of normalized retriever scores (ADR-0081).
  *
  * For each document, computes:

@@ -72,10 +72,11 @@ describe('task-filter-bar rendering', () => {
     expect(select).not.toBeNull();
 
     const options = select.querySelectorAll('option');
-    expect(options.length).toBe(3);
+    expect(options.length).toBe(4);
     expect(options[0].value).toBe('updated');
-    expect(options[1].value).toBe('created_desc');
-    expect(options[2].value).toBe('created_asc');
+    expect(options[1].value).toBe('priority');
+    expect(options[2].value).toBe('created_desc');
+    expect(options[3].value).toBe('created_asc');
   });
 
   it('default filter is "active" (has active class)', () => {

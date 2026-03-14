@@ -16,8 +16,17 @@ const FILTERS = [
 
 const SORT_OPTIONS = [
   { key: 'updated', label: 'Updated' },
+  { key: 'priority', label: 'Priority' },
   { key: 'created_desc', label: 'Created (newest)' },
   { key: 'created_asc', label: 'Created (oldest)' },
+] as const;
+
+const QUADRANT_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'q1', label: 'Q1 · Do now', title: 'Urgent + Important' },
+  { key: 'q2', label: 'Q2 · Schedule', title: 'Important, not urgent' },
+  { key: 'q3', label: 'Q3 · Quick', title: 'Urgent, not important' },
+  { key: 'q4', label: 'Q4 · Park', title: 'Neither urgent nor important' },
 ] as const;
 
 const TYPE_ENTRIES = [
@@ -31,6 +40,7 @@ export const TaskFilterBar = component('task-filter-bar', (_props, host) => {
   const setFilter = (filter: string) => { app.filter.value = filter; };
   const setType = (type: string) => { app.type.value = type; };
   const setSort = (sort: string) => { app.sort.value = sort; };
+  const setQuadrant = (q: string) => { app.quadrant.value = q; };
 
   // Sync select element value when sort signal changes
   const selectRef = ref<HTMLSelectElement>();
@@ -53,6 +63,10 @@ export const TaskFilterBar = component('task-filter-bar', (_props, host) => {
     html`<option value="${s.key}">${s.label}</option>`
   );
 
+  const quadrantButtons = QUADRANT_FILTERS.map(q =>
+    html`<button class="filter-btn quadrant-btn" class:active="${computed(() => app.quadrant.value === q.key)}" data-quadrant="${q.key}" title="${'title' in q ? q.title : ''}" @click="${() => setQuadrant(q.key)}">${q.label}</button>`
+  );
+
   return html`
     <div class="filter-bar">
       ${statusButtons}
@@ -66,6 +80,10 @@ export const TaskFilterBar = component('task-filter-bar', (_props, host) => {
     <div class="filter-bar type-filter">
       <span class="filter-label">Type</span>
       ${typeButtons}
+    </div>
+    <div class="filter-bar quadrant-filter">
+      <span class="filter-label">Quadrant</span>
+      ${quadrantButtons}
     </div>
   `;
 });

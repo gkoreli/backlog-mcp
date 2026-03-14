@@ -1,8 +1,7 @@
 # 0084. Eisenhower Matrix: Two-Axis Priority Model
 
 **Date**: 2026-02-17
-**Status**: Proposed
-**Backlog Item**: (to be created)
+**Status**: Accepted — Implemented in shared types, all tools (create/update/list), D1 migration, and viewer (quadrant badge, filter bar, priority sort)
 
 ## Context
 

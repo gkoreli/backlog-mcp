@@ -12,4 +12,8 @@ export {
   formatEntityId,
   nextEntityId,
   getTypeFromId,
+  type Quadrant,
+  QUADRANT_LABELS,
+  getQuadrant,
+  getPriorityScore,
 } from './entity-types.js';
