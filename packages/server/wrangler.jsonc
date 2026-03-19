@@ -12,5 +12,16 @@
       "database_name": "backlog",
       "database_id": "a6364201-aa49-42c0-b905-324451bdab43"
     }
+  ],
+  // Workers AI binding — zero-cost model hosting for semantic embeddings (ADR-0089 §8)
+  // Model: @cf/baai/bge-small-en-v1.5 (384-dim, matches local MiniLM-L6-v2)
+  "ai": { "binding": "AI" },
+  // Vectorize index for hybrid FTS5+vector search (ADR-0089 §8)
+  // Create: wrangler vectorize create backlog-tasks --dimensions=384 --metric=cosine
+  "vectorize": [
+    {
+      "binding": "VECTORIZE",
+      "index_name": "backlog-tasks"
+    }
   ]
 }

@@ -127,7 +127,7 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
   }
 
   async list(filter?: ListFilter): Promise<Entity[]> {
-    const { status, type, epic_id, parent_id, limit = 20 } = filter ?? {};
+    const { status, type, epic_id, parent_id, limit } = filter ?? {};
 
     const conditions: string[] = [];
     const params: (string | number | null)[] = [];
@@ -153,8 +153,10 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const sql = `SELECT * FROM tasks ${where} ORDER BY updated_at DESC LIMIT ?`;
-    params.push(limit);
+    // limit=undefined means no cap — used by quadrant filter which must see all rows
+    const limitClause = limit != null ? ' LIMIT ?' : '';
+    const sql = `SELECT * FROM tasks ${where} ORDER BY updated_at DESC${limitClause}`;
+    if (limit != null) params.push(limit);
 
     const result = await this.db
       .prepare(sql)

@@ -23,7 +23,11 @@ export function registerBacklogListTool(server: McpServer, service: IBacklogServ
     async ({ status, type, epic_id, parent_id, query, counts, limit, quadrant, sort }) => {
       // parent_id takes precedence; epic_id is alias for backward compat
       const resolvedParent = parent_id ?? epic_id;
-      let tasks = await service.list({ status, type, parent_id: resolvedParent, query, limit });
+      const resolvedLimit = limit ?? 20;
+      // When quadrant filter is active, fetch all matching items so in-memory filtering
+      // isn't cut off by the page limit. Slice to resolvedLimit after filtering.
+      const fetchLimit = quadrant ? undefined : resolvedLimit;
+      let tasks = await service.list({ status, type, parent_id: resolvedParent, query, limit: fetchLimit });
 
       // Quadrant filter (ADR-0084): in-memory since storage has no quadrant column
       if (quadrant) {
@@ -39,6 +43,9 @@ export function registerBacklogListTool(server: McpServer, service: IBacklogServ
           getPriorityScore(b.urgency, b.importance) - getPriorityScore(a.urgency, a.importance)
         );
       }
+
+      // Apply limit after in-memory filters (quadrant/sort may have changed the set)
+      tasks = tasks.slice(0, resolvedLimit);
 
       const list = tasks.map((t) => {
         const item: Record<string, unknown> = {

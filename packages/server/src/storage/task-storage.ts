@@ -77,17 +77,17 @@ export class TaskStorage {
   }
 
   list(filter?: { status?: Status[]; type?: EntityType; epic_id?: string; parent_id?: string; limit?: number }): Entity[] {
-    const { status, type, epic_id, parent_id, limit = 20 } = filter ?? {};
+    const { status, type, epic_id, parent_id, limit } = filter ?? {};
     let tasks = Array.from(this.iterateTasks());
-    
+
     if (status) tasks = tasks.filter(t => status.includes(t.status));
     if (type) tasks = tasks.filter(t => (t.type ?? 'task') === type);
     if (parent_id) tasks = tasks.filter(t => (t.parent_id ?? t.epic_id) === parent_id);
     else if (epic_id) tasks = tasks.filter(t => (t.parent_id ?? t.epic_id) === epic_id);
-    
-    return tasks
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-      .slice(0, limit);
+
+    const sorted = tasks.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    // limit=undefined means no cap — used by callers that filter in-memory after (e.g. quadrant filter)
+    return limit != null ? sorted.slice(0, limit) : sorted;
   }
 
   add(task: Entity): void {
