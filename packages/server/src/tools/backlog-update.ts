@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
 import { STATUSES } from '@backlog-mcp/shared';
+import { updateItem, NotFoundError } from '../core/index.js';
 
 export function registerBacklogUpdateTool(server: McpServer, service: IBacklogService) {
   server.registerTool(
@@ -21,37 +22,16 @@ export function registerBacklogUpdateTool(server: McpServer, service: IBacklogSe
         content_type: z.union([z.string(), z.null()]).optional().describe('Content type for artifacts (e.g. text/markdown). Null to clear.'),
       }),
     },
-    async ({ id, epic_id, parent_id, due_date, content_type, ...updates }) => {
-      const task = await service.get(id);
-      if (!task) return { content: [{ type: 'text', text: `Task ${id} not found` }], isError: true };
-
-      // parent_id takes precedence over epic_id
-      if (parent_id !== undefined) {
-        if (parent_id === null) {
-          delete task.parent_id;
-          delete task.epic_id;
-        } else {
-          task.parent_id = parent_id;
+    async ({ id, ...params }) => {
+      try {
+        const result = await updateItem(service, id, params);
+        return { content: [{ type: 'text', text: `Updated ${result.id}` }] };
+      } catch (error) {
+        if (error instanceof NotFoundError) {
+          return { content: [{ type: 'text', text: `Task ${id} not found` }], isError: true };
         }
-      } else if (epic_id !== undefined) {
-        if (epic_id === null) {
-          delete task.epic_id;
-          delete task.parent_id;
-        } else {
-          task.epic_id = epic_id;
-          task.parent_id = epic_id;
-        }
+        throw error;
       }
-
-      // Nullable type-specific fields: null clears, string sets
-      for (const [key, val] of Object.entries({ due_date, content_type })) {
-        if (val === null) delete (task as any)[key];
-        else if (val !== undefined) (task as any)[key] = val;
-      }
-
-      Object.assign(task, updates, { updated_at: new Date().toISOString() });
-      await service.save(task);
-      return { content: [{ type: 'text', text: `Updated ${id}` }] };
     }
   );
 }

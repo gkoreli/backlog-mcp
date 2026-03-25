@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
-import { applyOperation } from '../resources/operations.js';
+import { writeBody, NotFoundError } from '../core/index.js';
 
 export function registerWriteResourceTool(server: McpServer, service: IBacklogService): void {
   server.registerTool(
@@ -24,17 +24,14 @@ export function registerWriteResourceTool(server: McpServer, service: IBacklogSe
       }),
     },
     async ({ id, operation }) => {
-      const task = await service.get(id);
-      if (!task) {
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: `Task not found: ${id}` }) }] };
-      }
-
       try {
-        const newBody = applyOperation(task.description ?? '', operation as any);
-        await service.save({ ...task, description: newBody, updated_at: new Date().toISOString() });
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ success: true, message: `Successfully applied ${operation.type} to ${id}` }) }] };
-      } catch (err) {
-        return { content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) }) }] };
+        const result = await writeBody(service, { id, operation });
+        return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
+      } catch (error) {
+        if (error instanceof NotFoundError) {
+          return { content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: `Task not found: ${id}` }) }] };
+        }
+        throw error;
       }
     }
   );

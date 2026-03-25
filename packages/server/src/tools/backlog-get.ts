@@ -1,36 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
-
-/**
- * Detect if an ID is an MCP resource URI (vs a task ID like TASK-0001).
- * Resource URIs start with "mcp://backlog/".
- */
-function isResourceUri(id: string): boolean {
-  return id.startsWith('mcp://backlog/');
-}
-
-/**
- * Fetch a single item — task (by ID) or resource (by MCP URI).
- * Returns the content as a string, or a "Not found" message.
- *
- * ADR-0073: backlog_get now supports resource URIs, making resources
- * accessible to agents via the same tool they use for tasks.
- */
-async function fetchItem(id: string, service: IBacklogService): Promise<string> {
-  if (isResourceUri(id)) {
-    const resource = service.getResource?.(id);
-    if (!resource) return `Not found: ${id}`;
-    // Return resource with metadata header for agent context
-    const header = `# Resource: ${id}\nMIME: ${resource.mimeType}`;
-    const frontmatterStr = resource.frontmatter
-      ? `\nFrontmatter: ${JSON.stringify(resource.frontmatter)}`
-      : '';
-    return `${header}${frontmatterStr}\n\n${resource.content}`;
-  }
-
-  return (await service.getMarkdown(id)) || `Not found: ${id}`;
-}
+import { getItems } from '../core/get.js';
 
 export function registerBacklogGetTool(server: McpServer, service: IBacklogService) {
   server.registerTool(
@@ -46,8 +17,8 @@ export function registerBacklogGetTool(server: McpServer, service: IBacklogServi
       if (ids.length === 0) {
         return { content: [{ type: 'text', text: 'Required: id' }], isError: true };
       }
-      const results = await Promise.all(ids.map((itemId) => fetchItem(itemId, service)));
-      return { content: [{ type: 'text', text: results.join('\n\n---\n\n') }] };
+      const result = await getItems(service, ids);
+      return { content: [{ type: 'text', text: result.content }] };
     }
   );
 }
