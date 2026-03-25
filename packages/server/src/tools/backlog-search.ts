@@ -2,25 +2,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
 import { STATUSES } from '@backlog-mcp/shared';
-import type { Entity } from '@backlog-mcp/shared';
-import type { Resource, SearchableType } from '../search/types.js';
+import { searchItems } from '../core/search.js';
 
-/**
- * backlog_search — Dedicated search tool for discovery across all backlog content.
- *
- * This is the MCP-first search interface (ADR-0073). It wraps the same
- * BacklogService.searchUnified() method that the HTTP GET /search endpoint uses,
- * ensuring agents get identical search quality to the web viewer UI.
- *
- * Use backlog_search for:
- *   - Finding tasks, epics, or resources by keyword or semantic similarity
- *   - Cross-type discovery ("find anything related to authentication")
- *   - Getting ranked results with relevance scores and match snippets
- *
- * Use backlog_list for:
- *   - Filtering by status/type/parent (structured browsing)
- *   - Getting counts and metadata
- */
 export function registerBacklogSearchTool(server: McpServer, service: IBacklogService) {
   server.registerTool(
     'backlog_search',
@@ -37,68 +20,13 @@ export function registerBacklogSearchTool(server: McpServer, service: IBacklogSe
         include_scores: z.boolean().optional().describe('Include relevance scores in results. Default: false.'),
       }),
     },
-    async ({ query, types, status, parent_id, sort, limit, include_content, include_scores }) => {
-      if (!query.trim()) {
-        return { content: [{ type: 'text', text: JSON.stringify({ error: 'Query must not be empty' }) }], isError: true };
+    async (params) => {
+      try {
+        const result = await searchItems(service, params);
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      } catch (error) {
+        return { content: [{ type: 'text', text: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }) }], isError: true };
       }
-
-      const results = await service.searchUnified(query, {
-        types: types as SearchableType[] | undefined,
-        status,
-        parent_id,
-        sort: sort ?? 'relevant',
-        limit: limit ?? 20,
-      });
-
-      const searchMode = service.isHybridSearchActive?.() ?? false ? 'hybrid' : 'bm25';
-
-      const formattedResults = results.map(r => {
-        const isResource = r.type === 'resource';
-
-        if (isResource) {
-          const resource = r.item as Resource;
-          const result: Record<string, unknown> = {
-            id: resource.id,
-            title: resource.title,
-            type: 'resource',
-            path: resource.path,
-          };
-          if (r.snippet) {
-            result.snippet = r.snippet.text;
-            result.matched_fields = r.snippet.matched_fields;
-          }
-          if (include_scores) result.score = Math.round(r.score * 1000) / 1000;
-          if (include_content) result.content = resource.content;
-          return result;
-        }
-
-        // Task or Epic
-        const task = r.item as Entity;
-        const result: Record<string, unknown> = {
-          id: task.id,
-          title: task.title,
-          type: r.type,
-          status: task.status,
-        };
-        const parentId = task.parent_id ?? task.epic_id;
-        if (parentId) result.parent_id = parentId;
-        if (r.snippet) {
-          result.snippet = r.snippet.text;
-          result.matched_fields = r.snippet.matched_fields;
-        }
-        if (include_scores) result.score = Math.round(r.score * 1000) / 1000;
-        if (include_content) result.description = task.description;
-        return result;
-      });
-
-      const response = {
-        results: formattedResults,
-        total: formattedResults.length,
-        query,
-        search_mode: searchMode,
-      };
-
-      return { content: [{ type: 'text', text: JSON.stringify(response, null, 2) }] };
     }
   );
 }

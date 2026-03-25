@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
 import { ENTITY_TYPES, STATUSES } from '@backlog-mcp/shared';
+import { listItems } from '../core/list.js';
 
 export function registerBacklogListTool(server: McpServer, service: IBacklogService) {
   server.registerTool(
@@ -18,19 +19,8 @@ export function registerBacklogListTool(server: McpServer, service: IBacklogServ
         limit: z.number().optional().describe('Max items to return. Default: 20. Increase if you need to see more items (e.g., limit=100 to list all epics).'),
       }),
     },
-    async ({ status, type, epic_id, parent_id, query, counts, limit }) => {
-      // parent_id takes precedence; epic_id is alias for backward compat
-      const resolvedParent = parent_id ?? epic_id;
-      const tasks = await service.list({ status, type, parent_id: resolvedParent, query, limit });
-      const list = tasks.map((t) => ({
-        id: t.id,
-        title: t.title,
-        status: t.status,
-        type: t.type ?? 'task',
-        parent_id: t.parent_id ?? t.epic_id,
-      }));
-      const result: any = { tasks: list };
-      if (counts) result.counts = await service.counts();
+    async (params) => {
+      const result = await listItems(service, params);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     }
   );
