@@ -1,26 +1,11 @@
-import { readFileSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { homedir } from 'node:os';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
+import type { ToolDeps } from './index.js';
 import { ENTITY_TYPES } from '@backlog-mcp/shared';
 import { createItem } from '../core/create.js';
 
-/**
- * Resolve a local file path to its content.
- * This is a transport concern — the core never touches the filesystem.
- */
-export function resolveSourcePath(sourcePath: string): string {
-  const expanded = sourcePath.startsWith('~') ? sourcePath.replace('~', homedir()) : sourcePath;
-  const resolved = resolve(expanded);
-  const stat = statSync(resolved, { throwIfNoEntry: false });
-  if (!stat) throw new Error(`File not found: ${sourcePath}`);
-  if (!stat.isFile()) throw new Error(`Not a file: ${sourcePath}`);
-  return readFileSync(resolved, 'utf-8');
-}
-
-export function registerBacklogCreateTool(server: McpServer, service: IBacklogService) {
+export function registerBacklogCreateTool(server: McpServer, service: IBacklogService, deps?: ToolDeps) {
   server.registerTool(
     'backlog_create',
     {
@@ -40,10 +25,14 @@ export function registerBacklogCreateTool(server: McpServer, service: IBacklogSe
     },
     async ({ source_path, ...params }) => {
       try {
-        // Transport resolves source_path to description before calling core
+        // Transport resolves source_path to description before calling core.
+        // resolveSourcePath is injected by node-server.ts; absent in cloud mode.
         let description = params.description;
         if (source_path) {
-          description = resolveSourcePath(source_path);
+          if (!deps?.resolveSourcePath) {
+            return { content: [{ type: 'text' as const, text: 'Error: source_path is not supported in cloud mode' }] };
+          }
+          description = deps.resolveSourcePath(source_path);
         }
         const result = await createItem(service, { ...params, description });
         return { content: [{ type: 'text', text: `Created ${result.id}` }] };

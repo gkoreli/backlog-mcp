@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { existsSync, readFileSync } from 'node:fs';
 import matter from 'gray-matter';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
@@ -23,6 +22,7 @@ export interface AppDeps extends ToolDeps {
   wrapMcpServer?: (server: McpServer) => McpServer; // e.g. withOperationLogging
   staticMiddleware?: any;  // result of serveStatic({ root: '...' }) from @hono/node-server/serve-static
   eventBus?: any;          // for SSE push
+  readLocalFile?: (filePath: string) => string | null;  // injected by node-server.ts; absent in Worker
   // Operation log — one of these is provided
   operationLogger?: any;   // local: OperationLogger instance
   db?: any;                // cloud: D1 database for operations queries
@@ -469,12 +469,12 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
           return c.json({ error: 'Missing path parameter' }, 400);
         }
 
-        if (!existsSync(filePath)) {
+        const content = deps.readLocalFile!(filePath);
+        if (content === null) {
           return c.json({ error: 'File not found', path: filePath }, 404);
         }
 
         try {
-          const content = readFileSync(filePath, 'utf-8');
           const ext = filePath.split('.').pop()?.toLowerCase() || 'txt';
           const mimeMap: Record<string, string> = {
             md: 'text/markdown',

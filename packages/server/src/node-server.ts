@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { existsSync, readFileSync } from 'node:fs';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createApp } from './server/hono-app.js';
@@ -8,6 +9,12 @@ import { operationLogger, withOperationLogging } from './operations/index.js';
 import { eventBus } from './events/index.js';
 import { paths } from './utils/paths.js';
 import { logger } from './utils/logger.js';
+import { resolveSourcePath } from './utils/resolve-source-path.js';
+
+function readLocalFile(filePath: string): string | null {
+  if (!existsSync(filePath)) return null;
+  try { return readFileSync(filePath, 'utf-8'); } catch { return null; }
+}
 
 const service = BacklogService.getInstance();
 const port = parseInt(process.env.BACKLOG_VIEWER_PORT || '3030');
@@ -21,6 +28,8 @@ const app = createApp(service, {
   operationLogger,
   eventBus,
   staticMiddleware: serveStatic({ root: paths.viewerDist }),
+  readLocalFile,
+  resolveSourcePath,
 });
 
 const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, (info) => {
