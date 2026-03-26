@@ -12,12 +12,13 @@ import { registerWriteResourceTool } from './backlog-write-resource.js';
 export interface ToolDeps {
   resourceManager?: any;
   operationLogger?: any;
+  resolveSourcePath?: (path: string) => string;
 }
 
 export function registerTools(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   registerBacklogListTool(server, service);
   registerBacklogGetTool(server, service);
-  registerBacklogCreateTool(server, service);
+  registerBacklogCreateTool(server, service, deps);
   registerBacklogUpdateTool(server, service);
   registerBacklogDeleteTool(server, service);
   registerBacklogSearchTool(server, service);
