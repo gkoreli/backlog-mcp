@@ -1,85 +1,85 @@
 #!/usr/bin/env node
 
+import { Command } from 'commander';
 import { paths } from '@/utils/paths.js';
 import { isServerRunning, getServerVersion, shutdownServer } from './server-manager.js';
+import { registerList } from './commands/list.js';
+import { registerGet } from './commands/get.js';
+import { registerCreate } from './commands/create.js';
+import { registerUpdate } from './commands/update.js';
+import { registerDelete } from './commands/delete.js';
+import { registerSearch } from './commands/search.js';
+import { registerContext } from './commands/context.js';
+import { registerEdit } from './commands/edit.js';
 
-const args = process.argv.slice(2);
-const command = args[0];
+const program = new Command()
+  .name('backlog-mcp')
+  .description('Task management MCP server')
+  .version(paths.getVersion())
+  .option('--json', 'Output as JSON');
 
-if (command === 'serve') {
-  // HTTP server mode
-  await import('../node-server.js');
-} else if (command === 'version') {
-  // Show version
-  console.log(paths.getVersion());
-  process.exit(0);
-} else if (command === 'status') {
-  // Check server status
-  const port = parseInt(process.env.BACKLOG_VIEWER_PORT || '3030');
-  const running = await isServerRunning(port);
-  
-  if (!running) {
-    console.log('Server is not running');
-    process.exit(1);
-  }
-  
-  try {
-    const response = await fetch(`http://localhost:${port}/api/status`);
-    const status = await response.json() as any;
-    
-    console.log(`Server is running on port ${status.port}`);
-    console.log(`Version: ${status.version}`);
-    console.log(`Data directory: ${status.dataDir}`);
-    console.log(`Task count: ${status.taskCount}`);
-    console.log(`Uptime: ${status.uptime}s`);
-    console.log(`Viewer: http://localhost:${port}/`);
-    console.log(`MCP endpoint: http://localhost:${port}/mcp`);
-  } catch (error) {
-    // Fallback to old behavior if /api/status doesn't exist
-    const version = await getServerVersion(port);
-    console.log(`Server is running on port ${port}`);
-    console.log(`Version: ${version || 'unknown'}`);
-    console.log(`Viewer: http://localhost:${port}/`);
-    console.log(`MCP endpoint: http://localhost:${port}/mcp`);
-  }
-  process.exit(0);
-} else if (command === 'stop') {
-  // Stop server
-  const port = parseInt(process.env.BACKLOG_VIEWER_PORT || '3030');
-  const running = await isServerRunning(port);
-  
-  if (!running) {
-    console.log('Server is not running');
+// --- Server management commands (existing behavior preserved) ---
+
+program
+  .command('serve')
+  .description('Run as HTTP MCP server with viewer')
+  .action(async () => { await import('../node-server.js'); });
+
+program
+  .command('status')
+  .description('Check if server is running')
+  .action(async () => {
+    const port = parseInt(process.env.BACKLOG_VIEWER_PORT || '3030');
+    const running = await isServerRunning(port);
+    if (!running) { console.log('Server is not running'); process.exit(1); }
+    try {
+      const response = await fetch(`http://localhost:${port}/api/status`);
+      const status = await response.json() as any;
+      console.log(`Server is running on port ${status.port}`);
+      console.log(`Version: ${status.version}`);
+      console.log(`Data directory: ${status.dataDir}`);
+      console.log(`Task count: ${status.taskCount}`);
+      console.log(`Uptime: ${status.uptime}s`);
+      console.log(`Viewer: http://localhost:${port}/`);
+      console.log(`MCP endpoint: http://localhost:${port}/mcp`);
+    } catch {
+      const version = await getServerVersion(port);
+      console.log(`Server is running on port ${port}`);
+      console.log(`Version: ${version || 'unknown'}`);
+      console.log(`Viewer: http://localhost:${port}/`);
+      console.log(`MCP endpoint: http://localhost:${port}/mcp`);
+    }
     process.exit(0);
-  }
-  
-  console.log(`Stopping server on port ${port}...`);
-  await shutdownServer(port);
-  console.log('Server stopped');
-  process.exit(0);
-} else if (command === '--help' || command === '-h') {
-  console.log(`
-backlog-mcp - Task management MCP server
+  });
 
-Usage:
-  backlog-mcp              Run as stdio MCP server (auto-bridges to HTTP server)
-  backlog-mcp serve        Run as HTTP MCP server with viewer
-  backlog-mcp version      Show version
-  backlog-mcp status       Check if server is running
-  backlog-mcp stop         Stop the server
-  backlog-mcp --help       Show this help
+program
+  .command('stop')
+  .description('Stop the server')
+  .action(async () => {
+    const port = parseInt(process.env.BACKLOG_VIEWER_PORT || '3030');
+    const running = await isServerRunning(port);
+    if (!running) { console.log('Server is not running'); process.exit(0); }
+    console.log(`Stopping server on port ${port}...`);
+    await shutdownServer(port);
+    console.log('Server stopped');
+    process.exit(0);
+  });
 
-Environment variables:
-  BACKLOG_DATA_DIR         Data directory path (default: ./data)
-  BACKLOG_VIEWER_PORT      HTTP server port (default: 3030)
+// --- Data commands (new) ---
 
-How it works:
-  - Default mode auto-spawns HTTP server and bridges stdio to it
-  - HTTP server persists across sessions (shared by multiple clients)
-  - Automatic version upgrades on server restart
-  `);
-  process.exit(0);
-} else {
-  // Default: bridge mode (auto-spawn HTTP server)
+registerList(program);
+registerGet(program);
+registerCreate(program);
+registerUpdate(program);
+registerDelete(program);
+registerSearch(program);
+registerContext(program);
+registerEdit(program);
+
+// --- Default action: bridge mode (no subcommand) ---
+
+program.action(async () => {
   await import('./bridge.js');
-}
+});
+
+program.parse();
