@@ -119,13 +119,13 @@ async ({ source_path, ...params }) => {
 
 ### Positioning
 
-CLI is a local-only human interface. It is not a new architecture — it is another consumer of the existing core layer, identical in role to MCP tools and HTTP routes.
+CLI is the most efficient local interface for agents. It is not a new architecture — it is another consumer of the existing core layer, identical in role to MCP tools and HTTP routes.
 
 ```
 Consumers of src/core/*.ts:
-  src/tools/*.ts          → MCP transport   (agents via stdio/HTTP)
+  src/tools/*.ts          → MCP transport   (agents via stdio/HTTP bridge)
   src/server/hono-app.ts  → HTTP transport  (web viewer, API clients)
-  src/cli/commands/*.ts   → CLI transport   (humans via terminal)
+  src/cli/commands/*.ts   → CLI transport   (agents + humans via terminal)
 ```
 
 - All three are thin wrappers that transform transport-specific input into core params and core results into transport-specific output.
@@ -134,7 +134,11 @@ Consumers of src/core/*.ts:
 
 ### Why CLI exists
 
-MCP is for agents. The web viewer is read-only. Humans need a way to create, update, and manage backlog items from the terminal without going through an MCP client. CLI fills that gap.
+CLI is faster than MCP for agents that have shell access. MCP path: agent → stdio bridge → HTTP server → handler → response → bridge → parse. CLI path: `BacklogService.getInstance()` → core function → stdout. No server, no bridge, no protocol framing — zero transport overhead.
+
+- Agents with shell access (Claude Code, Kiro, Codex, etc.) get lower latency by calling `backlog-mcp list --json` than by going through the MCP protocol.
+- MCP remains the standard interface for agents without shell access or in remote/cloud mode.
+- Humans also benefit from CLI for quick terminal operations, piping with `jq`, and scripting.
 
 ### Scope boundary — local only
 
@@ -326,12 +330,11 @@ backlog-mcp edit <id> insert <line> <text>   → insert operation
 - Each subcommand maps 1:1 to a core `EditOperation.type`
 
 **Phase 3 additions** (future):
-- `backlog-mcp edit <id>` with no subcommand → opens `$EDITOR`
 - `backlog-mcp edit <id> --stdin` → reads JSON operation from stdin for programmatic use
 
 ### Phase 3 — Future
 
-- `backlog-mcp edit <id>` opens `$EDITOR` (spawn editor, wait for exit, save changes). Phase 2 is programmatic only.
+- `backlog-mcp edit <id> --stdin` → JSON operation from stdin for complex programmatic edits.
 - Interactive confirmation for `delete` (Phase 2 requires `--force`).
 - `backlog-mcp upload <file>` for cloud mode (ADR-0091 future work — local companion pattern).
 
