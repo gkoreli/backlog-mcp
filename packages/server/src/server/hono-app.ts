@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import matter from 'gray-matter';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
+import { GitHub } from 'arctic';
 import type { IBacklogService } from '../storage/service-types.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';
 // Note: paths.ts and operations/index.ts are NOT imported here — they pull in
@@ -15,9 +16,13 @@ export interface AppDeps extends ToolDeps {
   version?: string;
   dataDir?: string;
   // Auth secrets — injected from entry points (process.env in Node.js, env bindings in Workers)
-  apiKey?: string;         // direct Bearer token (Claude Desktop / programmatic)
-  clientSecret?: string;   // OAuth client_secret (Claude.ai web connector)
-  jwtSecret?: string;      // internal JWT signing key (never exposed to clients)
+  apiKey?: string;                   // direct Bearer token (Claude Desktop / programmatic)
+  clientSecret?: string;             // OAuth client_secret (Claude.ai web connector)
+  jwtSecret?: string;                // internal JWT signing key (never exposed to clients)
+  // GitHub OAuth — replaces API key form with "Sign in with GitHub"
+  githubClientId?: string;           // GitHub OAuth App client ID
+  githubClientSecret?: string;       // GitHub OAuth App client secret
+  allowedGithubUsernames?: string;   // comma-separated allowlist e.g. "gkoreli,gogakoreli"
   // Node.js-only
   wrapMcpServer?: (server: McpServer) => McpServer; // e.g. withOperationLogging
   staticMiddleware?: any;  // result of serveStatic({ root: '...' }) from @hono/node-server/serve-static
@@ -67,8 +72,34 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   });
 
   // OAuth 2.0 authorization endpoint — Authorization Code + PKCE
-  // Shows a confirmation page; user enters API key to approve access
-  app.get('/authorize', (c) => {
+  // If GitHub OAuth is configured: redirects to GitHub for identity verification.
+  // Otherwise: shows API key form (legacy fallback).
+  app.get('/authorize', async (c) => {
+    const githubClientId = deps?.githubClientId ?? process.env.GITHUB_CLIENT_ID;
+    const githubClientSecret = deps?.githubClientSecret ?? process.env.GITHUB_CLIENT_SECRET;
+    const jwtSecret = deps?.jwtSecret ?? process.env.JWT_SECRET;
+
+    if (githubClientId && githubClientSecret && jwtSecret) {
+      // GitHub OAuth path — encode all original OAuth params into a signed state JWT
+      // so they survive the GitHub redirect without any server-side storage.
+      const q = (name: string) => c.req.query(name) ?? '';
+      const origin = new URL(c.req.url).origin;
+      const now = Math.floor(Date.now() / 1000);
+      const stateToken = await signJWT({
+        type: 'github_state',
+        redirect_uri: q('redirect_uri'),
+        code_challenge: q('code_challenge'),
+        code_challenge_method: q('code_challenge_method'),
+        client_state: q('state'),
+        client_id: q('client_id'),
+        iat: now,
+        exp: now + 600, // 10 minutes to complete GitHub auth
+      }, jwtSecret);
+      const github = new GitHub(githubClientId, githubClientSecret, `${origin}/oauth/github/callback`);
+      return c.redirect(github.createAuthorizationURL(stateToken, []).toString());
+    }
+
+    // API key form fallback (used when GitHub OAuth is not configured)
     const q = (name: string) => c.req.query(name) ?? '';
     const error = c.req.query('error');
     const html = `<!DOCTYPE html>
@@ -107,6 +138,85 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 </body>
 </html>`;
     return c.html(html);
+  });
+
+  // GitHub OAuth callback — exchanges GitHub code for identity, checks allowlist,
+  // then issues our own short-lived auth code JWT (same as the API key path).
+  app.get('/oauth/github/callback', async (c) => {
+    const githubClientId = deps?.githubClientId ?? process.env.GITHUB_CLIENT_ID;
+    const githubClientSecret = deps?.githubClientSecret ?? process.env.GITHUB_CLIENT_SECRET;
+    const allowedGithubUsernames = deps?.allowedGithubUsernames ?? process.env.ALLOWED_GITHUB_USERNAMES ?? '';
+    const jwtSecret = deps?.jwtSecret ?? process.env.JWT_SECRET;
+
+    if (!githubClientId || !githubClientSecret || !jwtSecret) {
+      return c.html(authErrorPage('GitHub OAuth is not configured on this server.'), 500);
+    }
+
+    const code = c.req.query('code');
+    const stateParam = c.req.query('state');
+    const errorParam = c.req.query('error');
+
+    if (errorParam) {
+      return c.html(authErrorPage(`GitHub denied access: ${errorParam}`), 400);
+    }
+    if (!code || !stateParam) {
+      return c.html(authErrorPage('Missing code or state from GitHub callback.'), 400);
+    }
+
+    // Verify our signed state JWT — prevents CSRF and recovers original OAuth params
+    const statePayload = await verifyJWT(stateParam, jwtSecret);
+    if (!statePayload || statePayload['type'] !== 'github_state') {
+      return c.html(authErrorPage('Invalid or expired state. Please start the authorization flow again.'), 400);
+    }
+
+    // Exchange GitHub authorization code for access token (arctic handles this)
+    const origin = new URL(c.req.url).origin;
+    const github = new GitHub(githubClientId, githubClientSecret, `${origin}/oauth/github/callback`);
+    let githubAccessToken: string;
+    try {
+      const tokens = await github.validateAuthorizationCode(code);
+      githubAccessToken = tokens.accessToken();
+    } catch {
+      return c.html(authErrorPage('Failed to exchange authorization code with GitHub. Please try again.'), 400);
+    }
+
+    // Fetch GitHub user profile — only need the username
+    const userResp = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${githubAccessToken}`,
+        'User-Agent': 'backlog-mcp',
+        Accept: 'application/vnd.github+json',
+      },
+    });
+    if (!userResp.ok) {
+      return c.html(authErrorPage('Failed to fetch GitHub user info. Please try again.'), 502);
+    }
+    const ghUser = await userResp.json() as { login: string };
+
+    // Check allowlist (case-insensitive — GitHub usernames are case-insensitive)
+    const allowed = allowedGithubUsernames.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (allowed.length === 0 || !allowed.includes(ghUser.login.toLowerCase())) {
+      return c.html(authErrorPage(`GitHub account "${ghUser.login}" is not authorized to access this server.`), 403);
+    }
+
+    // Issue our short-lived auth code JWT (identical to the API key flow)
+    const now = Math.floor(Date.now() / 1000);
+    const authCode = await signJWT({
+      type: 'auth_code',
+      iss: origin,
+      redirect_uri: statePayload['redirect_uri'] as string,
+      code_challenge: statePayload['code_challenge'] as string,
+      code_challenge_method: statePayload['code_challenge_method'] as string,
+      iat: now,
+      exp: now + 300, // 5 minutes
+    }, jwtSecret);
+
+    const callbackUrl = new URL(statePayload['redirect_uri'] as string);
+    callbackUrl.searchParams.set('code', authCode);
+    if (statePayload['client_state']) {
+      callbackUrl.searchParams.set('state', statePayload['client_state'] as string);
+    }
+    return c.redirect(callbackUrl.toString());
   });
 
   app.post('/authorize', async (c) => {
@@ -556,6 +666,10 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   }
 
   return app;
+}
+
+function authErrorPage(message: string): string {
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auth Error — backlog-mcp</title><style>body{font-family:system-ui,sans-serif;max-width:420px;margin:80px auto;padding:0 20px;color:#111;}h1{font-size:1.3rem;color:#dc2626;}p{color:#555;font-size:0.95rem;}</style></head><body><h1>Authorization Failed</h1><p>${message}</p></body></html>`;
 }
 
 function tryParseJson(value: string | null): unknown {
