@@ -204,6 +204,12 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
     const body = toNull(task.description);
 
     await this.db.batch([
+      // Remove old FTS5 entry FIRST — must read old values from tasks before UPDATE overwrites them
+      this.db
+        .prepare(
+          "INSERT INTO tasks_fts(tasks_fts, rowid, id, title, body) SELECT 'delete', rowid, id, title, body FROM tasks WHERE id = ?"
+        )
+        .bind(task.id),
       this.db
         .prepare(
           `UPDATE tasks SET
@@ -228,13 +234,7 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
           task.updated_at,
           task.id,
         ),
-      // Remove old FTS5 entry
-      this.db
-        .prepare(
-          "INSERT INTO tasks_fts(tasks_fts, rowid, id, title, body) SELECT 'delete', rowid, id, title, body FROM tasks WHERE id = ?"
-        )
-        .bind(task.id),
-      // Insert updated FTS5 entry
+      // Insert updated FTS5 entry AFTER UPDATE so new values are picked up
       this.db
         .prepare(
           'INSERT INTO tasks_fts(rowid, id, title, body) SELECT rowid, id, title, body FROM tasks WHERE id = ?'
