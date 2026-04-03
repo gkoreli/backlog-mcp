@@ -20,7 +20,7 @@ export default {
     const service = new D1BacklogService(env.DB);
     const app = createApp(service, {
       name: 'backlog-mcp',
-      version: '0.46.0',
+      version: '0.47.2',
       db: env.DB,
       apiKey: env.API_KEY,
       clientSecret: env.CLIENT_SECRET,
