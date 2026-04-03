@@ -65,11 +65,45 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       issuer: origin,
       authorization_endpoint: `${origin}/authorize`,
       token_endpoint: `${origin}/oauth/token`,
+      registration_endpoint: `${origin}/oauth/register`,
       grant_types_supported: ['authorization_code', 'client_credentials'],
       response_types_supported: ['code'],
       code_challenge_methods_supported: ['S256'],
       token_endpoint_auth_methods_supported: ['client_secret_post', 'none'],
     });
+  });
+
+  // OAuth 2.0 Protected Resource Metadata (RFC 9728)
+  // Required by ChatGPT and other MCP clients to discover the authorization server.
+  app.get('/.well-known/oauth-protected-resource', (c) => {
+    const origin = new URL(c.req.url).origin;
+    return c.json({
+      resource: origin,
+      authorization_servers: [origin],
+    });
+  });
+
+  // Dynamic Client Registration (RFC 7591)
+  // Required by ChatGPT's OAuth flow — it registers a new client before redirecting.
+  // Stateless: any client is accepted; the returned client_id is not stored or validated
+  // later. Actual security comes from PKCE + GitHub OAuth username allowlist.
+  app.post('/oauth/register', async (c) => {
+    let body: Record<string, unknown> = {};
+    try { body = await c.req.json(); } catch { /* empty body is fine */ }
+
+    const redirectUris: string[] = Array.isArray(body['redirect_uris']) ? body['redirect_uris'] as string[] : [];
+    const clientId = crypto.randomUUID();
+    const now = Math.floor(Date.now() / 1000);
+
+    return c.json({
+      client_id: clientId,
+      client_id_issued_at: now,
+      redirect_uris: redirectUris,
+      grant_types: ['authorization_code'],
+      response_types: ['code'],
+      token_endpoint_auth_method: 'none',
+      code_challenge_method: 'S256',
+    }, 201);
   });
 
   // OAuth 2.0 authorization endpoint — shows auth options page.
