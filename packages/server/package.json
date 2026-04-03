@@ -41,6 +41,7 @@
     "clean": "rm -rf dist",
     "start": "node dist/cli/index.mjs",
     "deploy": "wrangler deploy",
+    "deploy:preview": "wrangler versions upload",
     "test": "vitest run",
     "test:watch": "vitest"
   },

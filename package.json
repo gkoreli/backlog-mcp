@@ -9,6 +9,7 @@
     "clean": "pnpm -r clean",
     "start": "pnpm --filter backlog-mcp start",
     "deploy": "pnpm --filter backlog-mcp run deploy",
+    "deploy:preview": "pnpm --filter backlog-mcp run deploy:preview",
     "inspect": "pnpm build && npx @modelcontextprotocol/inspector packages/server/dist/cli/index.mjs"
   },
   "devDependencies": {
