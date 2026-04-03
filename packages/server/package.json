@@ -40,6 +40,7 @@
     "dev": "tsx watch --env-file=../../.env src/node-server.ts",
     "clean": "rm -rf dist",
     "start": "node dist/cli/index.mjs",
+    "deploy": "wrangler deploy",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -49,7 +50,8 @@
   "license": "MIT",
   "devDependencies": {
     "@backlog-mcp/shared": "workspace:*",
-    "memfs": "^4.56.10"
+    "memfs": "^4.56.10",
+    "wrangler": "^4.0.0"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.0",
