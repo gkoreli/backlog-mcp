@@ -10,6 +10,9 @@ export interface WorkerEnv {
   API_KEY?: string;
   CLIENT_SECRET?: string;
   JWT_SECRET?: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
+  ALLOWED_GITHUB_USERNAMES?: string; // comma-separated e.g. "gkoreli,gogakoreli"
 }
 
 export default {
@@ -22,6 +25,9 @@ export default {
       apiKey: env.API_KEY,
       clientSecret: env.CLIENT_SECRET,
       jwtSecret: env.JWT_SECRET,
+      githubClientId: env.GITHUB_CLIENT_ID,
+      githubClientSecret: env.GITHUB_CLIENT_SECRET,
+      allowedGithubUsernames: env.ALLOWED_GITHUB_USERNAMES,
     });
     return app.fetch(request);
   },
