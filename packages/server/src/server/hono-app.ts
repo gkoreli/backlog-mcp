@@ -161,6 +161,11 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     }
 
     const q = (name: string) => c.req.query(name) ?? '';
+    const redirectUri = q('redirect_uri');
+    if (!redirectUri) {
+      return c.html(authErrorPage('Missing redirect_uri. Please initiate authorization from your MCP client (e.g. Claude.ai) rather than opening this page directly.'), 400);
+    }
+
     const origin = new URL(c.req.url).origin;
     const now = Math.floor(Date.now() / 1000);
     const stateToken = await signJWT({
