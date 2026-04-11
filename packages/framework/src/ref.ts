@@ -10,11 +10,11 @@
  *
  * onMount(() => inputRef.current?.focus());
  *
- * return html`<input ${inputRef} @keydown.enter=${onSubmit} />`;
+ * return html`<input ref="${inputRef}" @keydown.enter=${onSubmit} />`;
  * ```
  *
- * The template engine detects `Ref` objects in expression positions
- * (not inside attribute values) and assigns the nearest parent element.
+ * The template engine detects `Ref` objects in `ref="${...}"`
+ * attribute bindings and assigns the referenced element.
  */
 
 // ── Brand for ref detection in templates ─────────────────────────────

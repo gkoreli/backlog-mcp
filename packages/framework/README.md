@@ -16,7 +16,7 @@ import { signal, component, html } from '@nisli/core';
 const Counter = component('x-counter', () => {
   const count = signal(0);
   return html`
-    <button @click=${() => count.set(count.value + 1)}>
+    <button @click=${() => count.value++}>
       Count: ${count}
     </button>
   `;
@@ -45,7 +45,7 @@ effect(() => { ... })   // Side effect that tracks dependencies
 
 // Components
 component('tag-name', (props, host) => html`...`)
-component<Props>('tag-name', { props: [...] }, (props, host) => html`...`)
+component<Props>('tag-name', (props, host) => html`...`)
 
 // Templates — signals are implicit, no .value needed
 html`<div>${count}</div>`
@@ -69,11 +69,11 @@ const { data, loading, error } = query(
 // Lifecycle
 onMount(() => { ... })
 onCleanup(() => { ... })
-useHostEvent('click', handler)
+useHostEvent(host, 'click', handler)
 
 // Refs
 const el = ref<HTMLDivElement>()
-html`<div ${el}>...</div>`
+html`<div ref="${el}">...</div>`
 
 // Events
 class Nav extends Emitter<{ select: { id: string } }> {}

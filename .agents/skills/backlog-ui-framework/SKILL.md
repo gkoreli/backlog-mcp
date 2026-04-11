@@ -43,7 +43,7 @@ Reference these guidelines when:
 ### 1. Component Authoring (CRITICAL)
 
 - `comp-setup-sync` - Setup function MUST be synchronous; capture services sync, use them async
-- `comp-props-signals` - All props are `Signal<T>`; factory requires signals, not plain values
+- `comp-props-signals` - All props are `Signal<T>` in setup; factories accept `T | Signal<T>` inputs
 - `comp-factory-composition` - ALL custom elements MUST use factory composition; HTML tag syntax is ONLY for native elements (div, span, button)
 - `comp-html-for-vanilla` - HTML tag syntax (`<tag>`) is ONLY for native HTML elements; never for custom elements
 - `comp-no-this` - No `this` in components; use pure functions with props and host
@@ -59,7 +59,7 @@ Reference these guidelines when:
 - `signal-immutable-writes` - Mutating objects doesn't trigger updates; assign a new reference
 - `signal-computed-derived` - Use `computed()` for derived state, not manual sync in effects
 - `signal-effect-side-effects` - Effects are for side effects only (DOM, network, localStorage)
-- `signal-batch-writes` - Use `batch()` for multiple synchronous signal writes
+- `signal-coalesced-writes` - Multiple synchronous writes coalesce automatically; use `flush()` only when synchronous effects are needed
 - `signal-no-async-in-setup-context` - `inject()`, `effect()`, `emitter.on()` must be called synchronously in setup
 - `signal-untrack` - Use `untrack()` to read signals without tracking them as dependencies (ADR 0009)
 - `signal-conditional-deps` - Dependencies are re-tracked on every run; conditional reads track correctly

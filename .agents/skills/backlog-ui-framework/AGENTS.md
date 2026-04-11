@@ -31,9 +31,9 @@ component('my-el', (props) => {
 });
 ```
 
-### `comp-props-signals` — All props are `Signal<T>`; factory requires signals
+### `comp-props-signals` — Props are signals in setup; factories accept values or signals
 
-Props are declared as a TypeScript interface. The framework wraps each prop in a `Signal`. Factory callers MUST pass `Signal<T>`, not plain `T`, because setup runs once — passing `.value` loses reactivity forever.
+Props are declared as a TypeScript interface. Inside setup, every prop is a `Signal<T>`. Factory callers may pass either a `Signal<T>` for reactive updates or a plain `T` for a static value.
 
 ```typescript
 interface TaskItemProps {
@@ -41,15 +41,14 @@ interface TaskItemProps {
   selected: boolean;
 }
 
-// ❌ WRONG — passing .value loses reactivity
+// Static value — accepted, but it will not update if currentTask changes later
 TaskItem({ task: currentTask.value, selected: true })
-//         ^ Error: Task is not assignable to Signal<Task>
 
 // ✅ CORRECT — pass signals, child stays reactive
 TaskItem({ task: currentTask, selected: isSelected })
 
-// ✅ CORRECT — for truly static props, wrap in signal()
-TaskItem({ task: signal(staticTask), selected: signal(false) })
+// ✅ CORRECT — for truly static props, pass plain values
+TaskItem({ task: staticTask, selected: false })
 ```
 
 Inside the component, props are accessed as signals:
@@ -203,22 +202,20 @@ effect(() => {
 });
 ```
 
-### `signal-batch-writes` — Batch multiple synchronous writes
+### `signal-coalesced-writes` — Synchronous writes coalesce automatically
 
-Multiple synchronous `.value` writes coalesce into one update pass. Use `batch()` explicitly when updating multiple signals in an event handler.
+Multiple synchronous `.value` writes coalesce into one effect pass automatically. Write the signals directly. Use `flush()` only when code after the writes must observe DOM/effect side effects synchronously.
 
 ```typescript
-import { batch } from './framework';
+filter.value = 'active';
+sort.value = 'updated';
+page.value = 1;
 
-// ✅ Batched — one update pass, not three
-batch(() => {
-  filter.value = 'active';
-  sort.value = 'updated';
-  page.value = 1;
-});
+// Optional: only for imperative read-after-effect cases
+flush();
 ```
 
-Without `batch()`, each write schedules effects independently. Nested `batch()` calls are safe — flush only happens at the outermost level.
+There is no public `batch()` API. ADR 0015 removed it because microtask coalescing already handles normal multi-signal updates.
 
 ### `signal-no-async-in-setup-context` — Reactive primitives are synchronous
 
@@ -691,7 +688,7 @@ The template engine's `bindAttribute()` checks for `_setProp()` on the element. 
 Effects are batched. After changing a signal in tests, call `flushEffects()` to synchronously run pending effects:
 
 ```typescript
-import { signal, effect, flushEffects } from './framework';
+import { signal, effect, flushEffects } from '@nisli/core';
 
 const count = signal(0);
 const results: number[] = [];
@@ -737,7 +734,7 @@ const api = inject(BacklogAPI); // returns mock
 Call `resetInjector()` in `beforeEach` or `afterEach` to clear the singleton cache. Without this, test order matters and mocks leak between tests.
 
 ```typescript
-import { resetInjector } from './framework';
+import { resetInjector } from '@nisli/core';
 
 afterEach(() => {
   resetInjector();
@@ -776,7 +773,7 @@ These are the critical dependency chains. A bug in an upstream module propagates
 ## Component Template — Complete Example
 
 ```typescript
-import { signal, computed, effect, component, html, when, inject } from '../framework';
+import { signal, computed, effect, component, html, when, inject } from '@nisli/core';
 
 interface MyComponentProps {
   itemId: string;

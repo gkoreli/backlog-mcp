@@ -82,7 +82,7 @@ it('should track dependencies', () => {
   const a = signal(1);
   const b = computed(() => a.value * 2);
   expect(b.value).toBe(2);
-  a.set(5);
+  a.value = 5;
   flush();
   expect(b.value).toBe(10);
 });
@@ -120,9 +120,15 @@ Shared and framework export source in dev, dist at publish time:
 
 ```json
 {
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./static": "./src/static/index.ts"
+  },
   "publishConfig": {
-    "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } }
+    "exports": {
+      ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "./static": { "types": "./dist/static/index.d.ts", "default": "./dist/static/index.js" }
+    }
   }
 }
 ```
