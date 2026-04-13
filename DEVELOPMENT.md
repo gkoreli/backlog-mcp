@@ -12,18 +12,19 @@ pnpm dev  # Starts MCP server + web viewer with hot reload (port 3040)
 ```
 packages/
 ├── server/       # MCP server, CLI, HTTP API — published as `backlog-mcp`
-├── framework/    # Reactive web components — published as `@nisli/core`
-├── viewer/       # Web UI (18 components built on framework)
+├── viewer/       # Web UI built with `@nisli/core`
 └── shared/       # Entity types, ID utilities (private, inlined at build)
 ```
+
+The viewer uses [Nisli](https://github.com/gkoreli/nisli), a zero-dependency reactive Web Component framework published as [`@nisli/core`](https://www.npmjs.com/package/@nisli/core). Nisli started in this repository and now lives separately.
 
 ## Commands
 
 ### Workspace-wide
 
 ```bash
-pnpm build               # Build all packages (shared → framework → viewer → server)
-pnpm test                # Run all tests across all packages (802 tests)
+pnpm build               # Build all packages (shared → viewer → server)
+pnpm test                # Run all workspace tests
 pnpm test:watch          # Watch mode (server only)
 pnpm dev                 # Server + viewer with hot reload (port 3040)
 pnpm clean               # Remove dist/ from all packages
@@ -34,7 +35,6 @@ pnpm typecheck           # Type-check all packages
 
 ```bash
 pnpm --filter backlog-mcp test          # Server tests only
-pnpm --filter @nisli/core test          # Framework tests only
 pnpm --filter @backlog-mcp/viewer test  # Viewer tests only
 ```
 
@@ -103,17 +103,6 @@ packages/server/src/
 ├── tools/         # 7 MCP tools (list, get, create, update, delete, search, context)
 └── utils/         # Logger, paths, date
 
-packages/framework/src/
-├── signal.ts      # Reactive signals, computed, effects
-├── template.ts    # Tagged template engine, when(), each()
-├── component.ts   # Web component base class
-├── query.ts       # Declarative data loading
-├── injector.ts    # Dependency injection
-├── lifecycle.ts   # onMount, onCleanup, useHostEvent
-├── emitter.ts     # Typed event emitter
-├── context.ts     # Context API (provide/consume)
-└── ref.ts         # Element references
-
 packages/viewer/
 ├── components/    # 18 web components
 ├── services/      # App state, SSE client, markdown, URL state
@@ -122,6 +111,11 @@ packages/viewer/
 ├── main.ts        # App initialization
 └── styles.css     # All styling
 ```
+
+Nisli source and framework ADRs now live in the [Nisli repository](https://github.com/gkoreli/nisli):
+
+- Source: <https://github.com/gkoreli/nisli/tree/main/packages/core/src>
+- ADRs: <https://github.com/gkoreli/nisli/tree/main/docs/adr>
 
 ## Web Viewer Patterns
 
@@ -141,7 +135,7 @@ packages/viewer/
 ## Testing
 
 ```bash
-pnpm test           # All 802 tests across 3 packages
+pnpm test           # All workspace tests
 pnpm test:watch     # Watch mode (server)
 ```
 
