@@ -2,6 +2,8 @@
 
 ## Quick Start
 
+Development uses Node 24 LTS via mise.
+
 ```bash
 pnpm install
 pnpm dev  # Starts MCP server + web viewer with hot reload (port 3040)
@@ -65,6 +67,8 @@ When running `pnpm dev`:
 - Uses `tsx watch` for hot reload on file changes
 - Ctrl+C cleanly shuts down
 - Reads port from `.env` file (`BACKLOG_VIEWER_PORT`)
+
+Node 24 LTS is the local development baseline. Native Node TypeScript is not used for the server dev runner yet; `tsx` remains in place because the current source uses TypeScript and module-resolution features that Node's built-in type stripping does not fully support.
 
 ## Architecture Principles
 
