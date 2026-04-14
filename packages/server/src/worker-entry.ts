@@ -40,6 +40,7 @@ export default {
       githubClientSecret: env.GITHUB_CLIENT_SECRET,
       allowedGithubUsernames: env.ALLOWED_GITHUB_USERNAMES,
       actor: { type: 'agent', name: 'claude' },
+      logAuthEvent: event => console.info(JSON.stringify({ type: 'auth', ...event })),
       operationLog,
     });
     return app.fetch(request);

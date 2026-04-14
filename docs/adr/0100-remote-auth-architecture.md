@@ -223,6 +223,103 @@ Research references:
 - [RFC 9700 — OAuth 2.0 Security Best Current Practice, Refresh Token Protection](https://datatracker.ietf.org/doc/html/rfc9700#section-4.14)
 - [RFC 6749 — OAuth 2.0 Refresh Token Grant](https://www.rfc-editor.org/rfc/rfc6749#section-6)
 
+### Client Compatibility Research 2026-04-14
+
+The product goal is not just standards compliance. The server must work from normal chat
+surfaces: ChatGPT chats, Claude.ai chats, and Claude Desktop chats. Public client docs do
+not fully specify the exact OAuth request payload each client sends in production, so this
+section separates documented behavior from the post-deployment observations we still need.
+
+| Client surface | Documented behavior | ADR 92 implication |
+|----------------|---------------------|--------------------|
+| ChatGPT chats through Apps SDK / connectors | OpenAI's Apps SDK describes MCP as the backbone for ChatGPT apps and states that MCP includes protected resource metadata, OAuth 2.1 flows, and Dynamic Client Registration. OpenAI's testing guide says to validate connectors in ChatGPT developer mode after the HTTPS connector is reachable. | Keep RFC 9728 protected resource metadata, authorization-server metadata, PKCE, and DCR. The implementation is compatible with ChatGPT's documented discovery/auth shape, but the exact `grant_types` and `scope` values ChatGPT sends must be observed after deployment. |
+| OpenAI Responses API remote MCP tool | OpenAI's API MCP guide treats remote MCP servers as externally supplied `server_url` values and says authenticated servers may need an OAuth access token supplied in the request. | This is a developer/API path, not the target "ChatGPT chat" path. ADR 92 still works because callers can provide a current access token, but token acquisition/storage belongs to the caller in this mode. |
+| Claude.ai custom connectors | Anthropic's custom connector docs say remote MCP custom connectors are available on Claude, users add a remote MCP URL, click Connect, and typically go through OAuth. | Claude.ai is a first-class target for ADR 92. The server must stay publicly reachable over HTTPS, support OAuth-based remote MCP, and provide a refresh path so Claude can keep the connector connected. |
+| Claude Desktop remote connectors | Anthropic documents that remote connectors for Claude Desktop are added through Claude's Connectors settings, not `claude_desktop_config.json`, and that remote traffic originates from Anthropic's cloud infrastructure rather than the local machine. | Treat Claude Desktop remote connector traffic the same as Claude.ai traffic. Do not special-case local desktop networking for the remote MCP endpoint. Direct local STDIO MCP remains separate from ADR 92. |
+| Claude MCP auth support | Anthropic documents support for OAuth-based remote servers, the MCP auth specs, Dynamic Client Registration, Claude callback URLs, and token expiry/refresh. | The implemented DCR persistence, `refresh_token` grant, and refresh-aware metadata directly target Claude's documented best-experience path. Callback allowlisting should include both `https://claude.ai/api/mcp/auth_callback` and future `https://claude.com/api/mcp/auth_callback` if callback allowlisting is later added. |
+| MCP ecosystem guidance | SEP-2207 says pure OAuth clients rely on `refresh_token` grant metadata while OIDC-style clients may use `offline_access`, and notes that major MCP clients have not consistently requested `offline_access`. | Support both signals: persist DCR `grant_types` and advertise `offline_access` only on authorization-server metadata. Do not require `offline_access` as the only way to receive a refresh token. |
+
+Compatibility source links:
+
+- [OpenAI Apps SDK MCP server concepts](https://developers.openai.com/apps-sdk/concepts/mcp-server)
+- [OpenAI Apps SDK testing guide](https://developers.openai.com/apps-sdk/deploy/testing)
+- [OpenAI API MCP and connectors guide](https://developers.openai.com/api/docs/guides/tools-connectors-mcp)
+- [Claude Help: get started with custom connectors using remote MCP](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
+- [Claude Help: build custom connectors via remote MCP servers](https://support.claude.com/en/articles/11503834-build-custom-connectors-via-remote-mcp-servers)
+- [Anthropic API docs: MCP connector](https://platform.claude.com/docs/en/agents-and-tools/mcp-connector)
+- [MCP SEP-2207 — OIDC-Flavored Refresh Token Guidance](https://modelcontextprotocol.io/seps/2207-oidc-refresh-token-guidance)
+
+Post-deployment observation checklist:
+
+- Capture one ChatGPT developer-mode connection and record:
+  - `/oauth/register` request body: `redirect_uris`, `grant_types`, `response_types`,
+    `scope`, `token_endpoint_auth_method`, and `client_name`.
+  - `/authorize` query: `client_id`, `redirect_uri`, `code_challenge_method`, and `scope`.
+  - `/oauth/token` authorization-code exchange: whether ChatGPT receives and stores
+    `refresh_token`.
+  - Later `/oauth/token` refresh exchange: whether ChatGPT uses
+    `grant_type=refresh_token` before asking the user to re-authenticate.
+- Capture one Claude.ai custom connector connection and record the same fields, plus the
+  callback URL actually used (`claude.ai` vs `claude.com`).
+- Capture one Claude Desktop remote connector connection through Claude's Connectors UI and
+  confirm it matches Claude.ai's server-side traffic shape.
+- Confirm none of the clients require `offline_access` in protected resource metadata or a
+  `WWW-Authenticate` challenge scope. If any client does, update ADR 92 explicitly because
+  that would conflict with SEP-2207's resource/authorization-server separation.
+- Confirm clients tolerate refresh-token rotation by using only the replacement refresh token
+  after a successful refresh grant.
+
+### Compatibility Gap Analysis 2026-04-14
+
+The refresh-token architecture accounts for the main documented requirements:
+
+- ChatGPT and Claude discovery paths are covered by authorization-server metadata, protected
+  resource metadata, PKCE, and Dynamic Client Registration.
+- Claude's documented DCR plus token expiry/refresh path is covered by persisted DCR,
+  `grant_type=refresh_token`, rotation, and replay detection.
+- Claude Desktop remote connector traffic is treated like Claude.ai traffic because the
+  remote connector is brokered through Claude's cloud infrastructure.
+- SEP-2207's split signal model is covered by accepting both DCR `refresh_token` grant
+  capability and `offline_access` as an authorization-server scope signal.
+
+The first implementation was directionally correct, but not fully resilient enough for
+unknown client behavior. Follow-up hardening addressed these gaps:
+
+| Gap | Risk | Resolution |
+|-----|------|------------|
+| Auth middleware covered `/mcp/*` but not the primary `/mcp` endpoint. | A direct request to the Streamable HTTP endpoint could bypass the intended bearer-token challenge. | Mount the same MCP auth middleware on both `/mcp` and `/mcp/*`. |
+| MCP 401 responses did not include a `WWW-Authenticate` challenge pointing to protected resource metadata. | Clients that discover auth from the protected resource challenge may fail or fall back to weaker/manual configuration. | Add `WWW-Authenticate: Bearer resource_metadata="<origin>/.well-known/oauth-protected-resource"` on missing or invalid MCP bearer tokens. |
+| Refresh grant required `client_id` on every refresh request. | Some public OAuth clients may rely on the refresh token binding and omit `client_id` on refresh. | Accept missing `client_id`; reject only when a supplied `client_id` mismatches the stored grant. |
+| DCR `scope` was persisted but not echoed in the registration response. | Clients that expect RFC-style echoing of registered metadata may not know `offline_access` was accepted. | Echo `scope` in `/oauth/register` responses when supplied. |
+| Refresh eligibility used only the authorization request scope. | A client could register `offline_access` during DCR but omit it on the later authorization request, causing no refresh token to be issued. | Combine authorization-request scope with registered client scope before applying refresh-token eligibility. |
+| ADR observation checklist required request-shape capture, but production had no redacted auth-event hook. | We could not easily verify ChatGPT/Claude `grant_types`, `scope`, callback, and refresh behavior without inspecting sensitive tokens or adding ad hoc logs. | Add a composed `logAuthEvent` dependency and wire the Worker to emit redacted JSON auth events for register, authorize, authorization-code token, and refresh-token paths. Raw codes, code verifiers, access tokens, and refresh tokens are never logged. |
+| `hono-app.ts` became the auth workhorse. | A monolithic route file hides security decisions, makes route changes risky, and violates the composition-over-inheritance goal even without using inheritance. | Split auth into explicit modules: MCP bearer middleware, OAuth route registration, token exchange, auth pages, HTTP param parsing, auth-event logging, and refresh-record creation. `hono-app.ts` now composes those modules. |
+
+Engineering plan after this hardening:
+
+- Keep the current implementation as the production candidate.
+- Deploy with redacted auth-event logging enabled in the Worker.
+- Use `wrangler tail` during ChatGPT, Claude.ai, and Claude Desktop connector setup to
+  capture observed request shapes.
+- If a client still fails, adjust only the compatibility adapter surface first: metadata,
+  DCR echoing, accepted token endpoint parameters, or challenge headers.
+- Do not weaken token storage or rotation semantics for compatibility. If a client cannot
+  tolerate rotation, document that as a client bug or add a narrowly scoped compatibility
+  mode only after explicit evidence.
+
+Composition refactor outcome:
+
+| Module | Responsibility |
+|--------|----------------|
+| `packages/server/src/server/hono-app.ts` | App-level composition: CORS, auth runtime construction, middleware/route registration, MCP endpoint, viewer/API routes. |
+| `packages/server/src/auth/mcp-auth.ts` | Reusable MCP bearer-token middleware and protected-resource challenge behavior. |
+| `packages/server/src/auth/oauth-routes.ts` | Declarative OAuth route registration for metadata, DCR, authorize, GitHub start/callback, API-key authorize, and token endpoint wiring. |
+| `packages/server/src/auth/oauth-token.ts` | Token endpoint grant dispatch plus authorization-code, refresh-token, and client-credentials exchange logic. |
+| `packages/server/src/auth/oauth-pages.ts` | Pure HTML rendering for auth pages, with escaping isolated from route handlers. |
+| `packages/server/src/auth/http-params.ts` | Small pure functions for request/body/claim normalization and scope combination. |
+| `packages/server/src/auth/refresh-records.ts` | Pure refresh-token record construction for initial grants and rotated replacements. |
+| `packages/server/src/auth/events.ts` | Redacted auth-event types, logging composition hook, and redirect-origin normalization. |
+
 ### Distilled Decision
 
 Add refresh-token support with a minimal D1-backed grant store. Keep access tokens stateless

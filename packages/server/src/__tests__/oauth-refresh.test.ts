@@ -166,13 +166,27 @@ describe('OAuth refresh-token routes', () => {
     expect(await protectedResource.json()).not.toHaveProperty('scopes_supported');
   });
 
+  it('points unauthorized MCP clients at protected resource metadata', async () => {
+    const app = createApp(makeService(), { jwtSecret });
+    const response = await app.request('/mcp');
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get('www-authenticate')).toBe(
+      'Bearer resource_metadata="http://localhost/.well-known/oauth-protected-resource"',
+    );
+  });
+
   it('persists dynamic client registration and returns requested refresh_token support', async () => {
     const store = new InMemoryOAuthStore();
+    const events: unknown[] = [];
     const app = createApp(makeService(), {
       jwtSecret,
       oauthStore: store,
       now: () => fixedNow,
       generateId: makeIdGenerator(),
+      logAuthEvent: event => {
+        events.push(structuredClone(event));
+      },
     });
 
     const response = await app.request('/oauth/register', {
@@ -182,6 +196,7 @@ describe('OAuth refresh-token routes', () => {
         redirect_uris: ['https://client.example/callback'],
         grant_types: ['authorization_code', 'refresh_token'],
         response_types: ['code'],
+        scope: 'mcp offline_access',
       }),
     });
 
@@ -189,10 +204,52 @@ describe('OAuth refresh-token routes', () => {
     const body = await response.json();
     expect(body.client_id).toBe('id-1');
     expect(body.grant_types).toEqual(['authorization_code', 'refresh_token']);
+    expect(body.scope).toBe('mcp offline_access');
     expect(await store.getClient('id-1')).toMatchObject({
       clientName: 'Test Client',
       grantTypes: ['authorization_code', 'refresh_token'],
+      scope: 'mcp offline_access',
     });
+    expect(events).toEqual([expect.objectContaining({
+      event: 'oauth_register',
+      client_id: 'id-1',
+      scope: 'mcp offline_access',
+      redirect_origins: ['https://client.example'],
+      issued_grant_types: ['authorization_code', 'refresh_token'],
+    })]);
+  });
+
+  it('issues refresh tokens when offline_access was registered but not repeated on authorize', async () => {
+    const store = new InMemoryOAuthStore();
+    await store.saveClient({
+      clientId: 'client-1',
+      redirectUris: ['https://client.example/callback'],
+      grantTypes: ['authorization_code'],
+      responseTypes: ['code'],
+      scope: 'offline_access',
+      tokenEndpointAuthMethod: 'none',
+      createdAt: fixedNow.toISOString(),
+    });
+    const app = createApp(makeService(), {
+      jwtSecret,
+      oauthStore: store,
+      now: () => fixedNow,
+      generateId: makeIdGenerator(),
+      generateToken: makeTokenGenerator(),
+    });
+
+    const verifier = 'verifier-offline-access';
+    const code = await makeAuthCode({ jwtSecret, clientId: 'client-1', verifier });
+    const response = await postToken(app, {
+      grant_type: 'authorization_code',
+      code,
+      code_verifier: verifier,
+      redirect_uri: 'https://client.example/callback',
+      client_id: 'client-1',
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toHaveProperty('refresh_token', 'rt_test-1');
   });
 
   it('issues and rotates refresh tokens for refresh-capable GitHub authorization grants', async () => {
@@ -232,7 +289,6 @@ describe('OAuth refresh-token routes', () => {
     const refreshResponse = await postToken(app, {
       grant_type: 'refresh_token',
       refresh_token: 'rt_test-1',
-      client_id: 'client-1',
     });
 
     expect(refreshResponse.status).toBe(200);
