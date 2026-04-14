@@ -6,6 +6,7 @@ import { createApp } from './server/hono-app.js';
 import { D1BacklogService } from './storage/d1-backlog-service.js';
 import { D1OperationLog } from './operations/d1-operation-log.js';
 import { withOperationLogging } from './operations/middleware.js';
+import { D1OAuthStore } from './auth/index.js';
 
 export interface WorkerEnv {
   DB: any;            // D1Database
@@ -21,6 +22,7 @@ export default {
   async fetch(request: Request, env: WorkerEnv, ctx: any): Promise<Response> {
     const service = new D1BacklogService(env.DB);
     const operationLog = new D1OperationLog(env.DB, ctx);
+    const oauthStore = new D1OAuthStore(env.DB);
 
     const app = createApp(service, {
       name: 'backlog-mcp',
@@ -29,6 +31,7 @@ export default {
       apiKey: env.API_KEY,
       clientSecret: env.CLIENT_SECRET,
       jwtSecret: env.JWT_SECRET,
+      oauthStore,
       githubClientId: env.GITHUB_CLIENT_ID,
       githubClientSecret: env.GITHUB_CLIENT_SECRET,
       allowedGithubUsernames: env.ALLOWED_GITHUB_USERNAMES,

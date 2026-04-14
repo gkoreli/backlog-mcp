@@ -7,6 +7,19 @@ import { GitHub } from 'arctic';
 import type { IBacklogService } from '../storage/service-types.js';
 import type { IOperationLog } from '../operations/types.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';
+import {
+  addSeconds,
+  b64url,
+  canIssueRefreshToken,
+  createAuthRuntime,
+  hashToken,
+  signJWT,
+  verifyJWT,
+  type AuthRuntime,
+  type NewRefreshTokenRecord,
+  type OAuthStore,
+  type RefreshTokenRecord,
+} from '../auth/index.js';
 // Note: paths.ts and operations/index.ts are NOT imported here — they pull in
 // Node.js modules (import.meta.url, fs, path) that break the Workers bundle.
 // name/version and the MCP server wrapper are injected via AppDeps.
@@ -20,6 +33,12 @@ export interface AppDeps extends ToolDeps {
   apiKey?: string;                   // direct Bearer token (Claude Desktop / programmatic)
   clientSecret?: string;             // OAuth client_secret (Claude.ai web connector)
   jwtSecret?: string;                // internal JWT signing key (never exposed to clients)
+  oauthStore?: OAuthStore;           // optional persistent OAuth grant store for refresh tokens
+  refreshTokenInactivitySeconds?: number; // default 30 days
+  refreshTokenMaxAgeSeconds?: number;     // default 90 days
+  now?: () => Date;                  // test seam
+  generateId?: () => string;         // test seam
+  generateToken?: (prefix?: string) => string; // test seam
   // GitHub OAuth — replaces API key form with "Sign in with GitHub"
   githubClientId?: string;           // GitHub OAuth App client ID
   githubClientSecret?: string;       // GitHub OAuth App client secret
@@ -36,6 +55,14 @@ export interface AppDeps extends ToolDeps {
 
 export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   const app = new Hono();
+  const authRuntime = createAuthRuntime({
+    store: deps?.oauthStore,
+    inactivitySeconds: deps?.refreshTokenInactivitySeconds,
+    maxAgeSeconds: deps?.refreshTokenMaxAgeSeconds,
+    now: deps?.now,
+    generateId: deps?.generateId,
+    generateToken: deps?.generateToken,
+  });
   app.use('*', cors());
 
   // Auth middleware — accepts OAuth JWT (Claude.ai web) or direct API key (Claude Desktop)
@@ -61,15 +88,19 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   // OAuth 2.0 discovery (RFC 8414)
   app.get('/.well-known/oauth-authorization-server', (c) => {
     const origin = new URL(c.req.url).origin;
+    const refreshSupported = !!authRuntime.store;
     return c.json({
       issuer: origin,
       authorization_endpoint: `${origin}/authorize`,
       token_endpoint: `${origin}/oauth/token`,
       registration_endpoint: `${origin}/oauth/register`,
-      grant_types_supported: ['authorization_code', 'client_credentials'],
+      grant_types_supported: refreshSupported
+        ? ['authorization_code', 'client_credentials', 'refresh_token']
+        : ['authorization_code', 'client_credentials'],
       response_types_supported: ['code'],
       code_challenge_methods_supported: ['S256'],
       token_endpoint_auth_methods_supported: ['client_secret_post', 'none'],
+      scopes_supported: refreshSupported ? ['mcp', 'offline_access'] : ['mcp'],
     });
   });
 
@@ -91,17 +122,39 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     let body: Record<string, unknown> = {};
     try { body = await c.req.json(); } catch { /* empty body is fine */ }
 
-    const redirectUris: string[] = Array.isArray(body['redirect_uris']) ? body['redirect_uris'] as string[] : [];
-    const clientId = crypto.randomUUID();
-    const now = Math.floor(Date.now() / 1000);
+    const redirectUris = bodyStringArray(body['redirect_uris']);
+    const requestedGrantTypes = bodyStringArray(body['grant_types']);
+    const responseTypes = bodyStringArray(body['response_types']);
+    const grantTypes = ['authorization_code'];
+    if (authRuntime.store && requestedGrantTypes.includes('refresh_token')) {
+      grantTypes.push('refresh_token');
+    }
+    const clientId = authRuntime.ids.create();
+    const now = authRuntime.clock.now();
+    const tokenEndpointAuthMethod = bodyString(body['token_endpoint_auth_method']) ?? 'none';
+    const clientName = bodyString(body['client_name']);
+    const scope = bodyString(body['scope']);
+
+    if (authRuntime.store) {
+      await authRuntime.store.saveClient({
+        clientId,
+        clientName: clientName ?? undefined,
+        redirectUris,
+        grantTypes,
+        responseTypes: responseTypes.length > 0 ? responseTypes : ['code'],
+        scope: scope ?? undefined,
+        tokenEndpointAuthMethod,
+        createdAt: now.toISOString(),
+      });
+    }
 
     return c.json({
       client_id: clientId,
-      client_id_issued_at: now,
+      client_id_issued_at: Math.floor(now.getTime() / 1000),
       redirect_uris: redirectUris,
-      grant_types: ['authorization_code'],
-      response_types: ['code'],
-      token_endpoint_auth_method: 'none',
+      grant_types: grantTypes,
+      response_types: responseTypes.length > 0 ? responseTypes : ['code'],
+      token_endpoint_auth_method: tokenEndpointAuthMethod,
       code_challenge_method: 'S256',
     }, 201);
   });
@@ -210,6 +263,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       code_challenge_method: q('code_challenge_method'),
       client_state: q('state'),
       client_id: q('client_id'),
+      scope: q('scope'),
       iat: now,
       exp: now + 600, // 10 minutes to complete GitHub auth
     }, jwtSecret);
@@ -284,6 +338,10 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       redirect_uri: statePayload['redirect_uri'] as string,
       code_challenge: statePayload['code_challenge'] as string,
       code_challenge_method: statePayload['code_challenge_method'] as string,
+      client_id: statePayload['client_id'] as string,
+      scope: statePayload['scope'] as string,
+      auth_subject: `github:${ghUser.login.toLowerCase()}`,
+      auth_method: 'github',
       iat: now,
       exp: now + 300, // 5 minutes
     }, jwtSecret);
@@ -333,6 +391,10 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       redirect_uri: redirectUri,
       code_challenge: codeChallenge,
       code_challenge_method: codeChallengeMethod,
+      client_id: body['client_id'] as string || '',
+      scope: body['scope'] as string || '',
+      auth_subject: 'api_key',
+      auth_method: 'api_key',
       iat: now,
       exp: now + 300, // 5 minutes
     }, jwtSecret);
@@ -346,21 +408,23 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   // OAuth 2.0 token endpoint — authorization_code + client_credentials grants
   app.post('/oauth/token', async (c) => {
     const body = await c.req.parseBody();
-    const grantType = body['grant_type'] as string;
+    const grantType = formString(body['grant_type']);
     const jwtSecret = deps?.jwtSecret ?? process.env.JWT_SECRET;
 
     if (!jwtSecret) {
       return c.json({ error: 'server_error', error_description: 'OAuth not configured' }, 500);
     }
 
-    const now = Math.floor(Date.now() / 1000);
+    const nowDate = authRuntime.clock.now();
+    const now = Math.floor(nowDate.getTime() / 1000);
     const expiresIn = 3600;
     const origin = new URL(c.req.url).origin;
 
     if (grantType === 'authorization_code') {
-      const code = body['code'] as string;
-      const codeVerifier = body['code_verifier'] as string;
-      const redirectUri = body['redirect_uri'] as string;
+      const code = formString(body['code']);
+      const codeVerifier = formString(body['code_verifier']);
+      const redirectUri = formString(body['redirect_uri']);
+      const clientId = formString(body['client_id']) ?? '';
 
       if (!code || !codeVerifier) {
         return c.json({ error: 'invalid_request' }, 400);
@@ -384,21 +448,101 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
         return c.json({ error: 'invalid_grant', error_description: 'PKCE verification failed' }, 400);
       }
 
+      const authSubject = claimString(authCodePayload, 'auth_subject') ?? (clientId || 'claude');
+      const authMethod = claimString(authCodePayload, 'auth_method');
+      const requestedScope = claimString(authCodePayload, 'scope');
+      const codeClientId = claimString(authCodePayload, 'client_id') ?? clientId;
+      if (codeClientId && clientId && codeClientId !== clientId) {
+        return c.json({ error: 'invalid_grant', error_description: 'client_id mismatch' }, 400);
+      }
       const accessToken = await signJWT({
-        iss: origin, aud: 'backlog-mcp', sub: body['client_id'] as string || 'claude',
+        iss: origin, aud: 'backlog-mcp', sub: authSubject, client_id: codeClientId,
         iat: now, exp: now + expiresIn, scope: 'mcp',
       }, jwtSecret);
 
-      return c.json({ access_token: accessToken, token_type: 'bearer', expires_in: expiresIn });
+      const response: TokenResponse = { access_token: accessToken, token_type: 'bearer', expires_in: expiresIn };
+      if (authRuntime.store && codeClientId) {
+        const client = await authRuntime.store.getClient(codeClientId);
+        const eligible = canIssueRefreshToken({
+          hasStore: true,
+          authMethod,
+          requestedScope,
+          client,
+          offlineAccessAdvertised: true,
+        });
+        if (eligible) {
+          const rawRefreshToken = authRuntime.tokens.create('rt');
+          await authRuntime.store.createRefreshToken(await createRefreshRecord({
+            authRuntime,
+            clientId: codeClientId,
+            subject: authSubject,
+            authMethod: authMethod ?? 'unknown',
+            scope: requestedScope,
+            resource: origin,
+            tokenHash: await hashToken(rawRefreshToken),
+            now: nowDate,
+          }));
+          response.refresh_token = rawRefreshToken;
+        }
+      }
+
+      return c.json(response);
+    }
+
+    if (grantType === 'refresh_token') {
+      if (!authRuntime.store) {
+        return c.json({ error: 'unsupported_grant_type' }, 400);
+      }
+
+      const refreshToken = formString(body['refresh_token']);
+      const clientId = formString(body['client_id']);
+      if (!refreshToken || !clientId) {
+        return c.json({ error: 'invalid_request' }, 400);
+      }
+
+      const tokenHash = await hashToken(refreshToken);
+      const current = await authRuntime.store.getRefreshTokenByHash(tokenHash);
+      if (!current || current.clientId !== clientId) {
+        return c.json({ error: 'invalid_grant' }, 400);
+      }
+
+      const rawReplacement = authRuntime.tokens.create('rt');
+      const replacement = await createRefreshRecordFromExisting({
+        authRuntime,
+        current,
+        tokenHash: await hashToken(rawReplacement),
+        now: nowDate,
+      });
+      const rotation = await authRuntime.store.rotateRefreshToken({
+        tokenHash,
+        replacement,
+        now: nowDate.toISOString(),
+      });
+
+      if (rotation.status !== 'rotated') {
+        return c.json({ error: 'invalid_grant' }, 400);
+      }
+
+      const accessToken = await signJWT({
+        iss: origin, aud: 'backlog-mcp', sub: rotation.current.subject, client_id: rotation.current.clientId,
+        iat: now, exp: now + expiresIn, scope: 'mcp',
+      }, jwtSecret);
+
+      return c.json({
+        access_token: accessToken,
+        token_type: 'bearer',
+        expires_in: expiresIn,
+        refresh_token: rawReplacement,
+      });
     }
 
     if (grantType === 'client_credentials') {
       const clientSecret = deps?.clientSecret ?? process.env.CLIENT_SECRET;
-      if (!clientSecret || body['client_secret'] !== clientSecret) {
+      if (!clientSecret || formString(body['client_secret']) !== clientSecret) {
         return c.json({ error: 'invalid_client' }, 401);
       }
       const accessToken = await signJWT({
-        iss: origin, aud: 'backlog-mcp', sub: body['client_id'] as string || 'backlog-mcp-client',
+        iss: origin, aud: 'backlog-mcp', sub: formString(body['client_id']) || 'backlog-mcp-client',
         iat: now, exp: now + expiresIn, scope: 'mcp',
       }, jwtSecret);
       return c.json({ access_token: accessToken, token_type: 'bearer', expires_in: expiresIn });
@@ -701,47 +845,79 @@ function authErrorPage(message: string): string {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auth Error — backlog-mcp</title><style>body{font-family:system-ui,sans-serif;max-width:420px;margin:80px auto;padding:0 20px;color:#111;}h1{font-size:1.3rem;color:#dc2626;}p{color:#555;font-size:0.95rem;}</style></head><body><h1>Authorization Failed</h1><p>${message}</p></body></html>`;
 }
 
-function tryParseJson(value: string | null): unknown {
-  if (!value) return value;
-  try { return JSON.parse(value); } catch { return value; }
+interface TokenResponse {
+  access_token: string;
+  token_type: 'bearer';
+  expires_in: number;
+  refresh_token?: string;
 }
 
-// ── JWT helpers — Web Crypto API (Node.js 18+, Cloudflare Workers, Bun, Deno) ──
-
-function b64url(buf: ArrayBuffer | Uint8Array): string {
-  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
-  return btoa(String.fromCharCode(...bytes))
-    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+function bodyString(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
 }
 
-function b64urlDecode(s: string): Uint8Array {
-  return Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+function bodyStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string');
+  if (typeof value === 'string') return [value];
+  return [];
 }
 
-async function hmacKey(secret: string, usage: 'sign' | 'verify') {
-  return crypto.subtle.importKey('raw', new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' }, false, [usage]);
+function formString(value: unknown): string | null {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.find((item): item is string => typeof item === 'string') ?? null;
+  return null;
 }
 
-async function signJWT(payload: Record<string, unknown>, secret: string): Promise<string> {
-  const enc = new TextEncoder();
-  const header = b64url(enc.encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));
-  const body = b64url(enc.encode(JSON.stringify(payload)));
-  const input = `${header}.${body}`;
-  const key = await hmacKey(secret, 'sign');
-  const sig = b64url(await crypto.subtle.sign('HMAC', key, enc.encode(input)));
-  return `${input}.${sig}`;
+function claimString(payload: Record<string, unknown>, name: string): string | undefined {
+  const value = payload[name];
+  return typeof value === 'string' ? value : undefined;
 }
 
-async function verifyJWT(token: string, secret: string): Promise<Record<string, unknown> | null> {
-  const parts = token.split('.');
-  if (parts.length !== 3) return null;
-  const [h, p, s] = parts as [string, string, string];
-  const key = await hmacKey(secret, 'verify');
-  const valid = await crypto.subtle.verify('HMAC', key, b64urlDecode(s),
-    new TextEncoder().encode(`${h}.${p}`));
-  if (!valid) return null;
-  const payload = JSON.parse(new TextDecoder().decode(b64urlDecode(p)));
-  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
-  return payload;
+async function createRefreshRecord(input: {
+  authRuntime: AuthRuntime;
+  clientId: string;
+  subject: string;
+  authMethod: string;
+  scope?: string;
+  resource?: string;
+  tokenHash: string;
+  now: Date;
+}): Promise<NewRefreshTokenRecord> {
+  const familyExpiresAt = addSeconds(input.now, input.authRuntime.policy.maxAgeSeconds).toISOString();
+  const inactivityExpiresAt = addSeconds(input.now, input.authRuntime.policy.inactivitySeconds).toISOString();
+  return {
+    id: input.authRuntime.ids.create(),
+    familyId: input.authRuntime.ids.create(),
+    clientId: input.clientId,
+    subject: input.subject,
+    authMethod: input.authMethod,
+    scope: input.scope,
+    resource: input.resource,
+    tokenHash: input.tokenHash,
+    createdAt: input.now.toISOString(),
+    expiresAt: inactivityExpiresAt <= familyExpiresAt ? inactivityExpiresAt : familyExpiresAt,
+    familyExpiresAt,
+  };
+}
+
+async function createRefreshRecordFromExisting(input: {
+  authRuntime: AuthRuntime;
+  current: RefreshTokenRecord;
+  tokenHash: string;
+  now: Date;
+}): Promise<NewRefreshTokenRecord> {
+  const inactivityExpiry = addSeconds(input.now, input.authRuntime.policy.inactivitySeconds).toISOString();
+  return {
+    id: input.authRuntime.ids.create(),
+    familyId: input.current.familyId,
+    clientId: input.current.clientId,
+    subject: input.current.subject,
+    authMethod: input.current.authMethod,
+    scope: input.current.scope,
+    resource: input.current.resource,
+    tokenHash: input.tokenHash,
+    createdAt: input.now.toISOString(),
+    expiresAt: inactivityExpiry <= input.current.familyExpiresAt ? inactivityExpiry : input.current.familyExpiresAt,
+    familyExpiresAt: input.current.familyExpiresAt,
+  };
 }

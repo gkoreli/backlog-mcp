@@ -53,11 +53,13 @@ cd backlog-mcp
 pnpm install
 
 # 2. Create the D1 database
-npx wrangler d1 create backlog-mcp
+cd packages/server
+npx wrangler d1 create backlog
 # Copy the database_id into packages/server/wrangler.jsonc
 
-# 3. Apply the schema
-npx wrangler d1 execute backlog-mcp --file=packages/server/schema.sql
+# 3. Apply the D1 migrations
+npx wrangler d1 execute backlog --remote --file=migrations/0001_initial.sql
+npx wrangler d1 execute backlog --remote --file=migrations/0002_oauth_refresh_tokens.sql
 
 # 4. Set secrets
 npx wrangler secret put JWT_SECRET          # any strong random string
@@ -67,7 +69,7 @@ npx wrangler secret put GITHUB_CLIENT_SECRET
 npx wrangler secret put ALLOWED_GITHUB_USERNAMES  # comma-separated: "you,youralt"
 
 # 5. Deploy
-cd packages/server && npx wrangler deploy
+npx wrangler deploy
 ```
 
 **GitHub OAuth App setup**: go to GitHub → Settings → Developer settings → OAuth Apps → New.
@@ -87,6 +89,7 @@ Once deployed, add to your MCP client config:
 ```
 
 Claude.ai and ChatGPT can connect directly via the remote MCP URL — no local process needed.
+GitHub OAuth sessions use rotating refresh tokens so clients can renew access without daily re-authentication.
 
 ---
 
