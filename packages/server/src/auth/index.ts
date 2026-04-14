@@ -10,6 +10,9 @@ export {
 } from './policy.js';
 export { createAuthRuntime } from './runtime.js';
 export { D1OAuthStore } from './d1-oauth-store.js';
+export { registerMcpAuthMiddleware } from './mcp-auth.js';
+export { registerOAuthRoutes } from './oauth-routes.js';
+export { handleOAuthToken } from './oauth-token.js';
 export type {
   NewRefreshTokenRecord,
   OAuthClientRegistration,
@@ -29,3 +32,7 @@ export type {
   RefreshEligibilityInput,
   RefreshTokenPolicy,
 } from './policy.js';
+export type { AuthEvent, AuthEventLogger } from './events.js';
+export type { McpAuthOptions } from './mcp-auth.js';
+export type { OAuthRouteDeps } from './oauth-routes.js';
+export type { OAuthTokenDeps } from './oauth-token.js';
