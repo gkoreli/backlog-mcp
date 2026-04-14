@@ -50,9 +50,6 @@ importers:
 
   packages/server:
     dependencies:
-      '@backlog-mcp/memory':
-        specifier: workspace:*
-        version: link:../memory
       '@hono/node-server':
         specifier: ^1.14.0
         version: 1.19.9(hono@4.11.4)
@@ -84,6 +81,9 @@ importers:
         specifier: ^4.3.5
         version: 4.3.5
     devDependencies:
+      '@backlog-mcp/memory':
+        specifier: workspace:*
+        version: link:../memory
       '@backlog-mcp/shared':
         specifier: workspace:*
         version: link:../shared

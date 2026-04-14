@@ -1,6 +1,6 @@
 {
   "name": "backlog-mcp",
-  "version": "0.47.2",
+  "version": "0.47.3",
   "description": "Minimal task backlog MCP server for Claude and AI agents",
   "keywords": [
     "mcp",
@@ -50,12 +50,12 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@backlog-mcp/memory": "workspace:*",
     "@backlog-mcp/shared": "workspace:*",
     "memfs": "^4.56.10",
     "wrangler": "^4.0.0"
   },
   "dependencies": {
-    "@backlog-mcp/memory": "workspace:*",
     "@hono/node-server": "^1.14.0",
     "arctic": "^3.0.0",
     "@huggingface/transformers": "^3.8.1",

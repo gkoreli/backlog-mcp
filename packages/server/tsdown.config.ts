@@ -7,7 +7,7 @@ export default defineConfig({
   target: 'node18',
   unbundle: true,
   skipNodeModulesBundle: true,
-  noExternal: ['@backlog-mcp/shared'],
+  noExternal: ['@backlog-mcp/shared', '@backlog-mcp/memory'],
   dts: { eager: true },
   clean: true,
   sourcemap: true,
