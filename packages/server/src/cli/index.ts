@@ -76,6 +76,16 @@ registerSearch(program);
 registerContext(program);
 registerEdit(program);
 
+// --- Aliases for common bare-word usage ---
+
+program.command('version').description('Show version').action(() => {
+  console.log(paths.getVersion());
+});
+
+program.command('help').description('Show help').action(() => {
+  program.help();
+});
+
 // --- Default action: bridge mode (no subcommand) ---
 
 program.action(async () => {
