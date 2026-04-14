@@ -77,10 +77,9 @@ export class PathResolver {
    * // BACKLOG_DATA_DIR='~/Documents/data' → '~/Documents/data'
    */
   public get backlogDataDir(): string {
-    const dataDir = process.env.BACKLOG_DATA_DIR ?? 'data';
-    const isAbsolutePath = dataDir.startsWith('/') || dataDir.startsWith('~');
-    
-    return isAbsolutePath ? dataDir : join(this.projectRoot, dataDir);
+    let dataDir = process.env.BACKLOG_DATA_DIR ?? 'data';
+    if (dataDir.startsWith('~/')) dataDir = join(process.env.HOME ?? '', dataDir.slice(2));
+    return dataDir.startsWith('/') ? dataDir : join(this.projectRoot, dataDir);
   }
   
   /**
