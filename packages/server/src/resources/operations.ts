@@ -4,7 +4,8 @@ import type { Operation } from './types.js';
 
 /** Find the most similar line in content to the first line of old_str */
 function findFuzzyHint(content: string, old_str: string): string {
-  const targetLine = old_str.split('\n')[0].trim();
+  const firstLine = old_str.split('\n')[0];
+  const targetLine = firstLine ? firstLine.trim() : '';
   if (!targetLine) return '';
   const lines = content.split('\n');
   let best = '';

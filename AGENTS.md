@@ -81,6 +81,7 @@ vi.mock('../storage/backlog.js', () => ({
 - **No re-exporting between packages** — import from the source package directly
 - **Minimal code** — only what's needed to solve the problem
 - **Declarative with named functions** — not inline callbacks
+- **Never use `!` non-null assertions** — use proper narrowing (ternary, `if` check, `??` fallback)
 
 ## Monorepo Architecture
 
