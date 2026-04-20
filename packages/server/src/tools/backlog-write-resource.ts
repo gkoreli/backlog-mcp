@@ -26,10 +26,13 @@ export function registerWriteResourceTool(server: McpServer, service: IBacklogSe
     async ({ id, operation }) => {
       try {
         const result = await editItem(service, { id, operation });
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
+        if (!result.success) {
+          return { content: [{ type: 'text' as const, text: result.error! }], isError: true };
+        }
+        return { content: [{ type: 'text' as const, text: result.message! }] };
       } catch (error) {
         if (error instanceof NotFoundError) {
-          return { content: [{ type: 'text' as const, text: JSON.stringify({ success: false, error: `Task not found: ${id}` }) }] };
+          return { content: [{ type: 'text' as const, text: `Task not found: ${id}` }], isError: true };
         }
         throw error;
       }

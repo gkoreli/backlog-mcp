@@ -2,12 +2,37 @@
 
 import type { Operation } from './types.js';
 
+/** Find the most similar line in content to the first line of old_str */
+function findFuzzyHint(content: string, old_str: string): string {
+  const targetLine = old_str.split('\n')[0].trim();
+  if (!targetLine) return '';
+  const lines = content.split('\n');
+  let best = '';
+  let bestScore = 0;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    // Count shared words
+    const targetWords = new Set(targetLine.toLowerCase().split(/\s+/));
+    const lineWords = trimmed.toLowerCase().split(/\s+/);
+    const shared = lineWords.filter(w => targetWords.has(w)).length;
+    const score = shared / Math.max(targetWords.size, lineWords.length);
+    if (score > bestScore) { bestScore = score; best = trimmed; }
+  }
+  return bestScore > 0.3 ? best : '';
+}
+
 export function applyOperation(content: string, operation: Operation): string {
   switch (operation.type) {
     case 'str_replace': {
       const { old_str, new_str } = operation;
       if (!content.includes(old_str)) {
-        throw new Error(`str_replace failed: old_str not found in content`);
+        const hint = findFuzzyHint(content, old_str);
+        const lines = content.split('\n').slice(0, 10).map(l => `  ${l}`).join('\n');
+        let msg = `str_replace failed: old_str not found in content.`;
+        if (hint) msg += `\n\nDid you mean this line?\n  "${hint}"`;
+        msg += `\n\nFirst 10 lines of actual content:\n${lines}`;
+        throw new Error(msg);
       }
       // Check uniqueness - fail if old_str appears more than once
       const firstIndex = content.indexOf(old_str);

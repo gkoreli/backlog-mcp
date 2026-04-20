@@ -8,6 +8,7 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0090.1. Fix edit Command — Move `<id>` to Subcommands](./0090.1-fix-edit-command-subcommand-arg-passing.md) - Fix Commander.js arg passing bug by moving `<id>` from parent edit command to each subcommand (continues ADR-0090) - 2026-04-20
 - [0092. Plugin-Based Agentic Memory Architecture](./0092-plugin-based-agentic-memory-architecture.md) - Composable memory plugin system with search migration to packages/memory; inspired by MemPalace, Mem0, Karta analysis - 2026-04-14
 - [0091. Runtime-Clean Worker Bundle — Capability Injection Pattern](./0091-runtime-clean-worker-bundle.md) - Capability injection pattern for clean worker bundles - 2026-03-26
 - [0090. CLI Tool and Core Function Extraction](./0090-cli-tool-and-core-extraction.md) - Extract business logic to standalone core functions, add Commander-based CLI with 1:1 MCP tool mapping - 2026-03-26

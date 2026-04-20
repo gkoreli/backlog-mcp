@@ -4,7 +4,11 @@ import type { EditOperation } from '../../core/types.js';
 import { run } from '../runner.js';
 
 function formatResult(r: { success: boolean; message?: string; error?: string }) {
-  return r.success ? r.message ?? 'Done' : `Error: ${r.error}`;
+  if (!r.success) {
+    console.error(r.error ?? 'Edit failed');
+    process.exit(1);
+  }
+  return r.message ?? 'Done';
 }
 
 function editAction(id: string, operation: EditOperation, json: boolean) {
@@ -13,30 +17,24 @@ function editAction(id: string, operation: EditOperation, json: boolean) {
 
 export function registerEdit(program: Command) {
   const edit = program
-    .command('edit <id>')
+    .command('edit')
     .description('Edit an item body (use a subcommand: replace, append, insert)');
 
   edit
-    .command('replace <old> <new>')
+    .command('replace <id> <old> <new>')
     .description('Replace text in body')
-    .action((old_str: string, new_str: string) => {
-      const id = edit.args[0] as string;
-      return editAction(id, { type: 'str_replace', old_str, new_str }, program.opts().json);
-    });
+    .action((id: string, old_str: string, new_str: string) =>
+      editAction(id, { type: 'str_replace', old_str, new_str }, program.opts().json));
 
   edit
-    .command('append <text>')
+    .command('append <id> <text>')
     .description('Append text to body')
-    .action((text: string) => {
-      const id = edit.args[0] as string;
-      return editAction(id, { type: 'append', new_str: text }, program.opts().json);
-    });
+    .action((id: string, text: string) =>
+      editAction(id, { type: 'append', new_str: text }, program.opts().json));
 
   edit
-    .command('insert <line> <text>')
+    .command('insert <id> <line> <text>')
     .description('Insert text at line number')
-    .action((line: string, text: string) => {
-      const id = edit.args[0] as string;
-      return editAction(id, { type: 'insert', insert_line: parseInt(line), new_str: text }, program.opts().json);
-    });
+    .action((id: string, line: string, text: string) =>
+      editAction(id, { type: 'insert', insert_line: parseInt(line), new_str: text }, program.opts().json));
 }
