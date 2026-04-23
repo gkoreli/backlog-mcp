@@ -6,6 +6,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { GitHub } from 'arctic';
 import type { IBacklogService } from '../storage/service-types.js';
 import type { IOperationLog } from '../operations/types.js';
+import { extractTargetFilename } from '../operations/resource-id.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';
 import {
   addSeconds,
@@ -670,7 +671,10 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
     const enriched = await Promise.all(operations.map(async (op) => {
       const id = op.resourceId;
-      if (!id) return op;
+      if (!id) {
+        const targetFilename = extractTargetFilename(op.tool, op.params);
+        return targetFilename ? { ...op, targetFilename } : op;
+      }
 
       if (!taskCache.has(id)) {
         const entity = await service.get(id);
@@ -687,7 +691,13 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
         epicTitle = epicCache.get(cached.epicId);
       }
 
-      return { ...op, resourceTitle: cached.title, epicId: cached.epicId, epicTitle };
+      return {
+        ...op,
+        resourceTitle: cached.title,
+        epicId: cached.epicId,
+        epicTitle,
+        targetFilename: extractTargetFilename(op.tool, op.params),
+      };
     }));
 
     return c.json(enriched);

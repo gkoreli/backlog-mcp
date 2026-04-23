@@ -17,6 +17,8 @@ export interface OperationEntry {
   params: Record<string, unknown>;
   result: unknown;
   resourceId?: string;
+  /** Display filename for write_resource ops (e.g. "TASK-0001.md"). Computed by enrichment layer. */
+  targetFilename?: string;
   actor: Actor;
 }
 

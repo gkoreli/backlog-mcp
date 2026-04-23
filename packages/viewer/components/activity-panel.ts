@@ -227,10 +227,9 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
 
   function renderDiffHtml(op: OperationEntry): string | null {
     const mergedOps = op.params._mergedOps as OperationEntry[] | undefined;
+    const filename = op.targetFilename ?? 'file';
 
     if (mergedOps && mergedOps.length > 1) {
-      const uri = op.params.uri as string;
-      const filename = uri.split('/').pop() || 'file';
       let combinedDiff = '';
       for (const mergedOp of [...mergedOps].reverse()) {
         const operation = mergedOp.params.operation as { type: string; old_str?: string; new_str?: string };
@@ -247,8 +246,6 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
     } else if (op.params.operation) {
       const operation = op.params.operation as { type: string; old_str?: string; new_str?: string };
       if (operation.type === 'str_replace' && operation.old_str !== undefined && operation.new_str !== undefined) {
-        const uri = op.params.uri as string;
-        const filename = uri.split('/').pop() || 'file';
         const unifiedDiff = createUnifiedDiff(operation.old_str, operation.new_str, filename);
         return Diff2Html.html(unifiedDiff, {
           drawFileList: false, matching: 'lines',

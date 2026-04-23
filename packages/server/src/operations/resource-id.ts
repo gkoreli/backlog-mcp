@@ -9,6 +9,10 @@ const ID_RE = /(TASK|EPIC|FLDR|ARTF|MLST)-\d+/;
 
 const extractors: Record<string, Extractor> = {
   backlog_create: (_, result) => {
+    // Core result: { id: "TASK-0001" }
+    const directId = (result as any)?.id as string | undefined;
+    if (directId && ID_RE.test(directId)) return directId;
+    // MCP result: { content: [{ text: "Created TASK-0001" }] }
     const text = (result as any)?.content?.[0]?.text as string | undefined;
     return text ? ID_RE.exec(text)?.[0] : undefined;
   },
@@ -17,7 +21,14 @@ const extractors: Record<string, Extractor> = {
 
   backlog_delete: (params) => params.id as string | undefined,
 
-  write_resource: (params) => params.id as string | undefined,
+  write_resource: (params) => {
+    // New format: { id: "TASK-0001" }
+    const id = params.id as string | undefined;
+    if (id) return id;
+    // Old format: { uri: "mcp://backlog/tasks/TASK-0001.md" }
+    const uri = params.uri as string | undefined;
+    return uri ? ID_RE.exec(uri)?.[0] : undefined;
+  },
 };
 
 /**
@@ -30,4 +41,24 @@ export function extractResourceId(
 ): string | undefined {
   const extractor = extractors[tool];
   return extractor ? extractor(params, result) : undefined;
+}
+
+/**
+ * Extract a display filename for write_resource operations.
+ * Handles both old URI format and new ID format.
+ *
+ * Old: { uri: "mcp://backlog/tasks/TASK-0001.md" } → "TASK-0001.md"
+ * New: { id: "TASK-0001" }                         → "TASK-0001.md"
+ *
+ * Returns undefined for non-write_resource tools.
+ */
+export function extractTargetFilename(
+  tool: string,
+  params: Record<string, unknown>,
+): string | undefined {
+  if (tool !== 'write_resource') return undefined;
+  const uri = params.uri as string | undefined;
+  if (uri) return uri.split('/').pop() ?? undefined;
+  const id = params.id as string | undefined;
+  return id ? `${id}.md` : undefined;
 }

@@ -21,6 +21,8 @@ export interface OperationEntry {
   resourceTitle?: string;
   epicId?: string;
   epicTitle?: string;
+  /** Display filename for write_resource ops, provided by the server enrichment layer. */
+  targetFilename?: string;
   actor?: Actor;
 }
 
@@ -98,12 +100,9 @@ export function groupByTask(operations: OperationEntry[]): TaskGroup[] {
   const groups = new Map<string, TaskGroup>();
   
   for (const op of operations) {
-    // For write_resource without a task ID, group by URI path
-    const resourceId = op.resourceId
-      || (op.tool === 'write_resource' && op.params.uri ? op.params.uri as string : '')
-      || '_no_task_';
+    const resourceId = op.resourceId || '_no_task_';
     const title = op.resourceTitle || (op.params.title as string)
-      || (op.tool === 'write_resource' && op.params.uri ? (op.params.uri as string).replace('mcp://backlog/', '') : '')
+      || op.targetFilename
       || resourceId;
     
     if (!groups.has(resourceId)) {
@@ -145,7 +144,24 @@ interface StrReplaceOp {
   new_str: string;
 }
 
-function isStrReplace(op: OperationEntry): op is OperationEntry & { params: { uri: string; operation: StrReplaceOp } } {
+/**
+ * Resolve the target identifier and display filename from write_resource params.
+ * Handles both old URI format (`params.uri`) and new ID format (`params.id`).
+ *
+ * @deprecated Use op.resourceId (for grouping) and op.targetFilename (for display)
+ * from the server enrichment layer instead. Kept temporarily for backward compat
+ * if the viewer is ahead of the server version.
+ */
+function getWriteResourceTarget(params: Record<string, unknown>): { identifier: string; filename: string } {
+  const uri = params.uri as string | undefined;
+  const id = params.id as string | undefined;
+  if (uri) {
+    return { identifier: uri, filename: uri.split('/').pop() ?? 'file' };
+  }
+  return { identifier: id ?? '', filename: id ? `${id}.md` : 'file' };
+}
+
+function isStrReplace(op: OperationEntry): boolean {
   if (op.tool !== 'write_resource') return false;
   const operation = op.params.operation as { type?: string } | undefined;
   return operation?.type === 'str_replace';
@@ -172,15 +188,17 @@ export function mergeConsecutiveEdits(operations: OperationEntry[]): OperationEn
       continue;
     }
     
-    // Start a merge group
+    // Start a merge group — group by resourceId (normalized by the server)
     const group: OperationEntry[] = [current];
-    const uri = current.params.uri;
+    const target = current.resourceId ?? getWriteResourceTarget(current.params).identifier;
     let j = i + 1;
     
-    // Collect consecutive str_replace ops on same URI within time window
+    // Collect consecutive str_replace ops on same target within time window
     while (j < operations.length) {
       const next = operations[j];
-      if (!next || !isStrReplace(next) || next.params.uri !== uri) break;
+      if (!next || !isStrReplace(next)) break;
+      const nextTarget = next.resourceId ?? getWriteResourceTarget(next.params).identifier;
+      if (nextTarget !== target) break;
       
       // Check time gap (operations are newest-first, so group[last] is older)
       const prev = group[group.length - 1];

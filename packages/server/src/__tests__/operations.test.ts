@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { vol } from 'memfs';
-import { extractResourceId } from '../operations/resource-id.js';
+import { extractResourceId, extractTargetFilename } from '../operations/resource-id.js';
 import { OperationStorage } from '../operations/storage.js';
 import { operationLogger } from '../operations/logger.js';
 
@@ -64,6 +64,45 @@ describe('Operations Module', () => {
 
     it('returns undefined for write_resource without id', () => {
       expect(extractResourceId('write_resource', {}, {})).toBeUndefined();
+    });
+
+    it('extracts ID from write_resource with old uri format', () => {
+      expect(extractResourceId('write_resource', { uri: 'mcp://backlog/tasks/TASK-0177.md' }, {})).toBe('TASK-0177');
+    });
+
+    it('extracts EPIC ID from write_resource with old uri format', () => {
+      expect(extractResourceId('write_resource', { uri: 'mcp://backlog/tasks/EPIC-0003.md' }, {})).toBe('EPIC-0003');
+    });
+
+    it('prefers id over uri for write_resource', () => {
+      expect(extractResourceId('write_resource', { id: 'TASK-0001', uri: 'mcp://backlog/tasks/TASK-0002.md' }, {})).toBe('TASK-0001');
+    });
+  });
+
+  describe('extractTargetFilename', () => {
+    it('returns filename from old uri format', () => {
+      expect(extractTargetFilename('write_resource', { uri: 'mcp://backlog/tasks/TASK-0001.md' })).toBe('TASK-0001.md');
+    });
+
+    it('returns filename from new id format', () => {
+      expect(extractTargetFilename('write_resource', { id: 'TASK-0042' })).toBe('TASK-0042.md');
+    });
+
+    it('returns filename from id format for artifacts', () => {
+      expect(extractTargetFilename('write_resource', { id: 'ARTF-0178' })).toBe('ARTF-0178.md');
+    });
+
+    it('prefers uri over id when both present', () => {
+      expect(extractTargetFilename('write_resource', { uri: 'mcp://backlog/tasks/TASK-0001.md', id: 'TASK-0001' })).toBe('TASK-0001.md');
+    });
+
+    it('returns undefined for non-write_resource tools', () => {
+      expect(extractTargetFilename('backlog_update', { id: 'TASK-0001' })).toBeUndefined();
+      expect(extractTargetFilename('backlog_create', { title: 'test' })).toBeUndefined();
+    });
+
+    it('returns undefined for write_resource without id or uri', () => {
+      expect(extractTargetFilename('write_resource', {})).toBeUndefined();
     });
   });
 

@@ -330,16 +330,15 @@ describe('activity-utils', () => {
   describe('mergeConsecutiveEdits', () => {
     it('merges consecutive str_replace ops within 30s window', () => {
       const operations: OperationEntry[] = [
-        // Newest first (reverse chronological)
-        { ts: '2026-02-05T10:00:20.000Z', tool: 'write_resource', params: { uri: 'mcp://backlog/tasks/TASK-0001.md', operation: { type: 'str_replace', old_str: 'B', new_str: 'C' } }, result: {} },
-        { ts: '2026-02-05T10:00:10.000Z', tool: 'write_resource', params: { uri: 'mcp://backlog/tasks/TASK-0001.md', operation: { type: 'str_replace', old_str: 'A', new_str: 'B' } }, result: {} },
+        // Newest first (reverse chronological) — resourceId from server enrichment
+        { ts: '2026-02-05T10:00:20.000Z', tool: 'write_resource', params: { uri: 'mcp://backlog/tasks/TASK-0001.md', operation: { type: 'str_replace', old_str: 'B', new_str: 'C' } }, result: {}, resourceId: 'TASK-0001' },
+        { ts: '2026-02-05T10:00:10.000Z', tool: 'write_resource', params: { uri: 'mcp://backlog/tasks/TASK-0001.md', operation: { type: 'str_replace', old_str: 'A', new_str: 'B' } }, result: {}, resourceId: 'TASK-0001' },
       ];
 
       const merged = mergeConsecutiveEdits(operations);
       
       expect(merged).toHaveLength(1);
       expect(merged[0].params._mergedCount).toBe(2);
-      // Should store all ops for stacked rendering
       const mergedOps = merged[0].params._mergedOps as OperationEntry[];
       expect(mergedOps).toHaveLength(2);
       expect((mergedOps[0].params.operation as { new_str: string }).new_str).toBe('C'); // newest
@@ -348,8 +347,8 @@ describe('activity-utils', () => {
 
     it('does not merge ops more than 30s apart', () => {
       const operations: OperationEntry[] = [
-        { ts: '2026-02-05T10:01:00.000Z', tool: 'write_resource', params: { uri: 'mcp://backlog/tasks/TASK-0001.md', operation: { type: 'str_replace', old_str: 'B', new_str: 'C' } }, result: {} },
-        { ts: '2026-02-05T10:00:00.000Z', tool: 'write_resource', params: { uri: 'mcp://backlog/tasks/TASK-0001.md', operation: { type: 'str_replace', old_str: 'A', new_str: 'B' } }, result: {} },
+        { ts: '2026-02-05T10:01:00.000Z', tool: 'write_resource', params: { uri: 'mcp://backlog/tasks/TASK-0001.md', operation: { type: 'str_replace', old_str: 'B', new_str: 'C' } }, result: {}, resourceId: 'TASK-0001' },
+        { ts: '2026-02-05T10:00:00.000Z', tool: 'write_resource', params: { uri: 'mcp://backlog/tasks/TASK-0001.md', operation: { type: 'str_replace', old_str: 'A', new_str: 'B' } }, result: {}, resourceId: 'TASK-0001' },
       ];
 
       const merged = mergeConsecutiveEdits(operations);
@@ -358,10 +357,10 @@ describe('activity-utils', () => {
       expect(merged[0].params._mergedCount).toBeUndefined();
     });
 
-    it('does not merge ops on different URIs', () => {
+    it('does not merge ops on different resources', () => {
       const operations: OperationEntry[] = [
-        { ts: '2026-02-05T10:00:10.000Z', tool: 'write_resource', params: { uri: 'mcp://backlog/tasks/TASK-0002.md', operation: { type: 'str_replace', old_str: 'X', new_str: 'Y' } }, result: {} },
-        { ts: '2026-02-05T10:00:00.000Z', tool: 'write_resource', params: { uri: 'mcp://backlog/tasks/TASK-0001.md', operation: { type: 'str_replace', old_str: 'A', new_str: 'B' } }, result: {} },
+        { ts: '2026-02-05T10:00:10.000Z', tool: 'write_resource', params: { id: 'TASK-0002', operation: { type: 'str_replace', old_str: 'X', new_str: 'Y' } }, result: {}, resourceId: 'TASK-0002' },
+        { ts: '2026-02-05T10:00:00.000Z', tool: 'write_resource', params: { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'A', new_str: 'B' } }, result: {}, resourceId: 'TASK-0001' },
       ];
 
       const merged = mergeConsecutiveEdits(operations);
@@ -371,8 +370,8 @@ describe('activity-utils', () => {
 
     it('preserves non-str_replace operations', () => {
       const operations: OperationEntry[] = [
-        { ts: '2026-02-05T10:00:20.000Z', tool: 'backlog_update', params: { id: 'TASK-0001' }, result: {} },
-        { ts: '2026-02-05T10:00:10.000Z', tool: 'write_resource', params: { uri: 'mcp://backlog/tasks/TASK-0001.md', operation: { type: 'str_replace', old_str: 'A', new_str: 'B' } }, result: {} },
+        { ts: '2026-02-05T10:00:20.000Z', tool: 'backlog_update', params: { id: 'TASK-0001' }, result: {}, resourceId: 'TASK-0001' },
+        { ts: '2026-02-05T10:00:10.000Z', tool: 'write_resource', params: { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'A', new_str: 'B' } }, result: {}, resourceId: 'TASK-0001' },
       ];
 
       const merged = mergeConsecutiveEdits(operations);
@@ -388,13 +387,62 @@ describe('activity-utils', () => {
 
     it('returns single op unchanged', () => {
       const operations: OperationEntry[] = [
-        { ts: '2026-02-05T10:00:00.000Z', tool: 'write_resource', params: { uri: 'mcp://backlog/tasks/TASK-0001.md', operation: { type: 'str_replace', old_str: 'A', new_str: 'B' } }, result: {} },
+        { ts: '2026-02-05T10:00:00.000Z', tool: 'write_resource', params: { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'A', new_str: 'B' } }, result: {}, resourceId: 'TASK-0001' },
       ];
 
       const merged = mergeConsecutiveEdits(operations);
       
       expect(merged).toHaveLength(1);
       expect(merged[0].params._mergedCount).toBeUndefined();
+    });
+
+    it('merges consecutive str_replace ops with id-based params', () => {
+      const operations: OperationEntry[] = [
+        { ts: '2026-02-05T10:00:20.000Z', tool: 'write_resource', params: { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'B', new_str: 'C' } }, result: {}, resourceId: 'TASK-0001' },
+        { ts: '2026-02-05T10:00:10.000Z', tool: 'write_resource', params: { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'A', new_str: 'B' } }, result: {}, resourceId: 'TASK-0001' },
+      ];
+
+      const merged = mergeConsecutiveEdits(operations);
+
+      expect(merged).toHaveLength(1);
+      expect(merged[0].params._mergedCount).toBe(2);
+    });
+
+    it('falls back to params-based grouping when resourceId is missing', () => {
+      // Edge case: viewer ahead of server, no enrichment
+      const operations: OperationEntry[] = [
+        { ts: '2026-02-05T10:00:20.000Z', tool: 'write_resource', params: { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'B', new_str: 'C' } }, result: {} },
+        { ts: '2026-02-05T10:00:10.000Z', tool: 'write_resource', params: { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'A', new_str: 'B' } }, result: {} },
+      ];
+
+      const merged = mergeConsecutiveEdits(operations);
+
+      expect(merged).toHaveLength(1);
+      expect(merged[0].params._mergedCount).toBe(2);
+    });
+  });
+
+  describe('groupByTask with enriched write_resource', () => {
+    it('groups write_resource ops by resourceId', () => {
+      const operations: OperationEntry[] = [
+        { ts: '2026-02-05T10:00:00.000Z', tool: 'write_resource', params: { id: 'TASK-0001', operation: { type: 'str_replace' } }, result: {}, resourceId: 'TASK-0001' },
+        { ts: '2026-02-05T10:00:10.000Z', tool: 'write_resource', params: { id: 'TASK-0001', operation: { type: 'str_replace' } }, result: {}, resourceId: 'TASK-0001' },
+      ];
+
+      const groups = groupByTask(operations);
+
+      expect(groups).toHaveLength(1);
+      expect(groups[0].resourceId).toBe('TASK-0001');
+    });
+
+    it('uses targetFilename as title fallback', () => {
+      const operations: OperationEntry[] = [
+        { ts: '2026-02-05T10:00:00.000Z', tool: 'write_resource', params: { id: 'TASK-0042', operation: { type: 'append' } }, result: {}, resourceId: 'TASK-0042', targetFilename: 'TASK-0042.md' },
+      ];
+
+      const groups = groupByTask(operations);
+
+      expect(groups[0].title).toBe('TASK-0042.md');
     });
   });
 });
