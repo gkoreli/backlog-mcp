@@ -308,7 +308,7 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
 
     const mostRecentDate = new Date(taskGroup.mostRecentTs);
     const mostRecentDateStr = formatDateTime(mostRecentDate);
-    const isTaskId = /^(TASK|EPIC|FLDR|ARTF|MLST)-\d+$/.test(taskGroup.resourceId);
+    const isTaskId = /^(TASK|EPIC|FLDR|ARTF|MLST|CRON)-\d+$/.test(taskGroup.resourceId);
 
     const toggleText = computed(() =>
       isExpanded.value ? 'Show less' : `Show ${hiddenCount} more`

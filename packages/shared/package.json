@@ -17,5 +17,8 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "zod": "^4.3.5"
   }
 }

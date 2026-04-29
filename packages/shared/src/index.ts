@@ -13,3 +13,35 @@ export {
   nextEntityId,
   getTypeFromId,
 } from './entity-types.js';
+
+export {
+  SUBSTRATES,
+  EntitySchema,
+  getSubstrate,
+  BaseEntitySchema,
+  StatusSchema,
+  ReferenceSchema,
+  TaskSchema,
+  EpicSchema,
+  FolderSchema,
+  ArtifactSchema,
+  MilestoneSchema,
+  CronSchema,
+  TaskSubstrate,
+  EpicSubstrate,
+  FolderSubstrate,
+  ArtifactSubstrate,
+  MilestoneSubstrate,
+  CronSubstrate,
+  type SubstrateDefinition,
+  type SubstrateStructure,
+  type SubstrateUI,
+  type Task,
+  type Epic,
+  type Folder,
+  type Artifact,
+  type Milestone,
+  type Cron,
+} from './substrates/index.js';
+
+export { isValidCronExpression } from './cron-expression.js';

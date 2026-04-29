@@ -87,7 +87,7 @@ export class OramaSearchService implements SearchService {
       id: task.id,
       title: task.title,
       description: task.description || '',
-      status: task.status,
+      status: task.status ?? 'open',
       type: task.type || 'task',
       epic_id: task.parent_id ?? task.epic_id ?? '',  // Effective parent for where filtering (ADR-0079)
       evidence: (task.evidence || []).join(' '),

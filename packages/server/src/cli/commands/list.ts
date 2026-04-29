@@ -6,7 +6,7 @@ import { run } from '../runner.js';
 function format(result: ListResult): string {
   if (result.tasks.length === 0) return 'No items found.';
   const lines = result.tasks.map(t =>
-    `${t.id.padEnd(12)} ${t.status.padEnd(14)} ${t.type.padEnd(8)} ${t.title}`
+    `${t.id.padEnd(12)} ${(t.status ?? '-').padEnd(14)} ${t.type.padEnd(8)} ${t.title}`
   );
   if (result.counts) {
     lines.push('', `Total: ${result.counts.total_tasks} tasks, ${result.counts.total_epics} epics`);

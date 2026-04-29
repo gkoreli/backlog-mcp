@@ -2,6 +2,11 @@ import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
 import { TYPE_PREFIXES } from '@backlog-mcp/shared';
 import type { AsyncStorageAdapter, ListFilter } from './storage-adapter.js';
 
+// Type-erased view — adapter handles row mapping for every entity type,
+// so narrowing at each access site would bloat this file without buying
+// correctness (the SQL layer is inherently untyped).
+type AnyEntity = Entity & Record<string, unknown>;
+
 // Minimal D1 API surface typed here to enable generic calls without
 // requiring @cloudflare/workers-types at Node.js compile time.
 // The actual runtime object provided by the Cloudflare Worker satisfies this interface.
@@ -55,17 +60,17 @@ interface MaxIdRow {
 // ──────────────────────────────────────────────────────────────────────────────
 
 function rowToEntity(row: TaskRow): Entity {
-  const entity: Entity = {
+  // Build as a type-erased bag; reads are lenient (legacy data may not match
+  // strict substrate schemas). Writes validate — see core/create.ts + core/update.ts.
+  const entity = {
     id: row.id,
     title: row.title,
     status: row.status as Status,
+    type: (row.type || 'task') as EntityType,
     created_at: row.created_at,
     updated_at: row.updated_at,
-  };
+  } as AnyEntity;
 
-  if (row.type && row.type !== 'task') {
-    entity.type = row.type as EntityType;
-  }
   if (row.epic_id) entity.epic_id = row.epic_id;
   if (row.parent_id) entity.parent_id = row.parent_id;
   if (row.due_date) entity.due_date = row.due_date;
@@ -163,7 +168,8 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
   // ── Write operations ─────────────────────────────────────────────────────
 
   async add(task: Entity): Promise<void> {
-    const body = toNull(task.description);
+    const t = task as AnyEntity;
+    const body = toNull(t.description);
 
     await this.db
       .prepare(
@@ -174,20 +180,20 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
       )
       .bind(
-        task.id,
-        task.type ?? 'task',
-        task.title,
-        task.status,
-        toNull(task.epic_id),
-        toNull(task.parent_id),
-        task.blocked_reason ? JSON.stringify(task.blocked_reason) : null,
-        task.evidence ? JSON.stringify(task.evidence) : null,
-        task.references ? JSON.stringify(task.references) : null,
-        toNull(task.due_date),
-        toNull(task.content_type),
-        toNull(task.path),
+        t.id,
+        t.type ?? 'task',
+        t.title,
+        t.status,
+        toNull(t.epic_id),
+        toNull(t.parent_id),
+        t.blocked_reason ? JSON.stringify(t.blocked_reason) : null,
+        t.evidence ? JSON.stringify(t.evidence) : null,
+        t.references ? JSON.stringify(t.references) : null,
+        toNull(t.due_date as string | undefined),
+        toNull(t.content_type as string | undefined),
+        toNull(t.path as string | undefined),
         body,
-        task.created_at,
+        t.created_at,
         task.updated_at,
       )
       .run();
@@ -196,7 +202,8 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
   }
 
   async save(task: Entity): Promise<void> {
-    const body = toNull(task.description);
+    const t = task as AnyEntity;
+    const body = toNull(t.description);
 
     await this.db
       .prepare(
@@ -207,20 +214,20 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
          WHERE id = ?`
       )
       .bind(
-        task.type ?? 'task',
-        task.title,
-        task.status,
-        toNull(task.epic_id),
-        toNull(task.parent_id),
-        task.blocked_reason ? JSON.stringify(task.blocked_reason) : null,
-        task.evidence ? JSON.stringify(task.evidence) : null,
-        task.references ? JSON.stringify(task.references) : null,
-        toNull(task.due_date),
-        toNull(task.content_type),
-        toNull(task.path),
+        t.type ?? 'task',
+        t.title,
+        t.status,
+        toNull(t.epic_id),
+        toNull(t.parent_id),
+        t.blocked_reason ? JSON.stringify(t.blocked_reason) : null,
+        t.evidence ? JSON.stringify(t.evidence) : null,
+        t.references ? JSON.stringify(t.references) : null,
+        toNull(t.due_date as string | undefined),
+        toNull(t.content_type as string | undefined),
+        toNull(t.path as string | undefined),
         body,
-        task.updated_at,
-        task.id,
+        t.updated_at,
+        t.id,
       )
       .run();
 

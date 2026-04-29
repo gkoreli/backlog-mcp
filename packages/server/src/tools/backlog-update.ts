@@ -20,6 +20,12 @@ export function registerBacklogUpdateTool(server: McpServer, service: IBacklogSe
         references: z.array(z.object({ url: z.string(), title: z.string().optional() })).optional().describe('Reference links. Formats: external URLs (https://...), task refs (mcp://backlog/tasks/TASK-XXXX.md), resources (mcp://backlog/resources/{path}). Local files must include extension (file:///path/to/file.md)'),
         due_date: z.union([z.string(), z.null()]).optional().describe('Due date for milestones (ISO 8601). Null to clear.'),
         content_type: z.union([z.string(), z.null()]).optional().describe('Content type for artifacts (e.g. text/markdown). Null to clear.'),
+        // Cron-only fields — validated server-side in core/update.ts.
+        schedule: z.string().optional().describe('Cron expression (5 fields). Validated on write. Only permitted on cron entities.'),
+        command: z.string().optional().describe('Command string for external scheduler. Only permitted on cron entities.'),
+        enabled: z.boolean().optional().describe('Whether the external scheduler should tick this cron. Separate from status. Only permitted on cron entities.'),
+        last_run: z.union([z.string(), z.null()]).optional().describe('ISO-8601 timestamp of most recent scheduler tick. Typically written by the scheduler. Null to clear (e.g. scheduler reset).'),
+        next_run: z.union([z.string(), z.null()]).optional().describe('ISO-8601 timestamp of next scheduled tick. Typically written by the scheduler. Null to clear.'),
       }),
     },
     async (params) => {

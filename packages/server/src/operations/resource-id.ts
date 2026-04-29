@@ -5,7 +5,7 @@
 
 type Extractor = (params: Record<string, unknown>, result: unknown) => string | undefined;
 
-const ID_RE = /(TASK|EPIC|FLDR|ARTF|MLST)-\d+/;
+const ID_RE = /(TASK|EPIC|FLDR|ARTF|MLST|CRON)-\d+/;
 
 const extractors: Record<string, Extractor> = {
   backlog_create: (_, result) => {

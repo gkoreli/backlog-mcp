@@ -1,38 +1,55 @@
+import { EntitySchema } from '@backlog-mcp/shared';
+import { ZodError } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
-import { NotFoundError, type UpdateParams, type UpdateResult } from './types.js';
+import { NotFoundError, ValidationError, type UpdateParams, type UpdateResult } from './types.js';
+import { formatZodError } from './zod-errors.js';
 
+/**
+ * Update an existing backlog item.
+ *
+ * Validation authority: EntitySchema (substrate discriminated union). We merge
+ * the update onto the current entity, then `.parse()` the result. Per-substrate
+ * `.strict()` automatically rejects cross-type fields (e.g. `schedule` on a
+ * task). Nullable fields (parent_id, epic_id, due_date, content_type, last_run,
+ * next_run) use `null` to clear; absence leaves the field alone.
+ */
 export async function updateItem(service: IBacklogService, params: UpdateParams): Promise<UpdateResult> {
-  const { id, epic_id, parent_id, due_date, content_type, ...updates } = params;
+  const { id, ...updates } = params;
 
   const task = await service.get(id);
   if (!task) throw new NotFoundError(id);
 
-  // parent_id takes precedence over epic_id
-  if (parent_id !== undefined) {
-    if (parent_id === null) {
-      delete task.parent_id;
-      delete task.epic_id;
-    } else {
-      task.parent_id = parent_id;
-    }
-  } else if (epic_id !== undefined) {
-    if (epic_id === null) {
-      delete task.epic_id;
-      delete task.parent_id;
-    } else {
-      task.epic_id = epic_id;
-      task.parent_id = epic_id;
-    }
+  // Apply updates. null = clear the field; undefined = leave as-is; any other
+  // value sets. Casting via Record<string, unknown> because the input type
+  // is a flat union of all possible updates and the current task is a narrowed
+  // substrate member.
+  const merged: Record<string, unknown> = { ...task };
+  for (const [key, value] of Object.entries(updates)) {
+    if (value === undefined) continue;
+    if (value === null) delete merged[key];
+    else merged[key] = value;
+  }
+  merged.updated_at = new Date().toISOString();
+
+  // parent_id/epic_id legacy sync — keep them consistent when either changes.
+  // updates.parent_id explicitly null → both cleared (handled above for parent_id).
+  // updates.epic_id (legacy): mirror into parent_id when set, or clear both on null.
+  if ('epic_id' in updates && !('parent_id' in updates)) {
+    if (updates.epic_id === null) delete merged.parent_id;
+    else if (typeof updates.epic_id === 'string') merged.parent_id = updates.epic_id;
+  }
+  if ('parent_id' in updates && !('epic_id' in updates)) {
+    if (updates.parent_id === null) delete merged.epic_id;
   }
 
-  // Nullable type-specific fields: null clears, string sets
-  if (due_date === null) delete task.due_date;
-  else if (due_date !== undefined) task.due_date = due_date;
+  let validated;
+  try {
+    validated = EntitySchema.parse(merged);
+  } catch (err) {
+    if (err instanceof ZodError) throw new ValidationError(formatZodError(err));
+    throw err;
+  }
 
-  if (content_type === null) delete task.content_type;
-  else if (content_type !== undefined) task.content_type = content_type;
-
-  Object.assign(task, updates, { updated_at: new Date().toISOString() });
-  await service.save(task);
+  await service.save(validated);
   return { id };
 }

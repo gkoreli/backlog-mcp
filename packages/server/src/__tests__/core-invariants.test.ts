@@ -28,11 +28,12 @@ import { NotFoundError, ValidationError } from '../core/types.js';
 
 function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): Entity {
   return {
+    type: 'task',
     status: 'open',
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     ...overrides,
-  };
+  } as Entity;
 }
 
 function mockService(entities: Entity[] = []): IBacklogService {
@@ -293,13 +294,13 @@ describe('core/updateItem', () => {
   });
 
   it('null due_date clears the field', async () => {
-    const svc = mockService([makeEntity({ id: 'MLST-0001', title: 'M', due_date: '2026-03-01' })]);
+    const svc = mockService([makeEntity({ id: 'MLST-0001', title: 'M', type: 'milestone' as any, due_date: '2026-03-01' } as any)]);
     await updateItem(svc, { id: 'MLST-0001', due_date: null });
     expect((svc.save as any).mock.calls[0][0].due_date).toBeUndefined();
   });
 
   it('sets due_date when string provided', async () => {
-    const svc = mockService([makeEntity({ id: 'MLST-0001', title: 'M' })]);
+    const svc = mockService([makeEntity({ id: 'MLST-0001', title: 'M', type: 'milestone' as any })]);
     await updateItem(svc, { id: 'MLST-0001', due_date: '2026-06-01' });
     expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ due_date: '2026-06-01' }));
   });
@@ -455,5 +456,194 @@ describe('core/editItem', () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', description: 'text' })]);
     await editItem(svc, { id: 'TASK-0001', operation: { type: 'append', new_str: 'more' } });
     expect((svc.save as any).mock.calls[0][0].updated_at).not.toBe('2026-01-01T00:00:00.000Z');
+  });
+});
+
+
+// ═══════════════════════════════════════════════════════════════════
+// createItem — cron entity
+// ═══════════════════════════════════════════════════════════════════
+
+describe('core/createItem — cron entity', () => {
+  it('creates CRON-0001 with schedule, command, and default enabled=true', async () => {
+    const svc = mockService();
+    const result = await createItem(svc, {
+      title: 'Review queue poll',
+      type: 'cron' as any,
+      schedule: '*/30 * * * *',
+      command: 'studio-agents check-reviews',
+    });
+    expect(result.id).toBe('CRON-0001');
+    expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'CRON-0001',
+      title: 'Review queue poll',
+      type: 'cron',
+      schedule: '*/30 * * * *',
+      command: 'studio-agents check-reviews',
+      enabled: true,
+    }));
+  });
+
+  it('respects explicit enabled=false on creation', async () => {
+    const svc = mockService();
+    await createItem(svc, {
+      title: 'Staged cron',
+      type: 'cron' as any,
+      schedule: '*/15 * * * *',
+      command: 'echo hi',
+      enabled: false,
+    });
+    expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
+  });
+
+  it('rejects type=cron without schedule', async () => {
+    const svc = mockService();
+    await expect(createItem(svc, {
+      title: 'Bad', type: 'cron' as any, command: 'echo',
+    })).rejects.toThrow(ValidationError);
+    await expect(createItem(svc, {
+      title: 'Bad', type: 'cron' as any, command: 'echo',
+    })).rejects.toThrow(/schedule/);
+  });
+
+  it('rejects type=cron without command', async () => {
+    const svc = mockService();
+    await expect(createItem(svc, {
+      title: 'Bad', type: 'cron' as any, schedule: '* * * * *',
+    })).rejects.toThrow(ValidationError);
+    await expect(createItem(svc, {
+      title: 'Bad', type: 'cron' as any, schedule: '* * * * *',
+    })).rejects.toThrow(/command/);
+  });
+
+  it('rejects invalid cron expression', async () => {
+    const svc = mockService();
+    await expect(createItem(svc, {
+      title: 'Bad', type: 'cron' as any,
+      schedule: 'garbage', command: 'echo',
+    })).rejects.toThrow(/Invalid cron expression/);
+  });
+
+  it('rejects schedule/command/enabled on non-cron types', async () => {
+    const svc = mockService();
+    // Zod's discriminated-union + .strict() rejects unknown keys on the task branch.
+    await expect(createItem(svc, {
+      title: 'Bad Task', schedule: '* * * * *',
+    })).rejects.toThrow(/schedule/);
+    await expect(createItem(svc, {
+      title: 'Bad Task', command: 'echo',
+    })).rejects.toThrow(/command/);
+    await expect(createItem(svc, {
+      title: 'Bad Task', enabled: true,
+    })).rejects.toThrow(/enabled/);
+  });
+
+  it('allows cron parented under an epic', async () => {
+    const svc = mockService();
+    await createItem(svc, {
+      title: 'Review queue',
+      type: 'cron' as any,
+      schedule: '*/30 * * * *',
+      command: 'studio-agents check-reviews',
+      parent_id: 'EPIC-0043',
+    });
+    expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({
+      parent_id: 'EPIC-0043',
+    }));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// updateItem — cron entity
+// ═══════════════════════════════════════════════════════════════════
+
+describe('core/updateItem — cron entity', () => {
+  function makeCron(overrides: Partial<Entity> = {}) {
+    return makeEntity({
+      id: 'CRON-0001',
+      title: 'Test cron',
+      type: 'cron' as any,
+      schedule: '*/30 * * * *',
+      command: 'echo hi',
+      enabled: true,
+      ...overrides,
+    });
+  }
+
+  it('updates schedule with valid expression', async () => {
+    const svc = mockService([makeCron()]);
+    await updateItem(svc, { id: 'CRON-0001', schedule: '*/15 * * * *' } as any);
+    expect((svc.save as any).mock.calls[0][0].schedule).toBe('*/15 * * * *');
+  });
+
+  it('rejects invalid cron expression on update', async () => {
+    const svc = mockService([makeCron()]);
+    await expect(updateItem(svc, {
+      id: 'CRON-0001', schedule: 'garbage',
+    } as any)).rejects.toThrow(/Invalid cron expression/);
+  });
+
+  it('toggles enabled field', async () => {
+    const svc = mockService([makeCron()]);
+    await updateItem(svc, { id: 'CRON-0001', enabled: false } as any);
+    expect((svc.save as any).mock.calls[0][0].enabled).toBe(false);
+  });
+
+  it('scheduler writes last_run and next_run', async () => {
+    const svc = mockService([makeCron()]);
+    await updateItem(svc, {
+      id: 'CRON-0001',
+      last_run: '2026-04-28T22:00:00.000Z',
+      next_run: '2026-04-28T22:30:00.000Z',
+    } as any);
+    const saved = (svc.save as any).mock.calls[0][0];
+    expect(saved.last_run).toBe('2026-04-28T22:00:00.000Z');
+    expect(saved.next_run).toBe('2026-04-28T22:30:00.000Z');
+  });
+
+  it('null last_run clears the field', async () => {
+    const svc = mockService([makeCron({ last_run: '2026-04-28T22:00:00.000Z' })]);
+    await updateItem(svc, { id: 'CRON-0001', last_run: null } as any);
+    expect((svc.save as any).mock.calls[0][0].last_run).toBeUndefined();
+  });
+
+  it('null next_run clears the field', async () => {
+    const svc = mockService([makeCron({ next_run: '2026-04-28T22:30:00.000Z' })]);
+    await updateItem(svc, { id: 'CRON-0001', next_run: null } as any);
+    expect((svc.save as any).mock.calls[0][0].next_run).toBeUndefined();
+  });
+
+  it('updates command', async () => {
+    const svc = mockService([makeCron()]);
+    await updateItem(svc, { id: 'CRON-0001', command: 'new-command --arg' } as any);
+    expect((svc.save as any).mock.calls[0][0].command).toBe('new-command --arg');
+  });
+
+  it('rejects cron fields on a non-cron entity', async () => {
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
+    // Zod's TaskSchema.strict() rejects unknown keys (schedule, command, enabled, last_run).
+    await expect(updateItem(svc, {
+      id: 'TASK-0001', schedule: '* * * * *',
+    } as any)).rejects.toThrow(/schedule/);
+    await expect(updateItem(svc, {
+      id: 'TASK-0001', command: 'echo',
+    } as any)).rejects.toThrow(/command/);
+    await expect(updateItem(svc, {
+      id: 'TASK-0001', enabled: true,
+    } as any)).rejects.toThrow(/enabled/);
+    await expect(updateItem(svc, {
+      id: 'TASK-0001', last_run: '2026-04-28T22:00:00.000Z',
+    } as any)).rejects.toThrow(/last_run/);
+  });
+
+  it('allows title/status updates on a cron without touching cron fields', async () => {
+    const svc = mockService([makeCron()]);
+    await updateItem(svc, { id: 'CRON-0001', title: 'Renamed', status: 'blocked' });
+    const saved = (svc.save as any).mock.calls[0][0];
+    expect(saved.title).toBe('Renamed');
+    expect(saved.status).toBe('blocked');
+    expect(saved.schedule).toBe('*/30 * * * *');
+    expect(saved.command).toBe('echo hi');
+    expect(saved.enabled).toBe(true);
   });
 });

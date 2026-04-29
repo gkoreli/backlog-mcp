@@ -34,7 +34,7 @@ export function estimateEntityTokens(entity: ContextEntity): number {
   // Base: id + title + status + type (always present)
   cost += estimateTokens(entity.id);
   cost += estimateTokens(entity.title);
-  cost += estimateTokens(entity.status);
+  cost += estimateTokens(entity.status ?? '');
   cost += estimateTokens(entity.type);
   // JSON overhead (keys, punctuation)
   cost += 20;

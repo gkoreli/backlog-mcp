@@ -1,11 +1,24 @@
 /**
- * type-registry.ts — Viewer-side type configuration.
+ * type-registry.ts — Viewer UI extension on top of shared SUBSTRATES.
  *
- * Extends shared entity types (canonical source: @backlog-mcp/shared)
- * with UI-specific concerns: icons, gradients, display behavior.
+ * The canonical substrate registry lives in `@backlog-mcp/shared`. This module
+ * augments it with viewer-only concerns (icon assets, which require esbuild's
+ * file loader and can't live in shared).
+ *
+ * Prefix, label, gradient, isContainer, hasStatus, extraFields, opensInPane
+ * all come from the shared substrate — single source of truth.
  */
-import { EntityType, ENTITY_TYPES, getTypeFromId } from '@backlog-mcp/shared';
-import { taskIcon, epicIcon, folderIcon, artifactIcon, milestoneIcon } from './icons/index.js';
+import { EntityType, SUBSTRATES } from '@backlog-mcp/shared';
+import { taskIcon, epicIcon, folderIcon, artifactIcon, milestoneIcon, cronIcon } from './icons/index.js';
+
+const ICONS: Record<EntityType, string> = {
+  [EntityType.Task]: taskIcon,
+  [EntityType.Epic]: epicIcon,
+  [EntityType.Folder]: folderIcon,
+  [EntityType.Artifact]: artifactIcon,
+  [EntityType.Milestone]: milestoneIcon,
+  [EntityType.Cron]: cronIcon,
+};
 
 export interface TypeConfig {
   prefix: string;
@@ -18,13 +31,24 @@ export interface TypeConfig {
   extraFields?: string[];
 }
 
-export const TYPE_REGISTRY: Record<EntityType, TypeConfig> = {
-  [EntityType.Task]:      { prefix: 'TASK', label: 'Task',      icon: taskIcon,      gradient: 'linear-gradient(135deg, #00d4ff, #7b2dff)', isContainer: false, hasStatus: true,  extraFields: ['blocked_reason', 'evidence'] },
-  [EntityType.Epic]:      { prefix: 'EPIC', label: 'Epic',      icon: epicIcon,      gradient: 'linear-gradient(135deg, #f0b429, #ff6b2d)', isContainer: true,  hasStatus: true },
-  [EntityType.Folder]:    { prefix: 'FLDR', label: 'Folder',    icon: folderIcon,    gradient: 'linear-gradient(135deg, #3fb950, #1f883d)', isContainer: true,  hasStatus: false },
-  [EntityType.Artifact]:  { prefix: 'ARTF', label: 'Artifact',  icon: artifactIcon,  gradient: 'linear-gradient(135deg, #a371f7, #ff2d7b)', isContainer: false, hasStatus: false, opensInPane: true, extraFields: ['content_type', 'path'] },
-  [EntityType.Milestone]: { prefix: 'MLST', label: 'Milestone', icon: milestoneIcon, gradient: 'linear-gradient(135deg, #f85149, #ff8c00)', isContainer: true,  hasStatus: true,  extraFields: ['due_date'] },
-};
+/** Build the viewer-local registry by composing shared substrate data with icons. */
+export const TYPE_REGISTRY: Record<EntityType, TypeConfig> = Object.fromEntries(
+  (Object.keys(SUBSTRATES) as EntityType[]).map(type => {
+    const s = SUBSTRATES[type];
+    const ui = s.ui as { gradient: string; opensInPane?: boolean };
+    const config: TypeConfig = {
+      prefix: s.prefix,
+      label: s.label,
+      icon: ICONS[type],
+      gradient: ui.gradient,
+      isContainer: s.structure.isContainer,
+      hasStatus: s.structure.hasStatus,
+      extraFields: [...s.extraFields],
+    };
+    if (ui.opensInPane) config.opensInPane = true;
+    return [type, config];
+  }),
+) as Record<EntityType, TypeConfig>;
 
 function isEntityType(value: string): value is EntityType {
   return value in TYPE_REGISTRY;

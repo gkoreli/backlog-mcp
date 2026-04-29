@@ -46,12 +46,13 @@ describe('Substrates Backend', () => {
   // ========================================================================
 
   describe('schema - ID utilities', () => {
-    it('should validate all 5 prefix types', () => {
+    it('should validate all 6 prefix types', () => {
       expect(isValidEntityId('TASK-0001')).toBe(true);
       expect(isValidEntityId('EPIC-0001')).toBe(true);
       expect(isValidEntityId('FLDR-0001')).toBe(true);
       expect(isValidEntityId('ARTF-0001')).toBe(true);
       expect(isValidEntityId('MLST-0001')).toBe(true);
+      expect(isValidEntityId('CRON-0001')).toBe(true);
       expect(isValidEntityId('NOPE-0001')).toBe(false);
     });
 
@@ -60,6 +61,7 @@ describe('Substrates Backend', () => {
       expect(parseEntityNum('FLDR-0007')).toBe(7);
       expect(parseEntityNum('ARTF-0100')).toBe(100);
       expect(parseEntityNum('MLST-0003')).toBe(3);
+      expect(parseEntityNum('CRON-0009')).toBe(9);
       expect(parseEntityNum('NOPE-0001')).toBeNull();
     });
 
@@ -69,6 +71,7 @@ describe('Substrates Backend', () => {
       expect(parseEntityId('MLST-0001')).toEqual({ type: 'milestone', num: 1 });
       expect(parseEntityId('TASK-0001')).toEqual({ type: 'task', num: 1 });
       expect(parseEntityId('EPIC-0002')).toEqual({ type: 'epic', num: 2 });
+      expect(parseEntityId('CRON-0001')).toEqual({ type: 'cron', num: 1 });
       expect(parseEntityId('NOPE-0001')).toBeNull();
     });
 
@@ -76,12 +79,13 @@ describe('Substrates Backend', () => {
       expect(formatEntityId(1, 'folder')).toBe('FLDR-0001');
       expect(formatEntityId(1, 'artifact')).toBe('ARTF-0001');
       expect(formatEntityId(1, 'milestone')).toBe('MLST-0001');
+      expect(formatEntityId(1, 'cron')).toBe('CRON-0001');
       expect(formatEntityId(42, 'task')).toBe('TASK-0042');
       expect(formatEntityId(3, 'epic')).toBe('EPIC-0003');
     });
 
-    it('should have all 5 types in ENTITY_TYPES', () => {
-      expect(ENTITY_TYPES).toEqual(['task', 'epic', 'folder', 'artifact', 'milestone']);
+    it('should have all 6 types in ENTITY_TYPES', () => {
+      expect(ENTITY_TYPES).toEqual(['task', 'epic', 'folder', 'artifact', 'milestone', 'cron']);
     });
 
     it('should have correct prefix mapping', () => {
@@ -91,6 +95,7 @@ describe('Substrates Backend', () => {
         folder: 'FLDR',
         artifact: 'ARTF',
         milestone: 'MLST',
+        cron: 'CRON',
       });
     });
   });
@@ -233,6 +238,84 @@ describe('Substrates Backend', () => {
       });
       expect(counts.total_tasks).toBe(4);
       expect(counts.total_epics).toBe(1);
+    });
+  });
+
+  // ========================================================================
+  // Cron entity — storage iteration is type-agnostic
+  // ========================================================================
+
+  describe('storage - cron entity', () => {
+    it('creates and retrieves a cron with all fields', async () => {
+      const id = nextEntityId(await storage.getMaxId('cron'), 'cron');
+      expect(id).toBe('CRON-0001');
+      const cron = createTask({
+        id,
+        title: 'Review queue poll',
+        type: 'cron',
+        schedule: '*/30 * * * *',
+        command: 'studio-agents check-reviews',
+        enabled: true,
+      });
+      await storage.add(cron);
+      const retrieved = await storage.get('CRON-0001');
+      expect(retrieved?.type).toBe('cron');
+      expect(retrieved?.schedule).toBe('*/30 * * * *');
+      expect(retrieved?.command).toBe('studio-agents check-reviews');
+      expect(retrieved?.enabled).toBe(true);
+    });
+
+    it('generates CRON IDs independently from other types', async () => {
+      await storage.add(createTask({ id: 'TASK-0001', title: 'T' }));
+      await storage.add(createTask({ id: 'CRON-0001', title: 'C1', type: 'cron', schedule: '* * * * *', command: 'echo' }));
+      await storage.add(createTask({ id: 'CRON-0002', title: 'C2', type: 'cron', schedule: '* * * * *', command: 'echo' }));
+
+      expect(await storage.getMaxId('cron')).toBe(2);
+      expect(await storage.getMaxId('task')).toBe(1);
+      expect(nextEntityId(await storage.getMaxId('cron'), 'cron')).toBe('CRON-0003');
+    });
+
+    it('persists scheduler-owned fields (last_run, next_run) across save/get', async () => {
+      const cron = createTask({
+        id: 'CRON-0001',
+        title: 'Timed',
+        type: 'cron',
+        schedule: '*/5 * * * *',
+        command: 'echo',
+        enabled: true,
+      });
+      cron.last_run = '2026-04-28T22:00:00.000Z';
+      cron.next_run = '2026-04-28T22:05:00.000Z';
+      await storage.add(cron);
+      const retrieved = await storage.get('CRON-0001');
+      expect(retrieved?.last_run).toBe('2026-04-28T22:00:00.000Z');
+      expect(retrieved?.next_run).toBe('2026-04-28T22:05:00.000Z');
+    });
+
+    it('filters cron entities via list({ type: cron })', async () => {
+      await storage.add(createTask({ id: 'TASK-0001', title: 'T' }));
+      await storage.add(createTask({ id: 'CRON-0001', title: 'C1', type: 'cron', schedule: '* * * * *', command: 'a' }));
+      await storage.add(createTask({ id: 'CRON-0002', title: 'C2', type: 'cron', schedule: '* * * * *', command: 'b' }));
+
+      const crons = await storage.list({ type: 'cron' });
+      expect(crons).toHaveLength(2);
+      expect(crons.every(c => c.type === 'cron')).toBe(true);
+    });
+
+    it('supports cron parented under an epic (co-review use case)', async () => {
+      await storage.add(createTask({ id: 'EPIC-0043', title: 'Code Reviews', type: 'epic' }));
+      await storage.add(createTask({
+        id: 'CRON-0001',
+        title: 'Review queue',
+        type: 'cron',
+        schedule: '*/30 * * * *',
+        command: 'studio-agents check-reviews',
+        parent_id: 'EPIC-0043',
+      }));
+
+      const children = await storage.list({ parent_id: 'EPIC-0043' });
+      expect(children).toHaveLength(1);
+      expect(children[0].id).toBe('CRON-0001');
     });
   });
 });

@@ -32,7 +32,7 @@ export type Fidelity = 'full' | 'summary' | 'reference';
 export interface ContextEntity {
   id: string;
   title: string;
-  status: Status;
+  status?: Status;
   type: EntityType;
   parent_id?: string;
   fidelity: Fidelity;

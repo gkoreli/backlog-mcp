@@ -18,7 +18,7 @@ export function taskToContextEntity(task: Entity, fidelity: 'full' | 'summary' |
     id: task.id,
     title: task.title,
     status: task.status,
-    type: task.type ?? EntityType.Task,
+    type: (task.type ?? EntityType.Task) as EntityType,
     fidelity,
   };
 

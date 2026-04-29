@@ -43,7 +43,7 @@ export interface ListParams {
 export interface ListItem {
   id: string;
   title: string;
-  status: Status;
+  status?: Status;
   type: string;
   parent_id?: string;
 }
@@ -84,6 +84,10 @@ export interface CreateParams {
   epic_id?: string;
   parent_id?: string;
   references?: Reference[];
+  // Cron-only fields (validated in core/create.ts)
+  schedule?: string;
+  command?: string;
+  enabled?: boolean;
 }
 
 export interface CreateResult {
@@ -103,6 +107,12 @@ export interface UpdateParams {
   references?: Reference[];
   due_date?: string | null;
   content_type?: string | null;
+  // Cron fields — validated in core/update.ts, only permitted on cron entities.
+  schedule?: string;
+  command?: string;
+  enabled?: boolean;
+  last_run?: string | null;   // null clears (e.g. scheduler reset)
+  next_run?: string | null;   // null clears
 }
 
 export interface UpdateResult {

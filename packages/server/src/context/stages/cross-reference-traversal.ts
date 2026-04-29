@@ -45,7 +45,7 @@ import { taskToContextEntity } from './focal-resolution.js';
 
 // Pattern matches entity IDs like TASK-0042, EPIC-0005, FLDR-0001, etc.
 // Used to extract entity references from arbitrary URL strings.
-const ENTITY_ID_PATTERN = /\b(TASK|EPIC|FLDR|ARTF|MLST)-(\d{4,})\b/g;
+const ENTITY_ID_PATTERN = /\b(TASK|EPIC|FLDR|ARTF|MLST|CRON)-(\d{4,})\b/g;
 
 export interface CrossReferenceTraversalDeps {
   /** Look up a task by ID */
