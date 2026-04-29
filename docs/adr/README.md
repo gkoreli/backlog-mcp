@@ -9,6 +9,7 @@ An ADR documents an important architectural decision along with its context and 
 ## Active ADRs
 
 - [0098. Unified Substrate Architecture — One Declaration Per Entity Type](./0098-unified-substrate-architecture.md) - Completes ADR 0088. Substrates in @backlog-mcp/shared as single source of truth; Zod-driven validation at storage boundaries - 2026-04-28
+- [0094. Transport-Agnostic Operation Logging](./0094-transport-agnostic-operation-logging.md) - Core write functions are the mutation-journal boundary. Actor is a parameter (WriteContext), not ambient state. Supersedes 0054. - 2026-04-29
 - [0090.1. Fix edit Command — Move `<id>` to Subcommands](./0090.1-fix-edit-command-subcommand-arg-passing.md) - Fix Commander.js arg passing bug by moving `<id>` from parent edit command to each subcommand (continues ADR-0090) - 2026-04-20
 - [0092. Plugin-Based Agentic Memory Architecture](./0092-plugin-based-agentic-memory-architecture.md) - Composable memory plugin system with search migration to packages/memory; inspired by MemPalace, Mem0, Karta analysis - 2026-04-14
 - [0091. Runtime-Clean Worker Bundle — Capability Injection Pattern](./0091-runtime-clean-worker-bundle.md) - Capability injection pattern for clean worker bundles - 2026-03-26
