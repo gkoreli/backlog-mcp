@@ -29,7 +29,7 @@ export default {
     // See ADR 0094.
     const app = createApp(service, {
       name: 'backlog-mcp',
-      version: '0.47.2',
+      version: '0.49.0',
       db: env.DB,
       apiKey: env.API_KEY,
       clientSecret: env.CLIENT_SECRET,
