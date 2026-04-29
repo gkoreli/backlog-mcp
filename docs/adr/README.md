@@ -23,6 +23,7 @@ An ADR documents an important architectural decision along with its context and 
 
 ### Superseded
 
+- ~~[0096. Cron Entity Type — Scheduled Task Intake](./0096-cron-entity-type.md)~~ - First-draft cron design; superseded by ADR 0097 (storage-engine framing) + 0097.1 (engineering plan) + 0098 (substrate architecture). Original proposed in-process scheduler + `status` overloading; reversed. - 2026-04-28
 - ~~[0072. Normalize-Then-Multiply Search Scoring Architecture](./0072-normalize-then-multiply-scoring.md)~~ - Superseded by ADR-0081 - 2026-02-12
 - [0071. Migrate spotlight-search innerHTML to html:inner directive](./0071-migrate-spotlight-search-innerhtml-to-html-inner-directive.md) - Replace imperative DOM manipulation with html:inner directives and text bindings - 2026-02-12
 - [0070. Shared Resource Link Routing Hook](./0070-shared-resource-link-routing-hook.md) - Shared useResourceLinks hook for file:// and mcp:// link interception - 2026-02-11
