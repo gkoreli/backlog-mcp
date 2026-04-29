@@ -5,8 +5,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { createApp } from './server/hono-app.js';
 import { BacklogService } from './storage/backlog-service.js';
 import { resourceManager } from './resources/manager.js';
-import { operationLogger } from './operations/index.js';
-import { withOperationLogging } from './operations/middleware.js';
+import { operationLogger, envActor } from './operations/logger.js';
 import { eventBus } from './events/index.js';
 import { paths } from './utils/paths.js';
 import { logger } from './utils/logger.js';
@@ -20,14 +19,17 @@ function readLocalFile(filePath: string): string | null {
 const service = BacklogService.getInstance();
 const port = parseInt(process.env.BACKLOG_VIEWER_PORT || '3030');
 
+// Node mode wires actor from env, JSONL operation log, and the real
+// event bus for SSE push. Core write functions build a WriteContext
+// from these pieces per-request (see ADR 0094).
 const app = createApp(service, {
   name: paths.packageJson.name,
   version: paths.getVersion(),
   dataDir: paths.backlogDataDir,
+  actor: envActor(),
   operationLog: operationLogger,
-  wrapMcpServer: withOperationLogging(operationLogger, { eventBus }),
-  resourceManager,
   eventBus,
+  resourceManager,
   staticMiddleware: serveStatic({ root: paths.viewerDist }),
   readLocalFile,
   resolveSourcePath,

@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { createItem } from '../../core/create.js';
 import { resolveSourcePath } from '../../utils/resolve-source-path.js';
-import { run } from '../runner.js';
+import { run, cliWriteContext } from '../runner.js';
 
 export function registerCreate(program: Command) {
   program
@@ -21,7 +21,7 @@ export function registerCreate(program: Command) {
           type: opts.type,
           epic_id: opts.epic,
           parent_id: opts.parent,
-        });
+        }, cliWriteContext());
       },
       (r) => `Created ${r.id}`,
       program.opts().json,

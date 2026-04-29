@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { updateItem } from '../../core/update.js';
-import { run } from '../runner.js';
+import { run, cliWriteContext } from '../runner.js';
 
 export function registerUpdate(program: Command) {
   program
@@ -23,7 +23,7 @@ export function registerUpdate(program: Command) {
         evidence: opts.evidence,
         blocked_reason: opts.blockedReason,
         due_date: opts.dueDate === '' ? null : opts.dueDate,
-      }),
+      }, cliWriteContext()),
       (r) => `Updated ${r.id}`,
       program.opts().json,
     ));

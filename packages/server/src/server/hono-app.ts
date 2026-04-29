@@ -5,7 +5,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { GitHub } from 'arctic';
 import type { IBacklogService } from '../storage/service-types.js';
-import type { IOperationLog } from '../operations/types.js';
+import type { IOperationLog, Actor } from '../operations/types.js';
 import { extractTargetFilename } from '../operations/resource-id.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';
 import {
@@ -46,8 +46,10 @@ export interface AppDeps extends ToolDeps {
   allowedGithubUsernames?: string;   // comma-separated allowlist e.g. "gkoreli,gogakoreli"
   // Operation log — same interface for local (JSONL) and cloud (D1)
   operationLog?: IOperationLog;
+  // Write-boundary wiring — passed through to tool handlers so each
+  // MCP write builds a WriteContext (see ADR 0094).
+  actor?: Actor;
   // Node.js-only
-  wrapMcpServer?: (server: McpServer) => McpServer; // e.g. withOperationLogging(...)
   staticMiddleware?: any;  // result of serveStatic({ root: '...' }) from @hono/node-server/serve-static
   eventBus?: any;          // for SSE push
   readLocalFile?: (filePath: string) => string | null;  // injected by node-server.ts; absent in Worker
@@ -560,12 +562,16 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
   // MCP endpoint — WebStandardStreamableHTTPServerTransport works on Node.js + Workers
   app.all('/mcp', async (c) => {
-    let server = new McpServer({ name: deps?.name ?? 'backlog-mcp', version: deps?.version ?? '0.0.0' });
-    // Apply operation logging when operationLogger is available (local Node.js mode)
-    if (deps?.wrapMcpServer) {
-      server = deps.wrapMcpServer(server);
-    }
-    registerTools(server, service, deps);
+    const server = new McpServer({ name: deps?.name ?? 'backlog-mcp', version: deps?.version ?? '0.0.0' });
+    // ToolDeps carries write-boundary wiring; core builds WriteContext
+    // per-write using these pieces. See ADR 0094.
+    const toolDeps: ToolDeps = {
+      ...deps,
+      actor: deps?.actor,
+      operationLog: deps?.operationLog,
+      eventBus: deps?.eventBus,
+    };
+    registerTools(server, service, toolDeps);
     if (deps?.resourceManager) {
       deps.resourceManager.registerResource(server);
     }

@@ -1,9 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
 import { applyOperation } from '../resources/operations.js';
 import { editItem } from '../core/edit.js';
-import { NotFoundError } from '../core/types.js';
+import { NotFoundError, type WriteContext } from '../core/types.js';
 import type { Entity } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/service-types.js';
+
+function testCtx(): WriteContext {
+  return {
+    actor: { type: 'user', name: 'test' },
+    operationLog: { append: () => {}, query: async () => [], countForTask: async () => 0 },
+  };
+}
 
 function mockService(entities: Entity[] = []): IBacklogService {
   const store = new Map(entities.map(e => [e.id, { ...e }]));
@@ -58,7 +65,7 @@ describe('edit error resilience invariants', () => {
   describe('editItem surfaces rich error in result.error', () => {
     it('returns success: false with full error message on str_replace failure', async () => {
       const svc = mockService([{ id: 'TASK-0001', title: 'T', description: 'actual content here', status: 'open', created_at: '', updated_at: '' } as Entity]);
-      const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'wrong text', new_str: 'x' } });
+      const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'wrong text', new_str: 'x' } }, testCtx());
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('old_str not found');
@@ -68,7 +75,7 @@ describe('edit error resilience invariants', () => {
 
     it('result.error is a string transports can pass directly to users', async () => {
       const svc = mockService([{ id: 'TASK-0001', title: 'T', description: 'hello', status: 'open', created_at: '', updated_at: '' } as Entity]);
-      const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'goodbye', new_str: 'x' } });
+      const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'goodbye', new_str: 'x' } }, testCtx());
 
       // Transport contract: result.error is a ready-to-display string
       expect(typeof result.error).toBe('string');
@@ -81,7 +88,7 @@ describe('edit error resilience invariants', () => {
   describe('transport isError contract', () => {
     it('success: false means transport MUST signal error to client', async () => {
       const svc = mockService([{ id: 'TASK-0001', title: 'T', description: 'content', status: 'open', created_at: '', updated_at: '' } as Entity]);
-      const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'MISSING', new_str: 'x' } });
+      const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'MISSING', new_str: 'x' } }, testCtx());
 
       // This is the invariant all transports must respect:
       // MCP: return { content: [...], isError: true }
@@ -93,7 +100,7 @@ describe('edit error resilience invariants', () => {
 
     it('success: true means transport signals success', async () => {
       const svc = mockService([{ id: 'TASK-0001', title: 'T', description: 'hello world', status: 'open', created_at: '', updated_at: '' } as Entity]);
-      const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'hello', new_str: 'goodbye' } });
+      const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'hello', new_str: 'goodbye' } }, testCtx());
 
       expect(result.success).toBe(true);
       expect(result.message).toBeDefined();

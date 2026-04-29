@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { editItem } from '../../core/edit.js';
 import type { EditOperation } from '../../core/types.js';
-import { run } from '../runner.js';
+import { run, cliWriteContext } from '../runner.js';
 
 function formatResult(r: { success: boolean; message?: string; error?: string }) {
   if (!r.success) {
@@ -12,7 +12,7 @@ function formatResult(r: { success: boolean; message?: string; error?: string })
 }
 
 function editAction(id: string, operation: EditOperation, json: boolean) {
-  return run((s) => editItem(s, { id, operation }), formatResult, json);
+  return run((s) => editItem(s, { id, operation }, cliWriteContext()), formatResult, json);
 }
 
 export function registerEdit(program: Command) {

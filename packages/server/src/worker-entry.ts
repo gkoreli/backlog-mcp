@@ -5,7 +5,6 @@
 import { createApp } from './server/hono-app.js';
 import { D1BacklogService } from './storage/d1-backlog-service.js';
 import { D1OperationLog } from './operations/d1-operation-log.js';
-import { withOperationLogging } from './operations/middleware.js';
 import { D1OAuthStore } from './auth/index.js';
 
 export interface WorkerEnv {
@@ -24,6 +23,10 @@ export default {
     const operationLog = new D1OperationLog(env.DB, ctx);
     const oauthStore = new D1OAuthStore(env.DB);
 
+    // Worker mode: stateless, no event bus. Actor is currently a fixed
+    // agent identity — future work will derive it from OAuth session /
+    // API key metadata so cloud writes attribute to the real caller.
+    // See ADR 0094.
     const app = createApp(service, {
       name: 'backlog-mcp',
       version: '0.47.2',
@@ -35,10 +38,8 @@ export default {
       githubClientId: env.GITHUB_CLIENT_ID,
       githubClientSecret: env.GITHUB_CLIENT_SECRET,
       allowedGithubUsernames: env.ALLOWED_GITHUB_USERNAMES,
+      actor: { type: 'agent', name: 'claude' },
       operationLog,
-      wrapMcpServer: withOperationLogging(operationLog, {
-        actor: { type: 'agent', name: 'claude' },
-      }),
     });
     return app.fetch(request);
   },

@@ -1,5 +1,4 @@
-export { operationLogger, type OperationEntry, type Actor, type OperationFilter } from './logger.js';
-export { withOperationLogging } from './middleware.js';
+export { operationLogger, envActor, type OperationEntry, type Actor, type OperationFilter } from './logger.js';
 export { OperationStorage } from './storage.js';
 export { D1OperationLog } from './d1-operation-log.js';
 export { extractResourceId, extractTargetFilename } from './resource-id.js';

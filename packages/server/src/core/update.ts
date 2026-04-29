@@ -1,8 +1,9 @@
 import { EntitySchema } from '@backlog-mcp/shared';
 import { ZodError } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
-import { NotFoundError, ValidationError, type UpdateParams, type UpdateResult } from './types.js';
+import { NotFoundError, ValidationError, type UpdateParams, type UpdateResult, type WriteContext } from './types.js';
 import { formatZodError } from './zod-errors.js';
+import { recordMutation } from './operation-log.js';
 
 /**
  * Update an existing backlog item.
@@ -12,8 +13,15 @@ import { formatZodError } from './zod-errors.js';
  * `.strict()` automatically rejects cross-type fields (e.g. `schedule` on a
  * task). Nullable fields (parent_id, epic_id, due_date, content_type, last_run,
  * next_run) use `null` to clear; absence leaves the field alone.
+ *
+ * Journal: on success, appends a `backlog_update` entry to ctx.operationLog
+ * and emits a `task_changed` event. See ADR 0094.
  */
-export async function updateItem(service: IBacklogService, params: UpdateParams): Promise<UpdateResult> {
+export async function updateItem(
+  service: IBacklogService,
+  params: UpdateParams,
+  ctx: WriteContext,
+): Promise<UpdateResult> {
   const { id, ...updates } = params;
 
   const task = await service.get(id);
@@ -51,5 +59,8 @@ export async function updateItem(service: IBacklogService, params: UpdateParams)
   }
 
   await service.save(validated);
-  return { id };
+
+  const result: UpdateResult = { id };
+  recordMutation(ctx, 'backlog_update', params as unknown as Record<string, unknown>, result);
+  return result;
 }

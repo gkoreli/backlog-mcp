@@ -4,6 +4,7 @@ import type { IBacklogService } from '../storage/service-types.js';
 import type { ToolDeps } from './index.js';
 import { ENTITY_TYPES } from '@backlog-mcp/shared';
 import { createItem } from '../core/create.js';
+import { buildWriteContext } from './build-write-context.js';
 
 export function registerBacklogCreateTool(server: McpServer, service: IBacklogService, deps?: ToolDeps) {
   server.registerTool(
@@ -38,7 +39,7 @@ export function registerBacklogCreateTool(server: McpServer, service: IBacklogSe
           }
           description = deps.resolveSourcePath(source_path);
         }
-        const result = await createItem(service, { ...params, description });
+        const result = await createItem(service, { ...params, description }, buildWriteContext(deps));
         return { content: [{ type: 'text', text: `Created ${result.id}` }] };
       } catch (error) {
         return { content: [{ type: 'text' as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }] };

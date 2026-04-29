@@ -1,9 +1,11 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
+import type { ToolDeps } from './index.js';
 import { editItem, NotFoundError } from '../core/index.js';
+import { buildWriteContext } from './build-write-context.js';
 
-export function registerWriteResourceTool(server: McpServer, service: IBacklogService): void {
+export function registerWriteResourceTool(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   server.registerTool(
     'write_resource',
     {
@@ -25,7 +27,7 @@ export function registerWriteResourceTool(server: McpServer, service: IBacklogSe
     },
     async ({ id, operation }) => {
       try {
-        const result = await editItem(service, { id, operation });
+        const result = await editItem(service, { id, operation }, buildWriteContext(deps));
         if (!result.success) {
           return { content: [{ type: 'text' as const, text: result.error! }], isError: true };
         }

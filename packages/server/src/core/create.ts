@@ -3,8 +3,9 @@ import { ZodError } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
 import { createTask } from '../storage/schema.js';
 import { ValidationError } from './types.js';
-import type { CreateParams, CreateResult } from './types.js';
+import type { CreateParams, CreateResult, WriteContext } from './types.js';
 import { formatZodError } from './zod-errors.js';
+import { recordMutation } from './operation-log.js';
 
 /**
  * Create a new backlog item.
@@ -19,8 +20,16 @@ import { formatZodError } from './zod-errors.js';
  * Note: source_path resolution is a transport concern — MCP and CLI
  * resolve the file and pass the content as `description`. Core never
  * touches the filesystem.
+ *
+ * Journal: on success, appends a `backlog_create` entry to ctx.operationLog
+ * and emits a `task_created` event on ctx.eventBus. Logging is part of the
+ * operation, not a wrapper — see ADR 0094.
  */
-export async function createItem(service: IBacklogService, params: CreateParams): Promise<CreateResult> {
+export async function createItem(
+  service: IBacklogService,
+  params: CreateParams,
+  ctx: WriteContext,
+): Promise<CreateResult> {
   const { title, description, type, epic_id, parent_id, references, schedule, command, enabled } = params;
 
   const resolvedType = (type ?? EntityType.Task) as EntityType;
@@ -46,5 +55,8 @@ export async function createItem(service: IBacklogService, params: CreateParams)
   if (epic_id && !parent_id) task.epic_id = epic_id;
 
   await service.add(task);
-  return { id: task.id };
+
+  const result: CreateResult = { id: task.id };
+  recordMutation(ctx, 'backlog_create', params as unknown as Record<string, unknown>, result);
+  return result;
 }

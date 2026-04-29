@@ -11,6 +11,37 @@
  */
 import type { Status, EntityType, Reference } from '@backlog-mcp/shared';
 import type { ResourceContent } from '../resources/manager.js';
+import type { Actor, IOperationLog } from '../operations/types.js';
+
+export type { Actor, IOperationLog } from '../operations/types.js';
+
+// ── Write boundary ──
+
+/**
+ * Per-write contextual dependencies. Every core write function requires one.
+ *
+ * - `actor`: who initiated this write (user, agent, scheduler, system)
+ * - `operationLog`: append-only mutation journal (JSONL locally, D1 in cloud)
+ * - `eventBus`: optional real-time notification bus (local only; cloud is stateless)
+ *
+ * This is how transport-specific attribution flows into core without coupling
+ * core to transports. Each adapter (MCP handler, CLI command, scheduler tick)
+ * builds a ctx and passes it in. Core functions build the mutation entry
+ * and append before returning — logging is part of the operation, not a wrapper.
+ *
+ * See ADR 0094.
+ */
+export interface WriteContext {
+  actor: Actor;
+  operationLog: IOperationLog;
+  eventBus?: { emit: (event: {
+    type: string;
+    id: string;
+    tool: string;
+    actor: string;
+    ts: string;
+  }) => void };
+}
 
 // ── Errors ──
 

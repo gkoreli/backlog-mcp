@@ -15,8 +15,8 @@ vi.mock('../utils/paths.js', () => ({
 
 // Mock operations/index.js to avoid side effects
 vi.mock('../operations/index.js', () => ({
-  operationLogger: { read: vi.fn(), countForTask: vi.fn() },
-  withOperationLogging: (server: any) => server,
+  operationLogger: { read: vi.fn(), countForTask: vi.fn(), append: vi.fn() },
+  envActor: () => ({ type: 'user' as const, name: 'test' }),
 }));
 
 function makeService(overrides: Partial<IBacklogService> = {}): IBacklogService {

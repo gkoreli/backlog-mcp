@@ -8,13 +8,22 @@ import { extractResourceId } from './resource-id.js';
 import type { Actor, OperationEntry, OperationFilter, IOperationLog } from './types.js';
 import { WRITE_TOOLS } from './types.js';
 
-// Read actor info from environment at module load
-const actor: Actor = {
-  type: (process.env.BACKLOG_ACTOR_TYPE as 'user' | 'agent') || 'user',
-  name: process.env.BACKLOG_ACTOR_NAME || process.env.USER || 'unknown',
-  delegatedBy: process.env.BACKLOG_DELEGATED_BY,
-  taskContext: process.env.BACKLOG_TASK_CONTEXT,
-};
+/**
+ * Build an Actor from the current process environment.
+ *
+ * Called per-invocation (not module-load) so each CLI command or server
+ * process sees the env at the time it runs, not at import time. The write
+ * boundary (core functions) takes Actor as a parameter so attribution is
+ * never ambient — see ADR 0094.
+ */
+export function envActor(): Actor {
+  return {
+    type: (process.env.BACKLOG_ACTOR_TYPE as 'user' | 'agent') || 'user',
+    name: process.env.BACKLOG_ACTOR_NAME || process.env.USER || 'unknown',
+    delegatedBy: process.env.BACKLOG_DELEGATED_BY,
+    taskContext: process.env.BACKLOG_TASK_CONTEXT,
+  };
+}
 
 class OperationLogger implements IOperationLog {
   private storage: OperationStorage;
@@ -30,7 +39,8 @@ class OperationLogger implements IOperationLog {
 
   /**
    * Convenience helper: build and append an entry from raw tool call data.
-   * Only logs write operations.
+   * Only logs write operations. @deprecated — core.recordMutation is the
+   * new write path; this exists for legacy callers and a couple of tests.
    */
   log(tool: string, params: Record<string, unknown>, result: unknown): void {
     if (!WRITE_TOOLS.includes(tool as any)) return;
@@ -40,7 +50,7 @@ class OperationLogger implements IOperationLog {
       params,
       result,
       resourceId: extractResourceId(tool, params, result),
-      actor,
+      actor: envActor(),
     });
   }
 
