@@ -318,12 +318,20 @@ This means the cloud viewer is **pull-only** in Phase 3 — it does not auto-ref
 
 | Setting | Value |
 |---|---|
-| Build command | `pnpm --filter @backlog-mcp/viewer build` |
+| Build command | `pnpm run build:viewer` |
 | Output directory | `packages/viewer/dist` |
 | Root directory | `/` (monorepo root) |
 | Env var | `API_URL=https://backlog-mcp.gogakoreli.workers.dev` |
 
 Pages auto-deploys on every push to `main`.
+
+> **Note**: `build:viewer` in the root `package.json` builds only the
+> shared + viewer packages. The root `build` script also builds the
+> server package, which is unnecessary on Pages and has triggered OOM
+> failures in Cloudflare's 2GB-capped build environment (rolldown's
+> eager dts generation across 76 server entry points). Use
+> `build:viewer` for the Pages deploy; use `build` for local full
+> builds and CI tasks that need the server bundle.
 
 ---
 
