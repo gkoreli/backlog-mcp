@@ -78,10 +78,13 @@ describe('task-filter-bar rendering', () => {
     expect(options[2].value).toBe('created_asc');
   });
 
-  it('default filter is "active" (has active class)', () => {
+  it('default filter is "all" (has active class)', () => {
     const el = createElement();
+    const allBtn = el.querySelector('[data-filter="all"]');
+    expect(allBtn?.classList.contains('active')).toBe(true);
+
     const activeBtn = el.querySelector('[data-filter="active"]');
-    expect(activeBtn?.classList.contains('active')).toBe(true);
+    expect(activeBtn?.classList.contains('active')).toBe(false);
 
     const completedBtn = el.querySelector('[data-filter="completed"]');
     expect(completedBtn?.classList.contains('active')).toBe(false);

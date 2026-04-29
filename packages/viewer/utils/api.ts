@@ -37,7 +37,7 @@ export interface TaskResponse extends Task {
   children?: Task[];
 }
 
-export async function fetchTasks(filter: 'active' | 'completed' | 'all' = 'active', query?: string): Promise<Task[]> {
+export async function fetchTasks(filter: 'active' | 'completed' | 'all' = 'all', query?: string): Promise<Task[]> {
   let url = `${API_URL}/tasks?filter=${filter}`;
   if (query) url += `&q=${encodeURIComponent(query)}`;
   const response = await fetch(url);

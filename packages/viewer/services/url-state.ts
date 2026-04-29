@@ -8,7 +8,7 @@
 import { signal, effect } from '@nisli/core';
 
 export class UrlState {
-  readonly filter = signal('active');
+  readonly filter = signal('all');
   readonly type = signal('all');
   readonly id = signal<string | null>(null);
   readonly q = signal<string | null>(null);
@@ -41,7 +41,7 @@ export class UrlState {
       return;
     }
 
-    this.filter.value = params.get('filter') || 'active';
+    this.filter.value = params.get('filter') || 'all';
     this.type.value = params.get('type') || 'all';
     this.id.value = params.get('id');
     this.q.value = params.get('q');
@@ -53,7 +53,7 @@ export class UrlState {
       if (v && v !== def) url.searchParams.set(k, v);
       else url.searchParams.delete(k);
     };
-    set('filter', f, 'active');
+    set('filter', f, 'all');
     set('type', t, 'all');
     set('id', id);
     set('q', q);

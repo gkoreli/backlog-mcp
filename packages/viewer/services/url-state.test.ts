@@ -46,7 +46,7 @@ describe('UrlState', () => {
     const state = new UrlState();
     flushEffects();
 
-    expect(state.filter.value).toBe('active');
+    expect(state.filter.value).toBe('all');
     expect(state.type.value).toBe('all');
     expect(state.id.value).toBeNull();
     expect(state.q.value).toBeNull();
