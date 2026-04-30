@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import { updateItem } from '../../core/update.js';
 import { run, cliWriteContext } from '../runner.js';
 
-export function registerUpdate(program: Command) {
+export function registerUpdate(program: Command): void {
   program
     .command('update <id>')
     .description('Update a backlog item')

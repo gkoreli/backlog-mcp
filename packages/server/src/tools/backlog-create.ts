@@ -6,7 +6,7 @@ import { ENTITY_TYPES } from '@backlog-mcp/shared';
 import { createItem } from '../core/create.js';
 import { buildWriteContext } from './build-write-context.js';
 
-export function registerBacklogCreateTool(server: McpServer, service: IBacklogService, deps?: ToolDeps) {
+export function registerBacklogCreateTool(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   server.registerTool(
     'backlog_create',
     {

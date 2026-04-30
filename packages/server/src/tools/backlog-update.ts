@@ -6,7 +6,7 @@ import { STATUSES } from '@backlog-mcp/shared';
 import { updateItem, NotFoundError } from '../core/index.js';
 import { buildWriteContext } from './build-write-context.js';
 
-export function registerBacklogUpdateTool(server: McpServer, service: IBacklogService, deps?: ToolDeps) {
+export function registerBacklogUpdateTool(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   server.registerTool(
     'backlog_update',
     {

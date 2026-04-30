@@ -14,7 +14,7 @@ function formatItem(item: GetItem): string {
   return item.content;
 }
 
-export function registerBacklogGetTool(server: McpServer, service: IBacklogService) {
+export function registerBacklogGetTool(server: McpServer, service: IBacklogService): void {
   server.registerTool(
     'backlog_get',
     {

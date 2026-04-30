@@ -9,7 +9,7 @@ function format(result: GetResult): string {
   ).join('\n\n');
 }
 
-export function registerGet(program: Command) {
+export function registerGet(program: Command): void {
   program
     .command('get <ids...>')
     .description('Get one or more items by ID')

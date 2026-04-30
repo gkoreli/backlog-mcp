@@ -4,7 +4,7 @@ import type { IBacklogService } from '../storage/service-types.js';
 import { ENTITY_TYPES, STATUSES } from '@backlog-mcp/shared';
 import { listItems } from '../core/list.js';
 
-export function registerBacklogListTool(server: McpServer, service: IBacklogService) {
+export function registerBacklogListTool(server: McpServer, service: IBacklogService): void {
   server.registerTool(
     'backlog_list',
     {

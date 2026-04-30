@@ -15,7 +15,7 @@ function editAction(id: string, operation: EditOperation, json: boolean) {
   return run((s) => editItem(s, { id, operation }, cliWriteContext()), formatResult, json);
 }
 
-export function registerEdit(program: Command) {
+export function registerEdit(program: Command): void {
   const edit = program
     .command('edit')
     .description('Edit an item body (use a subcommand: replace, append, insert)');

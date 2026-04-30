@@ -3,7 +3,7 @@ import { createItem } from '../../core/create.js';
 import { resolveSourcePath } from '../../utils/resolve-source-path.js';
 import { run, cliWriteContext } from '../runner.js';
 
-export function registerCreate(program: Command) {
+export function registerCreate(program: Command): void {
   program
     .command('create <title>')
     .description('Create a new backlog item')

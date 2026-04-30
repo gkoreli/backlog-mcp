@@ -5,6 +5,8 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "sourceMap": true,
+    "emitDeclarationOnly": true,
+    "outDir": "dist",
     "baseUrl": ".",
     "paths": {
       "@/utils/*": ["src/utils/*"],

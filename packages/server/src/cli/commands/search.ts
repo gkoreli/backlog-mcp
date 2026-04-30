@@ -14,7 +14,7 @@ function format(result: SearchResult): string {
   return lines.join('\n');
 }
 
-export function registerSearch(program: Command) {
+export function registerSearch(program: Command): void {
   program
     .command('search <query>')
     .description('Search backlog items')

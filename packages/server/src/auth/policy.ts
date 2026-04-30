@@ -1,7 +1,7 @@
 import type { OAuthClientRegistration } from './oauth-store.js';
 
-export const DEFAULT_REFRESH_TOKEN_INACTIVITY_SECONDS = 30 * 24 * 60 * 60;
-export const DEFAULT_REFRESH_TOKEN_MAX_AGE_SECONDS = 90 * 24 * 60 * 60;
+export const DEFAULT_REFRESH_TOKEN_INACTIVITY_SECONDS: number = 30 * 24 * 60 * 60;
+export const DEFAULT_REFRESH_TOKEN_MAX_AGE_SECONDS: number = 90 * 24 * 60 * 60;
 
 export interface RefreshTokenPolicy {
   inactivitySeconds: number;
@@ -17,8 +17,8 @@ export interface RefreshEligibilityInput {
 }
 
 export function createRefreshTokenPolicy(
-  inactivitySeconds = DEFAULT_REFRESH_TOKEN_INACTIVITY_SECONDS,
-  maxAgeSeconds = DEFAULT_REFRESH_TOKEN_MAX_AGE_SECONDS,
+  inactivitySeconds: number = DEFAULT_REFRESH_TOKEN_INACTIVITY_SECONDS,
+  maxAgeSeconds: number = DEFAULT_REFRESH_TOKEN_MAX_AGE_SECONDS,
 ): RefreshTokenPolicy {
   return { inactivitySeconds, maxAgeSeconds };
 }

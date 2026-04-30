@@ -39,9 +39,14 @@ function write(level: Level, message: string, data?: Record<string, unknown>): v
   });
 }
 
-export const logger = {
-  debug: (message: string, data?: Record<string, unknown>) => write('debug', message, data),
-  info: (message: string, data?: Record<string, unknown>) => write('info', message, data),
-  warn: (message: string, data?: Record<string, unknown>) => write('warn', message, data),
-  error: (message: string, data?: Record<string, unknown>) => write('error', message, data),
+export const logger: {
+  debug: (message: string, data?: Record<string, unknown>) => void;
+  info: (message: string, data?: Record<string, unknown>) => void;
+  warn: (message: string, data?: Record<string, unknown>) => void;
+  error: (message: string, data?: Record<string, unknown>) => void;
+} = {
+  debug: (message: string, data?: Record<string, unknown>): void => write('debug', message, data),
+  info: (message: string, data?: Record<string, unknown>): void => write('info', message, data),
+  warn: (message: string, data?: Record<string, unknown>): void => write('warn', message, data),
+  error: (message: string, data?: Record<string, unknown>): void => write('error', message, data),
 };

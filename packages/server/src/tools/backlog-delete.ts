@@ -5,7 +5,7 @@ import type { ToolDeps } from './index.js';
 import { deleteItem } from '../core/delete.js';
 import { buildWriteContext } from './build-write-context.js';
 
-export function registerBacklogDeleteTool(server: McpServer, service: IBacklogService, deps?: ToolDeps) {
+export function registerBacklogDeleteTool(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   server.registerTool(
     'backlog_delete',
     {

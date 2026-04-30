@@ -168,4 +168,4 @@ class BacklogService implements IBacklogService {
 }
 
 export { BacklogService };
-export const storage = BacklogService.getInstance();
+export const storage: BacklogService = BacklogService.getInstance();

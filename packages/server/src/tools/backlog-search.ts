@@ -4,7 +4,7 @@ import type { IBacklogService } from '../storage/service-types.js';
 import { STATUSES } from '@backlog-mcp/shared';
 import { searchItems } from '../core/search.js';
 
-export function registerBacklogSearchTool(server: McpServer, service: IBacklogService) {
+export function registerBacklogSearchTool(server: McpServer, service: IBacklogService): void {
   server.registerTool(
     'backlog_search',
     {

@@ -33,7 +33,7 @@ export function registerBacklogContextTool(
   server: McpServer,
   service: IBacklogService,
   deps: { resourceManager: any; operationLogger: any },
-) {
+): void {
   server.registerTool(
     'backlog_context',
     {

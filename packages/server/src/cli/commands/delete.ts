@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import { deleteItem } from '../../core/delete.js';
 import { run, cliWriteContext } from '../runner.js';
 
-export function registerDelete(program: Command) {
+export function registerDelete(program: Command): void {
   program
     .command('delete <id>')
     .description('Delete a backlog item')

@@ -5,6 +5,7 @@
   },
   "scripts": {
     "build": "pnpm --filter @backlog-mcp/shared build && pnpm --filter @backlog-mcp/viewer build && pnpm --filter backlog-mcp build",
+    "build:viewer": "pnpm --filter @backlog-mcp/shared build && pnpm --filter @backlog-mcp/viewer build",
     "typecheck": "pnpm --filter backlog-mcp typecheck && pnpm --filter @backlog-mcp/viewer typecheck",
     "test": "pnpm -r test",
     "test:watch": "pnpm --filter backlog-mcp test:watch",
@@ -19,7 +20,7 @@
     "@types/node": "^22.0.0",
     "concurrently": "^9.2.1",
     "esbuild": "^0.27.2",
-    "tsdown": "^0.20.1",
+    "tsdown": "^0.21.10",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vite-tsconfig-paths": "^6.1.1",

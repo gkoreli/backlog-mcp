@@ -14,7 +14,7 @@ function format(result: ListResult): string {
   return lines.join('\n');
 }
 
-export function registerList(program: Command) {
+export function registerList(program: Command): void {
   program
     .command('list')
     .description('List backlog items')

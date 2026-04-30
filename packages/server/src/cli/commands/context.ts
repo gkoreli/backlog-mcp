@@ -4,7 +4,7 @@ import { resourceManager } from '../../resources/manager.js';
 import { hydrateContext } from '../../context/index.js';
 import { run } from '../runner.js';
 
-export function registerContext(program: Command) {
+export function registerContext(program: Command): void {
   program
     .command('context [id]')
     .description('Get hydrated context for an item')

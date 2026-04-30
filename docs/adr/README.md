@@ -8,6 +8,7 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0099. Fix Build OOM — Separate tsc Declarations from tsdown Bundling](./0099-fix-build-oom-separate-tsc-declarations.md) - Split dts generation (tsc) from JS bundling (tsdown) to fix 3.5GB→511MB OOM on Cloudflare Workers CI/CD - 2026-04-30
 - [0098. Unified Substrate Architecture — One Declaration Per Entity Type](./0098-unified-substrate-architecture.md) - Completes ADR 0088. Substrates in @backlog-mcp/shared as single source of truth; Zod-driven validation at storage boundaries - 2026-04-28
 - [0094. Transport-Agnostic Operation Logging](./0094-transport-agnostic-operation-logging.md) - Core write functions are the mutation-journal boundary. Actor is a parameter (WriteContext), not ambient state. Supersedes 0054. - 2026-04-29
 - [0090.1. Fix edit Command — Move `<id>` to Subcommands](./0090.1-fix-edit-command-subcommand-arg-passing.md) - Fix Commander.js arg passing bug by moving `<id>` from parent edit command to each subcommand (continues ADR-0090) - 2026-04-20

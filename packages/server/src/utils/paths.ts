@@ -188,4 +188,4 @@ export class PathResolver {
 }
 
 // Export singleton instance
-export const paths = PathResolver.getInstance();
+export const paths: PathResolver = PathResolver.getInstance();

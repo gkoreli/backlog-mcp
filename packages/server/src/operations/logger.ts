@@ -70,7 +70,7 @@ class OperationLogger implements IOperationLog {
   }
 }
 
-export const operationLogger = new OperationLogger();
+export const operationLogger: OperationLogger = new OperationLogger();
 
 // Re-export types for convenience
 export type { Actor, OperationEntry, OperationFilter } from './types.js';

@@ -158,7 +158,7 @@ export class ResourceManager {
   /**
    * Register MCP resource handler (catch-all pattern).
    */
-  registerResource(server: McpServer) {
+  registerResource(server: McpServer): void {
     const template = new ResourceTemplate(
       'mcp://backlog/{+path}',
       { list: undefined }
@@ -198,4 +198,4 @@ export class ResourceManager {
  * Singleton instance for dependency injection.
  * Uses the configured backlog data directory.
  */
-export const resourceManager = new ResourceManager(paths.backlogDataDir);
+export const resourceManager: ResourceManager = new ResourceManager(paths.backlogDataDir);
