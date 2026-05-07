@@ -13,12 +13,17 @@ import {
   INDEX_VERSION, TEXT_PROPERTIES, UNSORTABLE_PROPERTIES, ENUM_FACETS,
   buildWhereClause,
 } from './orama-schema.js';
-import { minmaxNormalize, linearFusion, applyCoordinationBonus, type ScoredHit } from './scoring.js';
+import { minmaxNormalize, linearFusion, applyCoordinationBonus, applyTemporalDecay, type ScoredHit } from './scoring.js';
 
 export interface OramaSearchOptions {
   cachePath: string;
   /** Enable hybrid search with local embeddings. Default: true */
   hybridSearch?: boolean;
+  /**
+   * Half-life in days for post-fusion temporal decay (ADR-0092.1).
+   * Undefined or ≤0 → decay disabled (current behavior preserved).
+   */
+  halfLifeDays?: number;
 }
 
 /**
@@ -42,9 +47,13 @@ export class OramaSearchService implements SearchService {
   private embeddingsInitPromise: Promise<boolean> | null = null;
   private hasEmbeddingsInIndex = false;
 
+  // Temporal decay (ADR-0092.1) — undefined/≤0 → disabled
+  private readonly halfLifeDays: number | undefined;
+
   constructor(options: OramaSearchOptions) {
     this.cachePath = options.cachePath;
     this.hybridEnabled = options.hybridSearch ?? true;
+    this.halfLifeDays = options.halfLifeDays;
   }
 
   private get indexPath(): string {
@@ -310,9 +319,17 @@ export class OramaSearchService implements SearchService {
     // MinMax normalize each retriever independently, then fuse
     const fused = linearFusion(minmaxNormalize(bm25Hits), minmaxNormalize(vectorHits));
 
+    // Post-fusion temporal decay (ADR-0092.1) — no-op when halfLifeDays is
+    // unset, so existing behavior is preserved until callers opt in.
+    const decayed = applyTemporalDecay(
+      fused,
+      id => this._getCreatedAt(id),
+      { halfLifeDays: this.halfLifeDays },
+    );
+
     // Post-fusion coordination bonus for multi-term queries (ADR-0081)
     const coordinated = applyCoordinationBonus(
-      fused, query,
+      decayed, query,
       id => this._getSearchableText(id),
       id => this._getTitle(id),
     );
@@ -341,6 +358,23 @@ export class OramaSearchService implements SearchService {
   /** Get title for a document by ID. Used by coordination bonus for title weighting. */
   private _getTitle(id: string): string {
     return this.taskCache.get(id)?.title || this.resourceCache.get(id)?.title || '';
+  }
+
+  /**
+   * Get creation timestamp for a document by ID, as epoch ms.
+   * Used by post-fusion temporal decay (ADR-0092.1).
+   *
+   * Resources don't carry ``created_at`` today, and tasks without a
+   * ``created_at`` string simply opt out of decay — ``applyTemporalDecay``
+   * treats ``undefined`` as "no decay for this doc".
+   */
+  private _getCreatedAt(id: string): number | undefined {
+    const task = this.taskCache.get(id);
+    if (task?.created_at) {
+      const t = Date.parse(task.created_at);
+      return Number.isNaN(t) ? undefined : t;
+    }
+    return undefined;
   }
 
   async search(query: string, options?: SearchOptions): Promise<SearchResult[]> {

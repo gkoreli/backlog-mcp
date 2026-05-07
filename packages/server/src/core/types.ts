@@ -195,6 +195,116 @@ export interface SearchResult {
   search_mode: string;
 }
 
+// ── Wakeup (ADR-0092.1 Phase 2) ──
+
+/**
+ * Params for ``wakeup``. All optional — the default call shape is
+ * ``wakeup(service, {})`` and the core builds a ~600-token briefing.
+ *
+ * ``readIdentity`` is injected (not read inside core) to keep core free of
+ * filesystem I/O — same discipline as the other core functions (ADR 0090).
+ * The MCP/CLI transport wraps a real file read; tests pass a stub.
+ */
+export interface WakeupParams {
+  /**
+   * Restrict the briefing to a single subtree — a Folder, Milestone, or Epic
+   * entity ID. Every active task, epic, completion, and activity entry is
+   * filtered to descendants (transitively) of this entity. The scope entity
+   * itself is not included in the result sections.
+   *
+   * **Typing decision:** ``scope`` is declared as ``string`` to match the
+   * whole codebase's ID-field convention (``parent_id``, ``epic_id``,
+   * all MCP tool args — every ID is a plain string, validated at boundaries
+   * via ``isValidEntityId`` / ``parseEntityId`` from ``@backlog-mcp/shared``).
+   * Introducing a branded ``EntityId`` type for one field would fight the
+   * rest of the system; it would also be a weaker guarantee than what
+   * we actually do — at the core boundary we validate two things that a
+   * brand can't express:
+   *   1. The ID is well-formed (parses via ``parseEntityId``)
+   *   2. The referenced type is a **container** (folder/milestone/epic),
+   *      not a leaf (task/artifact/cron)
+   * Both checks happen at the start of ``wakeup``; invalid scopes throw
+   * ``ValidationError`` with a message that names the offending ID.
+   *
+   * **What counts as a "container":** any substrate whose definition has
+   * ``structure.isContainer === true`` — currently ``folder``, ``milestone``,
+   * ``epic``. Leaf substrates (``task``, ``artifact``, ``cron``) are rejected.
+   *
+   * **Recommended usage:** Folders are the intended "project" abstraction.
+   * A top-level Folder (``parent_id === undefined``) acts as a project;
+   * nested folders act as sub-areas. Use ``scope: "FLDR-0001"`` for
+   * project-scoped wake-up, ``scope: "EPIC-0005"`` to narrow to an epic.
+   * Omit ``scope`` to get everything across all projects.
+   */
+  scope?: string;
+  /** Max recent completions in the "recent" section. Default: 5. */
+  maxCompletions?: number;
+  /** Max recent activity entries (from the operation log). Default: 5. */
+  maxActivity?: number;
+  /** Evidence snippet max chars on completion summaries. Default: 160. */
+  evidenceSnippetChars?: number;
+  /**
+   * Synchronous identity loader. Return ``undefined`` for "no identity
+   * configured" — core will omit the L0 section. Omit to skip entirely.
+   */
+  readIdentity?: () => string | undefined;
+  /**
+   * Recent operation reader — returns write-log entries newest-first.
+   * Injected because the operation log is outside ``IBacklogService`` and
+   * core must not import the concrete logger (keeps core transport-free).
+   * Omit to skip the activity section entirely.
+   */
+  readOperations?: (options: { limit?: number }) => Array<{
+    ts: string;
+    tool: string;
+    params: Record<string, unknown>;
+    resourceId?: string;
+    actor: { type: string; name: string };
+  }>;
+}
+
+export interface WakeupEntitySummary {
+  id: string;
+  title: string;
+  status: Status | string;
+  type: string;
+  parent_id?: string;
+  updated_at?: string;
+}
+
+export interface WakeupCompletion extends WakeupEntitySummary {
+  evidence_snippet?: string;
+}
+
+export interface WakeupActivity {
+  ts: string;
+  tool: string;
+  entity_id?: string;
+  actor: string;
+}
+
+export interface WakeupResult {
+  identity?: string;
+  /** Echoes the scope param so callers can confirm what was included. */
+  scope?: string;
+  now: {
+    active_tasks: WakeupEntitySummary[];
+    current_epics: WakeupEntitySummary[];
+  };
+  recent: {
+    completions: WakeupCompletion[];
+    activity: WakeupActivity[];
+  };
+  metadata: {
+    generated_at: string;
+    identity_present: boolean;
+    active_task_count: number;
+    epic_count: number;
+    completion_count: number;
+    activity_count: number;
+  };
+}
+
 // ── Edit (body operations) ──
 
 export interface EditOperation {

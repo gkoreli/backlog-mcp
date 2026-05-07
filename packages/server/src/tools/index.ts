@@ -8,6 +8,7 @@ import { registerBacklogUpdateTool } from './backlog-update.js';
 import { registerBacklogDeleteTool } from './backlog-delete.js';
 import { registerBacklogSearchTool } from './backlog-search.js';
 import { registerBacklogContextTool } from './backlog-context.js';
+import { registerBacklogWakeupTool } from './backlog-wakeup.js';
 import { registerWriteResourceTool } from './backlog-write-resource.js';
 
 /**
@@ -42,4 +43,5 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
   if (deps?.resourceManager && deps?.operationLogger) {
     registerBacklogContextTool(server, service, { resourceManager: deps.resourceManager, operationLogger: deps.operationLogger });
   }
+  registerBacklogWakeupTool(server, service, deps?.operationLogger ? { operationLogger: deps.operationLogger } : undefined);
 }

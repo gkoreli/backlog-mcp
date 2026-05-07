@@ -11,6 +11,7 @@ import { registerDelete } from './commands/delete.js';
 import { registerSearch } from './commands/search.js';
 import { registerContext } from './commands/context.js';
 import { registerEdit } from './commands/edit.js';
+import { registerWakeup } from './commands/wakeup.js';
 
 const program = new Command()
   .name('backlog-mcp')
@@ -75,6 +76,7 @@ registerDelete(program);
 registerSearch(program);
 registerContext(program);
 registerEdit(program);
+registerWakeup(program);
 
 // --- Aliases for common bare-word usage ---
 

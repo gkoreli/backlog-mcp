@@ -14,7 +14,7 @@ export { EmbeddingService, EMBEDDING_DIMENSIONS } from './embedding-service.js';
 export { generateTaskSnippet, generateResourceSnippet } from './snippets.js';
 
 // Scoring
-export { minmaxNormalize, linearFusion, applyCoordinationBonus, DEFAULT_WEIGHTS, type ScoredHit } from './scoring.js';
+export { minmaxNormalize, linearFusion, applyCoordinationBonus, applyTemporalDecay, DEFAULT_WEIGHTS, DEFAULT_HALF_LIFE_DAYS, type ScoredHit } from './scoring.js';
 
 // Tokenizer
 export { compoundWordTokenizer, splitCamelCase } from './tokenizer.js';

@@ -20,6 +20,7 @@ class BacklogService implements IBacklogService {
   private constructor() {
     this.search = new OramaSearchService({
       cachePath: join(paths.backlogDataDir, '.cache', 'search-index.json'),
+      halfLifeDays: 30,  // ADR-0092.1 Phase 1 — recent work ranks above old work
     });
   }
 

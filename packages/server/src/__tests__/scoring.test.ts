@@ -6,7 +6,7 @@
  * tangled inside orama-search-service.ts.
  */
 import { describe, it, expect } from 'vitest';
-import { minmaxNormalize, linearFusion, applyCoordinationBonus, DEFAULT_WEIGHTS, type ScoredHit } from '@backlog-mcp/memory/search';
+import { minmaxNormalize, linearFusion, applyCoordinationBonus, applyTemporalDecay, DEFAULT_WEIGHTS, DEFAULT_HALF_LIFE_DAYS, type ScoredHit } from '@backlog-mcp/memory/search';
 
 describe('scoring module (ADR-0081)', () => {
   describe('minmaxNormalize', () => {
@@ -197,6 +197,104 @@ describe('scoring module (ADR-0081)', () => {
 
     it('handles empty hits', () => {
       expect(applyCoordinationBonus([], 'feature store', () => '')).toEqual([]);
+    });
+  });
+
+  describe('applyTemporalDecay (ADR-0092.1)', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const NOW = 1_714_000_000_000;  // fixed reference time for determinism
+
+    it('exports sensible default half-life', () => {
+      expect(DEFAULT_HALF_LIFE_DAYS).toBe(30);
+    });
+
+    it('leaves same-day scores untouched (decay factor ≈ 1)', () => {
+      const hits: ScoredHit[] = [{ id: 'fresh', score: 1.0 }];
+      const getCreatedAt = () => NOW;
+      const result = applyTemporalDecay(hits, getCreatedAt, { halfLifeDays: 30, now: NOW });
+      expect(result[0].score).toBeCloseTo(1.0, 4);
+    });
+
+    it('halves a 30-day-old score with 30-day half-life', () => {
+      const hits: ScoredHit[] = [{ id: 'month_old', score: 1.0 }];
+      const getCreatedAt = () => NOW - 30 * DAY;
+      const result = applyTemporalDecay(hits, getCreatedAt, { halfLifeDays: 30, now: NOW });
+      expect(result[0].score).toBeCloseTo(0.5, 4);
+    });
+
+    it('quarters a 60-day-old score with 30-day half-life', () => {
+      const hits: ScoredHit[] = [{ id: 'two_months' }].map((h, _, __) => ({ ...h, score: 1.0 }));
+      const getCreatedAt = () => NOW - 60 * DAY;
+      const result = applyTemporalDecay(hits, getCreatedAt, { halfLifeDays: 30, now: NOW });
+      expect(result[0].score).toBeCloseTo(0.25, 4);
+    });
+
+    it('passes through docs without a timestamp (decay is opt-in per doc)', () => {
+      const hits: ScoredHit[] = [
+        { id: 'has_ts', score: 1.0 },
+        { id: 'no_ts', score: 0.5 },
+      ];
+      const getCreatedAt = (id: string) => (id === 'has_ts' ? NOW - 30 * DAY : undefined);
+      const result = applyTemporalDecay(hits, getCreatedAt, { halfLifeDays: 30, now: NOW });
+      const hasTs = result.find(h => h.id === 'has_ts')!;
+      const noTs = result.find(h => h.id === 'no_ts')!;
+      expect(hasTs.score).toBeCloseTo(0.5, 4);   // decayed
+      expect(noTs.score).toBeCloseTo(0.5, 4);    // unchanged
+    });
+
+    it('re-ranks: a recent mid-score doc beats an old high-score doc', () => {
+      const hits: ScoredHit[] = [
+        { id: 'old_high', score: 0.9 },     // 90 days old
+        { id: 'recent_mid', score: 0.6 },   // same day
+      ];
+      const getCreatedAt = (id: string) =>
+        id === 'old_high' ? NOW - 90 * DAY : NOW;
+      const result = applyTemporalDecay(hits, getCreatedAt, { halfLifeDays: 30, now: NOW });
+      // old_high: 0.9 * 2^(-3) = 0.1125
+      // recent_mid: 0.6 * 1 = 0.6
+      expect(result[0].id).toBe('recent_mid');
+      expect(result[1].id).toBe('old_high');
+    });
+
+    it('halfLifeDays ≤ 0 is a no-op (decay disabled)', () => {
+      const hits: ScoredHit[] = [
+        { id: 'a', score: 1.0 },
+        { id: 'b', score: 0.5 },
+      ];
+      const getCreatedAt = () => NOW - 365 * DAY;  // year old
+      const result = applyTemporalDecay(hits, getCreatedAt, { halfLifeDays: 0, now: NOW });
+      expect(result[0].score).toBe(1.0);
+      expect(result[1].score).toBe(0.5);
+    });
+
+    it('uses DEFAULT_HALF_LIFE_DAYS when halfLifeDays is omitted', () => {
+      const hits: ScoredHit[] = [{ id: 'a', score: 1.0 }];
+      const getCreatedAt = () => NOW - DEFAULT_HALF_LIFE_DAYS * DAY;
+      const result = applyTemporalDecay(hits, getCreatedAt, { now: NOW });
+      expect(result[0].score).toBeCloseTo(0.5, 4);
+    });
+
+    it('clamps future-dated docs to zero age (no bonus from clock skew)', () => {
+      const hits: ScoredHit[] = [{ id: 'future', score: 1.0 }];
+      const getCreatedAt = () => NOW + 30 * DAY;  // dated a month in the future
+      const result = applyTemporalDecay(hits, getCreatedAt, { halfLifeDays: 30, now: NOW });
+      expect(result[0].score).toBeCloseTo(1.0, 4);  // not > 1.0
+    });
+
+    it('handles empty hits', () => {
+      expect(applyTemporalDecay([], () => NOW, { now: NOW })).toEqual([]);
+    });
+
+    it('sorts the returned hits by decayed score descending', () => {
+      const hits: ScoredHit[] = [
+        { id: 'old', score: 1.0 },
+        { id: 'new', score: 0.51 },
+      ];
+      // 'old' is 30d old → 0.5, 'new' is fresh → 0.51
+      const getCreatedAt = (id: string) => (id === 'old' ? NOW - 30 * DAY : NOW);
+      const result = applyTemporalDecay(hits, getCreatedAt, { halfLifeDays: 30, now: NOW });
+      expect(result[0].id).toBe('new');
+      expect(result[1].id).toBe('old');
     });
   });
 });

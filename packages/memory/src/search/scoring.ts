@@ -77,6 +77,66 @@ export function linearFusion(
 }
 
 /**
+ * Default half-life for temporal decay, in days (ADR-0092.1).
+ *
+ * With a 30-day half-life, a 30-day-old document scores exactly half of a
+ * same-day document with the same intrinsic relevance. After 60 days → 0.25,
+ * after 90 days → 0.125. Picked as a reasonable default for engineering
+ * backlogs where "the last month" is usually still hot context.
+ */
+export const DEFAULT_HALF_LIFE_DAYS = 30;
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Post-fusion temporal decay modifier (ADR-0092.1).
+ *
+ * Applies ``score *= 2^(-ageDays / halfLifeDays)`` to each hit, where
+ * ``ageDays`` comes from the document's ``createdAt`` provided via
+ * ``getCreatedAt``. Documents without a timestamp are left untouched — this
+ * keeps decay opt-in per document, so timeless entities (ADRs, epics) can
+ * skip the timestamp and preserve their rank.
+ *
+ * **Why half-life instead of ``λ``**: humans reason about "how long until
+ * this loses half its relevance", not about ``λ`` in ``exp(-λ·t)``.
+ * Internally: ``2^(-t/H) == exp(-t·ln(2)/H)``.
+ *
+ * **Where in the pipeline**: between ``linearFusion`` and
+ * ``applyCoordinationBonus``. Decay shapes the candidate order before the
+ * coordination bonus reinforces it — applying decay *after* coordination
+ * would let a title-match bonus on a two-year-old task outrank recent work,
+ * the opposite of what "recency matters" means.
+ *
+ * @param hits - Fused results with scores
+ * @param getCreatedAt - Function returning epoch ms for a doc, or undefined
+ *                      (missing timestamp → no decay applied to that hit)
+ * @param opts.halfLifeDays - Half-life in days (default: 30)
+ * @param opts.now - Reference time in epoch ms (default: Date.now()) — exposed
+ *                   for deterministic tests
+ * @returns Re-scored results, sorted by decayed score descending
+ */
+export function applyTemporalDecay(
+  hits: ScoredHit[],
+  getCreatedAt: (id: string) => number | undefined,
+  opts: { halfLifeDays?: number; now?: number } = {},
+): ScoredHit[] {
+  if (hits.length === 0) return hits;
+  const halfLifeDays = opts.halfLifeDays ?? DEFAULT_HALF_LIFE_DAYS;
+  if (halfLifeDays <= 0) return hits;  // disabled → no-op
+  const now = opts.now ?? Date.now();
+
+  return hits
+    .map(h => {
+      const createdAt = getCreatedAt(h.id);
+      if (createdAt === undefined || createdAt === null) return h;
+      const ageDays = Math.max(0, (now - createdAt) / MS_PER_DAY);
+      const decay = Math.pow(2, -ageDays / halfLifeDays);
+      return { ...h, score: h.score * decay };
+    })
+    .sort((a, b) => b.score - a.score);
+}
+
+/**
  * Post-fusion coordination bonus for multi-term queries (ADR-0081).
  *
  * In OR mode (tolerance=1), BM25 returns documents matching ANY query term.
