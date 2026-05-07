@@ -4,6 +4,8 @@ import type { IBacklogService } from '../storage/service-types.js';
 import { NotFoundError, ValidationError, type UpdateParams, type UpdateResult, type WriteContext } from './types.js';
 import { formatZodError } from './zod-errors.js';
 import { recordMutation } from './operation-log.js';
+import { shouldCaptureCompletion } from '../memory/capture-rules.js';
+import { captureCompletion } from '../memory/capture.js';
 
 /**
  * Update an existing backlog item.
@@ -59,6 +61,10 @@ export async function updateItem(
   }
 
   await service.save(validated);
+
+  if (ctx.memoryComposer && shouldCaptureCompletion(task, validated)) {
+    await captureCompletion(ctx.memoryComposer, validated, ctx.actor);
+  }
 
   const result: UpdateResult = { id };
   recordMutation(ctx, 'backlog_update', params as unknown as Record<string, unknown>, result);

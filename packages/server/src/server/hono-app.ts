@@ -570,6 +570,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       actor: deps?.actor,
       operationLog: deps?.operationLog,
       eventBus: deps?.eventBus,
+      memoryComposer: deps?.memoryComposer,
     };
     registerTools(server, service, toolDeps);
     if (deps?.resourceManager) {

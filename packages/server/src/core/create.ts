@@ -6,6 +6,8 @@ import { ValidationError } from './types.js';
 import type { CreateParams, CreateResult, WriteContext } from './types.js';
 import { formatZodError } from './zod-errors.js';
 import { recordMutation } from './operation-log.js';
+import { shouldCaptureArtifact } from '../memory/capture-rules.js';
+import { captureArtifact } from '../memory/capture.js';
 
 /**
  * Create a new backlog item.
@@ -55,6 +57,10 @@ export async function createItem(
   if (epic_id && !parent_id) task.epic_id = epic_id;
 
   await service.add(task);
+
+  if (ctx.memoryComposer && shouldCaptureArtifact(task)) {
+    await captureArtifact(ctx.memoryComposer, task, ctx.actor);
+  }
 
   const result: CreateResult = { id: task.id };
   recordMutation(ctx, 'backlog_create', params as unknown as Record<string, unknown>, result);

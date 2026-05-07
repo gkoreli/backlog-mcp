@@ -1,4 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { MemoryComposer } from '@backlog-mcp/memory';
 import type { IBacklogService } from '../storage/service-types.js';
 import type { Actor, IOperationLog } from '../operations/types.js';
 import { registerBacklogListTool } from './backlog-list.js';
@@ -30,6 +31,11 @@ export interface ToolDeps {
   operationLog?: IOperationLog;
   /** Live-event bus for SSE push. Node only; Worker is stateless. */
   eventBus?: { emit: (event: any) => void };
+  /**
+   * Episodic memory composer — optional. Node wires the default composer;
+   * Worker omits memory for now (see ADR 0092.2 §D4).
+   */
+  memoryComposer?: MemoryComposer;
 }
 
 export function registerTools(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {

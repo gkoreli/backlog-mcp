@@ -22,6 +22,7 @@ export function buildWriteContext(deps: ToolDeps | undefined): WriteContext {
   return {
     actor: deps.actor,
     operationLog: deps.operationLog,
-    eventBus: deps.eventBus,
+    ...(deps.eventBus ? { eventBus: deps.eventBus } : {}),
+    ...(deps.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
   };
 }

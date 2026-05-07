@@ -1,6 +1,7 @@
 import { BacklogService } from '../storage/backlog-service.js';
 import { NotFoundError, ValidationError } from '../core/types.js';
 import { operationLogger, envActor } from '../operations/logger.js';
+import { defaultMemoryComposer } from '../memory/bootstrap.js';
 import type { WriteContext } from '../core/types.js';
 
 /**
@@ -9,12 +10,18 @@ import type { WriteContext } from '../core/types.js';
  * Per-invocation so each command reads env freshly — a long-lived REPL or
  * sequence of commands with different BACKLOG_ACTOR_NAME values each get
  * their own actor. No event bus — CLI is one-shot, nothing subscribes.
+ *
+ * Memory composer is the process-wide default (ADR 0092.2). Each CLI
+ * process gets its own composer; cross-process recall needs durable
+ * storage which is deferred.
+ *
  * See ADR 0094.
  */
 export function cliWriteContext(): WriteContext {
   return {
     actor: envActor(),
     operationLog: operationLogger,
+    memoryComposer: defaultMemoryComposer,
   };
 }
 

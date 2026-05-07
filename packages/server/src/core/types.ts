@@ -10,10 +10,12 @@
  * - edit: returns { success, error? } for operation failures (expected outcome, not exceptional)
  */
 import type { Status, EntityType, Reference } from '@backlog-mcp/shared';
+import type { MemoryComposer, MemoryLayer } from '@backlog-mcp/memory';
 import type { ResourceContent } from '../resources/manager.js';
 import type { Actor, IOperationLog } from '../operations/types.js';
 
 export type { Actor, IOperationLog } from '../operations/types.js';
+export type { MemoryEntry, MemoryResult, RecallQuery, MemoryLayer } from '@backlog-mcp/memory';
 
 // ── Write boundary ──
 
@@ -41,6 +43,15 @@ export interface WriteContext {
     actor: string;
     ts: string;
   }) => void };
+  /**
+   * Optional episodic memory composer. When present, core write functions
+   * capture significant events (task completions, artifact creations) as
+   * `layer: 'episodic'` memories — see ADR 0092.2.
+   *
+   * Optional so transports that don't care about memory (edge worker, tests,
+   * minimal scripts) can omit without changing core semantics.
+   */
+  memoryComposer?: MemoryComposer;
 }
 
 // ── Errors ──
@@ -303,6 +314,50 @@ export interface WakeupResult {
     completion_count: number;
     activity_count: number;
   };
+}
+
+// ── Recall (ADR-0092.2 Phase 3) ──
+
+/**
+ * Params for ``recall`` — query the episodic memory corpus.
+ *
+ * Separate from ``search`` which queries the live backlog. Recall is scoped
+ * to the memory composer registered on the WriteContext; if none is wired
+ * the tool returns an empty result set rather than failing.
+ */
+export interface RecallParams {
+  /** Free-text query (keyword or phrase). */
+  query: string;
+  /**
+   * Optional scope filter — usually a parent_id (e.g. ``FLDR-0001``).
+   * Matches memories written with that entity as their ``context``.
+   */
+  context?: string;
+  /** Filter by memory tags (any-match). */
+  tags?: string[];
+  /** Restrict to specific memory layers. Defaults to ``['episodic']``. */
+  layers?: MemoryLayer[];
+  /** Max results. Default: 10. */
+  limit?: number;
+}
+
+export interface RecallItem {
+  id: string;
+  content: string;
+  layer: MemoryLayer;
+  source: string;
+  context?: string;
+  tags?: string[];
+  created_at: string;   // ISO string (core keeps this API consistent with other result types)
+  score: number;
+  entity_id?: string;   // from metadata.entity_id — convenience pointer back to the canonical entity
+  kind?: string;        // from metadata.kind — e.g. 'completion' | 'artifact'
+}
+
+export interface RecallResult {
+  items: RecallItem[];
+  total: number;
+  query: string;
 }
 
 // ── Edit (body operations) ──
