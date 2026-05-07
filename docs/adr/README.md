@@ -8,11 +8,13 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0100. Remote Auth Architecture — GitHub OAuth + PKCE + JWT Access Tokens](./0100-remote-auth-architecture.md) - Cloud deployment auth for MCP clients (renumbered from 0092 on 2026-05-07 to resolve number conflict with agentic-memory family) - 2026-04-03
 - [0099. Fix Build OOM — Separate tsc Declarations from tsdown Bundling](./0099-fix-build-oom-separate-tsc-declarations.md) - Split dts generation (tsc) from JS bundling (tsdown) to fix 3.5GB→511MB OOM on Cloudflare Workers CI/CD - 2026-04-30
 - [0098. Unified Substrate Architecture — One Declaration Per Entity Type](./0098-unified-substrate-architecture.md) - Completes ADR 0088. Substrates in @backlog-mcp/shared as single source of truth; Zod-driven validation at storage boundaries - 2026-04-28
 - [0094. Transport-Agnostic Operation Logging](./0094-transport-agnostic-operation-logging.md) - Core write functions are the mutation-journal boundary. Actor is a parameter (WriteContext), not ambient state. Supersedes 0054. - 2026-04-29
 - [0090.1. Fix edit Command — Move `<id>` to Subcommands](./0090.1-fix-edit-command-subcommand-arg-passing.md) - Fix Commander.js arg passing bug by moving `<id>` from parent edit command to each subcommand (continues ADR-0090) - 2026-04-20
-- [0092.1. Agentic Memory — Engineering Plan](./0092.1-agentic-memory-engineering-plan.md) - Line-level plan for ADR 0092's five phases; locks wakeup tool, episodic-layer capture hooks, decay placement, and implicit echo/fizzle - 2026-05-07
+- [0092.2. Agentic Memory Phase 3 — Implicit Episodic Capture](./0092.2-phase-3-implicit-episodic-capture.md) - Locks capture-on-done and capture-on-artifact contracts; extends WriteContext with MemoryComposer; InMemoryStore in Phase 3 with Orama deferred until TASK-0676 fixed; adds backlog_recall - 2026-05-07
+- [0092.1. Agentic Memory — Engineering Plan](./0092.1-agentic-memory-engineering-plan.md) - Line-level plan for ADR 0092's five phases; Phases 1 & 2 shipped 2026-05-07; Phase 3 plan now superseded by 0092.2 - 2026-05-07
 - [0092. Plugin-Based Agentic Memory Architecture](./0092-plugin-based-agentic-memory-architecture.md) - Composable memory plugin system with search migration to packages/memory; inspired by MemPalace, Mem0, Karta analysis - 2026-04-14
 - [0091. Runtime-Clean Worker Bundle — Capability Injection Pattern](./0091-runtime-clean-worker-bundle.md) - Capability injection pattern for clean worker bundles - 2026-03-26
 - [0090. CLI Tool and Core Function Extraction](./0090-cli-tool-and-core-extraction.md) - Extract business logic to standalone core functions, add Commander-based CLI with 1:1 MCP tool mapping - 2026-03-26

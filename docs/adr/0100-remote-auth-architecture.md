@@ -4,7 +4,11 @@ date: 2026-04-03
 status: Accepted, amended 2026-04-14
 ---
 
-# 0092. Remote Auth Architecture — GitHub OAuth + PKCE + JWT Access Tokens
+# 0100. Remote Auth Architecture — GitHub OAuth + PKCE + JWT Access Tokens
+
+> **Renumbered 2026-05-07** from 0092 → 0100 to resolve a number conflict
+> with the agentic-memory ADR family (0092 / 0092.1 / 0092.2). No content
+> changes; git history preserved via `git mv`. Original date: 2026-04-03.
 
 ## Context
 
