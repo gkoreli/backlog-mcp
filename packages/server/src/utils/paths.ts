@@ -164,26 +164,26 @@ export class PathResolver {
     distRoot: string;
     viewerDist: string;
   } {
-    switch (environment) {
-      case RuntimeEnvironment.Development: {
-        // Dev mode: this file is at packages/server/src/utils/paths.ts
-        const srcIndex = currentDir.indexOf('/src/');
-        const projectRoot = currentDir.substring(0, srcIndex);
-        const distRoot = join(projectRoot, 'dist');
-        // Monorepo: viewer is a sibling package
-        const viewerDist = join(projectRoot, '../viewer/dist');
-        return { projectRoot, distRoot, viewerDist };
-      }
-      
-      case RuntimeEnvironment.Production: {
-        // Production: this file is at dist/utils/paths.mjs
-        // Go up two levels to reach project root
-        const distRoot = dirname(currentDir);
-        const projectRoot = dirname(distRoot);
-        const viewerDist = join(distRoot, 'viewer');
-        return { projectRoot, distRoot, viewerDist };
-      }
+    const isRunningFromSource = currentDir.includes('/src/');
+
+    if (environment === RuntimeEnvironment.Development && isRunningFromSource) {
+      // Dev mode via tsx: this file is at packages/server/src/utils/paths.ts
+      const srcIndex = currentDir.indexOf('/src/');
+      const projectRoot = currentDir.substring(0, srcIndex);
+      const distRoot = join(projectRoot, 'dist');
+      // Monorepo: viewer is a sibling package
+      const viewerDist = join(projectRoot, '../viewer/dist');
+      return { projectRoot, distRoot, viewerDist };
     }
+
+    // Production OR built CLI with NODE_ENV=development:
+    // this file is at dist/utils/paths.mjs — go up two levels to reach project root
+    const distRoot = dirname(currentDir);
+    const projectRoot = dirname(distRoot);
+    const viewerDist = environment === RuntimeEnvironment.Development
+      ? join(projectRoot, '../viewer/dist')
+      : join(distRoot, 'viewer');
+    return { projectRoot, distRoot, viewerDist };
   }
 }
 
