@@ -1,156 +1,100 @@
-# 0101. Search Index Reconciliation — Fixing Silent Corpus Drift
+# 0101. Search: Reconciliation + ID Lookup + Architectural Findings
 
 **Date**: 2026-05-24
-**Status**: Proposed
-**Triggered by**: User unable to find TASK-0596 ("Research: Fredrika Unified Diff Viewer") via `backlog_search("diff viewer")` despite the title containing both words verbatim. Investigation revealed 165/915 entities missing from the search index entirely.
+**Status**: Accepted (Phase 1–3 shipped), Phase 4 proposed
+**Triggered by**: User unable to find TASK-0596 ("Research: Fredrika Unified Diff Viewer") via `backlog_search("diff viewer")` or `backlog_search("task 596")`.
 
-## Context
+## Problems Found
 
-The search index (Orama BM25 + optional vector retrieval) uses a JSON cache on disk (`.cache/search-index.json`). On startup, `OramaSearchService.index()` attempts `loadFromDisk()`:
+### Problem 1: 165/915 entities missing from the search index
 
-```typescript
-// packages/memory/src/search/orama-search-service.ts:181–198
-async loadFromDisk(): Promise<boolean> {
-  if (!existsSync(this.indexPath)) return false;
-  const raw = JSON.parse(readFileSync(this.indexPath, 'utf-8'));
-  if ((raw.version ?? 0) !== INDEX_VERSION) return false; // ← only invalidator
-  this.db = await this.createOramaInstance(this.hasEmbeddingsInIndex);
-  load(this.db, raw.index);
-  this.taskCache = new Map(Object.entries(raw.tasks));
-  this.resourceCache = new Map(Object.entries(raw.resources || {}));
-  return true;
-}
-```
-
-If version matches, the cache is **trusted absolutely** — no reconciliation against actual task files on disk. The fresh-index path is skipped entirely.
-
-### How entities go missing
-
-Three distinct failure modes produce the same symptom (entity not in index):
+The JSON cache (`.cache/search-index.json`) was trusted absolutely on startup — never reconciled against actual task files on disk. Three failure modes:
 
 | # | Failure mode | Mechanism |
 |---|---|---|
-| 1 | **Pre-search creation gap** | `BacklogService.add()` only calls `search.addDocument()` when `this.searchReady === true`. `searchReady` flips on the *first* `searchUnified()` call. Tasks created before that point are written to disk but never enter the in-memory index or cache. |
-| 2 | **Lost persistence** | `persistToDisk()` is debounced 1s via `scheduleSave()`. Process shutdown within that window loses the write. The catch-all `} catch {}` swallows all errors silently. |
-| 3 | **External mutations** | Any edit to `tasks/` files outside the running server (git pull, manual edit, another MCP client) is invisible — no filesystem watcher exists. |
+| 1 | Pre-search creation gap | Tasks created before first search call never enter the index |
+| 2 | Lost persistence | 1s debounced save lost on shutdown; errors swallowed silently |
+| 3 | External mutations | Edits to `tasks/` files outside the server are invisible |
 
-### Scale of the problem
+**Fix: shipped.** Startup reconciliation (Phase 1), pending-ops queue (Phase 2), flush on shutdown (Phase 3).
 
-Direct inspection of the production cache:
-- On-disk entities: **915** (665 TASK, 41 EPIC, 207 ARTF, 1 FLDR, 1 MLST)
-- Indexed documents: **791** (751 tasks + 40 resources)
-- **Missing: 165 entities** (74 TASK, 85 ARTF, 5 EPIC, 1 FLDR)
-- Spans creation dates 2026-02-07 → 2026-05-20
+### Problem 2: "task 596" → TASK-0596 doesn't work
 
-### Secondary finding: `tolerance` vs prefix trade-off
+This is NOT a scoring problem. The token `"596"` literally returns **zero hits** from Orama's radix tree even with `tolerance: 1`. Empirically proven:
 
-Orama's Radix tree has two mutually exclusive lookup paths (`trees/radix.ts:240–303`):
-
-```typescript
-public find({ term, exact, tolerance }) {
-  if (tolerance && !exact) {
-    // Levenshtein walk only — NO prefix matching
-    this._findLevenshtein(term, 0, tolerance, tolerance, output)
-  } else {
-    // Prefix walk: collects all words rooted at the matched subtree
-  }
-}
+```
+search(db, { term: '596', properties: ['id'], tolerance: 1 }) → 0 hits
+search(db, { term: '0596', properties: ['id'], tolerance: 0 }) → 0 hits
 ```
 
-Our `tolerance: 1` enables typo tolerance but **disables prefix expansion**. Query "diff" matches "dif" (edit-distance 1) but NOT "different" (prefix). This is an intentional Orama design — confirmed in source and related behavior discussed in [issue #797](https://github.com/oramasearch/orama/issues/797).
+**Root cause:** Orama's radix tree Levenshtein walk has a known bug class ([issue #38](https://github.com/oramasearch/orama/issues/38)) where leading-character insertions fail to match against trie siblings with dense clustering. Our backlog has exactly this pattern (TASK-0596, TASK-0597, TASK-0598...).
 
-Note: this gotcha did not affect TASK-0596 (whose title contains "Diff Viewer" verbatim) but is worth surfacing as a separate Orama config-quality concern.
+**No full-text engine handles this natively.** Tested against Orama, verified Meilisearch docs (3-char tokens get zero typo tolerance), verified Tantivy (exact token match after tokenization). "596" ≠ "0596" is a normalization problem, not a search problem.
 
-**Source:** `oramasearch/orama` GitHub, `packages/orama/src/trees/radix.ts`, `methods/search-fulltext.ts`, `tokenizer/index.ts`. Verified via `ghx` exploration.
+**Fix: query intent parser (Phase 4, proposed).** Detect ID-shaped queries before BM25, resolve directly via cache lookup. Falls through to fulltext if ID not found.
 
-## Decision
+### Problem 3: Orama's `tolerance: 1` floods numeric queries with false positives
 
-### Approach: Startup reconciliation with incremental diff
+With 900+ documents, searching "596" with tolerance:1 matches "56", "59", "96", "196", "296" (all within edit-distance 1 of various index tokens). The actual target gets buried. This is tolerance working as designed — it's just useless for short numeric tokens at scale.
 
-On `ensureSearchReady()`, after loading the cache, compare the cached document set against the current filesystem state. Incrementally add missing documents and remove stale ones. Full rebuild only when the diff exceeds a threshold.
+**Not fixed.** Acceptable because Phase 4 (intent parser) bypasses Orama entirely for ID queries.
 
-### Rejected alternatives
+## Architectural findings
 
-| Alternative | Why rejected |
-|---|---|
-| **Always rebuild from scratch** | ~915 docs × embedding call = 10-30s cold start with hybrid mode. Unacceptable for MCP client responsiveness. |
-| **Filesystem watcher (fswatch/chokidar)** | Adds complexity, platform-specific behavior, doesn't help with the startup gap. Worth considering later as an enhancement but doesn't solve the core problem. |
-| **Bump INDEX_VERSION to force rebuild** | One-time fix. Doesn't prevent future drift. We need a structural fix. |
-| **Persist synchronously on every write** | Eliminates lost-persistence but adds latency to every mutation. The debounce exists for good reason. |
+### Orama is a document-retrieval engine used for list-filtering
 
-## Implementation
+BM25 answers "which documents are about this topic" — designed for long documents with term frequency relevance. Our use case is mostly "find the specific item I'm thinking of" — short titles, exact IDs, navigational queries.
 
-### Phase 1: Reconciliation on startup (fixes all three failure modes)
+ADR 0083 documented this mismatch in detail (Feb 2026). The custom scoring layers we built (1574 lines across tokenizer, scoring, fusion, coordination bonus, temporal decay) are all compensating for this architectural mismatch.
 
-```typescript
-// In ensureSearchReady(), after search.index() returns:
-private async ensureSearchReady(): Promise<void> {
-  if (this.searchReady) return;
-  const allTasks = Array.from(this.taskStorage.iterateTasks());
-  await this.search.index(allTasks); // may load from cache
-  await this.search.reconcile(allTasks); // NEW: incremental diff
-  // ... resources ...
-  this.searchReady = true;
-}
-```
+### Fuzzy subsequence matching solves the navigation case perfectly
 
-`OramaSearchService.reconcile(currentTasks)`:
-1. Build a `Set<string>` of all current entity IDs from the filesystem
-2. Compare against `this.taskCache.keys()`
-3. **Missing from index:** insert (with embeddings if hybrid mode active)
-4. **In index but not on disk:** remove (entity was deleted externally)
-5. **In both but content differs:** update (entity was modified externally). Compare `updated_at` or content hash.
-6. If changes were made, `persistToDisk()` immediately (not debounced)
-7. Log: `reconcile: added=${added} removed=${removed} updated=${updated}`
+VS Code, fzf, and uFuzzy use character-by-character subsequence matching. "task 596" matches "TASK-0596" because each term's characters appear in sequence. No tokenization, no index, no tolerance configuration. Proven empirically:
 
-### Phase 2: Fix pre-search creation gap
+- `"task 596"` → matches only TASK-0596 (zero false positives)
+- `"diff viewer"` → matches "Research: Fredrika Unified Diff Viewer"
+- `"596"` → matches TASK-0596 (subsequence of "0596")
 
-Change `BacklogService.add()` / `save()` / `delete()` to always queue index operations, regardless of `searchReady`:
+### Future direction (not implemented)
 
-```typescript
-private pendingOps: Array<{ op: 'add' | 'update' | 'remove'; entity?: Entity; id?: string }> = [];
+If the scoring complexity becomes untenable, the architecture could evolve to:
+- Fuzzy subsequence matching on `id + title` for navigation
+- Embeddings on full content for semantic recall
+- Delete the BM25/fusion/scoring stack entirely
 
-async add(task: Entity): Promise<void> {
-  this.taskStorage.add(task);
-  if (this.searchReady) {
-    this.search.addDocument(task);
-  } else {
-    this.pendingOps.push({ op: 'add', entity: task });
-  }
-}
-```
+This would remove ~1000 lines of code. Not pursued now because Orama works adequately for content search once the corpus is correct.
 
-Drain `pendingOps` at the end of `ensureSearchReady()`, after reconcile.
+## Implementation (shipped)
 
-### Phase 3: Harden persistence
+### Phase 1: Reconciliation on startup ✅
 
-- Flush to disk on `SIGTERM` / `SIGINT` (process shutdown hook)
-- Change `persistToDisk` error handling from silent catch to logged warning
-- Add a periodic flush every 60s as a safety net (in addition to the 1s debounce)
+`OramaSearchService.reconcile(currentTasks)` — incremental diff after cache load. Adds missing, removes stale, updates modified. Logs stats.
 
-### Tolerance/prefix documentation
+### Phase 2: Pending-ops queue ✅
 
-Document in tool description and internal docs:
-- `tolerance: 1` gives typo tolerance but no prefix expansion
-- For prefix-style queries, users should use `backlog_list` with a filter, or search for the complete word
-- Consider exposing a `prefix: true` option in future (would require `tolerance: 0` for that query)
+`BacklogService.pendingOps` — queues add/update/delete when `searchReady === false`. Drained after reconcile.
 
-## Consequences
+### Phase 3: Harden persistence ✅
 
-- **Cold start unchanged** when cache is fresh (reconcile is O(n) set diff, no Orama calls)
-- **Cold start +100-500ms** when cache is stale (incremental inserts for missing docs, no embeddings needed for BM25-only)
-- **No more silent corpus drift** — every entity on disk will be searchable
-- **External edits detected** on next server start (not live — that's a future enhancement)
-- **Operational visibility** via reconcile log line
+- `flush()` on SIGTERM/SIGINT
+- `console.warn` on persist errors (was silent catch)
+
+### Phase 4: Query intent parser (proposed)
+
+Pre-search layer that classifies queries before hitting BM25:
+
+- `"task 596"` → type: `id_lookup`, resolve to TASK-0596, direct cache hit
+- `"blocked tasks"` → type: `filtered`, apply status filter without BM25
+- `"diff viewer"` → type: `fulltext`, run existing pipeline
+
+Implementation: `packages/memory/src/search/query-intent.ts` (written, in working tree, not yet committed).
 
 ## References
 
-- ADR 0073: MCP-first unified search architecture
-- ADR 0079: Native Orama filtering
-- ADR 0080: Native sortBy + facets
-- ADR 0081: Independent retrievers + linear fusion
-- ADR 0092.1: Temporal decay
-- Orama source: `oramasearch/orama` (GitHub), `trees/radix.ts:240–303` (tolerance vs prefix)
-- Orama issue #340: stemming off by default
+- ADR 0083: Search service review & next-generation search (Feb 2026)
+- Orama source: `oramasearch/orama`, `trees/radix.ts:240–303`
+- Orama issue #38: tolerance Levenshtein bug class
 - Orama issue #797: tolerance + short word interaction
-- Orama issues #695, #869, #883: save/load fragility (all fixed in 3.x)
+- Meilisearch docs: 1-4 char tokens get zero typo tolerance (confirmed our finding is universal)
+- Tantivy basic example: same tokenization mismatch applies
+- uFuzzy benchmarks: 162K items in 5ms, 7.5KB, zero config

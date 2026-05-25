@@ -14,6 +14,7 @@ import {
   buildWhereClause,
 } from './orama-schema.js';
 import { minmaxNormalize, linearFusion, applyCoordinationBonus, applyTemporalDecay, type ScoredHit } from './scoring.js';
+import { parseQueryIntent } from './query-intent.js';
 
 export interface OramaSearchOptions {
   cachePath: string;
@@ -408,10 +409,44 @@ export class OramaSearchService implements SearchService {
 
     const limit = options?.limit ?? 20;
     const sortMode = options?.sort ?? 'relevant';
-    const where = buildWhereClause(options?.filters, options?.docTypes);
+
+    // ── Pre-search intent routing (ADR 0083 #4) ────────────────────
+    // Classify the query *before* invoking BM25. ID-shaped queries
+    // short-circuit to a direct cache lookup; leading status/type words
+    // become native `where` filters so the fusion pipeline doesn't waste
+    // BM25 time on tokens that are really filter intent.
+    const intent = parseQueryIntent(query);
+
+    if (intent.type === 'id_lookup' && intent.id) {
+      const hit = this._buildIdLookupHit(intent.id, query);
+      if (hit) return [hit];
+      // Fall through to fulltext if the canonical ID isn't in the cache —
+      // the user may have typed a near-miss and the existing fusion
+      // pipeline (with tolerance) is the correct fallback.
+    }
+
+    // Merge filters from intent with caller-supplied options.
+    // Caller filters take precedence (explicit overrides parsed intent).
+    const mergedFilters: SearchOptions['filters'] = {
+      ...(intent.type === 'filtered' ? intent.filters : {}),
+      ...options?.filters,
+    };
+    // Caller-supplied docTypes override any type intent we parsed.
+    const mergedDocTypes = options?.docTypes;
+
+    const where = buildWhereClause(mergedFilters, mergedDocTypes);
+
+    // The query text passed to BM25 is the intent's residual text.
+    // For 'filtered' intent with empty residual, we don't run BM25 at all —
+    // we list everything matching the where clause from the local caches.
+    const bm25Query = intent.query;
+
+    if (intent.type === 'filtered' && !bm25Query.trim()) {
+      return this._listMatchingFilters(mergedFilters, mergedDocTypes, limit, sortMode);
+    }
 
     const { hits } = await this._fusedSearch({
-      query,
+      query: bm25Query,
       limit,
       boost: options?.boost ?? { id: 10, title: 3 },
       where,
@@ -427,11 +462,104 @@ export class OramaSearchService implements SearchService {
         const isResource = !task;
         const docType = (isResource ? 'resource' : (item as Entity).type || 'task') as SearchableType;
         const snippet = isResource
-          ? generateResourceSnippet(item as Resource, query)
-          : generateTaskSnippet(item as Entity, query);
+          ? generateResourceSnippet(item as Resource, bm25Query || query)
+          : generateTaskSnippet(item as Entity, bm25Query || query);
         return { id: h.id, score: h.score, type: docType, item, snippet };
       })
       .filter((h): h is NonNullable<typeof h> => h !== null);
+  }
+
+  /**
+   * Build a single-result hit for an ID-lookup intent (ADR 0083 #4).
+   * Returns null if the canonical ID is not present in either cache so the
+   * caller can fall through to fulltext.
+   */
+  private _buildIdLookupHit(canonicalId: string, originalQuery: string): { id: string; score: number; type: SearchableType; item: Entity | Resource; snippet: SearchSnippet } | null {
+    const task = this.taskCache.get(canonicalId);
+    if (task) {
+      return {
+        id: canonicalId,
+        score: 1.0,                 // top of the [0,1] linear-fusion range
+        type: ((task as Entity).type || 'task') as SearchableType,
+        item: task,
+        snippet: generateTaskSnippet(task, originalQuery),
+      };
+    }
+    const resource = this.resourceCache.get(canonicalId);
+    if (resource) {
+      return {
+        id: canonicalId,
+        score: 1.0,
+        type: 'resource',
+        item: resource,
+        snippet: generateResourceSnippet(resource, originalQuery),
+      };
+    }
+    return null;
+  }
+
+  /**
+   * List entities matching a filter set without running BM25 (ADR 0083 #4).
+   * Used when intent parsing decomposes the entire query into filters
+   * (e.g. "blocked tasks" → status: blocked, no residual text).
+   *
+   * Returns matches sorted by `updated_at` desc to give stable, predictable
+   * ordering — relevance has no meaning when there is no query term.
+   */
+  private _listMatchingFilters(
+    filters: SearchOptions['filters'],
+    docTypes: SearchableType[] | undefined,
+    limit: number,
+    _sortMode: 'relevant' | 'recent',
+  ): Array<{ id: string; score: number; type: SearchableType; item: Entity | Resource; snippet: SearchSnippet }> {
+    const statusFilter = filters?.status;
+    const typeFilter = filters?.type;
+    const epicFilter = filters?.epic_id ?? filters?.parent_id;
+
+    const wantsResources = !docTypes || docTypes.includes('resource');
+    const wantsEntities = !docTypes || docTypes.some(t => t === 'task' || t === 'epic');
+
+    const out: Array<{ id: string; score: number; type: SearchableType; item: Entity | Resource; snippet: SearchSnippet }> = [];
+
+    if (wantsEntities) {
+      for (const task of this.taskCache.values()) {
+        if (statusFilter && !statusFilter.includes((task.status ?? 'open') as typeof statusFilter[number])) continue;
+        if (typeFilter && (task.type || 'task') !== typeFilter) continue;
+        if (docTypes && !docTypes.includes(((task.type || 'task') as SearchableType))) continue;
+        if (epicFilter && (task.parent_id ?? task.epic_id) !== epicFilter) continue;
+        out.push({
+          id: task.id,
+          score: 1.0,
+          type: ((task.type || 'task') as SearchableType),
+          item: task,
+          snippet: generateTaskSnippet(task, ''),
+        });
+      }
+    }
+
+    // Resources have no status/type to filter — include only when the caller's
+    // docTypes either include 'resource' or aren't restricted.
+    if (wantsResources && !statusFilter && !typeFilter && !epicFilter) {
+      for (const resource of this.resourceCache.values()) {
+        out.push({
+          id: resource.id,
+          score: 1.0,
+          type: 'resource',
+          item: resource,
+          snippet: generateResourceSnippet(resource, ''),
+        });
+      }
+    }
+
+    // Sort: most-recently-updated first, then by id for stability.
+    out.sort((a, b) => {
+      const ua = (a.item as Entity).updated_at || '';
+      const ub = (b.item as Entity).updated_at || '';
+      if (ua !== ub) return ub.localeCompare(ua);
+      return a.id.localeCompare(b.id);
+    });
+
+    return out.slice(0, limit);
   }
 
   /**

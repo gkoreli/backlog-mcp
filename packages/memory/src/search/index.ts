@@ -18,3 +18,5 @@ export { minmaxNormalize, linearFusion, applyCoordinationBonus, applyTemporalDec
 
 // Tokenizer
 export { compoundWordTokenizer, splitCamelCase } from './tokenizer.js';
+// Query intent parser (ADR 0083 #4)
+export { parseQueryIntent, canonicalizeIdQuery, extractLeadingFilters, type QueryIntent } from './query-intent.js';
