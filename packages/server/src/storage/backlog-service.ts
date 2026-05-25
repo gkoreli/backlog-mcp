@@ -5,6 +5,7 @@ import { OramaSearchService, type UnifiedSearchResult, type SearchableType, type
 import type { Resource } from '@backlog-mcp/memory/search';
 import { resourceManager } from '../resources/manager.js';
 import { paths } from '../utils/paths.js';
+import { logger } from '../utils/logger.js';
 import type { IBacklogService } from './service-types.js';
 
 /**
@@ -16,6 +17,7 @@ class BacklogService implements IBacklogService {
   private taskStorage = new TaskStorage();
   private search: OramaSearchService;
   private searchReady = false;
+  private pendingOps: Array<{ op: 'add' | 'update' | 'remove'; entity?: Entity; id?: string }> = [];
 
   private constructor() {
     this.search = new OramaSearchService({
@@ -33,9 +35,19 @@ class BacklogService implements IBacklogService {
 
   private async ensureSearchReady(): Promise<void> {
     if (this.searchReady) return;
-    // Index tasks first
-    await this.search.index(Array.from(this.taskStorage.iterateTasks()));
-    // Then index resources
+    const allTasks = Array.from(this.taskStorage.iterateTasks());
+    await this.search.index(allTasks);
+    const stats = await this.search.reconcile(allTasks);
+    if (stats.added + stats.removed + stats.updated > 0) {
+      logger.info('Search index reconciled', { added: stats.added, removed: stats.removed, updated: stats.updated });
+    }
+    // Drain any mutations that occurred before first search (ADR-0101 Phase 2)
+    for (const op of this.pendingOps) {
+      if (op.op === 'add' && op.entity) await this.search.addDocument(op.entity);
+      else if (op.op === 'update' && op.entity) await this.search.updateDocument(op.entity);
+      else if (op.op === 'remove' && op.id) await this.search.removeDocument(op.id);
+    }
+    this.pendingOps = [];
     const resources = resourceManager.list();
     if (resources.length > 0) {
       await this.search.indexResources(resources);
@@ -134,17 +146,31 @@ class BacklogService implements IBacklogService {
 
   async add(task: Entity): Promise<void> {
     this.taskStorage.add(task);
-    if (this.searchReady) this.search.addDocument(task);
+    if (this.searchReady) {
+      this.search.addDocument(task);
+    } else {
+      this.pendingOps.push({ op: 'add', entity: task });
+    }
   }
 
   async save(task: Entity): Promise<void> {
     this.taskStorage.save(task);
-    if (this.searchReady) this.search.updateDocument(task);
+    if (this.searchReady) {
+      this.search.updateDocument(task);
+    } else {
+      this.pendingOps.push({ op: 'update', entity: task });
+    }
   }
 
   async delete(id: string): Promise<boolean> {
     const deleted = this.taskStorage.delete(id);
-    if (deleted && this.searchReady) this.search.removeDocument(id);
+    if (deleted) {
+      if (this.searchReady) {
+        this.search.removeDocument(id);
+      } else {
+        this.pendingOps.push({ op: 'remove', id });
+      }
+    }
     return deleted;
   }
 
@@ -165,6 +191,10 @@ class BacklogService implements IBacklogService {
 
   async getMaxId(type?: EntityType): Promise<number> {
     return this.taskStorage.getMaxId(type);
+  }
+
+  flush(): void {
+    if (this.searchReady) this.search.flush();
   }
 }
 

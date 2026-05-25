@@ -48,6 +48,7 @@ const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, (info) => 
 const shutdown = async () => {
   logger.info('Server shutting down');
   console.log('Shutting down gracefully...');
+  service.flush();
   server.close();
   setTimeout(() => process.exit(0), 500);
 };

@@ -160,8 +160,8 @@ export class OramaSearchService implements SearchService {
         hasEmbeddings: this.hasEmbeddingsInIndex,
       });
       writeFileSync(this.indexPath, serialized);
-    } catch {
-      // Ignore persistence errors - index will rebuild on next start
+    } catch (e) {
+      console.warn('[search] persistToDisk failed:', e instanceof Error ? e.message : e);
     }
   }
 
@@ -458,6 +458,63 @@ export class OramaSearchService implements SearchService {
    */
   isHybridSearchActive(): boolean {
     return this.hasEmbeddingsInIndex && this.embeddingsReady;
+  }
+
+  /**
+   * Force-persist the index to disk immediately (ADR-0101 Phase 3).
+   * Called on process shutdown to prevent cache loss.
+   */
+  flush(): void {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
+    this.persistToDisk();
+  }
+
+  // ── Reconciliation (ADR-0101) ───────────────────────────────────
+
+  /**
+   * Reconcile the in-memory index against the current filesystem state.
+   * Adds missing entities, removes stale ones, updates modified ones.
+   * Called after index() to fix cache drift without a full rebuild.
+   */
+  async reconcile(currentTasks: Entity[]): Promise<{ added: number; removed: number; updated: number }> {
+    if (!this.db) return { added: 0, removed: 0, updated: 0 };
+
+    const currentIds = new Set(currentTasks.map(t => t.id));
+    const cachedIds = new Set(this.taskCache.keys());
+    let added = 0, removed = 0, updated = 0;
+
+    for (const task of currentTasks) {
+      if (!cachedIds.has(task.id)) {
+        await this.addDocument(task);
+        added++;
+      }
+    }
+
+    for (const id of cachedIds) {
+      if (!currentIds.has(id)) {
+        await this.removeDocument(id);
+        removed++;
+      }
+    }
+
+    for (const task of currentTasks) {
+      if (cachedIds.has(task.id)) {
+        const cached = this.taskCache.get(task.id);
+        if (cached && task.updated_at && cached.updated_at !== task.updated_at) {
+          await this.updateDocument(task);
+          updated++;
+        }
+      }
+    }
+
+    if (added + removed + updated > 0) {
+      this.persistToDisk();
+    }
+
+    return { added, removed, updated };
   }
 
   // ── Document CRUD ───────────────────────────────────────────────
