@@ -5,6 +5,9 @@
   "name": "backlog-mcp",
   "main": "src/worker-entry.ts",
   "compatibility_date": "2025-01-01",
+  "build": {
+    "command": "node -e \"const{version}=require('./package.json');require('fs').writeFileSync('src/version.ts','export const VERSION = '+JSON.stringify(version)+';\\n')\""
+  },
   "d1_databases": [
     {
       "binding": "DB",

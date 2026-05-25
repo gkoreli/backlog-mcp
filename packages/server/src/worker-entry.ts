@@ -6,6 +6,7 @@ import { createApp } from './server/hono-app.js';
 import { D1BacklogService } from './storage/d1-backlog-service.js';
 import { D1OperationLog } from './operations/d1-operation-log.js';
 import { D1OAuthStore } from './auth/index.js';
+import { VERSION } from './version.js';
 
 export interface WorkerEnv {
   DB: any;            // D1Database
@@ -29,7 +30,7 @@ export default {
     // See ADR 0094.
     const app = createApp(service, {
       name: 'backlog-mcp',
-      version: '0.50.1',
+      version: VERSION,
       db: env.DB,
       apiKey: env.API_KEY,
       clientSecret: env.CLIENT_SECRET,
