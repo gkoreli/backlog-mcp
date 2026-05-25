@@ -1,11 +1,8 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
 import { wakeup } from '../core/wakeup.js';
 import { ValidationError } from '../core/types.js';
-import { paths } from '../utils/paths.js';
 
 export interface BacklogWakeupDeps {
   operationLogger?: {
@@ -17,24 +14,8 @@ export interface BacklogWakeupDeps {
       actor: { type: string; name: string };
     }>;
   };
-}
-
-const IDENTITY_FILENAME = 'identity.md';
-
-/**
- * Transport-layer identity reader.
- * Core stays IO-free (ADR-0090) — filesystem read is wired here, injected
- * into the core function via ``readIdentity``.
- */
-function readIdentityFile(): string | undefined {
-  const path = join(paths.backlogDataDir, IDENTITY_FILENAME);
-  if (!existsSync(path)) return undefined;
-  try {
-    const raw = readFileSync(path, 'utf-8').trim();
-    return raw.length > 0 ? raw : undefined;
-  } catch {
-    return undefined;
-  }
+  readLocalFile?: (filePath: string) => string | null;
+  identityPath?: string;
 }
 
 /**
@@ -75,12 +56,18 @@ export function registerBacklogWakeupTool(
     },
     async ({ scope, max_completions, max_activity, evidence_snippet_chars }) => {
       try {
+        const readIdentity = (): string | undefined => {
+          if (!deps?.readLocalFile || !deps?.identityPath) return undefined;
+          const raw = deps.readLocalFile(deps.identityPath);
+          return raw?.trim() || undefined;
+        };
+
         const result = await wakeup(service, {
           ...(scope !== undefined ? { scope } : {}),
           ...(max_completions !== undefined ? { maxCompletions: max_completions } : {}),
           ...(max_activity !== undefined ? { maxActivity: max_activity } : {}),
           ...(evidence_snippet_chars !== undefined ? { evidenceSnippetChars: evidence_snippet_chars } : {}),
-          readIdentity: readIdentityFile,
+          readIdentity,
           ...(deps?.operationLogger
             ? { readOperations: (o) => deps.operationLogger!.read(o) }
             : {}),

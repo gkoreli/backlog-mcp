@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createApp } from './server/hono-app.js';
@@ -35,6 +36,7 @@ const app = createApp(service, {
   staticMiddleware: serveStatic({ root: paths.viewerDist }),
   readLocalFile,
   resolveSourcePath,
+  identityPath: join(paths.backlogDataDir, 'identity.md'),
 });
 
 const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, (info) => {

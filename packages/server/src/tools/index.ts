@@ -37,6 +37,10 @@ export interface ToolDeps {
    * Worker omits memory for now (see ADR 0092.2 §D4).
    */
   memoryComposer?: MemoryComposer;
+  /** Read a local file by path. Node-only; Worker omits. */
+  readLocalFile?: (filePath: string) => string | null;
+  /** Absolute path to identity.md. Node-only. */
+  identityPath?: string;
 }
 
 export function registerTools(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
@@ -50,6 +54,10 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
   if (deps?.resourceManager && deps?.operationLogger) {
     registerBacklogContextTool(server, service, { resourceManager: deps.resourceManager, operationLogger: deps.operationLogger });
   }
-  registerBacklogWakeupTool(server, service, deps?.operationLogger ? { operationLogger: deps.operationLogger } : undefined);
+  registerBacklogWakeupTool(server, service, {
+    ...(deps?.operationLogger ? { operationLogger: deps.operationLogger } : {}),
+    ...(deps?.readLocalFile ? { readLocalFile: deps.readLocalFile } : {}),
+    ...(deps?.identityPath ? { identityPath: deps.identityPath } : {}),
+  });
   registerBacklogRecallTool(server, deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : undefined);
 }
