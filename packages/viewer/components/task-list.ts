@@ -5,9 +5,9 @@
  * Uses query() for auto-fetching, each() for keyed list rendering.
  * No setState, no local filter/sort signals, no manual doFetch.
  */
-import { signal, computed, effect, type ReadonlySignal, component, html, each, when, inject, query } from '@nisli/core';
+import { signal, computed, effect, type ReadonlySignal, component, html, each, when, inject, query, onCleanup } from '@nisli/core';
 import { fetchTasks, type Task } from '../utils/api.js';
-import { backlogEvents } from '../services/event-source-client.js';
+import { backlogEvents, type BacklogEvent } from '../services/event-source-client.js';
 import { getTypeConfig, getParentId } from '../type-registry.js';
 import { AppState } from '../services/app-state.js';
 import { TaskItem } from './task-item.js';
@@ -40,12 +40,14 @@ export const TaskList = component('task-list', (_props, host) => {
   const error = computed(() => tasksQuery.error.value?.message ?? null);
 
   // SSE → refetch
-  backlogEvents.onChange((event) => {
+  const sseHandler = (event: BacklogEvent) => {
     if (event.type === 'task_changed' || event.type === 'task_created' ||
         event.type === 'task_deleted' || event.type === 'resource_changed') {
       tasksQuery.refetch();
     }
-  });
+  };
+  backlogEvents.onChange(sseHandler);
+  onCleanup(() => backlogEvents.offChange(sseHandler));
 
   // Auto-scope: when selected task is a leaf, scope to its parent (needs task data)
   effect(() => {
