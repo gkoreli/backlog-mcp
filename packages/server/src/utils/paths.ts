@@ -1,7 +1,8 @@
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { homedir } from 'node:os';
 
 /**
  * Runtime environment modes
@@ -74,13 +75,39 @@ export class PathResolver {
    * // BACKLOG_DATA_DIR not set → '/path/to/project/data'
    * // BACKLOG_DATA_DIR='./my-data' → '/path/to/project/my-data'
    * // BACKLOG_DATA_DIR='/absolute/path' → '/absolute/path'
-   * // BACKLOG_DATA_DIR='~/Documents/data' → '~/Documents/data'
+   * // BACKLOG_DATA_DIR='~/Documents/data' → '/home/user/Documents/data'
    */
   public get backlogDataDir(): string {
-    const dataDir = process.env.BACKLOG_DATA_DIR ?? 'data';
-    const isAbsolutePath = dataDir.startsWith('/') || dataDir.startsWith('~');
-    
+    const dataDir = this.expandTilde(process.env.BACKLOG_DATA_DIR ?? 'data');
+
+    const isAbsolutePath = dataDir.startsWith('/');
     return isAbsolutePath ? dataDir : join(this.projectRoot, dataDir);
+  }
+
+  /**
+   * Expand a leading `~` to the user's home directory.
+   *
+   * `~` is a shell convention — the OS treats it as a literal path segment, so an
+   * unexpanded `~/foo` resolves against the CWD (e.g. `/cwd/~/foo`) the moment it
+   * hits join()/resolve(). Values arriving from MCP config `env` blocks never pass
+   * through a shell, so we expand here.
+   *
+   * Only a leading `~` or `~/` is expanded; `~user/...` is left untouched
+   * (homedir() can't resolve another user's home anyway).
+   */
+  public expandTilde(path: string): string {
+    if (path === '~') return homedir();
+    if (path.startsWith('~/')) return join(homedir(), path.slice(2));
+    return path;
+  }
+
+  /**
+   * Resolve a user-supplied path to an absolute path: expand a leading `~`,
+   * then resolve relative paths against the CWD.
+   * @example paths.resolveUserPath('~/notes.md') → '/home/user/notes.md'
+   */
+  public resolveUserPath(path: string): string {
+    return resolve(this.expandTilde(path));
   }
   
   /**

@@ -1,15 +1,14 @@
 import { readFileSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { homedir } from 'node:os';
+import { paths } from './paths.js';
 
 /**
- * Resolve a local file path to its content.
+ * Read a local file's content. Path resolution is delegated to PathResolver
+ * (the source of truth for paths); this function only does Node-only file I/O.
  * Node.js-only — injected into ToolDeps by node-server.ts.
  * Never imported by hono-app.ts or any file in the Worker static graph.
  */
 export function resolveSourcePath(sourcePath: string): string {
-  const expanded = sourcePath.startsWith('~') ? sourcePath.replace('~', homedir()) : sourcePath;
-  const resolved = resolve(expanded);
+  const resolved = paths.resolveUserPath(sourcePath);
   const stat = statSync(resolved, { throwIfNoEntry: false });
   if (!stat) throw new Error(`File not found: ${sourcePath}`);
   if (!stat.isFile()) throw new Error(`Not a file: ${sourcePath}`);
