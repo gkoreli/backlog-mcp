@@ -184,6 +184,6 @@ const transport = new SSEServerTransport('/mcp', reply.raw);
 ## Future Work
 
 - **Monitor mcp-remote**: Check for StreamableHTTPServerTransport support in future releases
-- **ADR-0023**: Revisit migration when mcp-remote is updated (currently blocked)
+- **ADR-0013.4**: Revisit migration when mcp-remote is updated (currently blocked)
 - **Integration tests**: Add comprehensive SSE transport tests
 - **Performance monitoring**: Monitor session Map size and cleanup

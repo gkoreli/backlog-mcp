@@ -8,6 +8,7 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0013.7. Transport, Bridge & Hosting — Decision Framework (the mcp-remote question)](./0013.7-transport-bridge-and-hosting-decision-framework.md) **[head of transport thread → 0013]** - Stops the recurring "do I still need mcp-remote?" loop: daemon model affirmed, mcp-remote correct *by destination* (local-no-auth → native bridge, stdio→remote-OAuth → keep it), Workers+D1-vs-Fly parked as explicit Open Tension - 2026-06-03
 - [0100. Remote Auth Architecture — GitHub OAuth + PKCE + JWT Access Tokens](./0100-remote-auth-architecture.md) - Cloud deployment auth for MCP clients (renumbered from 0092 on 2026-05-07 to resolve number conflict with agentic-memory family) - 2026-04-03
 - [0099. Fix Build OOM — Separate tsc Declarations from tsdown Bundling](./0099-fix-build-oom-separate-tsc-declarations.md) - Split dts generation (tsc) from JS bundling (tsdown) to fix 3.5GB→511MB OOM on Cloudflare Workers CI/CD - 2026-04-30
 - [0098. Unified Substrate Architecture — One Declaration Per Entity Type](./0098-unified-substrate-architecture.md) - Completes ADR 0088. Substrates in @backlog-mcp/shared as single source of truth; Zod-driven validation at storage boundaries - 2026-04-28
@@ -69,15 +70,16 @@ An ADR documents an important architectural decision along with its context and 
 - [0032. Fix Copy Markdown Button](./0032-fix-copy-markdown-button.md) - Add raw field to task API response to restore copy markdown functionality - 2026-01-27
 - [0027. CLI Management Commands](./0027-cli-management-commands.md) - Add version, status, stop commands for better server control and troubleshooting - 2026-01-26
 - [0026. Build System Modernization and Path Resolution](./0026-build-system-modernization.md) - Migrate to tsdown, centralize path resolution, fix static asset serving - 2026-01-26
-- [0025. Enable StreamableHTTPServerTransport with Current Architecture](./0025-streamable-http-with-current-architecture.md) - Change mcp-remote transport flag to http-only, maintain exact architecture - 2026-01-26
+- [0013.6. Enable StreamableHTTPServerTransport with Current Architecture](./0013.6-streamable-http-with-current-architecture.md) - Change mcp-remote transport flag to http-only, maintain exact architecture (transport thread → 0013) - 2026-01-26
 - [0022. Fix Missing /mcp/message POST Route](./0022-fix-missing-mcp-message-route.md) - Add separate POST route for MCP messages to fix SSE transport - 2026-01-25
-- [0019. Complete HTTP Architecture Migration](./0019-complete-http-architecture-migration.md) - Direct copy of missing endpoints to achieve 100% feature parity and delete old code - 2026-01-25
+- [0013.3. Complete HTTP Architecture Migration](./0013.3-complete-http-architecture-migration.md) - Direct copy of missing endpoints to achieve 100% feature parity and delete old code (transport thread → 0013; renumbered from 0019) - 2026-01-25
 - [0018. Restore Flexible Static File Serving](./0018-restore-flexible-static-file-serving.md) - Pattern-based static file serving to fix 404 errors and prevent future regressions - 2026-01-24
 - [0017. Agent 4 Production Hardening and Testing](./0017-agent4-production-hardening.md) - Minimal critical path: tests, bug fix, graceful shutdown for production readiness - 2026-01-25
 - [0016. Real-time Agent Log Streaming to Viewer UI](./0016-agent-log-streaming-architecture.md) - File watching + SSE + ANSI parsing for real-time log streaming without agent changes - 2026-01-25
 - [0015. Ralph Wiggum Loop for Iterative Agent Delegation](./0015-ralph-wiggum-loop-for-delegation.md) - Integrate Ralph Wiggum technique for self-improving agent workflows with fresh context per iteration - 2026-01-24
-- [0014. stdio-to-HTTP Bridge Implementation](./0014-stdio-http-bridge-implementation.md) - MCP Client SDK bridge with auto-spawn and version management - 2026-01-25
-- [0013. HTTP MCP Server Architecture with Built-in stdio Bridge](./0013-http-mcp-server-architecture.md) - HTTP-first architecture with auto-bridge for cloud deployment and persistent viewer - 2026-01-24
+- [0013.1. stdio-to-HTTP Bridge Implementation](./0013.1-stdio-http-bridge-implementation.md) - MCP Client SDK bridge with auto-spawn and version management (transport thread → 0013; renumbered from 0014) - 2026-01-25
+- [0013.2. Use mcp-remote for stdio Bridge](./0013.2-transparent-stdio-bridge-fix.md) - Replaced the custom SDK bridge with mcp-remote after it added a protocol layer instead of being a transparent proxy (transport thread → 0013; renumbered from 0019) - 2026-01-25
+- [0013. HTTP MCP Server Architecture with Built-in stdio Bridge](./0013-http-mcp-server-architecture.md) **[transport thread root — children: 0013.1–0013.7]** - HTTP-first architecture with auto-bridge for cloud deployment and persistent viewer - 2026-01-24
 - [0012. Fix Nested Epic Rendering in Viewer](./0012-nested-epic-rendering-fix.md) - Filter root epics only to prevent duplicate rendering of nested epics - 2026-01-24
 - [0011. Viewer Version Management with Detached Process](./0011-viewer-version-management.md) - Automatic viewer restart on version mismatch using detached process and HTTP version endpoint - 2026-01-24 (Superseded by ADR-0013)
 - [0010. Unified Resource Path Resolution](./0010-unified-resource-path-resolution.md) - Centralized URI resolver for consistent MCP and HTTP resource handling - 2026-01-24
@@ -97,8 +99,8 @@ None currently.
 
 ## Rejected ADRs
 
-- [0024. Dual-Mode Server Architecture for StreamableHTTPServerTransport](./0024-dual-mode-server-for-streamable-http.md) - Rejected by user: "I like the current architecture" (Superseded by ADR-0025) - 2026-01-25
-- [0023. Migrate to StreamableHTTPServerTransport](./0023-migrate-to-streamable-http-transport.md) - Blocked by protocol mismatch (didn't change transport flag) (Superseded by ADR-0025) - 2026-01-25
+- [0013.5. Dual-Mode Server Architecture for StreamableHTTPServerTransport](./0013.5-dual-mode-server-for-streamable-http.md) - Rejected by user: "I like the current architecture" (Superseded by ADR-0013.6; recommendation partially superseded by ADR-0013.7) (transport thread → 0013; renumbered from 0024) - 2026-01-25
+- [0013.4. Migrate to StreamableHTTPServerTransport](./0013.4-migrate-to-streamable-http-transport.md) - Blocked by protocol mismatch (didn't change transport flag) (Superseded by ADR-0013.6) (transport thread → 0013; renumbered from 0023) - 2026-01-25
 
 ## Proposed ADRs
 

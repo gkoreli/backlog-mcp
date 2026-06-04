@@ -3,7 +3,7 @@
 **Status**: Accepted  
 **Date**: 2026-01-25  
 **Deciders**: @gogakoreli  
-**Related**: TASK-0090, ADR-0019 (stdio bridge)
+**Related**: TASK-0090, ADR-0013.2 (stdio bridge)
 
 ## Context
 
