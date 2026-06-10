@@ -82,6 +82,19 @@ vi.mock('../storage/backlog.js', () => ({
 - **Minimal code** — only what's needed to solve the problem
 - **Declarative with named functions** — not inline callbacks
 - **Never use `!` non-null assertions** — use proper narrowing (ternary, `if` check, `??` fallback)
+- **Composable, modular, no god files** — decompose into meaningful single-purpose modules; composition over inheritance; strongly typed throughout; JSDoc on exported functions and non-obvious decisions
+- **Core-first layering (ADR 0090)** — business logic lives in `src/core/*` as standalone, transport-free functions; MCP tools, CLI commands, and HTTP routes are thin adapters that map params and call core. Any consumer can reuse core.
+
+## Deployment Posture (ADR 0104)
+
+**Local-first is the primary mode.** The Node/local deployment (filesystem
+markdown storage, Orama hybrid BM25+vector search with local embeddings, RAG,
+context hydration, agentic memory, live viewer over SSE) is where the product
+grows. The Cloudflare Workers + D1 remote mode lost too many of these
+capabilities (no local embeddings, no hybrid search/RAG parity) and is
+maintained as a constrained satellite, not evolved as an equal. Do not
+compromise local-mode capabilities for D1 parity; new features target local
+mode first and need no D1 story to ship.
 
 ## Monorepo Architecture
 
