@@ -6,7 +6,7 @@
  * tangled inside orama-search-service.ts.
  */
 import { describe, it, expect } from 'vitest';
-import { minmaxNormalize, linearFusion, applyCoordinationBonus, applyTemporalDecay, DEFAULT_WEIGHTS, DEFAULT_HALF_LIFE_DAYS, type ScoredHit } from '@backlog-mcp/memory/search';
+import { minmaxNormalize, rankNormalize, linearFusion, applyCoordinationBonus, applyTemporalDecay, applyExactTitlePin, DEFAULT_WEIGHTS, DEFAULT_HALF_LIFE_DAYS, TITLE_PIN_BONUS, type ScoredHit } from '@backlog-mcp/memory/search';
 
 describe('scoring module (ADR-0081)', () => {
   describe('minmaxNormalize', () => {
@@ -295,6 +295,93 @@ describe('scoring module (ADR-0081)', () => {
       const result = applyTemporalDecay(hits, getCreatedAt, { halfLifeDays: 30, now: NOW });
       expect(result[0].id).toBe('new');
       expect(result[1].id).toBe('old');
+    });
+  });
+
+  describe('rankNormalize (ADR-0083 #10)', () => {
+    it('returns empty for empty input', () => {
+      expect(rankNormalize([])).toEqual([]);
+    });
+
+    it('single hit gets 1.0', () => {
+      expect(rankNormalize([{ id: 'a', score: 3.7 }])[0].score).toBe(1.0);
+    });
+
+    it('all-same-score hits all get 1.0 (tie semantics match minmax)', () => {
+      const out = rankNormalize([{ id: 'a', score: 2 }, { id: 'b', score: 2 }, { id: 'c', score: 2 }]);
+      for (const h of out) expect(h.score).toBe(1.0);
+    });
+
+    it('lowest scorer keeps a positive score (the anti-annihilation property)', () => {
+      // The TASK-0676 failure: minmax mapped the lowest BM25 scorer to 0.0.
+      const hits: ScoredHit[] = [
+        { id: 'a', score: 6.09 },
+        { id: 'b', score: 4.96 },
+        { id: 'c', score: 1.93 },  // the relevant-but-low doc
+      ];
+      const minmax = minmaxNormalize(hits);
+      const rank = rankNormalize(hits);
+      expect(minmax.find(h => h.id === 'c')!.score).toBe(0);          // the old bug
+      expect(rank.find(h => h.id === 'c')!.score).toBeCloseTo(1 / 3); // the fix
+    });
+
+    it('preserves ordering and uses uniform rank steps', () => {
+      const out = rankNormalize([{ id: 'b', score: 5 }, { id: 'a', score: 9 }, { id: 'c', score: 1 }]);
+      expect(out.map(h => h.id)).toEqual(['a', 'b', 'c']);
+      expect(out.map(h => h.score)).toEqual([1, 2 / 3, 1 / 3]);
+    });
+
+    it('tied scores share the same normalized value', () => {
+      const out = rankNormalize([
+        { id: 'a', score: 9 }, { id: 'b', score: 5 }, { id: 'c', score: 5 }, { id: 'd', score: 1 },
+      ]);
+      expect(out.find(h => h.id === 'b')!.score).toBe(out.find(h => h.id === 'c')!.score);
+      expect(out.find(h => h.id === 'd')!.score).toBeGreaterThan(0);
+    });
+  });
+
+  describe('applyExactTitlePin (ADR-0083 #8)', () => {
+    const titles: Record<string, string> = {
+      epic: 'backlog-mcp 10x',
+      noise: 'Refactor mcp transport for backlog ingestion',
+      featStore: 'FeatureStore ownership transfer',
+      feature: 'Feature prioritization framework',
+    };
+    const getTitle = (id: string) => titles[id] ?? '';
+
+    it('pins a contiguous title-phrase match above higher-scored non-matches', () => {
+      const hits: ScoredHit[] = [{ id: 'noise', score: 1.35 }, { id: 'epic', score: 0.5 }];
+      const out = applyExactTitlePin(hits, 'backlog mcp', getTitle);
+      expect(out[0].id).toBe('epic');
+      expect(out[0].score).toBeCloseTo(0.5 + TITLE_PIN_BONUS);
+      expect(out[1].score).toBeCloseTo(1.35);  // non-contiguous terms → no pin
+    });
+
+    it('matches phrases through compound-word titles', () => {
+      const hits: ScoredHit[] = [{ id: 'featStore', score: 0.2 }, { id: 'feature', score: 0.9 }];
+      // "feature store" appears contiguously inside the tokenized "FeatureStore"
+      const out = applyExactTitlePin(hits, 'feature store', getTitle);
+      expect(out[0].id).toBe('featStore');
+    });
+
+    it('single-token query pins only an exact whole-title match', () => {
+      const hits: ScoredHit[] = [{ id: 'feature', score: 0.9 }, { id: 'epic', score: 0.5 }];
+      const out = applyExactTitlePin(hits, 'feature', getTitle);
+      // 'Feature prioritization framework' contains but IS NOT "feature" → no pin
+      expect(out[0].score).toBeCloseTo(0.9);
+      expect(out[1].score).toBeCloseTo(0.5);
+    });
+
+    it('preserves relative order among multiple pinned docs', () => {
+      const all = (id: string) => 'backlog mcp viewer';
+      const hits: ScoredHit[] = [{ id: 'x', score: 0.8 }, { id: 'y', score: 0.6 }];
+      const out = applyExactTitlePin(hits, 'backlog mcp', all);
+      expect(out.map(h => h.id)).toEqual(['x', 'y']);  // constant offset, not override
+    });
+
+    it('empty query is a no-op', () => {
+      const hits: ScoredHit[] = [{ id: 'epic', score: 0.5 }];
+      expect(applyExactTitlePin(hits, '  ', getTitle)[0].score).toBe(0.5);
     });
   });
 });

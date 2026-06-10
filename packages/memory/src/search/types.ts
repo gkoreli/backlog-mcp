@@ -13,7 +13,7 @@ export interface Resource {
 /**
  * Document types that can be searched
  */
-export type SearchableType = 'task' | 'epic' | 'resource';
+export type SearchableType = 'task' | 'epic' | 'folder' | 'artifact' | 'milestone' | 'cron' | 'memory' | 'resource';
 
 /**
  * Search filter options

@@ -176,7 +176,7 @@ export interface DeleteResult {
 
 export interface SearchParams {
   query: string;
-  types?: Array<'task' | 'epic' | 'resource'>;
+  types?: Array<'task' | 'epic' | 'folder' | 'artifact' | 'milestone' | 'cron' | 'memory' | 'resource'>;
   status?: Status[];
   parent_id?: string;
   sort?: 'relevant' | 'recent';

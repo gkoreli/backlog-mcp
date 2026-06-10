@@ -19,19 +19,19 @@
  */
 
 import type { Entity } from '@backlog-mcp/shared';
-import type { Resource } from '@backlog-mcp/memory/search';
+import type { Resource, SearchableType } from '@backlog-mcp/memory/search';
 import type { ContextEntity, ContextResource } from '../types.js';
 import { taskToContextEntity } from './focal-resolution.js';
 
 export interface SemanticEnrichmentDeps {
   /** Search for entities and resources matching a query. */
   searchUnified: (query: string, options?: {
-    types?: Array<'task' | 'epic' | 'resource'>;
+    types?: SearchableType[];
     limit?: number;
   }) => Promise<Array<{
     item: Entity | Resource;
     score: number;
-    type: 'task' | 'epic' | 'resource';
+    type: SearchableType;
   }>>;
 }
 

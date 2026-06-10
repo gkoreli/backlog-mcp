@@ -43,6 +43,37 @@ export function minmaxNormalize(hits: ScoredHit[]): ScoredHit[] {
 }
 
 /**
+ * Rank-based normalization (ADR-0083 #10).
+ *
+ * MinMax normalization maps the lowest scorer to exactly 0.0, annihilating
+ * relevant-but-low-BM25 documents (the TASK-0676 failure mode: a doc whose
+ * query terms live in compound words in the description always loses to docs
+ * with literal title hits, and MinMax then erases it entirely).
+ *
+ * Rank normalization scores by *position* instead of value:
+ *   normalized = (n - rank) / n
+ * where tied raw scores share the rank of their first occurrence. The lowest
+ * scorer gets 1/n > 0 — it stays in the race for post-fusion modifiers
+ * (decay, coordination, title pin) to act on.
+ *
+ * Edge cases match minmaxNormalize: empty → empty; single → 1.0;
+ * all-same-score → all 1.0.
+ */
+export function rankNormalize(hits: ScoredHit[]): ScoredHit[] {
+  if (hits.length === 0) return [];
+  const sorted = [...hits].sort((a, b) => b.score - a.score);
+  const n = sorted.length;
+  const out: ScoredHit[] = [];
+  let rankOfScore = 0;
+  for (let i = 0; i < n; i++) {
+    const h = sorted[i]!;
+    if (i > 0 && h.score !== sorted[i - 1]!.score) rankOfScore = i;
+    out.push({ ...h, score: (n - rankOfScore) / n });
+  }
+  return out;
+}
+
+/**
  * Linear fusion: weighted combination of normalized retriever scores (ADR-0081).
  *
  * For each document, computes:
@@ -184,4 +215,87 @@ export function applyCoordinationBonus(
       return { ...h, score: h.score + bodyCoord * 0.5 + titleBonus };
     })
     .sort((a, b) => b.score - a.score);
+}
+
+/**
+ * Additive offset applied to exact-title-phrase matches. Chosen to clear the
+ * maximum possible non-pinned score (fusion ≤1.0 + coordination ≤0.8) so a
+ * pinned doc always ranks above non-pinned docs, while pinned docs keep their
+ * relative pre-pin order (the offset is constant, not a score override).
+ */
+export const TITLE_PIN_BONUS = 2.0;
+
+/**
+ * Exact/phrase title-match pin (ADR-0083 #8).
+ *
+ * Navigational queries (~30% of searches) name the thing the user wants:
+ * "backlog mcp" → the "backlog-mcp 10x" epic. When every query token appears
+ * as a *contiguous run* in a document's tokenized title, that document is
+ * pinned above all non-pinned results. This is how Typesense/Algolia rank by
+ * default (`prioritize_exact_match`).
+ *
+ * Applied as the FINAL pipeline stage — after fusion, decay, and
+ * coordination — so a navigational hit beats recency decay (naming a thing
+ * exactly is a stronger signal than its age).
+ *
+ * Conservative by design:
+ * - Multi-token queries: all tokens must appear contiguously, in order, in
+ *   the title's token sequence (compound-tokenized, so "backlog mcp" matches
+ *   the title "backlog-mcp 10x").
+ * - Single-token queries: pinned only when the token IS the entire title —
+ *   otherwise one common word ("feature") would pin half the corpus.
+ */
+export function applyExactTitlePin(
+  hits: ScoredHit[],
+  query: string,
+  getTitle: (id: string) => string,
+): ScoredHit[] {
+  const queryTokens = tokenizeWords(query);
+  if (queryTokens.length === 0) return hits;
+
+  return hits
+    .map(h => {
+      const titleTokens = tokenizeWords(getTitle(h.id));
+      const pinned = queryTokens.length === 1
+        ? titleTokens.length === 1 && titleTokens[0] === queryTokens[0]
+        : containsContiguous(titleTokens, queryTokens);
+      return pinned ? { ...h, score: h.score + TITLE_PIN_BONUS } : h;
+    })
+    .sort((a, b) => b.score - a.score);
+}
+
+/**
+ * Tokenize into word-position-preserving tokens for phrase matching.
+ *
+ * Unlike `compoundWordTokenizer.tokenize` (which dedupes and appends compound
+ * expansions, destroying positions), this keeps one token per source word but
+ * ALSO returns each compound word's parts inline so "backlog-mcp 10x" yields
+ * ["backlog", "mcp", "10x"] and the phrase "backlog mcp" matches contiguously.
+ */
+function tokenizeWords(input: string): string[] {
+  const out: string[] = [];
+  for (const raw of input.split(/[^a-zA-Z0-9'-]+/).filter(Boolean)) {
+    if (raw.includes('-')) {
+      out.push(...raw.toLowerCase().split(/-+/).filter(Boolean));
+    } else {
+      const parts = compoundWordTokenizer.tokenize(raw);
+      // tokenize("FeatureStore") → ["featurestore","feature","store"];
+      // take the expansion (positions) when present, else the word itself.
+      if (parts.length > 1) out.push(...parts.slice(1));
+      else out.push(...parts);
+    }
+  }
+  return out;
+}
+
+/** True when `needle` appears as a contiguous subsequence of `haystack`. */
+function containsContiguous(haystack: string[], needle: string[]): boolean {
+  if (needle.length === 0 || needle.length > haystack.length) return false;
+  outer: for (let i = 0; i <= haystack.length - needle.length; i++) {
+    for (let j = 0; j < needle.length; j++) {
+      if (haystack[i + j] !== needle[j]) continue outer;
+    }
+    return true;
+  }
+  return false;
 }

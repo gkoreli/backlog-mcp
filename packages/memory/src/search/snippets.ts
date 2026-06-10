@@ -1,5 +1,6 @@
 import type { Entity } from '@backlog-mcp/shared';
 import type { Resource, SearchSnippet } from './types.js';
+import { compoundWordTokenizer } from './tokenizer.js';
 
 // ── Server-side snippet generation (ADR-0073) ──────────────────────
 //
@@ -50,20 +51,29 @@ function generateSnippetFromFields(
   let firstField = '';
   let firstText = '';
 
+  // ADR-0083 #5: tokenize query words the same way the search engine does,
+  // so a query "FeatureStore" expands to ["featurestore", "feature", "store"]
+  // and matches text containing "Feature Store" (and vice versa) — fields the
+  // engine matched are no longer invisible to snippet generation.
+  const queryTokens = [...new Set(queryWords.flatMap(w => compoundWordTokenizer.tokenize(w)))];
+
   for (const { name, value } of fields) {
     if (!value) continue;
     const valueLower = value.toLowerCase();
-    // Check if any query word appears in this field
-    const hasMatch = queryWords.some(w => valueLower.includes(w));
+    // Token-aware match: any query token present in the field's token set
+    const valueTokens = new Set(compoundWordTokenizer.tokenize(value));
+    const hasMatch = queryTokens.some(t => valueTokens.has(t));
     if (!hasMatch) continue;
 
     matchedFields.push(name);
 
     if (!firstField) {
       firstField = name;
-      // Find first query word position and extract window
+      // Find first query token position and extract window. Substring search
+      // works here because every token is a lowercase fragment of some source
+      // word ("feature" appears inside "FeatureStore".toLowerCase()).
       let earliestPos = valueLower.length;
-      for (const w of queryWords) {
+      for (const w of queryTokens) {
         const pos = valueLower.indexOf(w);
         if (pos !== -1 && pos < earliestPos) earliestPos = pos;
       }

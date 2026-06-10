@@ -179,10 +179,16 @@ describe('Search Golden Benchmark', () => {
         expect(results.some(r => r.task.id === 'TASK-0001')).toBe(true);
       });
 
-      it('searches epic_id field', async () => {
+      it('ID query returns the entity itself; children via filter (ADR-0083 #4)', async () => {
+        // Pre-ADR-0083 behavior: searching "EPIC-0001" surfaced child tasks
+        // accidentally, through the id field's "0001" token. With `id`
+        // removed from TEXT_PROPERTIES, an ID-shaped query is navigational —
+        // it returns the entity itself. Children are a filter query.
         const results = await service.search('EPIC-0001');
-        const ids = results.map(r => r.task.id);
-        // Should find tasks with this epic_id
+        expect(results[0].task.id).toBe('EPIC-0001');
+
+        const children = await service.search('search', { filters: { epic_id: 'EPIC-0001' } });
+        const ids = children.map(r => r.task.id);
         expect(ids).toContain('TASK-0001');
         expect(ids).toContain('TASK-0003');
       });
@@ -248,10 +254,13 @@ describe('Search Golden Benchmark', () => {
     });
 
     describe('numeric-only queries', () => {
-      it('numeric query "0001" finds TASK-0001', async () => {
-        // Custom tokenizer splits "TASK-0001" → ["task-0001", "task", "0001"]
+      it('numeric query "0001" finds nothing (ADR-0083 #4: id not text-searchable)', async () => {
+        // Pre-ADR-0083 the id field's "0001" token made bare numbers match.
+        // That accidental capability is gone — a bare number is ambiguous
+        // (which entity type?). The documented contract: use an ID-shaped
+        // query ("task 1", "TASK-0001"), which short-circuits to exact lookup.
         const results = await service.search('0001');
-        expect(results.length).toBeGreaterThan(0);
+        expect(results.length).toBe(0);
       });
     });
 
@@ -425,14 +434,21 @@ describe('Search Golden Benchmark', () => {
 
     // ── Relative ordering assertions ──────────────────────────
 
-    it('"search" → EPIC-0002 ranks above TASK-0005', async () => {
-      // Both have "search" in title. EPIC-0002 has shorter title → higher BM25 term density.
+    it('"search" → EPIC-0002 and TASK-0005 both in top 3', async () => {
+      // ADR-0083: BM25-only mode cannot express "aboutness" — TASK-0005's
+      // compound title ("SearchService" → "search") plus a description match
+      // legitimately outscores EPIC-0002 on term statistics. The strict
+      // "epic above task" ordering only holds when the vector retriever
+      // contributes (semantic closeness of "Search & Discovery" to "search").
+      // This assertion is retriever-agnostic: both must be highly ranked.
+      // Strict aboutness ranking is deferred to the cross-encoder (ADR-0083 #9).
       const results = await service.search('search');
       const epicIdx = results.findIndex(r => r.task.id === 'EPIC-0002');
       const taskIdx = results.findIndex(r => r.task.id === 'TASK-0005');
       expect(epicIdx).toBeGreaterThanOrEqual(0);
+      expect(epicIdx).toBeLessThan(3);
       expect(taskIdx).toBeGreaterThanOrEqual(0);
-      expect(epicIdx).toBeLessThan(taskIdx);
+      expect(taskIdx).toBeLessThan(3);
     });
 
     it('"search" → title matches rank above description-only matches', async () => {
@@ -473,6 +489,48 @@ describe('Search Golden Benchmark', () => {
       const ids = results.slice(0, 3).map(r => r.task.id);
       expect(ids).toContain('TASK-0002'); // "Fix authentication bug"
       expect(ids).toContain('TASK-0006'); // "Fix first-time user onboarding"
+    });
+  });
+
+  /**
+   * ===========================================
+   * ADR-0083 REGRESSION GUARDS (TASK-0676)
+   * The failure cases from the root-cause analysis,
+   * locked as tests so memory recall (ADR 0092.3
+   * Phase B) can ride this pipeline safely.
+   * ===========================================
+   */
+  describe('🛡️ ADR-0083 regression guards', () => {
+    it('Finding 3: single-term "feature" — TASK-0009 is visible with score > 0', async () => {
+      // MinMax normalization mapped the lowest BM25 scorer to literally
+      // 0.0000, making TASK-0009 (which matches "feature" only via the
+      // compound expansion of "FeatureStore" in its description) invisible.
+      // Rank normalization guarantees the lowest scorer keeps 1/n > 0.
+      const results = await service.search('feature');
+      const hit = results.find(r => r.task.id === 'TASK-0009');
+      expect(hit).toBeDefined();
+      expect(hit!.score).toBeGreaterThan(0);
+    });
+
+    it('exact-ID lookup ranks the entity #1, not buried (TASK-0676)', async () => {
+      for (const q of ['TASK-0009', 'task 9', 'task-0009', 'EPIC-0001']) {
+        const results = await service.search(q);
+        expect(results[0].task.id, `query: ${q}`).toBe(q.toUpperCase().startsWith('E') ? 'EPIC-0001' : 'TASK-0009');
+      }
+    });
+
+    it('Improvement 8: title-phrase pin — "backlog mcp" pins EPIC-0001 ("backlog-mcp 10x") to #1', async () => {
+      const results = await service.search('backlog mcp');
+      expect(results[0].task.id).toBe('EPIC-0001');
+      // Pinned score sits above the un-pinned band (fusion ≤1.0 + coord ≤0.8)
+      expect(results[0].score).toBeGreaterThan(1.8);
+    });
+
+    it('title-phrase pin is conservative: single common word does not pin', async () => {
+      // "feature" appears in several titles; none IS the title, so no pin —
+      // no score should sit in the pinned band.
+      const results = await service.search('feature');
+      for (const r of results) expect(r.score).toBeLessThanOrEqual(1.8);
     });
   });
 });

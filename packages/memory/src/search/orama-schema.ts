@@ -54,8 +54,14 @@ export const INDEX_VERSION = 4;  // ADR-0080: added updated_at, unsortableProper
  * Text-searchable properties (ADR-0079). Excludes enum fields (status, type, epic_id)
  * which are filtered via `where` clause, not full-text searched.
  * Also excludes updated_at which is only used for sorting.
+ *
+ * ADR-0083 #4: `id` is excluded. Every ID tokenizes to its type prefix
+ * ("TASK-0009" → "task"), so any query containing "task"/"epic" matched every
+ * document of that type through the ID field — pure ranking noise. ID-shaped
+ * queries are handled *before* BM25 by the query-intent parser (id_lookup
+ * short-circuit), which is both exact and cheaper.
  */
-export const TEXT_PROPERTIES = ['id', 'title', 'description', 'evidence', 'blocked_reason', 'references', 'path'] as const;
+export const TEXT_PROPERTIES = ['title', 'description', 'evidence', 'blocked_reason', 'references', 'path'] as const;
 
 /**
  * Properties that should NOT have sort indexes (ADR-0080).
@@ -74,6 +80,11 @@ export const ENUM_FACETS = { status: {}, type: {}, epic_id: {} } as const;
 /**
  * Build Orama `where` clause from SearchOptions filters and docTypes (ADR-0079).
  * Returns undefined if no filters apply (Orama treats undefined where as no filter).
+ *
+ * Precedence (ADR-0083 #6, documented behavior): when both `filters.type` and
+ * `docTypes` are provided, `docTypes` wins — it is the caller-facing tool
+ * parameter, while `filters.type` may come from parsed query intent. Same for
+ * `parent_id` over `epic_id` (parent_id is the ADR-0098 canonical name).
  */
 export function buildWhereClause(filters?: SearchOptions['filters'], docTypes?: import('./types.js').SearchableType[]): Record<string, any> | undefined {
   const where: Record<string, any> = {};
