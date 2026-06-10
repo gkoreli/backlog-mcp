@@ -68,11 +68,20 @@ export class MemoryComposer {
     return merged.slice(0, limit);
   }
 
-  /** Forget across all stores (or targeted layers) */
+  /**
+   * Forget across all stores (or targeted layers).
+   *
+   * Targets are deduped by instance — one store may serve several layers,
+   * and invoking the same store concurrently for the same filter races it
+   * against itself (double-counted soft-expires). Found via manual
+   * validation of Phase C; see ADR 0092.6.
+   */
   async forget(filter: ForgetFilter): Promise<number> {
-    const targets = filter.layer
-      ? [this.stores.get(filter.layer)].filter(Boolean) as MemoryStore[]
-      : [...this.stores.values()];
+    const targets = [...new Set(
+      filter.layer
+        ? [this.stores.get(filter.layer)].filter(Boolean) as MemoryStore[]
+        : [...this.stores.values()],
+    )];
 
     const counts = await Promise.all(targets.map(s => s.forget(filter)));
     return counts.reduce((sum, n) => sum + n, 0);

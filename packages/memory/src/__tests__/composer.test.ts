@@ -153,6 +153,28 @@ describe('MemoryComposer', () => {
     expect(removed).toBe(2);
   });
 
+  it('forget invokes a multi-layer store exactly once (dedupe regression, ADR 0092.6)', async () => {
+    // One store instance serving three layers (the BacklogMemoryStore wiring).
+    // Pre-fix, composer.forget invoked it 3× concurrently and the same
+    // soft-expire was counted three times. Found via manual CLI validation.
+    const composer = new MemoryComposer();
+    let calls = 0;
+    const shared: MemoryStore = {
+      name: 'shared-store',
+      store: async (e) => e,
+      recall: async () => [],
+      forget: async () => { calls++; return 1; },
+      size: async () => 0,
+    };
+    composer.register('episodic', shared);
+    composer.register('semantic', shared);
+    composer.register('procedural', shared);
+
+    const removed = await composer.forget({ ids: ['MEMO-0001'] });
+    expect(calls).toBe(1);
+    expect(removed).toBe(1);
+  });
+
   it('registered() returns map of layer → store name', () => {
     const composer = new MemoryComposer();
     const ep = new InMemoryStore();
