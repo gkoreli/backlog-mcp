@@ -85,6 +85,26 @@ vi.mock('../storage/backlog.js', () => ({
 - **Composable, modular, no god files** — decompose into meaningful single-purpose modules; composition over inheritance; strongly typed throughout; JSDoc on exported functions and non-obvious decisions
 - **Core-first layering (ADR 0090)** — business logic lives in `src/core/*` as standalone, transport-free functions; MCP tools, CLI commands, and HTTP routes are thin adapters that map params and call core. Any consumer can reuse core.
 
+## The Development Loop (maintainer decision, 2026-06-10)
+
+backlog-mcp evolves through a deliberate loop, recorded in the ADR thread:
+
+1. **Research with evidence** — survey the field (delegate to a researcher
+   when useful); steal/adapt/reject ideas against our constraints
+   (local-first, no LLM in the server write path, human-visible markdown,
+   one source of truth). Findings land as an ADR with primary-source links
+   (pattern: ADR 0092.5).
+2. **Ground in our code** — audit what actually exists before planning
+   (pattern: ADR 0092.2 §audit). ADRs cite files, not intentions.
+3. **Plan as an ADR** — design + numbered rulings + file-level engineering
+   plan, cross-referenced to the thread (patterns: 0092.3, 0092.1).
+4. **Engineer in phases** — core-first, modular, committed in logical chunks.
+5. **Validate manually** — run the real loop in real processes, not just the
+   test suite; it catches what unit tests structurally miss (pattern:
+   ADR 0092.6 found the composer.forget race).
+6. **Record** — engineering-record ADR with distilled insights, validation
+   findings, and next phases (patterns: 0092.4, 0092.6). Then loop.
+
 ## Deployment Posture (ADR 0104)
 
 **Local-first is the primary mode.** The Node/local deployment (filesystem
