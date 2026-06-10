@@ -51,7 +51,8 @@ describe('core/recall', () => {
     const result = await recall({ query: 'auth' }, { memoryComposer: composer });
     expect(result.total).toBe(1);
     const item = result.items[0]!;
-    expect(item.content).toMatch(/auth/i);
+    expect(item.digest).toMatch(/auth/i);       // stubs by default (ADR-0092.5 R-5)
+    expect(item.content).toBeUndefined();
     expect(item.entity_id).toBe('TASK-0001');
     expect(item.kind).toBe('completion');
     expect(item.layer).toBe('episodic');

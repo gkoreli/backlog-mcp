@@ -298,4 +298,47 @@ describe('core/wakeup', () => {
       expect(result.recent.activity.map(a => a.entity_id)).toEqual(['TASK-0001', 'TASK-0001']);
     });
   });
+
+  describe('knowledge section (ADR-0092.5 R-6)', () => {
+    const mem = (id: string, over: Record<string, unknown> = {}) => makeEntity({
+      id, title: `knowledge ${id}`, type: 'memory', layer: 'semantic',
+      status: undefined, entity_refs: ['TASK-0676'], ...over,
+    } as any);
+
+    it('surfaces semantic/procedural memories with source pointers', async () => {
+      const svc = mockService([
+        mem('MEMO-0001'),
+        mem('MEMO-0002', { layer: 'procedural', kind: 'timeless', entity_refs: undefined }),
+        mem('MEMO-0003', { layer: 'episodic' }),               // episodic → excluded
+      ]);
+      const result = await wakeup(svc);
+      const ids = result.knowledge.map(k => k.id);
+      expect(ids).toContain('MEMO-0001');
+      expect(ids).toContain('MEMO-0002');
+      expect(ids).not.toContain('MEMO-0003');
+      const k1 = result.knowledge.find(k => k.id === 'MEMO-0001');
+      expect(k1?.source_ref).toBe('TASK-0676');
+      const k2 = result.knowledge.find(k => k.id === 'MEMO-0002');
+      expect(k2?.kind).toBe('timeless');
+      expect(result.metadata.knowledge_count).toBe(2);
+    });
+
+    it('excludes expired memories and respects maxKnowledge', async () => {
+      const svc = mockService([
+        mem('MEMO-0001', { valid_until: '2000-01-01T00:00:00.000Z' }),  // expired
+        mem('MEMO-0002'),
+        mem('MEMO-0003'),
+      ]);
+      const result = await wakeup(svc, { maxKnowledge: 1 });
+      expect(result.knowledge).toHaveLength(1);
+      expect(result.knowledge[0]?.id).not.toBe('MEMO-0001');
+    });
+
+    it('maxKnowledge: 0 omits the section entirely', async () => {
+      const svc = mockService([mem('MEMO-0001')]);
+      const result = await wakeup(svc, { maxKnowledge: 0 });
+      expect(result.knowledge).toEqual([]);
+      expect(result.metadata.knowledge_count).toBe(0);
+    });
+  });
 });

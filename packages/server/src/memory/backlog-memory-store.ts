@@ -51,7 +51,7 @@ export class BacklogMemoryStore implements MemoryStore {
    */
   constructor(private readonly getService: () => IBacklogService) {}
 
-  async store(entry: MemoryEntry): Promise<void> {
+  async store(entry: MemoryEntry): Promise<MemoryEntry> {
     if (!PERSISTED_LAYERS.includes(entry.layer)) {
       throw new Error(`BacklogMemoryStore does not persist layer '${entry.layer}' — register a session store for transient memory`);
     }
@@ -60,10 +60,17 @@ export class BacklogMemoryStore implements MemoryStore {
     const id = nextEntityId(await service.getMaxId(EntityType.Memory), EntityType.Memory);
 
     const meta = entry.metadata ?? {};
-    const entityRefs = typeof meta.entity_id === 'string' ? [meta.entity_id] : undefined;
+    const entityRefs = Array.isArray(meta.entity_refs)
+      ? meta.entity_refs.filter((r): r is string => typeof r === 'string')
+      : typeof meta.entity_id === 'string' ? [meta.entity_id] : undefined;
+    const captureKind = meta.kind === 'completion' || meta.kind === 'artifact' ? meta.kind : undefined;
+    const memoryKind = typeof meta.memory_kind === 'string' ? meta.memory_kind : undefined;
+    const stateKey = typeof meta.state_key === 'string' ? meta.state_key : undefined;
+    const supersedes = typeof meta.supersedes === 'string' ? meta.supersedes : undefined;
+    const occurredAt = typeof meta.occurred_at === 'string' ? meta.occurred_at : undefined;
     const tags = [...new Set([
       ...(entry.tags ?? []),
-      ...(typeof meta.kind === 'string' ? [meta.kind] : []),
+      ...(captureKind ? [captureKind] : []),
     ])];
 
     const memory = MemorySchema.parse({
@@ -74,15 +81,46 @@ export class BacklogMemoryStore implements MemoryStore {
       layer: entry.layer,
       ...(entry.source ? { source: entry.source } : {}),
       ...(entry.context && isValidEntityId(entry.context) ? { parent_id: entry.context } : {}),
-      ...(entityRefs ? { entity_refs: entityRefs } : {}),
+      ...(entityRefs && entityRefs.length > 0 ? { entity_refs: entityRefs } : {}),
       ...(tags.length > 0 ? { tags } : {}),
       ...(entry.expiresAt ? { valid_until: new Date(entry.expiresAt).toISOString() } : {}),
+      ...(memoryKind ? { kind: memoryKind } : {}),
+      ...(stateKey ? { state_key: stateKey } : {}),
+      ...(supersedes ? { supersedes } : {}),
+      ...(occurredAt ? { occurred_at: occurredAt } : {}),
       usage_count: typeof meta.usageCount === 'number' ? meta.usageCount : 0,
       created_at: nowIso,
       updated_at: nowIso,
     });
 
+    // ADR-0092.5 R-1/R-2 closing semantics — ADD-only, never destructive:
+    //  - supersedes: soft-expire the named predecessor (lineage on the new record).
+    //  - state_key: soft-expire every other live holder of the same key.
+    if (supersedes) {
+      await this.expireMemory(supersedes, nowIso);
+    }
+    if (stateKey) {
+      const all = await service.list({ type: EntityType.Memory });
+      for (const m of all) {
+        const prev = m as Memory;
+        if (prev.id === id || prev.state_key !== stateKey) continue;
+        if (prev.valid_until && Date.parse(prev.valid_until) <= Date.now()) continue;
+        await service.save({ ...prev, valid_until: nowIso, updated_at: nowIso } as Entity);
+      }
+    }
+
     await service.add(memory as Entity);
+    return this.toMemoryEntry(memory as Memory);
+  }
+
+  /** Soft-expire a memory by id (no-op if missing, not a memory, or already expired). */
+  private async expireMemory(id: string, nowIso: string): Promise<void> {
+    const service = this.getService();
+    const existing = await service.get(id);
+    if (!existing || (existing.type as string) !== 'memory') return;
+    const m = existing as Memory;
+    if (m.valid_until && Date.parse(m.valid_until) <= Date.now()) return;
+    await service.save({ ...m, valid_until: nowIso, updated_at: nowIso } as Entity);
   }
 
   async recall(query: RecallQuery): Promise<MemoryResult[]> {
@@ -172,6 +210,9 @@ export class BacklogMemoryStore implements MemoryStore {
         ...(m.entity_refs?.[0] ? { entity_id: m.entity_refs[0] } : {}),
         ...(m.entity_refs ? { entity_refs: [...m.entity_refs] } : {}),
         ...(m.supersedes ? { supersedes: m.supersedes } : {}),
+        ...(m.state_key ? { state_key: m.state_key } : {}),
+        ...(m.kind ? { memory_kind: m.kind } : {}),
+        ...(m.occurred_at ? { occurred_at: m.occurred_at } : {}),
         usageCount: m.usage_count ?? 0,
         ...(m.tags?.includes('completion') ? { kind: 'completion' } : m.tags?.includes('artifact') ? { kind: 'artifact' } : {}),
       },

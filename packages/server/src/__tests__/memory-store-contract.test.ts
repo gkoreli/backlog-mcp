@@ -199,6 +199,77 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     expect(await service.get('MEMO-0001')).toBeUndefined();
   });
 
+  // ── Phase C: ADD-only correction semantics (ADR 0092.5 R-1/R-2) ───
+
+  it('R-1: supersedes soft-expires the predecessor and records lineage', async () => {
+    await store.store(entry({ id: 'a', content: 'Bundler is rollup' }));
+    const stored = await store.store(entry({
+      id: 'b',
+      content: 'Bundler is tsdown',
+      metadata: { supersedes: 'MEMO-0001' },
+    }));
+    expect(stored.id).toBe('MEMO-0002');
+
+    // Predecessor expired (gone from recall), still present as an entity.
+    const results = await store.recall({ query: 'bundler' });
+    expect(results.map(r => r.entry.id)).toEqual(['MEMO-0002']);
+    const old = await service.get('MEMO-0001');
+    expect((old as { valid_until?: string }).valid_until).toBeDefined();
+    // Lineage on the successor.
+    expect((await service.get('MEMO-0002') as { supersedes?: string }).supersedes).toBe('MEMO-0001');
+  });
+
+  it('R-2: state_key closes every live previous holder', async () => {
+    await store.store(entry({ id: 'a', content: 'Primary DB is SQLite', metadata: { state_key: 'db.primary' } }));
+    await store.store(entry({ id: 'b', content: 'Unrelated note about CI' }));
+    await store.store(entry({ id: 'c', content: 'Primary DB is Postgres', metadata: { state_key: 'db.primary' } }));
+
+    const results = await store.recall({ query: 'primary DB' });
+    const ids = results.map(r => r.entry.id);
+    expect(ids).toContain('MEMO-0003');
+    expect(ids).not.toContain('MEMO-0001');  // closed by the new state holder
+    expect((await service.get('MEMO-0002') as { valid_until?: string }).valid_until).toBeUndefined();  // unrelated untouched
+  });
+
+  it('R-3/R-4: kind and occurred_at round-trip through frontmatter', async () => {
+    await store.store(entry({
+      id: 'a',
+      content: 'The viewer is read-only by tenet',
+      layer: 'semantic',
+      metadata: { memory_kind: 'timeless', occurred_at: '2026-01-15' },
+    }));
+    const m = await service.get('MEMO-0001') as { kind?: string; occurred_at?: string };
+    expect(m.kind).toBe('timeless');
+    expect(m.occurred_at).toBe('2026-01-15');
+    const recalled = await store.recall({ query: 'viewer read-only' });
+    expect(recalled[0]?.entry.metadata?.memory_kind).toBe('timeless');
+  });
+
+  // ── Phase C: stub recall + token budget (ADR 0092.5 R-5) ──────────
+
+  it('R-5: core recall returns stubs by default, bodies with full:true', async () => {
+    const composer = createDefaultComposer(() => service);
+    await store.store(entry({ id: 'a', content: 'Deploy procedure\n\nStep 1: typecheck\nStep 2: test\nStep 3: publish' }));
+
+    const stubs = await coreRecall({ query: 'deploy procedure' }, { memoryComposer: composer });
+    expect(stubs.items[0]?.digest).toBe('Deploy procedure');
+    expect(stubs.items[0]?.content).toBeUndefined();
+
+    const full = await coreRecall({ query: 'deploy procedure', full: true }, { memoryComposer: composer });
+    expect(full.items[0]?.content).toContain('Step 3: publish');
+  });
+
+  it('R-5: token_budget packs greedily and flags truncation', async () => {
+    const composer = createDefaultComposer(() => service);
+    for (let i = 0; i < 6; i++) {
+      await store.store(entry({ id: `m${i}`, content: `Deployment note number ${i} about the worker pipeline and bundler configuration` }));
+    }
+    const result = await coreRecall({ query: 'deployment worker bundler', token_budget: 120 }, { memoryComposer: composer });
+    expect(result.items.length).toBeGreaterThanOrEqual(1);
+    expect(result.items.length).toBeLessThan(6);
+    expect(result.truncated).toBe(true);
+  });
+
   // ── End-to-end: capture → durable entity → core recall ────────────
 
   it('E2E: implicit capture writes a durable MEMO entity recallable via core recall', async () => {

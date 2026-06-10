@@ -13,6 +13,8 @@ import { registerContext } from './commands/context.js';
 import { registerEdit } from './commands/edit.js';
 import { registerWakeup } from './commands/wakeup.js';
 import { registerRecall } from './commands/recall.js';
+import { registerRemember } from './commands/remember.js';
+import { registerForget } from './commands/forget.js';
 
 const program = new Command()
   .name('backlog-mcp')
@@ -79,6 +81,8 @@ registerContext(program);
 registerEdit(program);
 registerWakeup(program);
 registerRecall(program);
+registerRemember(program);
+registerForget(program);
 
 // --- Aliases for common bare-word usage ---
 

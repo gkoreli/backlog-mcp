@@ -42,6 +42,9 @@ function format(result: WakeupResult): string {
     ...section('now: current epics', result.now.current_epics.map(e =>
       `  ${e.id.padEnd(12)} ${(e.status ?? '-').padEnd(12)} ${e.title}`,
     )),
+    ...section('knowledge', result.knowledge.map(k =>
+      `  ${k.id.padEnd(12)} [${k.layer}]${k.kind ? ` (${k.kind})` : ''} ${k.title}${k.source_ref ? ` ← ${k.source_ref}` : ''}`,
+    )),
     ...section('recent completions', result.recent.completions.map(c =>
       c.evidence_snippet
         ? `  ${c.id.padEnd(12)} ${c.title}\n      ↪ ${c.evidence_snippet}`
@@ -57,7 +60,7 @@ function format(result: WakeupResult): string {
     `── meta ──`,
     `  generated_at: ${result.metadata.generated_at}`,
     `  identity: ${result.metadata.identity_present ? 'present' : 'absent'}`,
-    `  counts: active=${result.metadata.active_task_count} epics=${result.metadata.epic_count} completions=${result.metadata.completion_count} activity=${result.metadata.activity_count}`,
+    `  counts: active=${result.metadata.active_task_count} epics=${result.metadata.epic_count} knowledge=${result.metadata.knowledge_count} completions=${result.metadata.completion_count} activity=${result.metadata.activity_count}`,
   );
 
   return lines.join('\n');
@@ -70,12 +73,14 @@ export function registerWakeup(program: Command): void {
     .option('--scope <id>', 'Scope to a container entity (folder/milestone/epic)')
     .option('--max-completions <n>', 'Max recent completions', parseInt)
     .option('--max-activity <n>', 'Max recent activity entries', parseInt)
+    .option('--max-knowledge <n>', 'Max knowledge items (semantic/procedural memories)', parseInt)
     .option('--evidence-chars <n>', 'Max chars of evidence per completion', parseInt)
     .action((opts) => run(
       (s) => wakeup(s, {
         ...(opts.scope !== undefined ? { scope: opts.scope } : {}),
         ...(opts.maxCompletions !== undefined ? { maxCompletions: opts.maxCompletions } : {}),
         ...(opts.maxActivity !== undefined ? { maxActivity: opts.maxActivity } : {}),
+        ...(opts.maxKnowledge !== undefined ? { maxKnowledge: opts.maxKnowledge } : {}),
         ...(opts.evidenceChars !== undefined ? { evidenceSnippetChars: opts.evidenceChars } : {}),
         readIdentity: readIdentityFile,
         readOperations: (o) => operationLogger.read(o),

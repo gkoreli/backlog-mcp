@@ -29,6 +29,7 @@ export {
   CronSchema,
   MemorySchema,
   MEMORY_LAYERS,
+  MEMORY_KINDS,
   TaskSubstrate,
   EpicSubstrate,
   FolderSubstrate,
@@ -47,6 +48,7 @@ export {
   type Cron,
   type Memory,
   type MemoryLayerName,
+  type MemoryKind,
 } from './substrates/index.js';
 
 export { isValidCronExpression } from './cron-expression.js';

@@ -32,7 +32,7 @@ export function registerBacklogRecallTool(
     'backlog_recall',
     {
       description:
-        'Recall episodic memories — short digest records captured when tasks complete or artifacts are created. Distinct from backlog_search (which queries live entities). Use this to answer "what did I finish recently about X?" or "what artifacts live under FLDR-0001?" — the memories point back to entities via metadata.entity_id.',
+        'Recall memories — knowledge and episodes captured across sessions. Returns STUBS (id + one-line digest) by default; expand interesting ones with backlog_get(MEMO-id), or pass full:true for bodies. Distinct from backlog_search (live entities). Use to answer "how do we deploy?", "have I hit this before?", "what did I finish about X?". Memories point back to source entities via entity_id.',
       inputSchema: z.object({
         query: z.string().describe('Free-text query (keyword or phrase).'),
         context: z.string().optional().describe(
@@ -42,9 +42,11 @@ export function registerBacklogRecallTool(
           'Filter by memory tags (any-match). e.g. ["artifact"] or ["task"].',
         ),
         layers: z.array(z.enum(['session', 'episodic', 'semantic', 'procedural'])).optional().describe(
-          'Restrict to specific memory layers. Default: ["episodic"] (only Phase 3 capture kind today).',
+          'Restrict to specific memory layers. Default: all persisted layers (episodic + semantic + procedural).',
         ),
         limit: z.number().min(1).max(50).optional().describe('Max results. Default: 10.'),
+        full: z.boolean().optional().describe('Return full memory bodies instead of stubs. Prefer stubs + backlog_get for the ones you need.'),
+        token_budget: z.number().min(50).optional().describe('Approximate token budget — results are greedily packed to fit.'),
       }),
     },
     async (params) => {
@@ -56,6 +58,8 @@ export function registerBacklogRecallTool(
             ...(params.tags !== undefined ? { tags: params.tags } : {}),
             ...(params.layers !== undefined ? { layers: params.layers } : {}),
             ...(params.limit !== undefined ? { limit: params.limit } : {}),
+            ...(params.full !== undefined ? { full: params.full } : {}),
+            ...(params.token_budget !== undefined ? { token_budget: params.token_budget } : {}),
           },
           { ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}) },
         );

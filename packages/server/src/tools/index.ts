@@ -11,6 +11,8 @@ import { registerBacklogSearchTool } from './backlog-search.js';
 import { registerBacklogContextTool } from './backlog-context.js';
 import { registerBacklogWakeupTool } from './backlog-wakeup.js';
 import { registerBacklogRecallTool } from './backlog-recall.js';
+import { registerBacklogRememberTool } from './backlog-remember.js';
+import { registerBacklogForgetTool } from './backlog-forget.js';
 import { registerWriteResourceTool } from './backlog-write-resource.js';
 
 /**
@@ -60,4 +62,9 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
     ...(deps?.identityPath ? { identityPath: deps.identityPath } : {}),
   });
   registerBacklogRecallTool(server, deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : undefined);
+  registerBacklogRememberTool(server, {
+    ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
+    ...(deps?.actor ? { actor: deps.actor } : {}),
+  });
+  registerBacklogForgetTool(server, deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : undefined);
 }

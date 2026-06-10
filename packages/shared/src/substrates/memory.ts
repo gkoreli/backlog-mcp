@@ -37,6 +37,18 @@ import { BaseEntitySchema, type SubstrateDefinition } from './base.js';
 export const MEMORY_LAYERS = ['episodic', 'semantic', 'procedural'] as const;
 export type MemoryLayerName = (typeof MEMORY_LAYERS)[number];
 
+/**
+ * Memory kinds (ADR 0092.5 R-3, after Mem0's temporal-reasoning taxonomy).
+ * Supplied by the WRITING AGENT — the server never infers them.
+ *   current    — true now, may change ("we deploy via wrangler")
+ *   historical — true about the past ("we used to deploy via Fly")
+ *   plan       — intended future state
+ *   preference — a person's/team's preference
+ *   timeless   — invariant; exempt from temporal decay
+ */
+export const MEMORY_KINDS = ['current', 'historical', 'plan', 'preference', 'timeless'] as const;
+export type MemoryKind = (typeof MEMORY_KINDS)[number];
+
 export const MemorySchema = BaseEntitySchema.extend({
   type: z.literal('memory'),
   layer: z.enum(MEMORY_LAYERS).default('episodic'),
@@ -52,6 +64,20 @@ export const MemorySchema = BaseEntitySchema.extend({
   usage_count: z.number().int().nonnegative().default(0),
   /** MEMO- id this memory replaces (correction lineage). */
   supersedes: z.string().optional(),
+  /**
+   * Evolving-fact key (ADR 0092.5 R-2). A new memory with an existing
+   * state_key deterministically closes (expires) the previous holder —
+   * conflict handling with zero LLM. e.g. "build.bundler", "db.primary".
+   */
+  state_key: z.string().optional(),
+  /** Memory kind (ADR 0092.5 R-3). 'timeless' is exempt from decay. */
+  kind: z.enum(MEMORY_KINDS).optional(),
+  /**
+   * When the remembered event actually occurred (ADR 0092.5 R-4) — a memory
+   * ABOUT an old event must not rank as fresh. Decay uses
+   * occurred_at ?? created_at.
+   */
+  occurred_at: z.string().optional(),
 }).strict();
 
 export type Memory = z.infer<typeof MemorySchema>;
@@ -68,7 +94,7 @@ export const MemorySubstrate = {
     // folder, epic, or milestone. Scoped recall = subtree filtering.
     validParents: ['folder', 'epic', 'milestone', 'task'],
   },
-  extraFields: ['layer', 'source', 'entity_refs', 'tags', 'valid_until', 'usage_count', 'supersedes'],
+  extraFields: ['layer', 'kind', 'state_key', 'source', 'entity_refs', 'tags', 'occurred_at', 'valid_until', 'usage_count', 'supersedes'],
   hint: 'Agent memory record (ADR 0092.3). Body = the memory content. layer: episodic|semantic|procedural. Written via backlog_remember or implicit capture; read via backlog_recall. Excluded from default list/search — recall is the read surface.',
   ui: {
     gradient: 'linear-gradient(135deg, #f7b955, #a371f7)',

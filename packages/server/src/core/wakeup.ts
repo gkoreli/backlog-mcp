@@ -26,6 +26,7 @@ import {
   type WakeupEntitySummary,
   type WakeupCompletion,
   type WakeupActivity,
+  type WakeupKnowledgeItem,
 } from './types.js';
 
 function toSummary(e: Entity): WakeupEntitySummary {
@@ -167,6 +168,38 @@ export async function wakeup(
   const epics = await service.list({ type: EntityType.Epic, status: ['open', 'in_progress'] });
   const currentEpics = inScope(epics).sort(byUpdatedAtDesc).map(toSummary);
 
+  // L2.5 Knowledge (ADR-0092.5 R-6, after MemPalace's L1 "essential story"):
+  // top semantic/procedural memories for the scope — what the agent KNOWS
+  // here, not what happened. Char-bounded lines, one source pointer each.
+  const maxKnowledge = params.maxKnowledge ?? 5;
+  let knowledge: WakeupKnowledgeItem[] = [];
+  if (maxKnowledge > 0) {
+    const memories = await service.list({ type: EntityType.Memory });
+    const now = Date.now();
+    knowledge = memories
+      .map(m => m as Entity & {
+        layer?: string; kind?: string; valid_until?: string | null;
+        entity_refs?: string[]; usage_count?: number;
+      })
+      .filter(m =>
+        (m.layer === 'semantic' || m.layer === 'procedural') &&
+        (!m.valid_until || Date.parse(m.valid_until) > now) &&
+        (!scopeFilter || (m.parent_id !== undefined && scopeFilter(m.parent_id)) || (params.scope !== undefined && m.parent_id === params.scope)),
+      )
+      .sort(byUpdatedAtDesc)
+      .slice(0, maxKnowledge)
+      .map(m => {
+        const item: WakeupKnowledgeItem = {
+          id: m.id,
+          layer: m.layer ?? 'semantic',
+          title: m.title.length > 100 ? m.title.slice(0, 99) + '…' : m.title,
+        };
+        if (m.kind) item.kind = m.kind;
+        if (m.entity_refs?.[0]) item.source_ref = m.entity_refs[0];
+        return item;
+      });
+  }
+
   // L2 Recent — last N done tasks by updated_at, + last N ops from the log.
   const done = await service.list({ status: ['done'] });
   const completions = inScope(done)
@@ -206,6 +239,7 @@ export async function wakeup(
       active_tasks: activeTasks,
       current_epics: currentEpics,
     },
+    knowledge,
     recent: {
       completions,
       activity,
@@ -215,6 +249,7 @@ export async function wakeup(
       identity_present: identity !== undefined,
       active_task_count: activeTasks.length,
       epic_count: currentEpics.length,
+      knowledge_count: knowledge.length,
       completion_count: completions.length,
       activity_count: activity.length,
     },

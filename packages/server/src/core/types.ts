@@ -252,6 +252,11 @@ export interface WakeupParams {
   maxCompletions?: number;
   /** Max recent activity entries (from the operation log). Default: 5. */
   maxActivity?: number;
+  /**
+   * Max knowledge items (semantic/procedural memories) in the L2.5 knowledge
+   * section (ADR-0092.5 R-6). Default: 5. Set 0 to omit the section.
+   */
+  maxKnowledge?: number;
   /** Evidence snippet max chars on completion summaries. Default: 160. */
   evidenceSnippetChars?: number;
   /**
@@ -294,6 +299,18 @@ export interface WakeupActivity {
   actor: string;
 }
 
+/**
+ * One line of the wakeup knowledge section (ADR-0092.5 R-6, after
+ * MemPalace's L1 "essential story": bounded lines, one source pointer each).
+ */
+export interface WakeupKnowledgeItem {
+  id: string;
+  layer: string;          // 'semantic' | 'procedural'
+  title: string;          // digest line, char-bounded
+  kind?: string;          // memory kind, when set
+  source_ref?: string;    // first entity_ref — the evidence pointer
+}
+
 export interface WakeupResult {
   identity?: string;
   /** Echoes the scope param so callers can confirm what was included. */
@@ -302,6 +319,8 @@ export interface WakeupResult {
     active_tasks: WakeupEntitySummary[];
     current_epics: WakeupEntitySummary[];
   };
+  /** L2.5 — what the agent KNOWS here (semantic/procedural memories). */
+  knowledge: WakeupKnowledgeItem[];
   recent: {
     completions: WakeupCompletion[];
     activity: WakeupActivity[];
@@ -311,6 +330,7 @@ export interface WakeupResult {
     identity_present: boolean;
     active_task_count: number;
     epic_count: number;
+    knowledge_count: number;
     completion_count: number;
     activity_count: number;
   };
@@ -335,15 +355,31 @@ export interface RecallParams {
   context?: string;
   /** Filter by memory tags (any-match). */
   tags?: string[];
-  /** Restrict to specific memory layers. Defaults to ``['episodic']``. */
+  /** Restrict to specific memory layers. Defaults to all persisted layers. */
   layers?: MemoryLayer[];
   /** Max results. Default: 10. */
   limit?: number;
+  /**
+   * Return full memory bodies (ADR-0092.5 R-5). Default false: recall
+   * returns STUBS (id + digest line) — the agent expands interesting ones
+   * via ``backlog_get(MEMO-id)``, which is the observable usage signal
+   * Phase E's echo tracking consumes.
+   */
+  full?: boolean;
+  /**
+   * Approximate token budget for the result set (ADR-0092.5 R-5, after
+   * Hindsight's budget-packing). Items are greedily packed until the budget
+   * is exhausted (chars/4 heuristic). Unset = no budget, ``limit`` governs.
+   */
+  token_budget?: number;
 }
 
 export interface RecallItem {
   id: string;
-  content: string;
+  /** One-line digest (first line of content, ≤160 chars). Always present. */
+  digest: string;
+  /** Full memory body — only when ``full: true`` was requested. */
+  content?: string;
   layer: MemoryLayer;
   source: string;
   context?: string;
@@ -358,6 +394,62 @@ export interface RecallResult {
   items: RecallItem[];
   total: number;
   query: string;
+  /** True when token_budget truncated the result set. */
+  truncated?: boolean;
+}
+
+// ── Remember / Forget (ADR-0092.3 Phase C, ADR-0092.5 R-1/R-2/R-7) ──
+
+export interface RememberParams {
+  /** The memory body (markdown). First line becomes the title/digest. */
+  content: string;
+  /** Memory layer. Default: 'semantic' — remember is the knowledge verb. */
+  layer?: 'episodic' | 'semantic' | 'procedural';
+  /** Scope container (e.g. FLDR-0001) — becomes parent_id / recall context. */
+  context?: string;
+  /** Freeform labels for filterable recall. */
+  tags?: string[];
+  /** Pointers to source entities this knowledge derives from. */
+  entity_refs?: string[];
+  /** Memory kind (R-3). 'timeless' exempts from decay. */
+  kind?: 'current' | 'historical' | 'plan' | 'preference' | 'timeless';
+  /** Evolving-fact key (R-2) — closes previous holders of the same key. */
+  state_key?: string;
+  /** When the remembered event occurred (R-4), ISO date/datetime. */
+  occurred_at?: string;
+  /** Expiry, ISO date/datetime. Must be after occurred_at if both set. */
+  valid_until?: string;
+  /** MEMO- id this memory replaces (R-1) — predecessor is soft-expired. */
+  supersedes?: string;
+  /** Actor name recorded as the memory source. */
+  source?: string;
+}
+
+export interface RememberResult {
+  id: string;
+  layer: MemoryLayer;
+  created_at: string;
+  /** Echoed when the new memory superseded a predecessor. */
+  supersedes?: string;
+  /** Echoed when a state_key was set (predecessors with the key were closed). */
+  state_key?: string;
+}
+
+export interface ForgetParams {
+  /** Specific memory ids to forget (soft-expire). */
+  ids?: string[];
+  /** Forget all memories scoped to this context (parent_id). */
+  context?: string;
+  /** Forget all memories in a layer. */
+  layer?: 'episodic' | 'semantic' | 'procedural';
+  /** Forget memories created before this ISO date/datetime. */
+  older_than?: string;
+  /** GC: hard-delete memories that are ALREADY expired. */
+  expired?: boolean;
+}
+
+export interface ForgetResult {
+  forgotten: number;
 }
 
 // ── Edit (body operations) ──
