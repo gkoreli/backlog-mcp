@@ -29,13 +29,5 @@
     "@backlog-mcp/shared": "workspace:*",
     "@orama/orama": "^3.1.18",
     "@huggingface/transformers": "^3.8.1"
-  },
-  "peerDependencies": {
-    "pythonia": "^1.0.0"
-  },
-  "peerDependenciesMeta": {
-    "pythonia": {
-      "optional": true
-    }
   }
 }

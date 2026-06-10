@@ -25,11 +25,14 @@ export class MemoryComposer {
     this.stores.set(layer, store);
   }
 
-  /** Store a memory, routed to the store registered for its layer */
-  async store(entry: MemoryEntry): Promise<void> {
+  /**
+   * Store a memory, routed to the store registered for its layer.
+   * Returns the entry as stored (the store may mint its own id).
+   */
+  async store(entry: MemoryEntry): Promise<MemoryEntry> {
     const store = this.stores.get(entry.layer);
     if (!store) throw new Error(`No store registered for layer: ${entry.layer}`);
-    await store.store(entry);
+    return store.store(entry);
   }
 
   /** Recall across targeted stores, merge and rank results */

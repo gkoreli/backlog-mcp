@@ -60,13 +60,18 @@ export interface MemoryResult {
 
 /**
  * A MemoryStore is a backend that can store and retrieve memories.
- * Implementations: in-memory (default), Orama, D1, MemPalace, etc.
+ * Implementations: BacklogMemoryStore (production default — memories as
+ * backlog entities), InMemoryStore (tests/session), or your own.
  */
 export interface MemoryStore {
   readonly name: string;
 
-  /** Store a memory entry */
-  store(entry: MemoryEntry): Promise<void>;
+  /**
+   * Store a memory entry. Returns the entry AS STORED — implementations may
+   * mint their own canonical id (e.g. BacklogMemoryStore assigns MEMO- entity
+   * ids), so callers must read the returned entry's id, not the input's.
+   */
+  store(entry: MemoryEntry): Promise<MemoryEntry>;
 
   /** Recall relevant memories for a query */
   recall(query: RecallQuery): Promise<MemoryResult[]>;

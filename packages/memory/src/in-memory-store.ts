@@ -3,17 +3,18 @@ import type { MemoryStore, MemoryEntry, RecallQuery, MemoryResult, ForgetFilter 
 /**
  * In-memory store. Zero dependencies, keyword matching.
  * Good for testing, session memory, and small datasets.
- * Swap for Orama/D1/MemPalace when you need vector search or persistence.
+ * Swap for BacklogMemoryStore (the production default) for persistence + hybrid search.
  */
 export class InMemoryStore implements MemoryStore {
   readonly name = 'in-memory';
   private entries: MemoryEntry[] = [];
 
-  async store(entry: MemoryEntry): Promise<void> {
+  async store(entry: MemoryEntry): Promise<MemoryEntry> {
     // Upsert by id
     const idx = this.entries.findIndex(e => e.id === entry.id);
     if (idx >= 0) this.entries[idx] = entry;
     else this.entries.push(entry);
+    return entry;
   }
 
   async recall(query: RecallQuery): Promise<MemoryResult[]> {

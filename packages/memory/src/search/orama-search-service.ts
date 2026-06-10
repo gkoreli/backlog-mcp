@@ -397,11 +397,27 @@ export class OramaSearchService implements SearchService {
    */
   private _getCreatedAt(id: string): number | undefined {
     const task = this.taskCache.get(id);
-    if (task?.created_at) {
-      const t = Date.parse(task.created_at);
-      return Number.isNaN(t) ? undefined : t;
+    if (!task?.created_at) return undefined;
+
+    // ADR-0092.5 R-3/R-4: memory-substrate decay rules.
+    //  - semantic/procedural layers and kind: 'timeless' are EXEMPT from
+    //    decay (uniform decay over stable knowledge is a bug — Mem0 and
+    //    Hindsight both flag it independently): return undefined → no decay.
+    //  - episodic memories decay on occurred_at ?? created_at, so a memory
+    //    ABOUT an old event doesn't rank as fresh.
+    if ((task.type as string) === 'memory') {
+      const mem = task as { layer?: string; kind?: string; occurred_at?: string };
+      if (mem.layer === 'semantic' || mem.layer === 'procedural' || mem.kind === 'timeless') {
+        return undefined;
+      }
+      if (mem.occurred_at) {
+        const occurred = Date.parse(mem.occurred_at);
+        if (!Number.isNaN(occurred)) return occurred;
+      }
     }
-    return undefined;
+
+    const t = Date.parse(task.created_at);
+    return Number.isNaN(t) ? undefined : t;
   }
 
   async search(query: string, options?: SearchOptions): Promise<SearchResult[]> {
