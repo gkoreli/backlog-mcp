@@ -103,6 +103,8 @@ const TYPE_WORDS: Record<string, EntityType> = {
   'milestones': EntityType.Milestone,
   'cron': EntityType.Cron,
   'crons': EntityType.Cron,
+  'memory': EntityType.Memory,
+  'memories': EntityType.Memory,
 };
 
 /**

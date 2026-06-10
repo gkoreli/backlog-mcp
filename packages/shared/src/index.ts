@@ -27,12 +27,15 @@ export {
   ArtifactSchema,
   MilestoneSchema,
   CronSchema,
+  MemorySchema,
+  MEMORY_LAYERS,
   TaskSubstrate,
   EpicSubstrate,
   FolderSubstrate,
   ArtifactSubstrate,
   MilestoneSubstrate,
   CronSubstrate,
+  MemorySubstrate,
   type SubstrateDefinition,
   type SubstrateStructure,
   type SubstrateUI,
@@ -42,6 +45,8 @@ export {
   type Artifact,
   type Milestone,
   type Cron,
+  type Memory,
+  type MemoryLayerName,
 } from './substrates/index.js';
 
 export { isValidCronExpression } from './cron-expression.js';

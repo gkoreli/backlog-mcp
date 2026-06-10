@@ -11,6 +11,7 @@ import chevronIconSvg from './chevron.svg';
 import settingsIconSvg from './settings.svg';
 import ringIconSvg from './ring.svg';
 import activityIconSvg from './activity.svg';
+import sparkleIconSvg from './sparkle.svg';
 
 export const copyIcon = copyIconSvg;
 export const pinIcon = pinIconSvg;
@@ -24,3 +25,5 @@ export const chevronIcon = chevronIconSvg;
 export const settingsIcon = settingsIconSvg;
 export const ringIcon = ringIconSvg;
 export const activityIcon = activityIconSvg;
+/** Memory substrate icon (ADR 0092.3) — sparkle, until a dedicated glyph lands. */
+export const memoryIcon = sparkleIconSvg;

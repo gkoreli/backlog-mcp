@@ -84,8 +84,8 @@ describe('Substrates Backend', () => {
       expect(formatEntityId(3, 'epic')).toBe('EPIC-0003');
     });
 
-    it('should have all 6 types in ENTITY_TYPES', () => {
-      expect(ENTITY_TYPES).toEqual(['task', 'epic', 'folder', 'artifact', 'milestone', 'cron']);
+    it('should have all 7 types in ENTITY_TYPES', () => {
+      expect(ENTITY_TYPES).toEqual(['task', 'epic', 'folder', 'artifact', 'milestone', 'cron', 'memory']);
     });
 
     it('should have correct prefix mapping', () => {
@@ -96,6 +96,7 @@ describe('Substrates Backend', () => {
         artifact: 'ARTF',
         milestone: 'MLST',
         cron: 'CRON',
+        memory: 'MEMO',
       });
     });
   });

@@ -13,7 +13,9 @@
 import type { MemoryComposer } from '@backlog-mcp/memory';
 import { ValidationError, type RecallParams, type RecallResult, type RecallItem } from './types.js';
 
-const DEFAULT_LAYERS = ['episodic'] as const;
+// ADR-0092.3: recall defaults to all persisted layers — an agent asking
+// "how do we deploy?" wants the procedural answer, not just episodes.
+const DEFAULT_LAYERS = ['episodic', 'semantic', 'procedural'] as const;
 
 export interface RecallDeps {
   /**

@@ -87,16 +87,17 @@ describe('core/recall', () => {
     expect(result.items.map(i => i.id)).toEqual(['art']);
   });
 
-  it('defaults to layer=[episodic] when layers param is absent', async () => {
+  it('defaults to all persisted layers when layers param is absent (ADR-0092.3)', async () => {
     // Register a semantic store too, seed both with matching content,
-    // and verify semantic is NOT returned by default.
+    // and verify BOTH are returned by default — an agent asking "how do we
+    // deploy?" wants the procedural/semantic answer, not just episodes.
     const sem = new InMemoryStore();
     composer.register('semantic', sem);
     await store.store({ id: 'ep', layer: 'episodic', content: 'alpha', source: 's', createdAt: 1 });
     await sem.store({ id: 'se', layer: 'semantic', content: 'alpha', source: 's', createdAt: 1 });
 
     const result = await recall({ query: 'alpha' }, { memoryComposer: composer });
-    expect(result.items.map(i => i.id)).toEqual(['ep']);
+    expect(result.items.map(i => i.id).sort()).toEqual(['ep', 'se']);
   });
 
   it('respects explicit layers filter', async () => {

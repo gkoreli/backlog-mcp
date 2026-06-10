@@ -35,9 +35,13 @@ export class MemoryComposer {
   /** Recall across targeted stores, merge and rank results */
   async recall(query: RecallQuery): Promise<MemoryResult[]> {
     const limit = query.limit ?? this.defaultLimit;
-    const targets = query.layers
-      ? query.layers.map(l => this.stores.get(l)).filter(Boolean) as MemoryStore[]
-      : [...this.stores.values()];
+    // Dedupe store instances — one store may serve several layers (e.g.
+    // BacklogMemoryStore handles episodic+semantic+procedural); query it once.
+    const targets = [...new Set(
+      query.layers
+        ? query.layers.map(l => this.stores.get(l)).filter(Boolean) as MemoryStore[]
+        : [...this.stores.values()],
+    )];
 
     if (targets.length === 0) return [];
 

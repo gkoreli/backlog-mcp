@@ -8,4 +8,5 @@ export * from './folder.js';
 export * from './artifact.js';
 export * from './milestone.js';
 export * from './cron.js';
+export * from './memory.js';
 export * from './registry.js';

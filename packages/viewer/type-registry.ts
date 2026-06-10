@@ -9,7 +9,7 @@
  * all come from the shared substrate — single source of truth.
  */
 import { EntityType, SUBSTRATES } from '@backlog-mcp/shared';
-import { taskIcon, epicIcon, folderIcon, artifactIcon, milestoneIcon, cronIcon } from './icons/index.js';
+import { taskIcon, epicIcon, folderIcon, artifactIcon, milestoneIcon, cronIcon, memoryIcon } from './icons/index.js';
 
 const ICONS: Record<EntityType, string> = {
   [EntityType.Task]: taskIcon,
@@ -18,6 +18,7 @@ const ICONS: Record<EntityType, string> = {
   [EntityType.Artifact]: artifactIcon,
   [EntityType.Milestone]: milestoneIcon,
   [EntityType.Cron]: cronIcon,
+  [EntityType.Memory]: memoryIcon,
 };
 
 export interface TypeConfig {

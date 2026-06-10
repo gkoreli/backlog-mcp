@@ -24,6 +24,7 @@ import { FolderSubstrate } from './folder.js';
 import { ArtifactSubstrate } from './artifact.js';
 import { MilestoneSubstrate } from './milestone.js';
 import { CronSubstrate } from './cron.js';
+import { MemorySubstrate } from './memory.js';
 import type { SubstrateDefinition } from './base.js';
 
 export const SUBSTRATES = {
@@ -33,6 +34,7 @@ export const SUBSTRATES = {
   [EntityType.Artifact]: ArtifactSubstrate,
   [EntityType.Milestone]: MilestoneSubstrate,
   [EntityType.Cron]: CronSubstrate,
+  [EntityType.Memory]: MemorySubstrate,
 } as const satisfies Record<EntityType, SubstrateDefinition>;
 
 /**
@@ -49,6 +51,7 @@ export const EntitySchema = z.discriminatedUnion('type', [
   ArtifactSubstrate.schema,
   MilestoneSubstrate.schema,
   CronSubstrate.schema,
+  MemorySubstrate.schema,
 ]);
 
 /** The canonical Entity type — discriminated union across all substrates. */
@@ -61,6 +64,7 @@ export type { Folder } from './folder.js';
 export type { Artifact } from './artifact.js';
 export type { Milestone } from './milestone.js';
 export type { Cron } from './cron.js';
+export type { Memory } from './memory.js';
 
 /** Look up a substrate by EntityType enum value. */
 export function getSubstrate(type: EntityType): SubstrateDefinition {
