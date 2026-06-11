@@ -19,9 +19,12 @@ import type { MemoryComposer } from '@backlog-mcp/memory';
 import { z } from 'zod';
 import { recall } from '../core/recall.js';
 import { ValidationError } from '../core/types.js';
+import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 
 export interface BacklogRecallDeps {
   memoryComposer?: MemoryComposer;
+  /** Logs recall demand to the usage JSONL (ADR 0092.9 R-16). */
+  usageTracker?: MemoryUsageTracker;
 }
 
 export function registerBacklogRecallTool(
@@ -63,6 +66,9 @@ export function registerBacklogRecallTool(
           },
           { ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}) },
         );
+        // Recall demand log (R-16) — weak signal, JSONL only; recall stays
+        // a pure read of the memory entities themselves.
+        deps?.usageTracker?.recordRecall(params.query, result.items.map(i => i.id));
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       } catch (e) {
         if (e instanceof ValidationError) {

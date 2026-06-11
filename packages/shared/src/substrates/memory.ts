@@ -60,8 +60,14 @@ export const MemorySchema = BaseEntitySchema.extend({
   tags: z.array(z.string()).optional(),
   /** ISO timestamp after which this memory is expired. Absent = always valid. */
   valid_until: z.string().nullable().optional(),
-  /** Echo/fizzle usage counter (ADR 0092 Phase 4). */
+  /** Strong-usage counter — expand + cite events only (ADR 0092.9 R-14). */
   usage_count: z.number().int().nonnegative().default(0),
+  /**
+   * When the memory was last strongly used (ADR 0092.9 R-13). Flushed
+   * relatime-style: only on bucket boundaries or >24h staleness — the
+   * JSONL usage log holds the exact event history.
+   */
+  last_used_at: z.string().optional(),
   /** MEMO- id this memory replaces (correction lineage). */
   supersedes: z.string().optional(),
   /**
@@ -101,7 +107,7 @@ export const MemorySubstrate = {
     // folder, epic, or milestone. Scoped recall = subtree filtering.
     validParents: ['folder', 'epic', 'milestone', 'task'],
   },
-  extraFields: ['layer', 'kind', 'derived', 'state_key', 'source', 'entity_refs', 'tags', 'occurred_at', 'valid_until', 'usage_count', 'supersedes'],
+  extraFields: ['layer', 'kind', 'derived', 'state_key', 'source', 'entity_refs', 'tags', 'occurred_at', 'valid_until', 'usage_count', 'last_used_at', 'supersedes'],
   hint: 'Agent memory record (ADR 0092.3). Body = the memory content. layer: episodic|semantic|procedural. Written via backlog_remember or implicit capture; read via backlog_recall. Excluded from default list/search — recall is the read surface.',
   ui: {
     gradient: 'linear-gradient(135deg, #f7b955, #a371f7)',

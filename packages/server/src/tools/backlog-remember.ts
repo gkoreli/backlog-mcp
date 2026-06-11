@@ -13,10 +13,13 @@ import { z } from 'zod';
 import { remember } from '../core/remember.js';
 import { ValidationError } from '../core/types.js';
 import type { Actor } from '../operations/types.js';
+import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 
 export interface BacklogRememberDeps {
   memoryComposer?: MemoryComposer;
   actor?: Actor;
+  /** Records MEMO- citations in remembered content as strong usage (R-14). */
+  usageTracker?: MemoryUsageTracker;
 }
 
 export function registerBacklogRememberTool(
@@ -69,6 +72,14 @@ export function registerBacklogRememberTool(
             ...(deps?.actor?.name ? { actorName: deps.actor.name } : {}),
           },
         );
+        // Citation signal (R-14): MEMO- ids referenced by the new memory's
+        // content or entity_refs were evidently useful — bump them.
+        if (deps?.usageTracker) {
+          await deps.usageTracker.recordCitations(
+            [params.content],
+            (params.entity_refs ?? []).filter(r => r !== result.id),
+          );
+        }
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       } catch (e) {
         if (e instanceof ValidationError) {

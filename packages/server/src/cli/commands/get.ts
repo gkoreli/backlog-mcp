@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
 import { getItems } from '../../core/get.js';
 import type { GetResult } from '../../core/types.js';
+import { defaultUsageTracker } from '../../memory/bootstrap.js';
 import { run } from '../runner.js';
 
 function format(result: GetResult): string {
@@ -14,7 +15,16 @@ export function registerGet(program: Command): void {
     .command('get <ids...>')
     .description('Get one or more items by ID')
     .action((ids) => run(
-      (s) => getItems(s, { ids }),
+      async (s) => {
+        const result = await getItems(s, { ids });
+        // Stub→expand strong usage signal (ADR 0092.9 R-14).
+        for (const item of result.items) {
+          if (item.id.startsWith('MEMO-') && item.content !== null) {
+            await defaultUsageTracker.recordExpand(item.id);
+          }
+        }
+        return result;
+      },
       format,
       program.opts().json,
     ));

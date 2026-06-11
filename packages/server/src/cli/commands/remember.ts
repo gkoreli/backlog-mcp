@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { remember } from '../../core/remember.js';
-import { defaultMemoryComposer } from '../../memory/bootstrap.js';
+import { defaultMemoryComposer, defaultUsageTracker } from '../../memory/bootstrap.js';
 import { envActor } from '../../operations/logger.js';
 import type { RememberResult } from '../../core/types.js';
 import { run } from '../runner.js';
@@ -27,7 +27,8 @@ export function registerRemember(program: Command): void {
     .option('--supersedes <id>', 'MEMO- id this memory replaces')
     .option('--derived', 'Mark as inference (consolidator output) — requires --refs')
     .action((contentParts: string[], opts) => run(
-      () => remember(
+      async () => {
+        const result = await remember(
         {
           content: contentParts.join(' '),
           ...(opts.layer !== undefined ? { layer: opts.layer } : {}),
@@ -42,7 +43,14 @@ export function registerRemember(program: Command): void {
           ...(opts.derived !== undefined ? { derived: opts.derived } : {}),
         },
         { memoryComposer: defaultMemoryComposer, actorName: envActor().name },
-      ),
+        );
+        // Citation signal (ADR 0092.9 R-14): cited MEMO- ids were useful.
+        await defaultUsageTracker.recordCitations(
+          [contentParts.join(' ')],
+          ((opts.refs as string[] | undefined) ?? []).filter(r => r !== result.id),
+        );
+        return result;
+      },
       format,
       program.opts().json,
     ));

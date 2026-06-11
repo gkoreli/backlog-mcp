@@ -19,10 +19,14 @@
  * module doesn't force singleton construction before paths are configured.
  */
 
+import { appendFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { MemoryComposer } from '@backlog-mcp/memory';
 import { BacklogMemoryStore } from './backlog-memory-store.js';
+import { MemoryUsageTracker } from './usage-tracker.js';
 import { BacklogService } from '../storage/backlog-service.js';
 import type { IBacklogService } from '../storage/service-types.js';
+import { paths } from '../utils/paths.js';
 
 export function createDefaultComposer(
   getService: () => IBacklogService = () => BacklogService.getInstance(),
@@ -41,3 +45,18 @@ export function createDefaultComposer(
  * because they live in the backlog itself.
  */
 export const defaultMemoryComposer: MemoryComposer = createDefaultComposer();
+
+/**
+ * Default usage tracker (ADR 0092.9). JSONL audit log lives next to the
+ * memories (`$BACKLOG_DATA_DIR/memory-usage.jsonl` — human-readable,
+ * replayable); the frontmatter summary flushes relatime-gated through the
+ * singleton service. IO is wrapped: a failing audit log never breaks reads.
+ */
+export const defaultUsageTracker: MemoryUsageTracker = new MemoryUsageTracker({
+  getService: () => BacklogService.getInstance(),
+  appendLine: (line) => {
+    try {
+      appendFileSync(join(paths.backlogDataDir, 'memory-usage.jsonl'), line + '\n');
+    } catch { /* best-effort audit log */ }
+  },
+});

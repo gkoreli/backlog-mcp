@@ -14,6 +14,7 @@ import { registerBacklogRecallTool } from './backlog-recall.js';
 import { registerBacklogRememberTool } from './backlog-remember.js';
 import { registerBacklogForgetTool } from './backlog-forget.js';
 import { registerBacklogConsolidationTool } from './backlog-consolidation.js';
+import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import { registerWriteResourceTool } from './backlog-write-resource.js';
 
 /**
@@ -42,13 +43,15 @@ export interface ToolDeps {
   memoryComposer?: MemoryComposer;
   /** Read a local file by path. Node-only; Worker omits. */
   readLocalFile?: (filePath: string) => string | null;
+  /** Memory usage tracker (ADR 0092.9). Node wires the default; Worker omits. */
+  usageTracker?: MemoryUsageTracker;
   /** Absolute path to identity.md. Node-only. */
   identityPath?: string;
 }
 
 export function registerTools(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   registerBacklogListTool(server, service);
-  registerBacklogGetTool(server, service);
+  registerBacklogGetTool(server, service, deps?.usageTracker ? { usageTracker: deps.usageTracker } : undefined);
   registerBacklogCreateTool(server, service, deps);
   registerBacklogUpdateTool(server, service, deps);
   registerBacklogDeleteTool(server, service, deps);
@@ -62,10 +65,14 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
     ...(deps?.readLocalFile ? { readLocalFile: deps.readLocalFile } : {}),
     ...(deps?.identityPath ? { identityPath: deps.identityPath } : {}),
   });
-  registerBacklogRecallTool(server, deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : undefined);
+  registerBacklogRecallTool(server, {
+    ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
+    ...(deps?.usageTracker ? { usageTracker: deps.usageTracker } : {}),
+  });
   registerBacklogRememberTool(server, {
     ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
     ...(deps?.actor ? { actor: deps.actor } : {}),
+    ...(deps?.usageTracker ? { usageTracker: deps.usageTracker } : {}),
   });
   registerBacklogForgetTool(server, deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : undefined);
   registerBacklogConsolidationTool(server, service);

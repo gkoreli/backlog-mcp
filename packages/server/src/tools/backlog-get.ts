@@ -2,6 +2,12 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
 import { getItems, type GetItem } from '../core/index.js';
+import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
+
+export interface BacklogGetDeps {
+  /** Records MEMO- expands as strong usage events (ADR 0092.9 R-14). */
+  usageTracker?: MemoryUsageTracker;
+}
 
 /** MCP transport formatting — core returns raw data, we present it */
 function formatItem(item: GetItem): string {
@@ -14,7 +20,7 @@ function formatItem(item: GetItem): string {
   return item.content;
 }
 
-export function registerBacklogGetTool(server: McpServer, service: IBacklogService): void {
+export function registerBacklogGetTool(server: McpServer, service: IBacklogService, deps?: BacklogGetDeps): void {
   server.registerTool(
     'backlog_get',
     {
@@ -29,6 +35,15 @@ export function registerBacklogGetTool(server: McpServer, service: IBacklogServi
         return { content: [{ type: 'text', text: 'Required: id' }], isError: true };
       }
       const result = await getItems(service, { ids });
+      // Stub→expand is the strong usage signal (ADR 0092.9 R-14): an agent
+      // fetching a MEMO- body chose that memory after seeing the stub menu.
+      if (deps?.usageTracker) {
+        for (const item of result.items) {
+          if (item.id.startsWith('MEMO-') && item.content !== null) {
+            await deps.usageTracker.recordExpand(item.id);
+          }
+        }
+      }
       const text = result.items.map(formatItem).join('\n\n---\n\n');
       return { content: [{ type: 'text', text }] };
     }

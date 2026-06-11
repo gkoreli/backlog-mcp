@@ -8,7 +8,7 @@ import { BacklogService } from './storage/backlog-service.js';
 import { resourceManager } from './resources/manager.js';
 import { operationLogger, envActor } from './operations/logger.js';
 import { eventBus } from './events/index.js';
-import { defaultMemoryComposer } from './memory/bootstrap.js';
+import { defaultMemoryComposer, defaultUsageTracker } from './memory/bootstrap.js';
 import { paths } from './utils/paths.js';
 import { logger } from './utils/logger.js';
 import { resolveSourcePath } from './utils/resolve-source-path.js';
@@ -32,6 +32,7 @@ const app = createApp(service, {
   operationLog: operationLogger,
   eventBus,
   memoryComposer: defaultMemoryComposer,
+  usageTracker: defaultUsageTracker,
   resourceManager,
   staticMiddleware: serveStatic({ root: paths.viewerDist }),
   readLocalFile,

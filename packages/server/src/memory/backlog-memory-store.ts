@@ -27,6 +27,7 @@
 import { EntityType, MemorySchema, nextEntityId, isValidEntityId, type Entity, type Memory } from '@backlog-mcp/shared';
 import type { MemoryStore, MemoryEntry, MemoryLayer, RecallQuery, MemoryResult, ForgetFilter } from '@backlog-mcp/memory';
 import type { IBacklogService } from '../storage/service-types.js';
+import { usageFactor } from './usage-signal.js';
 
 /** Layers this store persists. 'session' is intentionally absent. */
 const PERSISTED_LAYERS: readonly MemoryLayer[] = ['episodic', 'semantic', 'procedural'];
@@ -149,10 +150,13 @@ export class BacklogMemoryStore implements MemoryStore {
       if (query.tags && !query.tags.some(t => m.tags?.includes(t))) continue;
       if (m.valid_until && Date.parse(m.valid_until) <= now) continue;
 
-      results.push({ entry: this.toMemoryEntry(m), score: hit.score });
-      if (results.length >= limit) break;
+      // Bounded usage multiplier (ADR 0092.9 R-15): reorders, never hides.
+      // Applied over the full filtered candidate set BEFORE truncation so
+      // the multiplier has room to reorder (Mem0's widened-pool lesson).
+      results.push({ entry: this.toMemoryEntry(m), score: hit.score * usageFactor(m, now) });
     }
-    return results;
+    results.sort((a, b) => b.score - a.score);
+    return results.slice(0, limit);
   }
 
   async forget(filter: ForgetFilter): Promise<number> {
