@@ -9,14 +9,23 @@
  * that route file:// and mcp:// to the split-pane viewer.
  */
 import { signal, computed, type ReadonlySignal, component, html, when, each, type TemplateResult, inject } from '@nisli/core';
+import { isValidEntityId } from '@backlog-mcp/shared';
 import { SplitPaneState } from '../services/split-pane-state.js';
 
 type MetadataCardProps = {
   entries: Array<{ key: string; value: unknown }>;
 };
 
-/** Render a single frontmatter value as a template */
-function renderValue(value: unknown, splitState: SplitPaneState): TemplateResult {
+/**
+ * Render a single frontmatter value as a template.
+ *
+ * ADR 0092.11: entity-id strings (TASK-0001, MEMO-0007, …) are navigable —
+ * evidence chains (entity_refs), correction lineage (supersedes), and
+ * parent links open in the split pane instead of dying as inert text.
+ * `valid_until` in the past and `derived: true` get semantic chips so
+ * expiry and inference-vs-evidence are legible at a glance.
+ */
+function renderValue(value: unknown, key: string, splitState: SplitPaneState): TemplateResult {
   // Reference object: { url, title? }
   if (isReference(value)) {
     return renderLink(value.url, value.title || value.url, splitState);
@@ -33,10 +42,10 @@ function renderValue(value: unknown, splitState: SplitPaneState): TemplateResult
         return html`<li>${renderLink(r.url, r.title || r.url, splitState)}</li>`;
       })}</ul>`;
     }
-    // Array of strings
+    // Array of strings — entity ids become links (ADR 0092.11)
     const items = signal(value);
     return html`<ul class="meta-list">${each(items, (_v, i) => i, (item) =>
-      html`<li>${item}</li>`
+      html`<li>${renderScalar(item.value, key, splitState)}</li>`
     )}</ul>`;
   }
 
@@ -46,6 +55,23 @@ function renderValue(value: unknown, splitState: SplitPaneState): TemplateResult
   }
 
   // Primitive
+  return renderScalar(value, key, splitState);
+}
+
+/** Scalar rendering with entity-id links and validity/inference chips. */
+function renderScalar(value: unknown, key: string, splitState: SplitPaneState): TemplateResult {
+  if (typeof value === 'string' && isValidEntityId(value)) {
+    return renderLink(`mcp://backlog/tasks/${value}.md`, value, splitState);
+  }
+  if (key === 'valid_until' && typeof value === 'string') {
+    const ts = Date.parse(value);
+    if (!Number.isNaN(ts) && ts <= Date.now()) {
+      return html`<span>${value} <span class="meta-chip meta-chip--expired">expired</span></span>`;
+    }
+  }
+  if (key === 'derived' && value === true) {
+    return html`<span class="meta-chip meta-chip--derived">inference — see entity_refs for evidence</span>`;
+  }
   return html`<span>${String(value)}</span>`;
 }
 
@@ -76,7 +102,7 @@ export const MetadataCard = component<MetadataCardProps>('metadata-card', (props
     const entryClass = computed(() => isList.value ? 'meta-entry meta-entry--list' : 'meta-entry meta-entry--scalar');
 
     // Re-render value when it changes
-    const renderedValue = computed(() => renderValue(val.value, splitState));
+    const renderedValue = computed(() => renderValue(val.value, key.value, splitState));
 
     return html`
       <div class="${entryClass}" data-key="${key}">
