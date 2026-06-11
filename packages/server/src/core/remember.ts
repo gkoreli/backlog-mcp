@@ -57,6 +57,11 @@ export async function remember(params: RememberParams, deps: RememberDeps): Prom
       throw new ValidationError(`supersedes must be a MEMO- id; got ${JSON.stringify(params.supersedes)}`);
     }
   }
+  // Provenance invariant (ADR 0092.5 R-8 / 0092.7 D1): inference must cite
+  // its evidence. A derived memory without sources is unauditable.
+  if (params.derived === true && (params.entity_refs?.length ?? 0) === 0) {
+    throw new ValidationError('derived memories must cite their sources: entity_refs is required when derived is true');
+  }
 
   let occurredAtMs: number | undefined;
   if (params.occurred_at !== undefined) occurredAtMs = assertIsoDate(params.occurred_at, 'occurred_at');
@@ -88,6 +93,7 @@ export async function remember(params: RememberParams, deps: RememberDeps): Prom
       ...(params.state_key ? { state_key: params.state_key } : {}),
       ...(params.occurred_at ? { occurred_at: params.occurred_at } : {}),
       ...(params.supersedes ? { supersedes: params.supersedes } : {}),
+      ...(params.derived === true ? { derived: true } : {}),
     },
   };
 

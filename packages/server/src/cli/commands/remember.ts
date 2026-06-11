@@ -25,6 +25,7 @@ export function registerRemember(program: Command): void {
     .option('--occurred-at <iso>', 'When the event occurred (ISO date)')
     .option('--valid-until <iso>', 'Expiry (ISO date)')
     .option('--supersedes <id>', 'MEMO- id this memory replaces')
+    .option('--derived', 'Mark as inference (consolidator output) — requires --refs')
     .action((contentParts: string[], opts) => run(
       () => remember(
         {
@@ -38,6 +39,7 @@ export function registerRemember(program: Command): void {
           ...(opts.occurredAt !== undefined ? { occurred_at: opts.occurredAt } : {}),
           ...(opts.validUntil !== undefined ? { valid_until: opts.validUntil } : {}),
           ...(opts.supersedes !== undefined ? { supersedes: opts.supersedes } : {}),
+          ...(opts.derived !== undefined ? { derived: opts.derived } : {}),
         },
         { memoryComposer: defaultMemoryComposer, actorName: envActor().name },
       ),

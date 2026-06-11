@@ -421,6 +421,11 @@ export interface RememberParams {
   valid_until?: string;
   /** MEMO- id this memory replaces (R-1) — predecessor is soft-expired. */
   supersedes?: string;
+  /**
+   * Inference marker (ADR 0092.7 D1). Derived memories MUST cite sources:
+   * `derived: true` without non-empty entity_refs is a ValidationError (R-8).
+   */
+  derived?: boolean;
   /** Actor name recorded as the memory source. */
   source?: string;
 }
@@ -450,6 +455,51 @@ export interface ForgetParams {
 
 export interface ForgetResult {
   forgotten: number;
+}
+
+// ── Consolidation candidates (ADR-0092.7 Phase D) ──
+
+export interface ConsolidationParams {
+  /** Minimum bundle size to be ripe. Default: 3. */
+  min_count?: number;
+  /** Minimum age (days) of a bundle's OLDEST member to be ripe. Default: 7. */
+  min_age_days?: number;
+  /** Restrict to one context (parent_id). */
+  context?: string;
+  /** Max bundles returned (ripe first). Default: 10. */
+  limit?: number;
+  /** Max digest lines included per bundle. Default: 10. */
+  max_digests?: number;
+}
+
+/**
+ * One consolidation candidate — a deterministic cluster of live, non-derived
+ * episodic memories sharing a bucket key (context, else first entity_ref).
+ * Computed on demand, never stored (ADR 0097: the store doesn't act).
+ */
+export interface ConsolidationBundle {
+  /** Bucket key: "context:FLDR-0001" | "entity:TASK-0042" | "unscoped". */
+  key: string;
+  context?: string;
+  /** Member MEMO- ids, oldest first. */
+  member_ids: string[];
+  /** One digest line per member (bounded by max_digests). */
+  digests: string[];
+  /** Union of the members' entity_refs — the evidence the bundle points at. */
+  entity_refs: string[];
+  count: number;
+  oldest_created_at: string;
+  newest_created_at: string;
+  /** count ≥ min_count AND oldest age ≥ min_age_days. */
+  ripe: boolean;
+}
+
+export interface ConsolidationCandidatesResult {
+  bundles: ConsolidationBundle[];
+  /** Live, non-derived episodic memories considered. */
+  total_episodic: number;
+  ripe_count: number;
+  params: { min_count: number; min_age_days: number; limit: number };
 }
 
 // ── Edit (body operations) ──

@@ -45,6 +45,7 @@ export function registerBacklogRememberTool(
         occurred_at: z.string().optional().describe('When the remembered event occurred — ISO date/datetime. Decay uses this instead of write time.'),
         valid_until: z.string().optional().describe('Expiry — ISO date/datetime. After this the memory drops out of recall.'),
         supersedes: z.string().optional().describe('MEMO- id this memory replaces. The predecessor is soft-expired.'),
+        derived: z.boolean().optional().describe('Mark as inference (consolidator output). Requires non-empty entity_refs citing the sources.'),
       }),
     },
     async (params) => {
@@ -61,6 +62,7 @@ export function registerBacklogRememberTool(
             ...(params.occurred_at !== undefined ? { occurred_at: params.occurred_at } : {}),
             ...(params.valid_until !== undefined ? { valid_until: params.valid_until } : {}),
             ...(params.supersedes !== undefined ? { supersedes: params.supersedes } : {}),
+            ...(params.derived !== undefined ? { derived: params.derived } : {}),
           },
           {
             ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),

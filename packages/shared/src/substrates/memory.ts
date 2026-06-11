@@ -65,6 +65,13 @@ export const MemorySchema = BaseEntitySchema.extend({
   /** MEMO- id this memory replaces (correction lineage). */
   supersedes: z.string().optional(),
   /**
+   * Inference marker (ADR 0092.7 D1, after Hindsight's epistemic
+   * separation). true = this memory is DERIVED (consolidator output) rather
+   * than direct evidence. Server-enforced invariant (ADR 0092.5 R-8):
+   * derived memories must cite their sources via non-empty entity_refs.
+   */
+  derived: z.boolean().optional(),
+  /**
    * Evolving-fact key (ADR 0092.5 R-2). A new memory with an existing
    * state_key deterministically closes (expires) the previous holder —
    * conflict handling with zero LLM. e.g. "build.bundler", "db.primary".
@@ -94,7 +101,7 @@ export const MemorySubstrate = {
     // folder, epic, or milestone. Scoped recall = subtree filtering.
     validParents: ['folder', 'epic', 'milestone', 'task'],
   },
-  extraFields: ['layer', 'kind', 'state_key', 'source', 'entity_refs', 'tags', 'occurred_at', 'valid_until', 'usage_count', 'supersedes'],
+  extraFields: ['layer', 'kind', 'derived', 'state_key', 'source', 'entity_refs', 'tags', 'occurred_at', 'valid_until', 'usage_count', 'supersedes'],
   hint: 'Agent memory record (ADR 0092.3). Body = the memory content. layer: episodic|semantic|procedural. Written via backlog_remember or implicit capture; read via backlog_recall. Excluded from default list/search — recall is the read surface.',
   ui: {
     gradient: 'linear-gradient(135deg, #f7b955, #a371f7)',

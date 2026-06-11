@@ -15,6 +15,7 @@ import { registerWakeup } from './commands/wakeup.js';
 import { registerRecall } from './commands/recall.js';
 import { registerRemember } from './commands/remember.js';
 import { registerForget } from './commands/forget.js';
+import { registerConsolidation } from './commands/consolidation.js';
 
 const program = new Command()
   .name('backlog-mcp')
@@ -83,6 +84,7 @@ registerWakeup(program);
 registerRecall(program);
 registerRemember(program);
 registerForget(program);
+registerConsolidation(program);
 
 // --- Aliases for common bare-word usage ---
 

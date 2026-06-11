@@ -26,6 +26,9 @@ import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import { createDefaultComposer } from '../memory/bootstrap.js';
 import { createItem } from '../core/create.js';
 import { recall as coreRecall } from '../core/recall.js';
+import { remember as coreRemember } from '../core/remember.js';
+import { forget as coreForget } from '../core/forget.js';
+import { consolidationCandidates } from '../core/consolidation.js';
 import type { WriteContext } from '../core/types.js';
 
 /** Map-backed IBacklogService with real Orama-backed searchUnified. */
@@ -268,6 +271,67 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     expect(result.items.length).toBeGreaterThanOrEqual(1);
     expect(result.items.length).toBeLessThan(6);
     expect(result.truncated).toBe(true);
+  });
+
+  // ── Phase D: provenance invariant + consolidation loop (ADR 0092.7) ─
+
+  it('D1/R-8: derived memories require entity_refs; provenance round-trips', async () => {
+    const composer = createDefaultComposer(() => service);
+
+    await expect(coreRemember(
+      { content: 'Unfounded conclusion', derived: true },
+      { memoryComposer: composer },
+    )).rejects.toThrow(/entity_refs is required/);
+
+    const ok = await coreRemember(
+      { content: 'Founded conclusion', derived: true, entity_refs: ['TASK-0042'], layer: 'semantic' },
+      { memoryComposer: composer },
+    );
+    const stored = await service.get(ok.id) as { derived?: boolean; entity_refs?: string[] };
+    expect(stored.derived).toBe(true);
+    expect(stored.entity_refs).toEqual(['TASK-0042']);
+  });
+
+  it('E2E consolidation loop: episodes → candidates → derived knowledge → retired members → empty candidates', async () => {
+    const composer = createDefaultComposer(() => service);
+    const oldIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Three aged episodics in one context (backdate created_at via save).
+    for (let i = 0; i < 3; i++) {
+      const r = await coreRemember(
+        { content: `Episode ${i}: fixed a flaky SSE case`, layer: 'episodic', context: 'FLDR-0001', entity_refs: ['TASK-0001'] },
+        { memoryComposer: composer },
+      );
+      const e = await service.get(r.id);
+      await service.save({ ...e, created_at: oldIso } as Entity);
+    }
+
+    // 1. Candidates: one ripe bundle.
+    const before = await consolidationCandidates(service, {});
+    expect(before.ripe_count).toBe(1);
+    const bundle = before.bundles[0]!;
+    expect(bundle.key).toBe('context:FLDR-0001');
+    expect(bundle.member_ids).toHaveLength(3);
+
+    // 2. Consolidator writes ONE derived narrative citing the members.
+    const knowledge = await coreRemember(
+      {
+        content: 'SSE reconnects flake under load; the fix pattern is reconnect backoff. Seen 3×.',
+        layer: 'semantic', derived: true, context: 'FLDR-0001',
+        entity_refs: [...bundle.member_ids, 'TASK-0001'],
+      },
+      { memoryComposer: composer },
+    );
+
+    // 3. Retire the members.
+    const retired = await coreForget({ ids: bundle.member_ids }, { memoryComposer: composer });
+    expect(retired.forgotten).toBe(3);
+
+    // 4. Candidates now empty (retired members self-exclude); knowledge recallable.
+    const after = await consolidationCandidates(service, {});
+    expect(after.total_episodic).toBe(0);
+    const recalled = await coreRecall({ query: 'SSE flaky fix pattern' }, { memoryComposer: composer });
+    expect(recalled.items[0]?.id).toBe(knowledge.id);
   });
 
   // ── End-to-end: capture → durable entity → core recall ────────────

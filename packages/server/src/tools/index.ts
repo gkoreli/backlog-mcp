@@ -13,6 +13,7 @@ import { registerBacklogWakeupTool } from './backlog-wakeup.js';
 import { registerBacklogRecallTool } from './backlog-recall.js';
 import { registerBacklogRememberTool } from './backlog-remember.js';
 import { registerBacklogForgetTool } from './backlog-forget.js';
+import { registerBacklogConsolidationTool } from './backlog-consolidation.js';
 import { registerWriteResourceTool } from './backlog-write-resource.js';
 
 /**
@@ -67,4 +68,5 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
     ...(deps?.actor ? { actor: deps.actor } : {}),
   });
   registerBacklogForgetTool(server, deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : undefined);
+  registerBacklogConsolidationTool(server, service);
 }

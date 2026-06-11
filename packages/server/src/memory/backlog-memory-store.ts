@@ -68,6 +68,7 @@ export class BacklogMemoryStore implements MemoryStore {
     const stateKey = typeof meta.state_key === 'string' ? meta.state_key : undefined;
     const supersedes = typeof meta.supersedes === 'string' ? meta.supersedes : undefined;
     const occurredAt = typeof meta.occurred_at === 'string' ? meta.occurred_at : undefined;
+    const derived = meta.derived === true;
     const tags = [...new Set([
       ...(entry.tags ?? []),
       ...(captureKind ? [captureKind] : []),
@@ -88,6 +89,7 @@ export class BacklogMemoryStore implements MemoryStore {
       ...(stateKey ? { state_key: stateKey } : {}),
       ...(supersedes ? { supersedes } : {}),
       ...(occurredAt ? { occurred_at: occurredAt } : {}),
+      ...(derived ? { derived: true } : {}),
       usage_count: typeof meta.usageCount === 'number' ? meta.usageCount : 0,
       created_at: nowIso,
       updated_at: nowIso,
@@ -213,6 +215,7 @@ export class BacklogMemoryStore implements MemoryStore {
         ...(m.state_key ? { state_key: m.state_key } : {}),
         ...(m.kind ? { memory_kind: m.kind } : {}),
         ...(m.occurred_at ? { occurred_at: m.occurred_at } : {}),
+        ...(m.derived === true ? { derived: true } : {}),
         usageCount: m.usage_count ?? 0,
         ...(m.tags?.includes('completion') ? { kind: 'completion' } : m.tags?.includes('artifact') ? { kind: 'artifact' } : {}),
       },
