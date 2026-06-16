@@ -37,6 +37,11 @@ export interface AppDeps extends ToolDeps {
   generateId?: () => string;         // test seam
   generateToken?: (prefix?: string) => string; // test seam
   logAuthEvent?: (event: AuthEvent) => void | Promise<void>;
+  // Error sink — injected by entry points (Node: structured file logger;
+  // Worker: console). Lets transport-free shared code report failures
+  // without importing the Node-only logger (which pulls in paths/fs and
+  // breaks the Workers bundle).
+  logError?: (message: string, data?: Record<string, unknown>) => void;
   // GitHub OAuth — replaces API key form with "Sign in with GitHub"
   githubClientId?: string;           // GitHub OAuth App client ID
   githubClientSecret?: string;       // GitHub OAuth App client secret
@@ -107,8 +112,27 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
     });
-    await server.connect(transport);
-    return transport.handleRequest(c.req.raw);
+    try {
+      await server.connect(transport);
+      return await transport.handleRequest(c.req.raw);
+    } catch (err) {
+      // Without this, a throwing tool handler propagates out unlogged and
+      // the bridge only sees a dropped socket ("mcp-remote lost connection").
+      const error = err instanceof Error ? err : new Error(String(err));
+      deps?.logError?.('MCP request failed', {
+        method: c.req.method,
+        message: error.message,
+        stack: error.stack,
+      });
+      return c.json(
+        {
+          jsonrpc: '2.0',
+          error: { code: -32603, message: `Internal error: ${error.message}` },
+          id: null,
+        },
+        500,
+      );
+    }
   });
 
   // ── Viewer REST API ─────────────────────────────────────────────────────────

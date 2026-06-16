@@ -40,6 +40,7 @@ const app = createApp(service, {
   readUsageLines,
   resolveSourcePath,
   identityPath: join(paths.backlogDataDir, 'identity.md'),
+  logError: (message, data) => logger.error(message, data),
 });
 
 const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, (info) => {
@@ -60,3 +61,20 @@ const shutdown = async () => {
 
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
+
+// Last-resort crash visibility. Without these, an unhandled throw in a tool
+// or transport handler kills the detached server silently — the bridge only
+// reports a lost connection, with no trace anywhere. Log the stack first.
+process.on('uncaughtException', (err: Error) => {
+  logger.error('Uncaught exception', { message: err.message, stack: err.stack });
+  console.error('Uncaught exception:', err);
+  // Process state is undefined after an uncaught exception — flush and exit.
+  try { service.flush(); } catch { /* best effort */ }
+  setTimeout(() => process.exit(1), 200);
+});
+
+process.on('unhandledRejection', (reason: unknown) => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  logger.error('Unhandled rejection', { message: err.message, stack: err.stack });
+  console.error('Unhandled rejection:', err);
+});

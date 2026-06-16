@@ -1,5 +1,6 @@
 import { request } from 'node:http';
 import { spawn } from 'node:child_process';
+import { openSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { paths } from '@/utils/paths.js';
 
@@ -33,9 +34,16 @@ async function getServerVersion(port: number): Promise<string | null> {
 
 async function spawnServer(port: number): Promise<void> {
   const serverPath = join(paths.distRoot, 'node-server.mjs');
+  // Capture the detached server's stdout/stderr instead of discarding them
+  // (stdio:'ignore'). Native crash dumps and console.error bypass the
+  // structured logger; without a real fd they vanish and the bridge only
+  // reports a lost connection. Append so restarts accumulate history.
+  const logDir = join(paths.backlogDataDir, 'logs');
+  mkdirSync(logDir, { recursive: true });
+  const out = openSync(join(logDir, 'server.log'), 'a');
   const child = spawn(process.execPath, [serverPath], {
     detached: true,
-    stdio: 'ignore',
+    stdio: ['ignore', out, out],
     env: { ...process.env, BACKLOG_VIEWER_PORT: String(port) }
   });
   child.unref();
