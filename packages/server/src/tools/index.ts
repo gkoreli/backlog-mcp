@@ -14,6 +14,7 @@ import { registerBacklogRecallTool } from './backlog-recall.js';
 import { registerBacklogRememberTool } from './backlog-remember.js';
 import { registerBacklogForgetTool } from './backlog-forget.js';
 import { registerBacklogConsolidationTool } from './backlog-consolidation.js';
+import { registerBacklogContradictionsTool } from './backlog-contradictions.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import { registerWriteResourceTool } from './backlog-write-resource.js';
 
@@ -76,4 +77,5 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
   });
   registerBacklogForgetTool(server, deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : undefined);
   registerBacklogConsolidationTool(server, service);
+  registerBacklogContradictionsTool(server, service);
 }

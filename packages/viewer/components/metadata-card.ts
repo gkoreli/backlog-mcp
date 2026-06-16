@@ -34,6 +34,18 @@ function renderValue(value: unknown, key: string, splitState: SplitPaneState): T
   // Array
   if (Array.isArray(value)) {
     if (value.length === 0) return html`<span class="meta-empty">—</span>`;
+    // contradicts (ADR 0092.13 R-9): live memories sharing this one's
+    // state_key. A red chip flags the conflict; the ids below it are the
+    // navigable evidence for human adjudication (resolve via remember/forget).
+    if (key === 'contradicts') {
+      const items = signal(value);
+      return html`<span>
+        <span class="meta-chip meta-chip--contradiction">contradiction — ${value.length} live ${value.length === 1 ? 'memory shares' : 'memories share'} this state_key</span>
+        <ul class="meta-list">${each(items, (_v, i) => i, (item) =>
+          html`<li>${renderScalar(item.value, key, splitState)}</li>`
+        )}</ul>
+      </span>`;
+    }
     // Array of references
     if (value.every(isReference)) {
       const items = signal(value);

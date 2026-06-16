@@ -7,6 +7,8 @@ import type { IBacklogService } from '../storage/service-types.js';
 import type { IOperationLog, Actor } from '../operations/types.js';
 import { extractTargetFilename } from '../operations/resource-id.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';
+import { detectContradictions, contradictsFor } from '../core/contradictions.js';
+import type { Entity, Memory } from '@backlog-mcp/shared';
 import {
   createAuthRuntime,
   registerMcpAuthMiddleware,
@@ -141,7 +143,16 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       parentTitle = parent?.title;
     }
 
-    return c.json({ ...task, raw, parentTitle, children });
+    // R-9 visibility (ADR 0092.13): if this is a memory whose state_key has
+    // other live holders, surface them so MetadataCard renders navigable
+    // links + a contradiction chip. Empty/absent for the no-conflict case.
+    let contradicts: string[] | undefined;
+    if ((task.type ?? 'task') === 'memory') {
+      const conflicts = await contradictsFor(service, task as Entity as Memory);
+      if (conflicts.length > 0) contradicts = conflicts;
+    }
+
+    return c.json({ ...task, raw, parentTitle, children, ...(contradicts ? { contradicts } : {}) });
   });
 
   // GET /search
@@ -153,6 +164,12 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     const sort = c.req.query('sort');
     const results = await service.searchUnified(q, { types: types as Array<'task' | 'epic' | 'resource'> | undefined, sort, limit });
     return c.json(results);
+  });
+
+  // GET /memory/contradictions — all contradiction sets (ADR 0092.13 R-9)
+  app.get('/memory/contradictions', async (c) => {
+    const result = await detectContradictions(service);
+    return c.json(result);
   });
 
   // GET /api/status

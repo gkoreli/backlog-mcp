@@ -506,6 +506,40 @@ export interface ConsolidationCandidatesResult {
   params: { min_count: number; min_age_days: number; min_demand: number; limit: number };
 }
 
+// ── Contradiction detection (ADR-0092.13, implementing ADR-0092.5 R-9) ──
+
+/** One live holder of a contradicted state_key, with adjudication context. */
+export interface ContradictionMember {
+  id: string;
+  title: string;
+  created_at: string;
+  /** Present only if the memory carries an expiry (a live one is future-dated). */
+  valid_until?: string;
+  /** Evidence pointers — the human adjudicates with sources, not just ids. */
+  entity_refs: string[];
+  /** Actor that wrote the memory, when recorded. */
+  source?: string;
+}
+
+/** ≥2 live memories sharing one state_key — the R-2 invariant breached. */
+export interface ContradictionGroup {
+  state_key: string;
+  /** Members newest-first — the most recent belief leads. */
+  members: ContradictionMember[];
+  count: number;
+  /** Newest member's created_at — drives most-recent-first group ordering. */
+  newest_created_at: string;
+}
+
+export interface ContradictionsResult {
+  /** Contradiction sets, most-recent first. Empty = no conflicts. */
+  groups: ContradictionGroup[];
+  /** Live memories carrying a state_key that were considered. */
+  total_live_keyed: number;
+  /** groups.length — the number of conflicted keys. */
+  contradiction_count: number;
+}
+
 // ── Edit (body operations) ──
 
 export interface EditOperation {

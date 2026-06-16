@@ -994,6 +994,13 @@ metadata-card {
   color: #a371f7;
   border: 1px solid rgba(163, 113, 247, 0.4);
 }
+/* ADR 0092.13 R-9 — two live beliefs about one fact, flagged for the human. */
+.meta-chip--contradiction {
+  background: rgba(219, 109, 40, 0.18);
+  color: #db6d28;
+  border: 1px solid rgba(219, 109, 40, 0.5);
+  margin-bottom: 4px;
+}
 .meta-value {
   color: #d4d4d4;
   word-break: break-word;
