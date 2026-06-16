@@ -464,6 +464,8 @@ export interface ConsolidationParams {
   min_count?: number;
   /** Minimum age (days) of a bundle's OLDEST member to be ripe. Default: 7. */
   min_age_days?: number;
+  /** Recall-demand threshold for the age-OR-demand gate (ADR 0092.12). Default: 3. */
+  min_demand?: number;
   /** Restrict to one context (parent_id). */
   context?: string;
   /** Max bundles returned (ripe first). Default: 10. */
@@ -488,9 +490,11 @@ export interface ConsolidationBundle {
   /** Union of the members' entity_refs — the evidence the bundle points at. */
   entity_refs: string[];
   count: number;
+  /** Recall events (last 30d) that returned a member (ADR 0092.12). */
+  demand: number;
   oldest_created_at: string;
   newest_created_at: string;
-  /** count ≥ min_count AND oldest age ≥ min_age_days. */
+  /** count ≥ min_count AND (oldest age ≥ min_age_days OR demand ≥ min_demand). */
   ripe: boolean;
 }
 
@@ -499,7 +503,7 @@ export interface ConsolidationCandidatesResult {
   /** Live, non-derived episodic memories considered. */
   total_episodic: number;
   ripe_count: number;
-  params: { min_count: number; min_age_days: number; limit: number };
+  params: { min_count: number; min_age_days: number; min_demand: number; limit: number };
 }
 
 // ── Edit (body operations) ──

@@ -12,12 +12,13 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
-import { consolidationCandidates } from '../core/consolidation.js';
+import { consolidationCandidates, type ConsolidationDeps } from '../core/consolidation.js';
 import { ValidationError } from '../core/types.js';
 
 export function registerBacklogConsolidationTool(
   server: McpServer,
   service: IBacklogService,
+  deps?: ConsolidationDeps,
 ): void {
   server.registerTool(
     'backlog_consolidation_candidates',
@@ -31,6 +32,7 @@ export function registerBacklogConsolidationTool(
       inputSchema: z.object({
         min_count: z.number().min(1).optional().describe('Minimum bundle size to be ripe. Default: 3.'),
         min_age_days: z.number().min(0).optional().describe('Minimum age (days) of the oldest member. Default: 7.'),
+        min_demand: z.number().min(0).optional().describe('Recall-demand threshold — bundles recalled this often (30d) are ripe regardless of age. Default: 3.'),
         context: z.string().optional().describe('Restrict to one context (e.g. "FLDR-0001").'),
         limit: z.number().min(1).max(50).optional().describe('Max bundles, ripe first. Default: 10.'),
         max_digests: z.number().min(1).optional().describe('Max digest lines per bundle. Default: 10.'),
@@ -41,10 +43,11 @@ export function registerBacklogConsolidationTool(
         const result = await consolidationCandidates(service, {
           ...(params.min_count !== undefined ? { min_count: params.min_count } : {}),
           ...(params.min_age_days !== undefined ? { min_age_days: params.min_age_days } : {}),
+          ...(params.min_demand !== undefined ? { min_demand: params.min_demand } : {}),
           ...(params.context !== undefined ? { context: params.context } : {}),
           ...(params.limit !== undefined ? { limit: params.limit } : {}),
           ...(params.max_digests !== undefined ? { max_digests: params.max_digests } : {}),
-        });
+        }, deps ?? {});
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       } catch (e) {
         if (e instanceof ValidationError) {

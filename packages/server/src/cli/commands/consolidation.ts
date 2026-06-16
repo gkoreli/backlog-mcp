@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { consolidationCandidates } from '../../core/consolidation.js';
+import { readUsageLines } from '../../memory/bootstrap.js';
 import type { ConsolidationCandidatesResult } from '../../core/types.js';
 import { run } from '../runner.js';
 
@@ -12,7 +13,7 @@ function format(result: ConsolidationCandidatesResult): string {
     '',
   ];
   for (const b of result.bundles) {
-    lines.push(`  ${b.ripe ? '🟢 ripe ' : '⚪ young'}  ${b.key}  (${b.count} members, ${b.oldest_created_at.slice(0, 10)} → ${b.newest_created_at.slice(0, 10)})`);
+    lines.push(`  ${b.ripe ? '🟢 ripe ' : '⚪ young'}  ${b.key}  (${b.count} members${b.demand > 0 ? `, demand ${b.demand}` : ''}, ${b.oldest_created_at.slice(0, 10)} → ${b.newest_created_at.slice(0, 10)})`);
     for (let i = 0; i < b.digests.length; i++) {
       lines.push(`           ${b.member_ids[i] ?? '?'}  ${b.digests[i]}`);
     }
@@ -28,15 +29,17 @@ export function registerConsolidation(program: Command): void {
     .description('Clusters of episodic memories ripe for distillation into knowledge (ADR 0092.7)')
     .option('--min-count <n>', 'Minimum bundle size to be ripe (default 3)', parseInt)
     .option('--min-age-days <n>', 'Minimum age of the oldest member (default 7)', parseInt)
+    .option('--min-demand <n>', 'Recall-demand threshold for ripeness regardless of age (default 3)', parseInt)
     .option('--context <id>', 'Restrict to one context (e.g. FLDR-0001)')
     .option('--limit <n>', 'Max bundles (default 10)', parseInt)
     .action((opts) => run(
       (s) => consolidationCandidates(s, {
         ...(opts.minCount !== undefined ? { min_count: opts.minCount } : {}),
         ...(opts.minAgeDays !== undefined ? { min_age_days: opts.minAgeDays } : {}),
+        ...(opts.minDemand !== undefined ? { min_demand: opts.minDemand } : {}),
         ...(opts.context !== undefined ? { context: opts.context } : {}),
         ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
-      }),
+      }, { readUsageLines }),
       format,
       program.opts().json,
     ));

@@ -19,7 +19,7 @@
  * module doesn't force singleton construction before paths are configured.
  */
 
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MemoryComposer } from '@backlog-mcp/memory';
 import { BacklogMemoryStore } from './backlog-memory-store.js';
@@ -52,6 +52,20 @@ export const defaultMemoryComposer: MemoryComposer = createDefaultComposer();
  * replayable); the frontmatter summary flushes relatime-gated through the
  * singleton service. IO is wrapped: a failing audit log never breaks reads.
  */
+/**
+ * Read the usage JSONL lines (ADR 0092.12) — the demand source for
+ * consolidation ripeness. Best-effort: missing/unreadable file → [].
+ */
+export function readUsageLines(): string[] {
+  try {
+    return readFileSync(join(paths.backlogDataDir, 'memory-usage.jsonl'), 'utf-8')
+      .split('\n')
+      .filter(l => l.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
+
 export const defaultUsageTracker: MemoryUsageTracker = new MemoryUsageTracker({
   getService: () => BacklogService.getInstance(),
   appendLine: (line) => {

@@ -8,7 +8,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Entity, Memory } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/service-types.js';
-import { bucketEpisodics, consolidationCandidates } from '../core/consolidation.js';
+import { bucketEpisodics, consolidationCandidates, demandCounts } from '../core/consolidation.js';
 import { ValidationError } from '../core/types.js';
 
 const NOW = Date.parse('2026-06-10T00:00:00.000Z');
@@ -135,5 +135,51 @@ describe('consolidationCandidates (service-backed)', () => {
     expect(scoped.bundles[0]?.context).toBe('FLDR-0001');
 
     await expect(consolidationCandidates(svc, { min_count: 0 })).rejects.toThrow(ValidationError);
+  });
+
+  it('feeds recall demand from injected usage lines into ripeness (ADR 0092.12)', async () => {
+    const fresh = new Date(NOW - 1 * DAY).toISOString();  // too young to be aged-ripe
+    const svc = mockService([
+      mem('MEMO-0001', { parent_id: 'FLDR-0001', created_at: fresh }),
+      mem('MEMO-0002', { parent_id: 'FLDR-0001', created_at: fresh }),
+      mem('MEMO-0003', { parent_id: 'FLDR-0001', created_at: fresh }),
+    ]);
+    const recent = new Date(NOW - 2 * DAY).toISOString();
+    const lines = [
+      JSON.stringify({ ts: recent, type: 'recall', query: 'sse', ids: ['MEMO-0001'] }),
+      JSON.stringify({ ts: recent, type: 'recall', query: 'sse', ids: ['MEMO-0001', 'MEMO-0002'] }),
+      JSON.stringify({ ts: recent, type: 'recall', query: 'sse', ids: ['MEMO-0001'] }),
+    ];
+
+    const result = await consolidationCandidates(
+      svc, { min_age_days: 7, min_demand: 3 }, { readUsageLines: () => lines },
+    );
+    // Young bundle, but recalled 3× within the window → ripe via the demand gate.
+    expect(result.bundles[0]?.demand).toBe(3);
+    expect(result.bundles[0]?.ripe).toBe(true);
+    expect(result.params.min_demand).toBe(3);
+  });
+});
+
+describe('demandCounts (pure fold)', () => {
+  const NOW2 = NOW;
+  it('counts recall events per id within the window, skipping noise', () => {
+    const recent = new Date(NOW2 - 5 * DAY).toISOString();
+    const stale = new Date(NOW2 - 60 * DAY).toISOString();
+    const lines = [
+      JSON.stringify({ ts: recent, type: 'recall', ids: ['MEMO-0001', 'MEMO-0002'] }),
+      JSON.stringify({ ts: recent, type: 'recall', ids: ['MEMO-0001'] }),
+      JSON.stringify({ ts: stale, type: 'recall', ids: ['MEMO-0001'] }),     // outside window
+      JSON.stringify({ ts: recent, type: 'remember', ids: ['MEMO-0001'] }),  // not a recall
+      JSON.stringify({ ts: recent, type: 'recall' }),                        // no ids
+      'not json at all',                                                     // malformed
+    ];
+    const counts = demandCounts(lines, { windowDays: 30, now: NOW2 });
+    expect(counts.get('MEMO-0001')).toBe(2);
+    expect(counts.get('MEMO-0002')).toBe(1);
+  });
+
+  it('returns an empty map for empty input', () => {
+    expect(demandCounts([], { now: NOW2 }).size).toBe(0);
   });
 });
