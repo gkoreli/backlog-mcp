@@ -1,6 +1,6 @@
 import { request } from 'node:http';
 import { spawn } from 'node:child_process';
-import { openSync, mkdirSync } from 'node:fs';
+import { openSync, closeSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { paths } from '@/utils/paths.js';
 
@@ -47,6 +47,9 @@ async function spawnServer(port: number): Promise<void> {
     env: { ...process.env, BACKLOG_VIEWER_PORT: String(port) }
   });
   child.unref();
+  // The child has inherited its own dup of the fd; close the parent's copy
+  // so repeated respawns don't leak descriptors.
+  closeSync(out);
 }
 
 async function shutdownServer(port: number): Promise<void> {
@@ -82,7 +85,13 @@ export async function ensureServer(port: number): Promise<void> {
   }
   
   const serverVersion = await getServerVersion(port);
-  if (serverVersion !== paths.getVersion()) {
+  const ourVersion = paths.getVersion();
+  // Resilient, monotonic upgrade: only replace the incumbent when OURS is
+  // strictly newer. Never downgrade and never restart an equal-or-newer
+  // server. This breaks the multi-bridge "version ping-pong" where a stale
+  // (older npx) bridge and a newer local bridge each kill the other's server
+  // on every connect — the flapping was what corrupted the stdio stream.
+  if (serverVersion && isOlderVersion(serverVersion, ourVersion)) {
     await shutdownServer(port);
     await sleep(1000);
     await spawnServer(port);
@@ -90,4 +99,24 @@ export async function ensureServer(port: number): Promise<void> {
   }
 }
 
-export { isServerRunning, getServerVersion, shutdownServer };
+/**
+ * Semantic-version comparison: returns true when `a` is strictly older than
+ * `b`. Tolerant of non-numeric/odd segments (treated as 0) so a malformed
+ * version never triggers a spurious downgrade. Pre-release tags are ignored
+ * (compared on the numeric core only) — sufficient for our x.y.z scheme.
+ */
+function isOlderVersion(a: string, b: string): boolean {
+  const parse = (v: string): number[] =>
+    (v.split('-')[0] ?? '').split('.').map(n => Number.parseInt(n, 10) || 0);
+  const av = parse(a);
+  const bv = parse(b);
+  const len = Math.max(av.length, bv.length);
+  for (let i = 0; i < len; i++) {
+    const ai = av[i] ?? 0;
+    const bi = bv[i] ?? 0;
+    if (ai !== bi) return ai < bi;
+  }
+  return false; // equal
+}
+
+export { isServerRunning, getServerVersion, shutdownServer, isOlderVersion };

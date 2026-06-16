@@ -1,4 +1,4 @@
-import { appendFile, mkdirSync, existsSync } from 'node:fs';
+import { appendFile, appendFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { paths } from './paths.js';
 
@@ -17,26 +17,46 @@ function getLogFile(): string {
   return join(paths.backlogDataDir, 'logs', `backlog-${date}.log`);
 }
 
-function write(level: Level, message: string, data?: Record<string, unknown>): void {
-  if (levelPriority[level] < levelPriority[getLogLevel()]) return;
-
+function ensureLogDir(): void {
   const logDir = join(paths.backlogDataDir, 'logs');
   if (!existsSync(logDir)) {
     mkdirSync(logDir, { recursive: true });
   }
+}
 
-  const entry = JSON.stringify({
+function buildEntry(level: Level, message: string, data?: Record<string, unknown>): string {
+  return JSON.stringify({
     timestamp: new Date().toISOString(),
     level,
     message,
     ...data,
-  });
+  }) + '\n';
+}
 
-  appendFile(getLogFile(), entry + '\n', (err) => {
+function write(level: Level, message: string, data?: Record<string, unknown>): void {
+  if (levelPriority[level] < levelPriority[getLogLevel()]) return;
+  ensureLogDir();
+  appendFile(getLogFile(), buildEntry(level, message, data), (err) => {
     if (err) {
       process.stderr.write(`Logger error: ${err.message}\n`);
     }
   });
+}
+
+/**
+ * Synchronous write for pre-exit paths (uncaughtException, EADDRINUSE defer,
+ * fatal server errors). The async `write` buffers behind libuv and is dropped
+ * when `process.exit()` runs before the callback fires — so crash/defer
+ * records would silently vanish, which is the exact failure this logging was
+ * added to prevent. Sync append guarantees the record lands before exit.
+ */
+function writeSync(level: Level, message: string, data?: Record<string, unknown>): void {
+  try {
+    ensureLogDir();
+    appendFileSync(getLogFile(), buildEntry(level, message, data));
+  } catch (err) {
+    process.stderr.write(`Logger error: ${(err as Error).message}\n`);
+  }
 }
 
 export const logger: {
@@ -44,9 +64,12 @@ export const logger: {
   info: (message: string, data?: Record<string, unknown>) => void;
   warn: (message: string, data?: Record<string, unknown>) => void;
   error: (message: string, data?: Record<string, unknown>) => void;
+  /** Synchronous error log — use immediately before process.exit so the record isn't lost. */
+  fatalSync: (message: string, data?: Record<string, unknown>) => void;
 } = {
   debug: (message: string, data?: Record<string, unknown>): void => write('debug', message, data),
   info: (message: string, data?: Record<string, unknown>): void => write('info', message, data),
   warn: (message: string, data?: Record<string, unknown>): void => write('warn', message, data),
   error: (message: string, data?: Record<string, unknown>): void => write('error', message, data),
+  fatalSync: (message: string, data?: Record<string, unknown>): void => writeSync('error', message, data),
 };

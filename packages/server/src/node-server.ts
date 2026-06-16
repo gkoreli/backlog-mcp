@@ -51,6 +51,20 @@ const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, (info) => 
   console.log(`- Data directory: ${paths.backlogDataDir}`);
 });
 
+// Resilience: a port collision means another instance already owns this port.
+// Defer to the incumbent and exit *cleanly* (code 0) rather than crashing —
+// the supervisor treats code 0 as "stop", so no respawn loop. Without this,
+// concurrent/duplicate bridges crash-loop and corrupt the stdio stream.
+server.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    // Sync log: process.exit() below would drop an async write before flush.
+    logger.fatalSync('Port already owned by another instance — deferring', { port });
+    process.exit(0);
+  }
+  logger.fatalSync('Server error', { code: err.code, message: err.message, stack: err.stack });
+  process.exit(1);
+});
+
 const shutdown = async () => {
   logger.info('Server shutting down');
   console.log('Shutting down gracefully...');
@@ -66,11 +80,12 @@ process.on('SIGINT', shutdown);
 // or transport handler kills the detached server silently — the bridge only
 // reports a lost connection, with no trace anywhere. Log the stack first.
 process.on('uncaughtException', (err: Error) => {
-  logger.error('Uncaught exception', { message: err.message, stack: err.stack });
+  // Sync log before exit — an async write would be dropped by process.exit.
+  logger.fatalSync('Uncaught exception', { message: err.message, stack: err.stack });
   console.error('Uncaught exception:', err);
   // Process state is undefined after an uncaught exception — flush and exit.
   try { service.flush(); } catch { /* best effort */ }
-  setTimeout(() => process.exit(1), 200);
+  process.exit(1);
 });
 
 process.on('unhandledRejection', (reason: unknown) => {
