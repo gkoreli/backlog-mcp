@@ -105,6 +105,58 @@ backlog-mcp evolves through a deliberate loop, recorded in the ADR thread:
 6. **Record** — engineering-record ADR with distilled insights, validation
    findings, and next phases (patterns: 0092.4, 0092.6). Then loop.
 
+## Memory Protocol (ADR 0092 thread)
+
+backlog-mcp has a durable memory layer. Memories are first-class entities
+(`MEMO-` ids, markdown + frontmatter) — atomic facts you can recall, decay,
+supersede, and rank by usage. Use it; don't let each session start cold.
+
+### The loop
+
+1. **Wake up once, at session start** — run `backlog_wakeup` (CLI: `backlog
+   wakeup`). One dense briefing: active tasks, current epics, top knowledge,
+   recent completions, recent activity. Do not re-run it mid-session.
+2. **Recall before starting a task** — `backlog_recall "<topic>"` once for the
+   work at hand. Treat hits as ground truth about THIS project's conventions
+   and decisions; they override your priors. Recall is the read surface —
+   memories are hidden from plain `search`/`list` by design.
+3. **Remember what's durable** — when you learn a non-obvious decision, a
+   gotcha, a convention, or a fact that will matter next session, write it with
+   `backlog_remember`. One atomic fact per memory.
+4. **Correct, don't duplicate** — when something you already remembered
+   changes, `--supersedes <MEMO-id>` (keeps lineage, expires the old one) or use
+   `--state-key <key>` for evolving single-value facts (a new holder auto-closes
+   the previous). Never write a contradicting second memory.
+
+### Recall discipline (don't clog context)
+
+- Recall **once per task topic**, not before every tool call.
+- A recall result spends context budget — worth it when it replaces
+  re-deriving something expensive, wasteful for trivia.
+
+### What to remember (and what NOT to)
+
+Capture quality is the whole game — noise pollutes recall and erodes trust.
+
+- **Do**: durable decisions, non-obvious gotchas, project conventions,
+  preferences, facts that outlive the session. Pick the right `--layer`
+  (`semantic` = what is true · `procedural` = how we do things · `episodic` =
+  what happened) and `--kind` (`current` · `historical` · `plan` · `preference`
+  · `timeless` — timeless is exempt from decay).
+- **Don't**: obvious facts, one-off details, restated task descriptions,
+  "ran tests, passed". Episodic completions auto-capture on task→done — you
+  don't hand-write those.
+
+### Lifecycle
+
+- `backlog_forget` soft-expires (drops from recall, stays auditable in the
+  viewer); `--expired` hard-deletes already-expired memories (GC).
+- Recall/read bumps a memory's `usage_count` + `last_used_at` — useful memories
+  rank higher over time, stale ones decay. Self-curating; no action needed.
+- When atomic memories sprawl, `backlog_consolidation-candidates` surfaces
+  clusters ripe for distillation into fewer `derived` semantic/procedural
+  memories (ADR 0092.7). Capture small, compress upward.
+
 ## Deployment Posture (ADR 0104)
 
 **Local-first is the primary mode.** The Node/local deployment (filesystem
