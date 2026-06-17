@@ -47,6 +47,14 @@ export {
   type Milestone,
   type Cron,
   type Memory,
+  // `<Type>Entity` aliases — the generic Entity narrowed per substrate (ADR 0106.2 §2)
+  type TaskEntity,
+  type EpicEntity,
+  type FolderEntity,
+  type ArtifactEntity,
+  type MilestoneEntity,
+  type CronEntity,
+  type MemoryEntity,
   type MemoryLayerName,
   type MemoryKind,
 } from './substrates/index.js';

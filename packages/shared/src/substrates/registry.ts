@@ -57,6 +57,23 @@ export const EntitySchema = z.discriminatedUnion('type', [
 /** The canonical Entity type — discriminated union across all substrates. */
 export type Entity = z.infer<typeof EntitySchema>;
 
+/**
+ * `<Type>Entity` aliases — the generic `Entity` narrowed to one substrate.
+ *
+ * These read as "an Entity of this substrate" and make the derivative
+ * relationship explicit, freeing the bare substrate noun (`Task`, `Memory`, …)
+ * from double duty. They are equivalent to each substrate's own `z.infer`
+ * alias, but derived from the union so it stays the single source of truth
+ * (ADR 0106.1 / 0106.2 §2).
+ */
+export type TaskEntity = Extract<Entity, { type: 'task' }>;
+export type EpicEntity = Extract<Entity, { type: 'epic' }>;
+export type FolderEntity = Extract<Entity, { type: 'folder' }>;
+export type ArtifactEntity = Extract<Entity, { type: 'artifact' }>;
+export type MilestoneEntity = Extract<Entity, { type: 'milestone' }>;
+export type CronEntity = Extract<Entity, { type: 'cron' }>;
+export type MemoryEntity = Extract<Entity, { type: 'memory' }>;
+
 /** Per-type inferred aliases — consumers narrow via `.type` to use these. */
 export type { Task } from './task.js';
 export type { Epic } from './epic.js';
