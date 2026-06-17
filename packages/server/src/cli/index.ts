@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import { paths } from '@/utils/paths.js';
+import { resolveViewerPort } from '@/utils/ports.js';
 import { isServerRunning, getServerVersion, shutdownServer } from './server-manager.js';
 import { registerList } from './commands/list.js';
 import { registerGet } from './commands/get.js';
@@ -35,7 +36,7 @@ program
   .command('status')
   .description('Check if server is running')
   .action(async () => {
-    const port = parseInt(process.env.BACKLOG_VIEWER_PORT || '3030');
+    const port = resolveViewerPort(paths.environment);
     const running = await isServerRunning(port);
     if (!running) { console.log('Server is not running'); process.exit(1); }
     try {
@@ -62,7 +63,7 @@ program
   .command('stop')
   .description('Stop the server')
   .action(async () => {
-    const port = parseInt(process.env.BACKLOG_VIEWER_PORT || '3030');
+    const port = resolveViewerPort(paths.environment);
     const running = await isServerRunning(port);
     if (!running) { console.log('Server is not running'); process.exit(0); }
     console.log(`Stopping server on port ${port}...`);

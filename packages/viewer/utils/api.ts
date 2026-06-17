@@ -4,7 +4,7 @@ declare const __API_URL__: string | undefined;
 export const API_URL =
   (typeof __API_URL__ !== 'undefined' && __API_URL__)
     ? __API_URL__
-    : `http://localhost:${window.location.port || 3030}`;
+    : window.location.origin;
 
 export interface Reference {
   url: string;

@@ -1,14 +1,18 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { homedir } from 'node:os';
-import { sep } from 'node:path';
+import { join, sep } from 'node:path';
 import { paths } from '../utils/paths.js';
 
 describe('PathResolver tilde & path resolution', () => {
   const originalDataDir = process.env.BACKLOG_DATA_DIR;
+  const originalNodeEnv = process.env.NODE_ENV;
 
   afterEach(() => {
     if (originalDataDir === undefined) delete process.env.BACKLOG_DATA_DIR;
     else process.env.BACKLOG_DATA_DIR = originalDataDir;
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+    vi.resetModules();
   });
 
   describe('expandTilde', () => {
@@ -72,6 +76,31 @@ describe('PathResolver tilde & path resolution', () => {
       const dir = paths.backlogDataDir;
       expect(dir.endsWith(`${sep}data`)).toBe(true);
       expect(dir.startsWith(sep)).toBe(true);
+    });
+  });
+
+  describe('viewer assets', () => {
+    it('defaults source-mode viewer assets to production when NODE_ENV is unset', async () => {
+      delete process.env.NODE_ENV;
+      const { paths: freshPaths } = await import('../utils/paths.js');
+
+      expect(freshPaths.viewerDist).toBe(join(freshPaths.distRoot, 'viewer'));
+      expect(freshPaths.viewerDist.endsWith(`${sep}src${sep}viewer`)).toBe(false);
+    });
+
+    it('respects explicit development for source-mode viewer assets', async () => {
+      process.env.NODE_ENV = 'development';
+      const { paths: freshPaths } = await import('../utils/paths.js');
+
+      expect(freshPaths.viewerDist).toBe(join(freshPaths.projectRoot, '../viewer/dist'));
+    });
+
+    it('respects explicit production without resolving to src/viewer', async () => {
+      process.env.NODE_ENV = 'production';
+      const { paths: freshPaths } = await import('../utils/paths.js');
+
+      expect(freshPaths.viewerDist).toBe(join(freshPaths.distRoot, 'viewer'));
+      expect(freshPaths.viewerDist.endsWith(`${sep}src${sep}viewer`)).toBe(false);
     });
   });
 });

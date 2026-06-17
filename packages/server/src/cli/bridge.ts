@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import { ensureServer } from './server-manager.js';
 import { Supervisor, DEFAULT_CONFIG } from './supervisor.js';
 import { paths } from '@/utils/paths.js';
+import { resolveViewerPort } from '@/utils/ports.js';
 import { logger } from '@/utils/logger.js';
 
 async function runBridge(port: number): Promise<void> {
@@ -63,7 +64,7 @@ async function runBridge(port: number): Promise<void> {
   spawnBridge();
 }
 
-const port = parseInt(process.env.BACKLOG_VIEWER_PORT || '3030');
+const port = resolveViewerPort(paths.environment);
 runBridge(port).catch((error) => {
   logger.error('Bridge error', { error: String(error) });
   process.exit(1);

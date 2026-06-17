@@ -168,12 +168,14 @@ export class PathResolver {
   }
   
   /**
-   * Detect runtime environment based on NODE_ENV
-   * Defaults to production if not set
+   * Detect runtime environment based on NODE_ENV.
+   * Defaults to production unless NODE_ENV explicitly requests development.
    */
   private detectEnvironment(): RuntimeEnvironment {
     const env = process.env.NODE_ENV;
-    return env === 'development' ? RuntimeEnvironment.Development : RuntimeEnvironment.Production;
+    if (env === RuntimeEnvironment.Development) return RuntimeEnvironment.Development;
+    if (env === RuntimeEnvironment.Production) return RuntimeEnvironment.Production;
+    return RuntimeEnvironment.Production;
   }
   
   /**
@@ -195,13 +197,14 @@ export class PathResolver {
   } {
     const isRunningFromSource = currentDir.includes('/src/');
 
-    if (environment === RuntimeEnvironment.Development && isRunningFromSource) {
-      // Dev mode via tsx: this file is at packages/server/src/utils/paths.ts
+    if (isRunningFromSource) {
+      // Source mode via tsx: this file is at packages/server/src/utils/paths.ts.
       const srcIndex = currentDir.indexOf('/src/');
       const projectRoot = currentDir.substring(0, srcIndex);
       const distRoot = join(projectRoot, 'dist');
-      // Monorepo: viewer is a sibling package
-      const viewerDist = join(projectRoot, '../viewer/dist');
+      const viewerDist = environment === RuntimeEnvironment.Development
+        ? join(projectRoot, '../viewer/dist')
+        : join(distRoot, 'viewer');
       return { projectRoot, distRoot, viewerDist };
     }
 

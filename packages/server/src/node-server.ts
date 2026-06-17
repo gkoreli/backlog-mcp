@@ -10,6 +10,7 @@ import { operationLogger, envActor } from './operations/logger.js';
 import { eventBus } from './events/index.js';
 import { defaultMemoryComposer, defaultUsageTracker, readUsageLines } from './memory/bootstrap.js';
 import { paths } from './utils/paths.js';
+import { resolveViewerPort } from './utils/ports.js';
 import { logger } from './utils/logger.js';
 import { resolveSourcePath } from './utils/resolve-source-path.js';
 
@@ -19,7 +20,7 @@ function readLocalFile(filePath: string): string | null {
 }
 
 const service = BacklogService.getInstance();
-const port = parseInt(process.env.BACKLOG_VIEWER_PORT || '3030');
+const port = resolveViewerPort(paths.environment);
 
 // Node mode wires actor from env, JSONL operation log, and the real
 // event bus for SSE push. Core write functions build a WriteContext
