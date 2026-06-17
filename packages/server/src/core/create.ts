@@ -1,7 +1,7 @@
 import { EntityType, nextEntityId } from '@backlog-mcp/shared';
 import { ZodError } from 'zod';
 import type { IBacklogService } from '../storage/service-types.js';
-import { createTask } from '../storage/schema.js';
+import { createEntity } from '../storage/entity-factory.js';
 import { ValidationError } from './types.js';
 import type { CreateParams, CreateResult, WriteContext } from './types.js';
 import { formatZodError } from './zod-errors.js';
@@ -13,7 +13,7 @@ import { captureArtifact } from '../memory/capture.js';
  * Create a new backlog item.
  *
  * Validation authority: the substrate schema for the requested type
- * (via EntitySchema.parse() inside createTask). This means:
+ * (via EntitySchema.parse() inside createEntity). This means:
  *   - schedule/command/enabled on a non-cron type are rejected
  *   - invalid cron expressions are rejected (CronSchema refinement)
  *   - cron entities without schedule/command are rejected
@@ -40,7 +40,7 @@ export async function createItem(
 
   let task;
   try {
-    task = createTask({
+    task = createEntity({
       id, title, description, type: resolvedType,
       parent_id: resolvedParent, references,
       schedule, command, enabled,
@@ -52,7 +52,7 @@ export async function createItem(
 
   // Preserve legacy epic_id compat: setting parent_id=X shouldn't drop the epic_id
   // already captured when callers provide both. When only epic_id was provided,
-  // createTask already copied it into raw; we also mirror to parent_id for
+  // createEntity already copied it into raw; we also mirror to parent_id for
   // back-compat (list({epic_id}) path expects parent_id).
   if (epic_id && !parent_id) task.epic_id = epic_id;
 

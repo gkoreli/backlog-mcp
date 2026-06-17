@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { storage } from '../storage/backlog-service.js';
 import { nextEntityId } from '@backlog-mcp/shared';
-import { createTask } from '../storage/schema.js';
+import { createEntity } from '../storage/entity-factory.js';
 import { paths } from '../utils/paths.js';
 
 describe('Epic ID Generation', () => {
@@ -28,25 +28,25 @@ describe('Epic ID Generation', () => {
     // Create 25 regular tasks
     for (let i = 1; i <= 25; i++) {
       const id = nextEntityId(await storage.getMaxId(), 'task');
-      const task = createTask({ id, title: `Task ${i}` });
+      const task = createEntity({ id, title: `Task ${i}` });
       await storage.add(task);
     }
 
     // Create first epic
     const epic1Id = nextEntityId(await storage.getMaxId('epic'), 'epic');
-    const epic1 = createTask({ id: epic1Id, title: 'Epic 1', type: 'epic' });
+    const epic1 = createEntity({ id: epic1Id, title: 'Epic 1', type: 'epic' });
     await storage.add(epic1);
     expect(epic1.id).toBe('EPIC-0001');
 
     // Create second epic
     const epic2Id = nextEntityId(await storage.getMaxId('epic'), 'epic');
-    const epic2 = createTask({ id: epic2Id, title: 'Epic 2', type: 'epic' });
+    const epic2 = createEntity({ id: epic2Id, title: 'Epic 2', type: 'epic' });
     await storage.add(epic2);
     expect(epic2.id).toBe('EPIC-0002');
 
     // Create third epic
     const epic3Id = nextEntityId(await storage.getMaxId('epic'), 'epic');
-    const epic3 = createTask({ id: epic3Id, title: 'Epic 3', type: 'epic' });
+    const epic3 = createEntity({ id: epic3Id, title: 'Epic 3', type: 'epic' });
     await storage.add(epic3);
     expect(epic3.id).toBe('EPIC-0003');
 
@@ -64,7 +64,7 @@ describe('Epic ID Generation', () => {
   it('should consider archived tasks when generating IDs', async () => {
     // Create and archive an epic
     const epic1Id = nextEntityId(await storage.getMaxId('epic'), 'epic');
-    const epic1 = createTask({ id: epic1Id, title: 'Epic 1', type: 'epic' });
+    const epic1 = createEntity({ id: epic1Id, title: 'Epic 1', type: 'epic' });
     await storage.add(epic1);
 
     // Archive it by marking as done
@@ -74,13 +74,13 @@ describe('Epic ID Generation', () => {
     // Create 20 regular tasks
     for (let i = 1; i <= 20; i++) {
       const id = nextEntityId(await storage.getMaxId(), 'task');
-      const task = createTask({ id, title: `Task ${i}` });
+      const task = createEntity({ id, title: `Task ${i}` });
       await storage.add(task);
     }
 
     // Create second epic - should be EPIC-0002, not EPIC-0001
     const epic2Id = nextEntityId(await storage.getMaxId('epic'), 'epic');
-    const epic2 = createTask({ id: epic2Id, title: 'Epic 2', type: 'epic' });
+    const epic2 = createEntity({ id: epic2Id, title: 'Epic 2', type: 'epic' });
     await storage.add(epic2);
     expect(epic2.id).toBe('EPIC-0002');
 

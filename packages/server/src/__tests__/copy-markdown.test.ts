@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { storage } from '../storage/backlog-service.js';
-import { createTask } from '../storage/schema.js';
+import { createEntity } from '../storage/entity-factory.js';
 
 describe('Viewer Routes - Copy Markdown', () => {
   const testTaskId = 'TASK-9999';
 
   beforeAll(async () => {
-    const task = createTask({
+    const task = createEntity({
       id: testTaskId,
       title: 'Test Copy Markdown',
       description: 'This is a test task for copy markdown functionality',

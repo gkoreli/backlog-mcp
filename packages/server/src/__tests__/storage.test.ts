@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { storage } from '../storage/backlog-service.js';
-import { createTask } from '../storage/schema.js';
+import { createEntity } from '../storage/entity-factory.js';
 import { paths } from '../utils/paths.js';
 
 // Mock SearchService to isolate storage tests from search behavior
@@ -37,7 +37,7 @@ describe('Storage', () => {
 
   describe('add', () => {
     it('should create a new task', async () => {
-      const task = createTask({ id: 'TASK-0001', title: 'Test task' });
+      const task = createEntity({ id: 'TASK-0001', title: 'Test task' });
       await storage.add(task);
 
       const retrieved = await storage.get(task.id);
@@ -48,7 +48,7 @@ describe('Storage', () => {
 
   describe('save', () => {
     it('should update an existing task', async () => {
-      const task = createTask({ id: 'TASK-0001', title: 'Original' });
+      const task = createEntity({ id: 'TASK-0001', title: 'Original' });
       await storage.add(task);
 
       const updated = { ...task, title: 'Updated' };
@@ -59,14 +59,14 @@ describe('Storage', () => {
     });
 
     it('should throw when saving task with invalid id', async () => {
-      const task = createTask({ id: 'TASK-0001', title: 'Test' });
+      const task = createEntity({ id: 'TASK-0001', title: 'Test' });
       await expect(storage.save({ ...task, id: undefined as any })).rejects.toThrow('invalid id');
       await expect(storage.save({ ...task, id: '' })).rejects.toThrow('invalid id');
       await expect(storage.save({ ...task, id: 'garbage' })).rejects.toThrow('invalid id');
     });
 
     it('should archive task when status is done', async () => {
-      const task = createTask({ id: 'TASK-0001', title: 'Test' });
+      const task = createEntity({ id: 'TASK-0001', title: 'Test' });
       await storage.add(task);
 
       const updated = { ...task, status: 'done' as const };
@@ -84,8 +84,8 @@ describe('Storage', () => {
 
   describe('list', () => {
     it('should list only active tasks by default', async () => {
-      const task1 = createTask({ id: 'TASK-0001', title: 'Active' });
-      const task2 = createTask({ id: 'TASK-0002', title: 'Done' });
+      const task1 = createEntity({ id: 'TASK-0001', title: 'Active' });
+      const task2 = createEntity({ id: 'TASK-0002', title: 'Done' });
 
       await storage.add(task1);
       await storage.add(task2);
@@ -99,7 +99,7 @@ describe('Storage', () => {
     it('should respect archivedLimit parameter', async () => {
       const tasks: any[] = [];
       for (let i = 1; i <= 5; i++) {
-        const task = createTask({ id: `TASK-${String(i).padStart(4, '0')}`, title: `Task ${i}` });
+        const task = createEntity({ id: `TASK-${String(i).padStart(4, '0')}`, title: `Task ${i}` });
         tasks.push(task);
       }
 
@@ -115,7 +115,7 @@ describe('Storage', () => {
 
   describe('delete', () => {
     it('should delete an active task', async () => {
-      const task = createTask({ id: 'TASK-0001', title: 'Test' });
+      const task = createEntity({ id: 'TASK-0001', title: 'Test' });
       await storage.add(task);
 
       const deleted = await storage.delete(task.id);
@@ -124,7 +124,7 @@ describe('Storage', () => {
     });
 
     it('should delete an archived task', async () => {
-      const task = createTask({ id: 'TASK-0001', title: 'Test' });
+      const task = createEntity({ id: 'TASK-0001', title: 'Test' });
       await storage.add(task);
       await storage.save({ ...task, status: 'done' });
 
@@ -141,7 +141,7 @@ describe('Storage', () => {
 
   describe('getMarkdown', () => {
     it('should preserve description with markdown formatting', async () => {
-      const task = createTask({
+      const task = createEntity({
         id: 'TASK-0001',
         title: 'Test',
         description: '## Heading\n\n- Item 1\n- Item 2'
@@ -157,8 +157,8 @@ describe('Storage', () => {
 
   describe('counts', () => {
     it('should return counts by status', async () => {
-      const task1 = createTask({ id: 'TASK-0001', title: 'Open' });
-      const task2 = createTask({ id: 'TASK-0002', title: 'Done' });
+      const task1 = createEntity({ id: 'TASK-0001', title: 'Open' });
+      const task2 = createEntity({ id: 'TASK-0002', title: 'Done' });
 
       await storage.add(task1);
       await storage.add(task2);

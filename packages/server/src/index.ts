@@ -1,3 +1,3 @@
 // Server-only
-export { type CreateTaskInput, createTask } from './storage/schema.js';
+export { type CreateEntityInput, createEntity } from './storage/entity-factory.js';
 export { storage } from './storage/backlog-service.js';
