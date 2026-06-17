@@ -51,6 +51,13 @@ export type MemoryKind = (typeof MEMORY_KINDS)[number];
 
 export const MemorySchema = BaseEntitySchema.extend({
   type: z.literal('memory'),
+  /**
+   * The memory body IS the content (see design note above) — so unlike the
+   * base entity (where tasks may have an empty description), a memory's
+   * description is REQUIRED. Mirrors `title: min(1)`: both fields are
+   * first-class and neither is derived from the other.
+   */
+  description: z.string().min(1),
   layer: z.enum(MEMORY_LAYERS).default('episodic'),
   /** Actor that wrote the memory (agent name, 'user', tool). */
   source: z.string().optional(),

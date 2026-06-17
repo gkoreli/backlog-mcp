@@ -196,7 +196,7 @@ export class BacklogMemoryStore implements MemoryStore {
     return {
       id: m.id,
       title: m.title,
-      content: m.description ?? m.title,
+      content: m.description,
       layer: (m.layer ?? 'episodic') as MemoryLayer,
       source: m.source ?? 'unknown',
       ...(m.parent_id ? { context: m.parent_id } : {}),
