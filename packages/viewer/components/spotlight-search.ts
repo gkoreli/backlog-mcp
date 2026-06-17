@@ -63,7 +63,7 @@ function escapeHtml(text: string): string {
 function generateTaskSnippet(task: Task, q: string): SearchResult['snippet'] {
   const fields: { name: string; value: string }[] = [
     { name: 'title', value: task.title },
-    { name: 'description', value: task.description || '' },
+    { name: 'content', value: task.content || '' },
     { name: 'evidence', value: (task.evidence || []).join(' ') },
     { name: 'blocked_reason', value: (task.blocked_reason || []).join(' ') },
     { name: 'references', value: (task.references || []).map(r => `${r.title || ''} ${r.url}`).join(' ') },

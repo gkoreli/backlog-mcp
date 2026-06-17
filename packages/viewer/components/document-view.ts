@@ -32,7 +32,7 @@ const HEADER_KEYS = new Set([
   'created_at', 'updated_at', 'due_date',
   'parent_id', 'epic_id', 'parentTitle', 'epicTitle',
   // Internal fields not for display
-  'raw', 'filePath', 'fileUri', 'mcpUri', 'description',
+  'raw', 'filePath', 'fileUri', 'mcpUri', 'content',
   'children',
 ]);
 

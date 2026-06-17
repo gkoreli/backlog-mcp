@@ -63,7 +63,7 @@ export const TaskDetail = component('task-detail', () => {
 
   // ── Derived state ──────────────────────────────────────────────
   const hasTask = computed(() => !!task.value && !!app.selectedTaskId.value);
-  const taskDescription = computed(() => task.value?.description ?? '');
+  const taskDescription = computed(() => task.value?.content ?? '');
   const taskType = computed(() => task.value?.type ?? 'task');
   const taskStatus = computed(() => task.value?.status ?? 'open');
   const hasStatus = computed(() => getTypeConfig(taskType.value).hasStatus);

@@ -14,7 +14,7 @@ export interface Reference {
 export interface Task {
   id: string;
   title: string;
-  description?: string;
+  content?: string;
   status: string;
   type?: string;
   epic_id?: string;
