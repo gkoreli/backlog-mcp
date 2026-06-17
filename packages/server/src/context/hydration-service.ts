@@ -2,7 +2,7 @@
  * ContextHydrationService — Pipeline orchestrator for agent context hydration.
  * ADR-0074 (Phase 1), ADR-0075 (Phase 2), ADR-0076 (Phase 3), ADR-0077 (Phase 4), ADR-0078 (Phase 5).
  *
- * Composes existing services (TaskStorage, SearchService, ResourceManager,
+ * Composes existing services (FilesystemStorage, SearchService, ResourceManager,
  * OperationLogger) into a multi-stage context pipeline. This service is
  * stateless — it reads from existing stores and does not own any data.
  *

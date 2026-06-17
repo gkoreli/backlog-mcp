@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
-import { TaskStorage } from './task-storage.js';
+import { FilesystemStorage } from './task-storage.js';
+import type { StorageAdapter } from './storage-adapter.js';
 import { OramaSearchService, type UnifiedSearchResult, type SearchableType, type SearchSnippet } from '@backlog-mcp/memory/search';
 import type { Resource } from '@backlog-mcp/memory/search';
 import { resourceManager } from '../resources/manager.js';
@@ -9,12 +10,15 @@ import { logger } from '../utils/logger.js';
 import type { IBacklogService } from './service-types.js';
 
 /**
- * Composes TaskStorage + SearchService + ResourceManager.
+ * Composes a StorageAdapter + SearchService + ResourceManager.
  * Orchestrates storage operations and search index updates.
+ *
+ * Depends on the StorageAdapter *interface* (not the concrete class) so the
+ * local path mirrors the D1 path's dependency inversion (ADR 0106.3 §A).
  */
 class BacklogService implements IBacklogService {
   private static instance: BacklogService;
-  private taskStorage = new TaskStorage();
+  private storage: StorageAdapter = new FilesystemStorage();
   private search: OramaSearchService;
   private searchReady = false;
   private pendingOps: Array<{ op: 'add' | 'update' | 'remove'; entity?: Entity; id?: string }> = [];
@@ -35,9 +39,9 @@ class BacklogService implements IBacklogService {
 
   private async ensureSearchReady(): Promise<void> {
     if (this.searchReady) return;
-    const allTasks = Array.from(this.taskStorage.iterateTasks());
-    await this.search.index(allTasks);
-    const stats = await this.search.reconcile(allTasks);
+    const allEntities = Array.from(this.storage.iterateEntities());
+    await this.search.index(allEntities);
+    const stats = await this.search.reconcile(allEntities);
     if (stats.added + stats.removed + stats.updated > 0) {
       logger.info('Search index reconciled', { added: stats.added, removed: stats.removed, updated: stats.updated });
     }
@@ -56,19 +60,19 @@ class BacklogService implements IBacklogService {
   }
 
   getFilePath(id: string): string | null {
-    return this.taskStorage.getFilePath(id);
+    return this.storage.getFilePath(id);
   }
 
   getSync(id: string): Entity | undefined {
-    return this.taskStorage.get(id);
+    return this.storage.get(id);
   }
 
   async get(id: string): Promise<Entity | undefined> {
-    return this.taskStorage.get(id);
+    return this.storage.get(id);
   }
 
   async getMarkdown(id: string): Promise<string | null> {
-    return this.taskStorage.getMarkdown(id);
+    return this.storage.getMarkdown(id);
   }
 
   async list(filter?: { status?: Status[]; type?: EntityType; epic_id?: string; parent_id?: string; query?: string; limit?: number }): Promise<Entity[]> {
@@ -83,7 +87,7 @@ class BacklogService implements IBacklogService {
       return results.map(r => ({ ...r.task, score: r.score }));
     }
 
-    return this.taskStorage.list(storageFilter);
+    return this.storage.list(storageFilter);
   }
 
   /**
@@ -145,7 +149,7 @@ class BacklogService implements IBacklogService {
   }
 
   async add(task: Entity): Promise<void> {
-    this.taskStorage.add(task);
+    this.storage.add(task);
     if (this.searchReady) {
       this.search.addDocument(task);
     } else {
@@ -154,7 +158,7 @@ class BacklogService implements IBacklogService {
   }
 
   async save(task: Entity): Promise<void> {
-    this.taskStorage.save(task);
+    this.storage.save(task);
     if (this.searchReady) {
       this.search.updateDocument(task);
     } else {
@@ -163,7 +167,7 @@ class BacklogService implements IBacklogService {
   }
 
   async delete(id: string): Promise<boolean> {
-    const deleted = this.taskStorage.delete(id);
+    const deleted = this.storage.delete(id);
     if (deleted) {
       if (this.searchReady) {
         this.search.removeDocument(id);
@@ -175,7 +179,7 @@ class BacklogService implements IBacklogService {
   }
 
   async counts(): Promise<{ total_tasks: number; total_epics: number; by_status: Record<Status, number>; by_type: Record<string, number> }> {
-    return this.taskStorage.counts();
+    return this.storage.counts();
   }
 
   /**
@@ -186,11 +190,11 @@ class BacklogService implements IBacklogService {
    * For search-based listing, use the async list() method instead.
    */
   listSync(filter?: { status?: Status[]; type?: EntityType; parent_id?: string; limit?: number }): Entity[] {
-    return this.taskStorage.list(filter);
+    return this.storage.list(filter);
   }
 
   async getMaxId(type?: EntityType): Promise<number> {
-    return this.taskStorage.getMaxId(type);
+    return this.storage.getMaxId(type);
   }
 
   flush(): void {

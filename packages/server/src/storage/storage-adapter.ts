@@ -10,14 +10,16 @@ export interface ListFilter {
 
 /**
  * Synchronous storage adapter interface.
- * Implemented by FilesystemStorageAdapter for local/filesystem mode.
+ * Implemented by FilesystemStorage for local/filesystem mode. The "Adapter"
+ * pattern term lives here on the interface; concrete classes name the thing
+ * (FilesystemStorage), not the pattern (ADR 0106.3 §A).
  */
 export interface StorageAdapter {
   get(id: string): Entity | undefined;
   getMarkdown(id: string): string | null;
   list(filter?: ListFilter): Entity[];
-  add(task: Entity): void;
-  save(task: Entity): void;
+  add(entity: Entity): void;
+  save(entity: Entity): void;
   delete(id: string): boolean;
   counts(): {
     total_tasks: number;
@@ -26,20 +28,22 @@ export interface StorageAdapter {
     by_type: Record<string, number>;
   };
   getMaxId(type?: EntityType): number;
-  iterateTasks(): Iterable<Entity>;
+  iterateEntities(): Iterable<Entity>;
+  /** Absolute path to the entity's markdown file, or null if absent (local-only). */
+  getFilePath(id: string): string | null;
 }
 
 /**
  * Async storage adapter interface.
- * Implemented by D1StorageAdapter for Cloudflare Workers / cloud mode.
+ * Implemented by D1Storage for Cloudflare Workers / cloud mode.
  * All methods return Promises to allow async I/O.
  */
 export interface AsyncStorageAdapter {
   get(id: string): Promise<Entity | undefined>;
   getMarkdown(id: string): Promise<string | null>;
   list(filter?: ListFilter): Promise<Entity[]>;
-  add(task: Entity): Promise<void>;
-  save(task: Entity): Promise<void>;
+  add(entity: Entity): Promise<void>;
+  save(entity: Entity): Promise<void>;
   delete(id: string): Promise<boolean>;
   counts(): Promise<{
     total_tasks: number;

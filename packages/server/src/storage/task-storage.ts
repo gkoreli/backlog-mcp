@@ -3,17 +3,22 @@ import { join } from 'node:path';
 import matter from 'gray-matter';
 import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
 import { TYPE_PREFIXES, isValidEntityId } from '@backlog-mcp/shared';
+import type { StorageAdapter, ListFilter } from './storage-adapter.js';
 import { paths } from '../utils/paths.js';
 import { logger } from '../utils/logger.js';
 
-const TASKS_DIR = 'tasks';
+// On-disk directory name. DO NOT change this string — existing data lives in
+// `<backlogDataDir>/tasks/`; renaming the value orphans every stored entity.
+// The symbol is generic ("entities") but the value stays `tasks` for back-compat.
+const ENTITIES_DIR = 'tasks';
 
 /**
- * Pure file I/O for task storage. No search knowledge.
+ * Pure file I/O for entity storage (all substrate types). No search knowledge.
+ * The local/filesystem implementation of {@link StorageAdapter}.
  */
-export class TaskStorage {
-  private get tasksPath(): string {
-    return join(paths.backlogDataDir, TASKS_DIR);
+export class FilesystemStorage implements StorageAdapter {
+  private get entitiesPath(): string {
+    return join(paths.backlogDataDir, ENTITIES_DIR);
   }
 
   private ensureDir(dir: string): void {
@@ -22,37 +27,37 @@ export class TaskStorage {
     }
   }
 
-  private taskFilePath(id: string): string {
-    return join(this.tasksPath, `${id}.md`);
+  private entityFilePath(id: string): string {
+    return join(this.entitiesPath, `${id}.md`);
   }
 
-  private taskToMarkdown(task: Entity): string {
-    const { description, ...frontmatter } = task;
+  private entityToMarkdown(entity: Entity): string {
+    const { description, ...frontmatter } = entity;
     return matter.stringify(description || '', frontmatter);
   }
 
-  private markdownToTask(content: string): Entity {
+  private markdownToEntity(content: string): Entity {
     const { data, content: description } = matter(content);
     return { ...data, description: description.trim() } as Entity;
   }
 
   getFilePath(id: string): string | null {
-    const path = this.taskFilePath(id);
+    const path = this.entityFilePath(id);
     return existsSync(path) ? path : null;
   }
 
-  *iterateTasks(): Generator<Entity> {
-    if (existsSync(this.tasksPath)) {
-      for (const file of readdirSync(this.tasksPath).filter(f => f.endsWith('.md'))) {
-        const filePath = join(this.tasksPath, file);
+  *iterateEntities(): Generator<Entity> {
+    if (existsSync(this.entitiesPath)) {
+      for (const file of readdirSync(this.entitiesPath).filter(f => f.endsWith('.md'))) {
+        const filePath = join(this.entitiesPath, file);
         try {
-          const task = this.markdownToTask(readFileSync(filePath, 'utf-8'));
-          if (!task.id) continue;
-          yield task;
+          const entity = this.markdownToEntity(readFileSync(filePath, 'utf-8'));
+          if (!entity.id) continue;
+          yield entity;
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.warn('Malformed task file', { file, error: errorMessage });
+            logger.warn('Malformed entity file', { file, error: errorMessage });
           }
           continue;
         }
@@ -61,50 +66,50 @@ export class TaskStorage {
   }
 
   get(id: string): Entity | undefined {
-    const path = this.taskFilePath(id);
+    const path = this.entityFilePath(id);
     if (existsSync(path)) {
-      return this.markdownToTask(readFileSync(path, 'utf-8'));
+      return this.markdownToEntity(readFileSync(path, 'utf-8'));
     }
     return undefined;
   }
 
   getMarkdown(id: string): string | null {
-    const path = this.taskFilePath(id);
+    const path = this.entityFilePath(id);
     if (existsSync(path)) {
       return readFileSync(path, 'utf-8');
     }
     return null;
   }
 
-  list(filter?: { status?: Status[]; type?: EntityType; epic_id?: string; parent_id?: string; limit?: number }): Entity[] {
+  list(filter?: ListFilter): Entity[] {
     const { status, type, epic_id, parent_id, limit = 20 } = filter ?? {};
-    let tasks = Array.from(this.iterateTasks());
-    
-    if (status) tasks = tasks.filter(t => t.status !== undefined && status.includes(t.status));
-    if (type) tasks = tasks.filter(t => (t.type ?? 'task') === type);
-    if (parent_id) tasks = tasks.filter(t => (t.parent_id ?? t.epic_id) === parent_id);
-    else if (epic_id) tasks = tasks.filter(t => (t.parent_id ?? t.epic_id) === epic_id);
-    
-    return tasks
+    let entities = Array.from(this.iterateEntities());
+
+    if (status) entities = entities.filter(t => t.status !== undefined && status.includes(t.status));
+    if (type) entities = entities.filter(t => (t.type ?? 'task') === type);
+    if (parent_id) entities = entities.filter(t => (t.parent_id ?? t.epic_id) === parent_id);
+    else if (epic_id) entities = entities.filter(t => (t.parent_id ?? t.epic_id) === epic_id);
+
+    return entities
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
       .slice(0, limit);
   }
 
-  add(task: Entity): void {
-    this.ensureDir(this.tasksPath);
-    writeFileSync(this.taskFilePath(task.id), this.taskToMarkdown(task));
+  add(entity: Entity): void {
+    this.ensureDir(this.entitiesPath);
+    writeFileSync(this.entityFilePath(entity.id), this.entityToMarkdown(entity));
   }
 
-  save(task: Entity): void {
-    if (!isValidEntityId(task.id)) {
-      throw new Error(`Cannot save task with invalid id: ${String(task.id)}`);
+  save(entity: Entity): void {
+    if (!isValidEntityId(entity.id)) {
+      throw new Error(`Cannot save entity with invalid id: ${String(entity.id)}`);
     }
-    this.ensureDir(this.tasksPath);
-    writeFileSync(this.taskFilePath(task.id), this.taskToMarkdown(task));
+    this.ensureDir(this.entitiesPath);
+    writeFileSync(this.entityFilePath(entity.id), this.entityToMarkdown(entity));
   }
 
   delete(id: string): boolean {
-    const path = this.taskFilePath(id);
+    const path = this.entityFilePath(id);
     if (existsSync(path)) {
       unlinkSync(path);
       
@@ -132,9 +137,9 @@ export class TaskStorage {
     let total_tasks = 0;
     let total_epics = 0;
 
-    for (const task of this.iterateTasks()) {
-      if (task.status !== undefined) by_status[task.status]++;
-      const type = task.type ?? 'task';
+    for (const entity of this.iterateEntities()) {
+      if (entity.status !== undefined) by_status[entity.status]++;
+      const type = entity.type ?? 'task';
       by_type[type] = (by_type[type] || 0) + 1;
       if (type === 'epic') {
         total_epics++;
@@ -151,8 +156,8 @@ export class TaskStorage {
     const pattern = new RegExp(`^${prefix}-(\\d{4,})\\.md$`);
     let maxNum = 0;
 
-    if (existsSync(this.tasksPath)) {
-      for (const file of readdirSync(this.tasksPath)) {
+    if (existsSync(this.entitiesPath)) {
+      for (const file of readdirSync(this.entitiesPath)) {
         const match = pattern.exec(file);
         if (match?.[1]) {
           const num = parseInt(match[1], 10);

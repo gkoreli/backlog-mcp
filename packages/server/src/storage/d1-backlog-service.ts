@@ -1,5 +1,5 @@
 /**
- * D1BacklogService — per-request service layer backed by D1StorageAdapter.
+ * D1BacklogService — per-request service layer backed by D1Storage.
  *
  * This is the cloud counterpart of BacklogService (which is a filesystem singleton).
  * Unlike BacklogService, D1BacklogService is NOT a singleton — a new instance is
@@ -9,14 +9,14 @@
  */
 
 import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
-import { D1StorageAdapter } from './d1-adapter.js';
+import { D1Storage } from './d1-adapter.js';
 import type { IBacklogService } from './service-types.js';
 
 export class D1BacklogService implements IBacklogService {
-  private storage: D1StorageAdapter;
+  private storage: D1Storage;
 
   constructor(db: any) {
-    this.storage = new D1StorageAdapter(db);
+    this.storage = new D1Storage(db);
   }
 
   async get(id: string): Promise<Entity | undefined> {
@@ -37,18 +37,18 @@ export class D1BacklogService implements IBacklogService {
   }): Promise<Entity[]> {
     const { query, ...storageFilter } = filter ?? {};
     if (query) {
-      // Use FTS5 search in D1StorageAdapter
+      // Use FTS5 search in D1Storage
       return this.storage.search(query, storageFilter.limit);
     }
     return this.storage.list(storageFilter);
   }
 
-  async add(task: Entity): Promise<void> {
-    return this.storage.add(task);
+  async add(entity: Entity): Promise<void> {
+    return this.storage.add(entity);
   }
 
-  async save(task: Entity): Promise<void> {
-    return this.storage.save(task);
+  async save(entity: Entity): Promise<void> {
+    return this.storage.save(entity);
   }
 
   async delete(id: string): Promise<boolean> {

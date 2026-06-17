@@ -96,17 +96,18 @@ function toNull<T>(v: T | undefined): T | null {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// D1StorageAdapter
+// D1Storage
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * Cloudflare D1 storage adapter.
- * Implements AsyncStorageAdapter — all methods return Promises.
- * Designed for use inside Cloudflare Workers (no Node.js APIs).
+ * Cloudflare D1 storage. The async/cloud implementation of AsyncStorageAdapter
+ * — all methods return Promises. Designed for use inside Cloudflare Workers
+ * (no Node.js APIs). Named for the thing it is, not the pattern; the "Adapter"
+ * term lives on the interface (ADR 0106.3 §A).
  *
  * FTS5 (full-text search) is kept in sync via db.batch() atomic operations.
  */
-export class D1StorageAdapter implements AsyncStorageAdapter {
+export class D1Storage implements AsyncStorageAdapter {
   constructor(private readonly db: D1Database) {}
 
   // ── Read operations ──────────────────────────────────────────────────────
@@ -144,7 +145,7 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
       params.push(type);
     }
 
-    // parent_id takes precedence over epic_id (mirrors TaskStorage behaviour)
+    // parent_id takes precedence over epic_id (mirrors FilesystemStorage behaviour)
     if (parent_id) {
       conditions.push('(parent_id = ? OR epic_id = ?)');
       params.push(parent_id, parent_id);
@@ -167,8 +168,8 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
 
   // ── Write operations ─────────────────────────────────────────────────────
 
-  async add(task: Entity): Promise<void> {
-    const t = task as AnyEntity;
+  async add(entity: Entity): Promise<void> {
+    const t = entity as AnyEntity;
     const body = toNull(t.description);
 
     await this.db
@@ -194,15 +195,15 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
         toNull(t.path as string | undefined),
         body,
         t.created_at,
-        task.updated_at,
+        entity.updated_at,
       )
       .run();
 
-    await this.syncFts('insert', task.id);
+    await this.syncFts('insert', entity.id);
   }
 
-  async save(task: Entity): Promise<void> {
-    const t = task as AnyEntity;
+  async save(entity: Entity): Promise<void> {
+    const t = entity as AnyEntity;
     const body = toNull(t.description);
 
     await this.db
@@ -231,7 +232,7 @@ export class D1StorageAdapter implements AsyncStorageAdapter {
       )
       .run();
 
-    await this.syncFts('update', task.id);
+    await this.syncFts('update', entity.id);
   }
 
   async delete(id: string): Promise<boolean> {
