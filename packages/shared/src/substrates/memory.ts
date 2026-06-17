@@ -12,7 +12,7 @@
  *     ("what happened"), semantic ("what is true"), procedural ("how we do
  *     things"). The transient 'session' layer is intentionally NOT a valid
  *     persisted layer — session memory dies with the process by design.
- *   - The memory body (markdown description) IS the memory content — the
+ *   - The memory body (markdown content) IS the memory content — the
  *     digest for episodic captures, the distilled note for semantic and
  *     procedural knowledge. Recall returns it in full; memories are small
  *     by construction.
@@ -53,11 +53,11 @@ export const MemorySchema = BaseEntitySchema.extend({
   type: z.literal('memory'),
   /**
    * The memory body IS the content (see design note above) — so unlike the
-   * base entity (where tasks may have an empty description), a memory's
-   * description is REQUIRED. Mirrors `title: min(1)`: both fields are
-   * first-class and neither is derived from the other.
+   * base entity (where tasks may have an empty content), a memory's content
+   * is REQUIRED. Mirrors `title: min(1)`: both fields are first-class and
+   * neither is derived from the other.
    */
-  description: z.string().min(1),
+  content: z.string().min(1),
   layer: z.enum(MEMORY_LAYERS).default('episodic'),
   /** Actor that wrote the memory (agent name, 'user', tool). */
   source: z.string().optional(),

@@ -39,7 +39,7 @@ export type Reference = z.infer<typeof ReferenceSchema>;
 export const BaseEntitySchema = z.object({
   id: z.string(),
   title: z.string().min(1),
-  description: z.string().optional(),
+  content: z.string().optional(),
   status: StatusSchema.optional(),
   parent_id: z.string().optional(),
   // Legacy field — kept for backward compatibility with tasks created before
