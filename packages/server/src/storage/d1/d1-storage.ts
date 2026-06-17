@@ -39,7 +39,7 @@ interface TaskRow {
   due_date: string | null;
   content_type: string | null;
   path: string | null;
-  body: string | null;           // markdown body / description
+  body: string | null;           // markdown body — maps to entity.content (SQL column stays `body`)
   created_at: string;
   updated_at: string;
 }
@@ -76,7 +76,7 @@ function rowToEntity(row: TaskRow): Entity {
   if (row.due_date) entity.due_date = row.due_date;
   if (row.content_type) entity.content_type = row.content_type;
   if (row.path) entity.path = row.path;
-  if (row.body) entity.description = row.body.trim();
+  if (row.body) entity.content = row.body.trim();
 
   if (row.blocked_reason) {
     try { entity.blocked_reason = JSON.parse(row.blocked_reason); } catch { /* ignore */ }
@@ -170,7 +170,7 @@ export class D1Storage implements AsyncStorageAdapter {
 
   async add(entity: Entity): Promise<void> {
     const t = entity as AnyEntity;
-    const body = toNull(t.description);
+    const body = toNull(t.content);
 
     await this.db
       .prepare(
@@ -204,7 +204,7 @@ export class D1Storage implements AsyncStorageAdapter {
 
   async save(entity: Entity): Promise<void> {
     const t = entity as AnyEntity;
-    const body = toNull(t.description);
+    const body = toNull(t.content);
 
     await this.db
       .prepare(

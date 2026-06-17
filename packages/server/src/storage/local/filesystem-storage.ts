@@ -32,13 +32,15 @@ export class FilesystemStorage implements StorageAdapter {
   }
 
   private entityToMarkdown(entity: Entity): string {
-    const { description, ...frontmatter } = entity;
-    return matter.stringify(description || '', frontmatter);
+    const { content, ...frontmatter } = entity;
+    return matter.stringify(content || '', frontmatter);
   }
 
-  private markdownToEntity(content: string): Entity {
-    const { data, content: description } = matter(content);
-    return { ...data, description: description.trim() } as Entity;
+  private markdownToEntity(raw: string): Entity {
+    // gray-matter returns the markdown body under its own `content` key; alias
+    // it to `body` so it doesn't shadow the entity's `content` field below.
+    const { data, content: body } = matter(raw);
+    return { ...data, content: body.trim() } as Entity;
   }
 
   getFilePath(id: string): string | null {
