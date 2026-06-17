@@ -6,12 +6,12 @@ export interface MemoryEntry {
   /** Unique ID, auto-generated if not provided */
   id: string;
   /**
-   * Optional explicit title. When set, the store uses it verbatim; when
-   * absent the store derives one from the content's first line. Forced
-   * derivation is correct for implicit episodic capture (no human to title);
-   * explicit `remember` callers may supply a clean title here.
+   * Human-facing title. REQUIRED — mirrors the memory substrate's
+   * `title: z.string().min(1)`. Every producer supplies a real title:
+   * `remember` takes the caller's title; implicit capture reuses the source
+   * entity's own title. Stores must never derive or guess a title.
    */
-  title?: string;
+  title: string;
   /** The content to remember */
   content: string;
   /** Which layer this belongs to */

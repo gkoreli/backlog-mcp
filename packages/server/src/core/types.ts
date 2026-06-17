@@ -406,8 +406,8 @@ export interface RememberParams {
   /**
    * Memory title — REQUIRED, like a task's title. Title and body are both
    * first-class: the title is the human-readable label/digest, the content is
-   * the fact. (Implicit episodic auto-capture derives a title from the entity
-   * instead — that path does not use RememberParams.)
+   * the fact. (Implicit episodic auto-capture reuses the source entity's own
+   * title instead — that path does not use RememberParams.)
    */
   title: string;
   /** Memory layer. Default: 'semantic' — remember is the knowledge verb. */

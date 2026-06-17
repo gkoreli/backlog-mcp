@@ -74,6 +74,7 @@ function fakeService(): IBacklogService {
 
 function entry(overrides: Partial<MemoryEntry> & { id: string; content: string }): MemoryEntry {
   return {
+    title: 'Test memory',
     layer: 'episodic',
     source: 'test-agent',
     createdAt: Date.now(),

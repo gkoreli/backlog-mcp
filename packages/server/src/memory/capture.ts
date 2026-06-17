@@ -32,6 +32,7 @@ export function buildCompletionEntry(entity: Entity, actor: Actor, now: number):
   return {
     id: `mem-${entity.id}-${now}`,
     layer: 'episodic',
+    title: entity.title,
     content,
     source: actor.name,
     ...(entity.parent_id ? { context: entity.parent_id } : {}),
@@ -56,6 +57,7 @@ export function buildArtifactEntry(entity: Entity, actor: Actor, now: number): M
   return {
     id: `mem-${entity.id}-${now}`,
     layer: 'episodic',
+    title: entity.title,
     content,
     source: actor.name,
     ...(entity.parent_id ? { context: entity.parent_id } : {}),

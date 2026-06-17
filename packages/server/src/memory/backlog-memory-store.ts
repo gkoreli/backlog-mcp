@@ -32,16 +32,6 @@ import { usageFactor } from './usage-signal.js';
 /** Layers this store persists. 'session' is intentionally absent. */
 const PERSISTED_LAYERS: readonly MemoryLayer[] = ['episodic', 'semantic', 'procedural'];
 
-const TITLE_MAX = 120;
-
-/** Derive a title from the first line of memory content. */
-function titleFromContent(content: string): string {
-  const firstLine = content.split('\n', 1)[0]?.trim() ?? '';
-  const title = firstLine.replace(/^#+\s*/, '');  // strip markdown heading
-  if (!title) return 'Memory';
-  return title.length > TITLE_MAX ? title.slice(0, TITLE_MAX - 1) + '…' : title;
-}
-
 export class BacklogMemoryStore implements MemoryStore {
   readonly name = 'backlog';
 
@@ -78,7 +68,7 @@ export class BacklogMemoryStore implements MemoryStore {
     const memory = MemorySchema.parse({
       id,
       type: 'memory',
-      title: entry.title?.trim() || titleFromContent(entry.content),
+      title: entry.title.trim(),
       description: entry.content,
       layer: entry.layer,
       ...(entry.source ? { source: entry.source } : {}),
@@ -205,6 +195,7 @@ export class BacklogMemoryStore implements MemoryStore {
   private toMemoryEntry(m: Memory): MemoryEntry {
     return {
       id: m.id,
+      title: m.title,
       content: m.description ?? m.title,
       layer: (m.layer ?? 'episodic') as MemoryLayer,
       source: m.source ?? 'unknown',
