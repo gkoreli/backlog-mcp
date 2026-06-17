@@ -167,11 +167,11 @@ backlog_get id=["TASK-0001","EPIC-0002"]  # Batch get
 
 ```
 backlog_create title="Fix bug"
-backlog_create title="Fix bug" description="Details..." epic_id="EPIC-0002"
+backlog_create title="Fix bug" content="Details..." epic_id="EPIC-0002"
 backlog_create title="Q1 Goals" type="epic"
 backlog_create title="Research notes" type="artifact" parent_id="TASK-0001"
 backlog_create title="v2.0 Release" type="milestone" due_date="2026-03-01"
-backlog_create title="Fix bug" source_path="/path/to/spec.md"  # Read description from file
+backlog_create title="Fix bug" source_path="/path/to/spec.md"  # Read content from file
 ```
 
 ### backlog_update
@@ -209,7 +209,7 @@ Get rich context for a task — parent epic, siblings, children, cross-reference
 ```
 backlog_context task_id="TASK-0001"
 backlog_context task_id="TASK-0001" depth=2          # Grandparent/grandchildren
-backlog_context query="search ranking improvements"   # Find by description
+backlog_context query="search ranking improvements"   # Find by content
 backlog_context task_id="TASK-0001" include_related=false  # Skip semantic search
 ```
 

@@ -14,7 +14,7 @@ export function registerBacklogListTool(server: McpServer, service: IBacklogServ
         type: z.enum(ENTITY_TYPES).optional().describe('Filter by type. Options: task, epic, folder, artifact, milestone. Default: returns all.'),
         epic_id: z.string().optional().describe('Filter tasks belonging to a specific epic. Example: epic_id="EPIC-0001"'),
         parent_id: z.string().optional().describe('Filter items by parent. Example: parent_id="FLDR-0001"'),
-        query: z.string().optional().describe('Search across all task fields (title, description, evidence, references, etc.). Case-insensitive substring matching.'),
+        query: z.string().optional().describe('Search across all task fields (title, content, evidence, references, etc.). Case-insensitive substring matching.'),
         counts: z.boolean().optional().describe('Include global counts { total_tasks, total_epics, by_status, by_type } alongside results. Use this to detect if more items exist beyond the limit. Default: false'),
         limit: z.number().optional().describe('Max items to return. Default: 20. Increase if you need to see more items (e.g., limit=100 to list all epics).'),
       }),

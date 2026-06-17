@@ -16,7 +16,7 @@ export function registerBacklogSearchTool(server: McpServer, service: IBacklogSe
         parent_id: z.string().optional().describe('Scope search to items under a specific parent. Example: "EPIC-0001"'),
         sort: z.enum(['relevant', 'recent']).optional().describe('Sort mode. "relevant" (default) ranks by search relevance. "recent" ranks by last updated.'),
         limit: z.number().min(1).max(100).optional().describe('Max results to return. Default: 20, max: 100.'),
-        include_content: z.boolean().optional().describe('Include full description/content in results. Default: false (returns snippets only). Set true when you need the full text.'),
+        include_content: z.boolean().optional().describe('Include full content in results. Default: false (returns snippets only). Set true when you need the full text.'),
         include_scores: z.boolean().optional().describe('Include relevance scores in results. Default: false.'),
       }),
     },

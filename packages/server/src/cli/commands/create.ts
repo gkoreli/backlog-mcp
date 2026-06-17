@@ -7,17 +7,17 @@ export function registerCreate(program: Command): void {
   program
     .command('create <title>')
     .description('Create a new backlog item')
-    .option('--description <text>', 'Description in markdown')
-    .option('--source <path>', 'Read description from file')
+    .option('--content <text>', 'Content in markdown')
+    .option('--source <path>', 'Read content from file')
     .option('--type <type>', 'Entity type (task, epic, folder, artifact, milestone)')
     .option('--epic <id>', 'Parent epic ID')
     .option('--parent <id>', 'Parent ID')
     .action((title, opts) => run(
       (s) => {
-        const description = opts.source ? resolveSourcePath(opts.source) : opts.description;
+        const content = opts.source ? resolveSourcePath(opts.source) : opts.content;
         return createItem(s, {
           title,
-          description,
+          content,
           type: opts.type,
           epic_id: opts.epic,
           parent_id: opts.parent,
