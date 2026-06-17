@@ -1,6 +1,6 @@
 import { EntityType, nextEntityId } from '@backlog-mcp/shared';
 import { ZodError } from 'zod';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { createEntity } from '../storage/entity-factory.js';
 import { ValidationError } from './types.js';
 import type { CreateParams, CreateResult, WriteContext } from './types.js';

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createApp } from './server/hono-app.js';
-import { BacklogService } from './storage/backlog-service.js';
+import { BacklogService } from './storage/local/backlog-service.js';
 import { resourceManager } from './resources/manager.js';
 import { operationLogger, envActor } from './operations/logger.js';
 import { eventBus } from './events/index.js';

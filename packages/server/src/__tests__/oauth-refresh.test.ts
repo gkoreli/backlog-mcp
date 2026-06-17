@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createApp } from '../server/hono-app.js';
 import { b64url, canIssueRefreshToken, signJWT, type NewRefreshTokenRecord, type OAuthClientRegistration, type OAuthStore, type RefreshTokenRecord, type RotateRefreshTokenInput, type RotateRefreshTokenResult } from '../auth/index.js';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 
 function makeService(overrides: Partial<IBacklogService> = {}): IBacklogService {
   return {

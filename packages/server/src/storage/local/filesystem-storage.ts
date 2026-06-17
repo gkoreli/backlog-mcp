@@ -3,9 +3,9 @@ import { join } from 'node:path';
 import matter from 'gray-matter';
 import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
 import { TYPE_PREFIXES, isValidEntityId } from '@backlog-mcp/shared';
-import type { StorageAdapter, ListFilter } from './storage-adapter.js';
-import { paths } from '../utils/paths.js';
-import { logger } from '../utils/logger.js';
+import type { StorageAdapter, ListFilter } from '../storage-adapter.js';
+import { paths } from '../../utils/paths.js';
+import { logger } from '../../utils/logger.js';
 
 // On-disk directory name. DO NOT change this string — existing data lives in
 // `<backlogDataDir>/tasks/`; renaming the value orphans every stored entity.

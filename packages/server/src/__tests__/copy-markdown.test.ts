@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { storage } from '../storage/backlog-service.js';
+import { storage } from '../storage/local/backlog-service.js';
 import { createEntity } from '../storage/entity-factory.js';
 
 describe('Viewer Routes - Copy Markdown', () => {

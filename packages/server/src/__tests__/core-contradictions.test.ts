@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import type { Entity, Memory } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { groupByStateKey, detectContradictions, contradictsFor } from '../core/contradictions.js';
 
 const NOW = Date.parse('2026-06-16T00:00:00.000Z');

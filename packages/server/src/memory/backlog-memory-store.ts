@@ -26,7 +26,7 @@
 
 import { EntityType, MemorySchema, nextEntityId, isValidEntityId, type Entity, type Memory } from '@backlog-mcp/shared';
 import type { MemoryStore, MemoryEntry, MemoryLayer, RecallQuery, MemoryResult, ForgetFilter } from '@backlog-mcp/memory';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { usageFactor } from './usage-signal.js';
 
 /** Layers this store persists. 'session' is intentionally absent. */

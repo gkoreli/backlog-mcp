@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { getItems, type GetItem } from '../core/index.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 

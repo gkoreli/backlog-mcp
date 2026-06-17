@@ -1,13 +1,13 @@
 import { join } from 'node:path';
 import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
-import { FilesystemStorage } from './task-storage.js';
-import type { StorageAdapter } from './storage-adapter.js';
+import { FilesystemStorage } from './filesystem-storage.js';
+import type { StorageAdapter } from '../storage-adapter.js';
 import { OramaSearchService, type UnifiedSearchResult, type SearchableType, type SearchSnippet } from '@backlog-mcp/memory/search';
 import type { Resource } from '@backlog-mcp/memory/search';
-import { resourceManager } from '../resources/manager.js';
-import { paths } from '../utils/paths.js';
-import { logger } from '../utils/logger.js';
-import type { IBacklogService } from './service-types.js';
+import { resourceManager } from '../../resources/manager.js';
+import { paths } from '../../utils/paths.js';
+import { logger } from '../../utils/logger.js';
+import type { IBacklogService } from '../backlog-service.contract.js';
 
 /**
  * Composes a StorageAdapter + SearchService + ResourceManager.

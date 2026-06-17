@@ -1,3 +1,12 @@
+/**
+ * backlog-service.contract.ts — the IBacklogService contract.
+ *
+ * A shared contract implemented by both BacklogService (local/filesystem
+ * singleton) and D1BacklogService (cloud/per-request), consumed widely across
+ * core, tools, memory, and server layers. Named `*.contract.ts` per the file
+ * naming convention (ADR 0106.3 §D): shared contracts implemented by many and
+ * consumed widely.
+ */
 import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
 import type { UnifiedSearchResult, SearchableType } from '@backlog-mcp/memory/search';
 import type { ResourceContent } from '../resources/manager.js';

@@ -3,7 +3,7 @@ import { applyOperation } from '../resources/operations.js';
 import { editItem } from '../core/edit.js';
 import { NotFoundError, type WriteContext } from '../core/types.js';
 import type { Entity } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 
 function testCtx(): WriteContext {
   return {

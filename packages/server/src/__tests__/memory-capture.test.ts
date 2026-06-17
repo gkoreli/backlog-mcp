@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Entity } from '@backlog-mcp/shared';
 import { MemoryComposer, InMemoryStore } from '@backlog-mcp/memory';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { updateItem } from '../core/update.js';
 import { createItem } from '../core/create.js';
 import type { WriteContext } from '../core/types.js';

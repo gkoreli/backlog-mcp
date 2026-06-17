@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import matter from 'gray-matter';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { IOperationLog, Actor } from '../operations/types.js';
 import { extractTargetFilename } from '../operations/resource-id.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';

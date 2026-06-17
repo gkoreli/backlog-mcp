@@ -1,6 +1,6 @@
 import { EntitySchema } from '@backlog-mcp/shared';
 import { ZodError } from 'zod';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { NotFoundError, ValidationError, type UpdateParams, type UpdateResult, type WriteContext } from './types.js';
 import { formatZodError } from './zod-errors.js';
 import { recordMutation } from './operation-log.js';

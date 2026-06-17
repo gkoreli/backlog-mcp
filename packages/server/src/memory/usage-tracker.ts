@@ -19,7 +19,7 @@
  */
 
 import type { Memory, Entity } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 
 /** Fibonacci flush buckets — diminishing flush frequency as counts grow. */
 const FLUSH_BUCKETS = new Set([1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]);

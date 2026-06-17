@@ -21,7 +21,7 @@ import { tmpdir } from 'node:os';
 import { EntityType, parseEntityNum, type Entity } from '@backlog-mcp/shared';
 import { MemoryComposer, type MemoryEntry } from '@backlog-mcp/memory';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import { createDefaultComposer } from '../memory/bootstrap.js';
 import { createItem } from '../core/create.js';

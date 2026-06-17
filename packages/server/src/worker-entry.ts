@@ -3,7 +3,7 @@
  * Cloudflare is just hosting — all logic is in hono-app.ts.
  */
 import { createApp } from './server/hono-app.js';
-import { D1BacklogService } from './storage/d1-backlog-service.js';
+import { D1BacklogService } from './storage/d1/d1-backlog-service.js';
 import { D1OperationLog } from './operations/d1-operation-log.js';
 import { D1OAuthStore } from './auth/index.js';
 import { VERSION } from './version.js';

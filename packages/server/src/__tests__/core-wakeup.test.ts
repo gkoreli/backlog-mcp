@@ -6,7 +6,7 @@
  * readOperations) — tests pass deterministic stubs.
  */
 import { describe, it, expect, vi } from 'vitest';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { Entity } from '@backlog-mcp/shared';
 import { wakeup } from '../core/wakeup.js';
 import { ValidationError } from '../core/types.js';

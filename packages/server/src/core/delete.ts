@@ -1,4 +1,4 @@
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { DeleteParams, DeleteResult, WriteContext } from './types.js';
 import { recordMutation } from './operation-log.js';
 

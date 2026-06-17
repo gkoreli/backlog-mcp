@@ -1,4 +1,4 @@
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { ListParams, ListResult } from './types.js';
 
 export async function listItems(service: IBacklogService, params: ListParams = {}): Promise<ListResult> {

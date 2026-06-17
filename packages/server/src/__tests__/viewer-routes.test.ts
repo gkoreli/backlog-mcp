@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createApp } from '../server/hono-app.js';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { Entity, EntityType } from '@backlog-mcp/shared';
 
 // Mock the paths module

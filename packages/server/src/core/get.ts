@@ -1,4 +1,4 @@
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { ValidationError, type GetParams, type GetResult, type GetItem } from './types.js';
 
 function isResourceUri(id: string): boolean {

@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { BacklogService } from '../../storage/backlog-service.js';
+import { BacklogService } from '../../storage/local/backlog-service.js';
 import { resourceManager } from '../../resources/manager.js';
 import { hydrateContext } from '../../context/index.js';
 import { run } from '../runner.js';

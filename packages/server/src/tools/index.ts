@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MemoryComposer } from '@backlog-mcp/memory';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { Actor, IOperationLog } from '../operations/types.js';
 import { registerBacklogListTool } from './backlog-list.js';
 import { registerBacklogGetTool } from './backlog-get.js';

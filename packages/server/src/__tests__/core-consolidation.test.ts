@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import type { Entity, Memory } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { bucketEpisodics, consolidationCandidates, demandCounts } from '../core/consolidation.js';
 import { ValidationError } from '../core/types.js';
 

@@ -1,4 +1,4 @@
-import { BacklogService } from '../storage/backlog-service.js';
+import { BacklogService } from '../storage/local/backlog-service.js';
 import { NotFoundError, ValidationError } from '../core/types.js';
 import { operationLogger, envActor } from '../operations/logger.js';
 import { defaultMemoryComposer } from '../memory/bootstrap.js';

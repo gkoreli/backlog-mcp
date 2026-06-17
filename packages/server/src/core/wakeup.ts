@@ -18,7 +18,7 @@
 
 import type { Entity } from '@backlog-mcp/shared';
 import { EntityType, getSubstrate, isValidEntityId, parseEntityId } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/service-types.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import {
   ValidationError,
   type WakeupParams,

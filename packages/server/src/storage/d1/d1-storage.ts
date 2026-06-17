@@ -1,6 +1,6 @@
 import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
 import { TYPE_PREFIXES } from '@backlog-mcp/shared';
-import type { AsyncStorageAdapter, ListFilter } from './storage-adapter.js';
+import type { AsyncStorageAdapter, ListFilter } from '../storage-adapter.js';
 
 // Type-erased view — adapter handles row mapping for every entity type,
 // so narrowing at each access site would bloat this file without buying

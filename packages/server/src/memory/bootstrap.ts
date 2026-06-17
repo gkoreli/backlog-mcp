@@ -24,8 +24,8 @@ import { join } from 'node:path';
 import { MemoryComposer } from '@backlog-mcp/memory';
 import { BacklogMemoryStore } from './backlog-memory-store.js';
 import { MemoryUsageTracker } from './usage-tracker.js';
-import { BacklogService } from '../storage/backlog-service.js';
-import type { IBacklogService } from '../storage/service-types.js';
+import { BacklogService } from '../storage/local/backlog-service.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { paths } from '../utils/paths.js';
 
 export function createDefaultComposer(

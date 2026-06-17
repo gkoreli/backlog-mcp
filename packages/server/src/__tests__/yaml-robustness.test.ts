@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { storage } from '../storage/backlog-service.js';
+import { storage } from '../storage/local/backlog-service.js';
 import { createEntity } from '../storage/entity-factory.js';
 import { paths } from '../utils/paths.js';
 import { writeFileSync, mkdirSync } from 'node:fs';
