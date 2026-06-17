@@ -20,7 +20,7 @@ function freshCachePath(): string {
   return join(process.cwd(), 'test-data', '.cache', `intent-${++cacheCounter}-${Date.now()}.json`);
 }
 
-function makeTask(overrides: { id: string; title: string; description?: string; status?: any; type?: any }): Entity {
+function makeEntity(overrides: { id: string; title: string; description?: string; status?: any; type?: any }): Entity {
   return {
     id: overrides.id,
     title: overrides.title,
@@ -224,10 +224,10 @@ describe('OramaSearchService.searchAll: intent routing', () => {
   it('id_lookup short-circuits to direct cache hit with score=1.0', async () => {
     const svc = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await svc.index([
-      makeTask({ id: 'TASK-0596', title: 'Research: Fredrika Unified Diff Viewer' }),
+      makeEntity({ id: 'TASK-0596', title: 'Research: Fredrika Unified Diff Viewer' }),
       // Decoys that BM25 would otherwise rank higher
-      makeTask({ id: 'TASK-0001', title: 'TASK 596 mention in title to confuse ranker', description: 'task 596' }),
-      makeTask({ id: 'TASK-0002', title: 'task 596 again', description: 'task 596 task 596 task 596' }),
+      makeEntity({ id: 'TASK-0001', title: 'TASK 596 mention in title to confuse ranker', description: 'task 596' }),
+      makeEntity({ id: 'TASK-0002', title: 'task 596 again', description: 'task 596 task 596 task 596' }),
     ]);
 
     const results = await svc.searchAll('task 596', { limit: 5 });
@@ -239,7 +239,7 @@ describe('OramaSearchService.searchAll: intent routing', () => {
   it('id_lookup falls through to fulltext when canonical ID not in cache', async () => {
     const svc = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await svc.index([
-      makeTask({ id: 'TASK-0001', title: 'A task that mentions task 999 in body' }),
+      makeEntity({ id: 'TASK-0001', title: 'A task that mentions task 999 in body' }),
     ]);
 
     // TASK-0999 doesn't exist; should fall through to fulltext.
@@ -252,10 +252,10 @@ describe('OramaSearchService.searchAll: intent routing', () => {
   it('filtered intent applies status filter without BM25', async () => {
     const svc = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await svc.index([
-      makeTask({ id: 'TASK-0001', title: 'First', status: 'open' }),
-      makeTask({ id: 'TASK-0002', title: 'Second', status: 'blocked' }),
-      makeTask({ id: 'TASK-0003', title: 'Third', status: 'blocked' }),
-      makeTask({ id: 'TASK-0004', title: 'Fourth', status: 'done' }),
+      makeEntity({ id: 'TASK-0001', title: 'First', status: 'open' }),
+      makeEntity({ id: 'TASK-0002', title: 'Second', status: 'blocked' }),
+      makeEntity({ id: 'TASK-0003', title: 'Third', status: 'blocked' }),
+      makeEntity({ id: 'TASK-0004', title: 'Fourth', status: 'done' }),
     ]);
 
     const results = await svc.searchAll('blocked tasks', { limit: 10 });
@@ -266,10 +266,10 @@ describe('OramaSearchService.searchAll: intent routing', () => {
   it('filtered intent with residual text runs BM25 scoped to filter', async () => {
     const svc = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await svc.index([
-      makeTask({ id: 'TASK-0001', title: 'database migration', status: 'open' }),
-      makeTask({ id: 'TASK-0002', title: 'database migration', status: 'blocked' }),
-      makeTask({ id: 'TASK-0003', title: 'database migration', status: 'blocked' }),
-      makeTask({ id: 'TASK-0004', title: 'unrelated task', status: 'blocked' }),
+      makeEntity({ id: 'TASK-0001', title: 'database migration', status: 'open' }),
+      makeEntity({ id: 'TASK-0002', title: 'database migration', status: 'blocked' }),
+      makeEntity({ id: 'TASK-0003', title: 'database migration', status: 'blocked' }),
+      makeEntity({ id: 'TASK-0004', title: 'unrelated task', status: 'blocked' }),
     ]);
 
     const results = await svc.searchAll('blocked tasks database', { limit: 10 });
@@ -283,8 +283,8 @@ describe('OramaSearchService.searchAll: intent routing', () => {
   it('caller filters override intent filters', async () => {
     const svc = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await svc.index([
-      makeTask({ id: 'TASK-0001', title: 'task one', status: 'open' }),
-      makeTask({ id: 'TASK-0002', title: 'task two', status: 'blocked' }),
+      makeEntity({ id: 'TASK-0001', title: 'task one', status: 'open' }),
+      makeEntity({ id: 'TASK-0002', title: 'task two', status: 'blocked' }),
     ]);
 
     // Caller passes status:['open'], query says "blocked tasks" — caller wins.
@@ -300,8 +300,8 @@ describe('OramaSearchService.searchAll: intent routing', () => {
   it('fulltext path unchanged for plain queries', async () => {
     const svc = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await svc.index([
-      makeTask({ id: 'TASK-0001', title: 'database migration to postgres' }),
-      makeTask({ id: 'TASK-0002', title: 'unrelated task' }),
+      makeEntity({ id: 'TASK-0001', title: 'database migration to postgres' }),
+      makeEntity({ id: 'TASK-0002', title: 'unrelated task' }),
     ]);
 
     const results = await svc.searchAll('database migration', { limit: 5 });

@@ -14,10 +14,10 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { join } from 'node:path';
 import { OramaSearchService, type SearchSnippet } from '@backlog-mcp/memory/search';
 import { generateTaskSnippet, generateResourceSnippet } from '@backlog-mcp/memory/search';
-import type { Entity } from '@backlog-mcp/shared';
+import type { Entity, TaskEntity } from '@backlog-mcp/shared';
 import type { Resource } from '@backlog-mcp/memory/search';
 
-function makeTask(overrides: Partial<Entity> & { id: string; title: string }): Task {
+function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): TaskEntity {
   return {
     status: 'open',
     created_at: new Date().toISOString(),
@@ -46,9 +46,9 @@ describe('Invariant: searchAll always returns snippets (ADR-0073)', () => {
   let service: OramaSearchService;
 
   const tasks: Entity[] = [
-    makeTask({ id: 'TASK-0001', title: 'Implement authentication', description: 'Add OAuth2 login flow with SSO support' }),
-    makeTask({ id: 'TASK-0002', title: 'Fix login bug', description: 'Users cannot authenticate with SSO', status: 'in_progress' }),
-    makeTask({ id: 'EPIC-0001', title: 'User Management Epic', type: 'epic' }),
+    makeEntity({ id: 'TASK-0001', title: 'Implement authentication', description: 'Add OAuth2 login flow with SSO support' }),
+    makeEntity({ id: 'TASK-0002', title: 'Fix login bug', description: 'Users cannot authenticate with SSO', status: 'in_progress' }),
+    makeEntity({ id: 'EPIC-0001', title: 'User Management Epic', type: 'epic' }),
   ];
 
   const resources: Resource[] = [
@@ -101,7 +101,7 @@ describe('Invariant: searchAll always returns snippets (ADR-0073)', () => {
 
 describe('Invariant: snippet generation correctness (ADR-0073)', () => {
   it('generateTaskSnippet finds match in title', () => {
-    const task = makeTask({ id: 'T-1', title: 'Fix authentication bug', description: 'Some unrelated description' });
+    const task = makeEntity({ id: 'T-1', title: 'Fix authentication bug', description: 'Some unrelated description' });
     const snippet = generateTaskSnippet(task, 'authentication');
     expect(snippet.field).toBe('title');
     expect(snippet.text).toContain('authentication');
@@ -109,7 +109,7 @@ describe('Invariant: snippet generation correctness (ADR-0073)', () => {
   });
 
   it('generateTaskSnippet finds match in description when title does not match', () => {
-    const task = makeTask({ id: 'T-1', title: 'General bug fix', description: 'The OAuth2 flow fails when redirect URI is missing' });
+    const task = makeEntity({ id: 'T-1', title: 'General bug fix', description: 'The OAuth2 flow fails when redirect URI is missing' });
     const snippet = generateTaskSnippet(task, 'oauth2');
     expect(snippet.field).toBe('description');
     expect(snippet.text.toLowerCase()).toContain('oauth2');
@@ -118,21 +118,21 @@ describe('Invariant: snippet generation correctness (ADR-0073)', () => {
   });
 
   it('generateTaskSnippet finds match in evidence', () => {
-    const task = makeTask({ id: 'T-1', title: 'Deploy service', evidence: ['Verified in staging', 'Load test passed at 500 RPS'] });
+    const task = makeEntity({ id: 'T-1', title: 'Deploy service', evidence: ['Verified in staging', 'Load test passed at 500 RPS'] });
     const snippet = generateTaskSnippet(task, 'staging');
     expect(snippet.field).toBe('evidence');
     expect(snippet.matched_fields).toContain('evidence');
   });
 
   it('generateTaskSnippet finds match in blocked_reason', () => {
-    const task = makeTask({ id: 'T-1', title: 'Database migration', blocked_reason: ['Waiting for DBA approval'] });
+    const task = makeEntity({ id: 'T-1', title: 'Database migration', blocked_reason: ['Waiting for DBA approval'] });
     const snippet = generateTaskSnippet(task, 'DBA');
     expect(snippet.field).toBe('blocked_reason');
     expect(snippet.matched_fields).toContain('blocked_reason');
   });
 
   it('generateTaskSnippet reports all matched fields', () => {
-    const task = makeTask({ id: 'T-1', title: 'Fix login flow', description: 'Login button is broken on mobile' });
+    const task = makeEntity({ id: 'T-1', title: 'Fix login flow', description: 'Login button is broken on mobile' });
     const snippet = generateTaskSnippet(task, 'login');
     expect(snippet.matched_fields).toContain('title');
     expect(snippet.matched_fields).toContain('description');
@@ -141,7 +141,7 @@ describe('Invariant: snippet generation correctness (ADR-0073)', () => {
   });
 
   it('generateTaskSnippet returns title fallback when no match', () => {
-    const task = makeTask({ id: 'T-1', title: 'Something else entirely' });
+    const task = makeEntity({ id: 'T-1', title: 'Something else entirely' });
     const snippet = generateTaskSnippet(task, 'xyznonexistent');
     expect(snippet.field).toBe('title');
     expect(snippet.matched_fields).toEqual([]);
@@ -149,7 +149,7 @@ describe('Invariant: snippet generation correctness (ADR-0073)', () => {
 
   it('generateTaskSnippet truncates long descriptions with ellipsis', () => {
     const longDesc = 'A'.repeat(50) + ' authentication ' + 'B'.repeat(200);
-    const task = makeTask({ id: 'T-1', title: 'Short title', description: longDesc });
+    const task = makeEntity({ id: 'T-1', title: 'Short title', description: longDesc });
     const snippet = generateTaskSnippet(task, 'authentication');
     expect(snippet.text.length).toBeLessThanOrEqual(130); // 120 + ellipsis
     expect(snippet.text).toContain('...');
@@ -176,8 +176,8 @@ describe('Invariant: searchAll type filtering (ADR-0073)', () => {
   let service: OramaSearchService;
 
   const tasks: Entity[] = [
-    makeTask({ id: 'TASK-0001', title: 'Search implementation', description: 'Implement full-text search' }),
-    makeTask({ id: 'EPIC-0001', title: 'Search epic', type: 'epic' }),
+    makeEntity({ id: 'TASK-0001', title: 'Search implementation', description: 'Implement full-text search' }),
+    makeEntity({ id: 'EPIC-0001', title: 'Search epic', type: 'epic' }),
   ];
 
   const resources: Resource[] = [
@@ -228,9 +228,9 @@ describe('Invariant: searchAll sort modes (ADR-0073)', () => {
   const lastWeek = new Date(now.getTime() - 7 * 86400000);
 
   const tasks: Entity[] = [
-    makeTask({ id: 'TASK-0001', title: 'Old search task', updated_at: lastWeek.toISOString() }),
-    makeTask({ id: 'TASK-0002', title: 'Recent search task', updated_at: now.toISOString() }),
-    makeTask({ id: 'TASK-0003', title: 'Yesterday search task', updated_at: yesterday.toISOString() }),
+    makeEntity({ id: 'TASK-0001', title: 'Old search task', updated_at: lastWeek.toISOString() }),
+    makeEntity({ id: 'TASK-0002', title: 'Recent search task', updated_at: now.toISOString() }),
+    makeEntity({ id: 'TASK-0003', title: 'Yesterday search task', updated_at: yesterday.toISOString() }),
   ];
 
   beforeEach(async () => {
@@ -261,7 +261,7 @@ describe('Invariant: searchAll sort modes (ADR-0073)', () => {
 
 describe('Invariant: snippet determinism (ADR-0073)', () => {
   it('same task and query always produce the same snippet', () => {
-    const task = makeTask({ id: 'T-1', title: 'Fix authentication bug', description: 'OAuth2 flow needs fixing' });
+    const task = makeEntity({ id: 'T-1', title: 'Fix authentication bug', description: 'OAuth2 flow needs fixing' });
     const s1 = generateTaskSnippet(task, 'authentication');
     const s2 = generateTaskSnippet(task, 'authentication');
     expect(s1).toEqual(s2);
@@ -279,7 +279,7 @@ describe('Invariant: snippet determinism (ADR-0073)', () => {
 
 describe('Invariant: SearchSnippet type contract (ADR-0073)', () => {
   it('has required fields: field, text, matched_fields', () => {
-    const task = makeTask({ id: 'T-1', title: 'Test task', description: 'A test' });
+    const task = makeEntity({ id: 'T-1', title: 'Test task', description: 'A test' });
     const snippet: SearchSnippet = generateTaskSnippet(task, 'test');
 
     // These are structural type checks - they'd fail at compile time
@@ -301,7 +301,7 @@ describe('Invariant: edge cases (ADR-0073)', () => {
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await service.index([
-      makeTask({ id: 'TASK-0001', title: 'Test task' }),
+      makeEntity({ id: 'TASK-0001', title: 'Test task' }),
     ]);
   });
 
@@ -316,20 +316,20 @@ describe('Invariant: edge cases (ADR-0073)', () => {
   });
 
   it('snippet generation with empty description does not crash', () => {
-    const task = makeTask({ id: 'T-1', title: 'Minimal task' });
+    const task = makeEntity({ id: 'T-1', title: 'Minimal task' });
     delete task.description;
     const snippet = generateTaskSnippet(task, 'minimal');
     expect(snippet.field).toBe('title');
   });
 
   it('snippet generation with empty evidence/blocked_reason does not crash', () => {
-    const task = makeTask({ id: 'T-1', title: 'Test', evidence: [], blocked_reason: [] });
+    const task = makeEntity({ id: 'T-1', title: 'Test', evidence: [], blocked_reason: [] });
     const snippet = generateTaskSnippet(task, 'test');
     expect(snippet).toBeDefined();
   });
 
   it('snippet generation with undefined arrays does not crash', () => {
-    const task = makeTask({ id: 'T-1', title: 'Test' });
+    const task = makeEntity({ id: 'T-1', title: 'Test' });
     delete task.evidence;
     delete task.blocked_reason;
     delete task.references;

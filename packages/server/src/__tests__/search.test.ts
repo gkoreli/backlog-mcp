@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
-import type { Entity } from '@backlog-mcp/shared';
+import type { Entity, TaskEntity } from '@backlog-mcp/shared';
 
-function makeTask(overrides: Partial<Entity> & { id: string; title: string }): Task {
+function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): TaskEntity {
   return {
     status: 'open',
     created_at: new Date().toISOString(),
@@ -18,11 +18,11 @@ describe('OramaSearchService', () => {
   let service: OramaSearchService;
 
   const tasks: Entity[] = [
-    makeTask({ id: 'TASK-0001', title: 'Implement authentication', description: 'Add OAuth2 login flow' }),
-    makeTask({ id: 'TASK-0002', title: 'Fix login bug', description: 'Users cannot authenticate with SSO' }),
-    makeTask({ id: 'TASK-0003', title: 'Add search feature', description: 'Full-text search for tasks', status: 'in_progress' }),
-    makeTask({ id: 'EPIC-0001', title: 'User Management Epic', type: 'epic' }),
-    makeTask({ id: 'TASK-0004', title: 'Database migration', epic_id: 'EPIC-0001', status: 'blocked', blocked_reason: ['Waiting for DBA approval'] }),
+    makeEntity({ id: 'TASK-0001', title: 'Implement authentication', description: 'Add OAuth2 login flow' }),
+    makeEntity({ id: 'TASK-0002', title: 'Fix login bug', description: 'Users cannot authenticate with SSO' }),
+    makeEntity({ id: 'TASK-0003', title: 'Add search feature', description: 'Full-text search for tasks', status: 'in_progress' }),
+    makeEntity({ id: 'EPIC-0001', title: 'User Management Epic', type: 'epic' }),
+    makeEntity({ id: 'TASK-0004', title: 'Database migration', epic_id: 'EPIC-0001', status: 'blocked', blocked_reason: ['Waiting for DBA approval'] }),
   ];
 
   beforeEach(async () => {
@@ -99,7 +99,7 @@ describe('OramaSearchService', () => {
 
   describe('document operations', () => {
     it('adds new document to index', async () => {
-      const newTask = makeTask({ id: 'TASK-0005', title: 'New feature request' });
+      const newTask = makeEntity({ id: 'TASK-0005', title: 'New feature request' });
       await service.addDocument(newTask);
 
       const results = await service.search('feature request');

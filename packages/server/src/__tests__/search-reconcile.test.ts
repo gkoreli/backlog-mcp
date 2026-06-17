@@ -18,7 +18,7 @@ function freshCachePath(): string {
   return join(process.cwd(), 'test-data', '.cache', `reconcile-${++cacheCounter}-${Date.now()}.json`);
 }
 
-function makeTask(overrides: Partial<Entity> & { id: string; title: string }): Entity {
+function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): Entity {
   return {
     status: 'open',
     type: 'task',
@@ -33,8 +33,8 @@ describe('OramaSearchService.reconcile (ADR-0101)', () => {
   let service: OramaSearchService;
 
   const initialTasks: Entity[] = [
-    makeTask({ id: 'TASK-0001', title: 'First task', description: 'alpha' }),
-    makeTask({ id: 'TASK-0002', title: 'Second task', description: 'beta' }),
+    makeEntity({ id: 'TASK-0001', title: 'First task', description: 'alpha' }),
+    makeEntity({ id: 'TASK-0002', title: 'Second task', description: 'beta' }),
   ];
 
   beforeEach(async () => {
@@ -48,7 +48,7 @@ describe('OramaSearchService.reconcile (ADR-0101)', () => {
   });
 
   it('adds entities present in input but missing from index', async () => {
-    const newTask = makeTask({ id: 'TASK-0099', title: 'Drifted task', description: 'gamma' });
+    const newTask = makeEntity({ id: 'TASK-0099', title: 'Drifted task', description: 'gamma' });
     const stats = await service.reconcile([...initialTasks, newTask]);
 
     expect(stats).toEqual({ added: 1, removed: 0, updated: 0 });
@@ -85,7 +85,7 @@ describe('OramaSearchService.reconcile (ADR-0101)', () => {
   });
 
   it('handles all three drift modes in a single call', async () => {
-    const newTask = makeTask({ id: 'TASK-0099', title: 'Brand new', description: 'gamma' });
+    const newTask = makeEntity({ id: 'TASK-0099', title: 'Brand new', description: 'gamma' });
     const editedFirst: Entity = {
       ...initialTasks[0],
       title: 'First task — modified',

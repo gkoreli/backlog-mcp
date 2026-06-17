@@ -12,11 +12,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
-import type { Entity } from '@backlog-mcp/shared';
+import type { Entity, TaskEntity } from '@backlog-mcp/shared';
 
 const TEST_CACHE_PATH = join(process.cwd(), 'test-data', '.cache', 'search-golden.json');
 
-function makeTask(overrides: Partial<Entity> & { id: string; title: string }): Task {
+function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): TaskEntity {
   return {
     status: 'open',
     created_at: new Date().toISOString(),
@@ -30,13 +30,13 @@ function makeTask(overrides: Partial<Entity> & { id: string; title: string }): T
  */
 const GOLDEN_TASKS: Entity[] = [
   // Epics
-  makeTask({
+  makeEntity({
     id: 'EPIC-0001',
     title: 'backlog-mcp 10x',
     description: 'Transform backlog-mcp from task tracker to agentic work system with keyboard-first UX',
     type: 'epic',
   }),
-  makeTask({
+  makeEntity({
     id: 'EPIC-0002',
     title: 'Search & Discovery',
     description: 'Comprehensive search with RAG-ready architecture',
@@ -44,7 +44,7 @@ const GOLDEN_TASKS: Entity[] = [
   }),
 
   // Tasks with various content patterns
-  makeTask({
+  makeEntity({
     id: 'TASK-0001',
     title: 'Implement Spotlight-style search UI',
     description: 'Global search modal triggered by Cmd+J with keyboard-first navigation',
@@ -54,51 +54,51 @@ const GOLDEN_TASKS: Entity[] = [
       { url: 'file:///path/to/adr-0038.md', title: 'ADR-0038: Search Architecture' },
     ],
   }),
-  makeTask({
+  makeEntity({
     id: 'TASK-0002',
     title: 'Fix authentication bug',
     description: 'Users cannot log in with SSO when MFA is enabled',
     status: 'in_progress',
   }),
-  makeTask({
+  makeEntity({
     id: 'TASK-0003',
     title: 'Add keyboard shortcuts',
     description: 'Implement Cmd+K for command palette, Cmd+J for search',
     epic_id: 'EPIC-0001',
   }),
-  makeTask({
+  makeEntity({
     id: 'TASK-0004',
     title: 'Database schema migration',
     description: 'Migrate from SQLite to PostgreSQL for better concurrency',
     status: 'blocked',
     blocked_reason: ['Waiting for DBA approval', 'Need production backup first'],
   }),
-  makeTask({
+  makeEntity({
     id: 'TASK-0005',
     title: 'SearchService abstraction layer',
     description: 'Create pluggable search backend interface for Orama, future RAG',
     epic_id: 'EPIC-0002',
     evidence: ['Implemented SearchService interface', 'Added OramaSearchService'],
   }),
-  makeTask({
+  makeEntity({
     id: 'TASK-0006',
     title: 'Fix first-time user onboarding',
     description: 'New users see blank screen on first load',
     status: 'done',
     evidence: ['Fixed in PR #42', 'Added loading state'],
   }),
-  makeTask({
+  makeEntity({
     id: 'TASK-0007',
     title: 'API rate limiting',
     description: 'Implement rate-limiting middleware for REST endpoints',
   }),
-  makeTask({
+  makeEntity({
     id: 'TASK-0008',
     title: 'Real-time collaboration',
     description: 'WebSocket-based real-time updates for multi-user editing',
   }),
   // CamelCase compound word task (mirrors real TASK-0273 pattern)
-  makeTask({
+  makeEntity({
     id: 'TASK-0009',
     title: 'Create YavapaiMFE ownership transfer documentation',
     description: 'Create comprehensive starter doc for new team taking ownership of FeatureStore (YavapaiMFE).\n\nMFE ID: `featurestore`\nFeature flag: `featureStore`\nMain package: RhinestoneMonarchYavapaiMFE',

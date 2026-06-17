@@ -14,10 +14,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
-import type { Entity } from '@backlog-mcp/shared';
+import type { Entity, TaskEntity } from '@backlog-mcp/shared';
 import type { Resource } from '@backlog-mcp/memory/search';
 
-function makeTask(overrides: Partial<Entity> & { id: string; title: string }): Task {
+function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): TaskEntity {
   return {
     status: 'open',
     created_at: new Date().toISOString(),
@@ -43,10 +43,10 @@ describe('Invariant: enum fields excluded from text search (ADR-0079)', () => {
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await service.index([
-      makeTask({ id: 'TASK-0001', title: 'Build dashboard', status: 'open' }),
-      makeTask({ id: 'TASK-0002', title: 'Fix open issue', status: 'done' }),
-      makeTask({ id: 'TASK-0003', title: 'Deploy service', status: 'in_progress', type: 'task' }),
-      makeTask({ id: 'EPIC-0001', title: 'Platform epic', type: 'epic' }),
+      makeEntity({ id: 'TASK-0001', title: 'Build dashboard', status: 'open' }),
+      makeEntity({ id: 'TASK-0002', title: 'Fix open issue', status: 'done' }),
+      makeEntity({ id: 'TASK-0003', title: 'Deploy service', status: 'in_progress', type: 'task' }),
+      makeEntity({ id: 'EPIC-0001', title: 'Platform epic', type: 'epic' }),
     ]);
   });
 
@@ -86,11 +86,11 @@ describe('Invariant: native where filtering matches old JS filtering (ADR-0079)'
   let service: OramaSearchService;
 
   const tasks: Entity[] = [
-    makeTask({ id: 'TASK-0001', title: 'Auth feature', status: 'open', epic_id: 'EPIC-0001' }),
-    makeTask({ id: 'TASK-0002', title: 'Auth bug', status: 'in_progress', epic_id: 'EPIC-0001' }),
-    makeTask({ id: 'TASK-0003', title: 'Auth refactor', status: 'done', epic_id: 'EPIC-0002' }),
-    makeTask({ id: 'TASK-0004', title: 'Auth test', status: 'blocked', epic_id: 'EPIC-0001', blocked_reason: ['Waiting'] }),
-    makeTask({ id: 'EPIC-0001', title: 'Auth epic', type: 'epic' }),
+    makeEntity({ id: 'TASK-0001', title: 'Auth feature', status: 'open', epic_id: 'EPIC-0001' }),
+    makeEntity({ id: 'TASK-0002', title: 'Auth bug', status: 'in_progress', epic_id: 'EPIC-0001' }),
+    makeEntity({ id: 'TASK-0003', title: 'Auth refactor', status: 'done', epic_id: 'EPIC-0002' }),
+    makeEntity({ id: 'TASK-0004', title: 'Auth test', status: 'blocked', epic_id: 'EPIC-0001', blocked_reason: ['Waiting'] }),
+    makeEntity({ id: 'EPIC-0001', title: 'Auth epic', type: 'epic' }),
   ];
 
   beforeEach(async () => {
@@ -149,8 +149,8 @@ describe('Invariant: parent_id precedence in where filtering (ADR-0079)', () => 
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await service.index([
-      makeTask({ id: 'TASK-0001', title: 'Child task', epic_id: 'EPIC-0001', parent_id: 'FLDR-0001' }),
-      makeTask({ id: 'TASK-0002', title: 'Child task two', epic_id: 'EPIC-0001' }),
+      makeEntity({ id: 'TASK-0001', title: 'Child task', epic_id: 'EPIC-0001', parent_id: 'FLDR-0001' }),
+      makeEntity({ id: 'TASK-0002', title: 'Child task two', epic_id: 'EPIC-0001' }),
     ]);
   });
 
@@ -178,14 +178,14 @@ describe('Invariant: where filtering has no window limit (ADR-0079)', () => {
     // the 5 "open" tasks would be silently dropped.
     const tasks: Entity[] = [];
     for (let i = 1; i <= 45; i++) {
-      tasks.push(makeTask({
+      tasks.push(makeEntity({
         id: `TASK-${String(i).padStart(4, '0')}`,
         title: `Search task number ${i}`,
         status: 'done',
       }));
     }
     for (let i = 46; i <= 50; i++) {
-      tasks.push(makeTask({
+      tasks.push(makeEntity({
         id: `TASK-${String(i).padStart(4, '0')}`,
         title: `Search task number ${i}`,
         status: 'open',
@@ -206,9 +206,9 @@ describe('Invariant: where filtering has no window limit (ADR-0079)', () => {
 
 describe('Invariant: insertMultiple equivalence (ADR-0079)', () => {
   const tasks: Entity[] = [
-    makeTask({ id: 'TASK-0001', title: 'Alpha feature', status: 'open' }),
-    makeTask({ id: 'TASK-0002', title: 'Beta feature', status: 'in_progress' }),
-    makeTask({ id: 'TASK-0003', title: 'Gamma feature', status: 'done' }),
+    makeEntity({ id: 'TASK-0001', title: 'Alpha feature', status: 'open' }),
+    makeEntity({ id: 'TASK-0002', title: 'Beta feature', status: 'in_progress' }),
+    makeEntity({ id: 'TASK-0003', title: 'Gamma feature', status: 'done' }),
   ];
 
   it('batch-indexed service returns same search results as sequentially-indexed', async () => {
@@ -239,8 +239,8 @@ describe('Invariant: searchAll native docType filtering (ADR-0079)', () => {
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await service.index([
-      makeTask({ id: 'TASK-0001', title: 'Search implementation' }),
-      makeTask({ id: 'EPIC-0001', title: 'Search epic', type: 'epic' }),
+      makeEntity({ id: 'TASK-0001', title: 'Search implementation' }),
+      makeEntity({ id: 'EPIC-0001', title: 'Search epic', type: 'epic' }),
     ]);
     await service.indexResources([
       makeResource({ id: 'res-1', title: 'Search design doc', content: 'Search architecture', path: 'resources/search.md' }),
@@ -278,7 +278,7 @@ describe('Invariant: searchResources native filtering (ADR-0079)', () => {
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await service.index([
-      makeTask({ id: 'TASK-0001', title: 'Design document review' }),
+      makeEntity({ id: 'TASK-0001', title: 'Design document review' }),
     ]);
     await service.indexResources([
       makeResource({ id: 'res-1', title: 'Design document', content: 'Architecture overview', path: 'resources/design.md' }),

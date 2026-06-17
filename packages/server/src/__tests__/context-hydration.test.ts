@@ -14,7 +14,7 @@
  * Uses dependency injection — no filesystem or search index needed.
  */
 import { describe, it, expect } from 'vitest';
-import type { Entity } from '@backlog-mcp/shared';
+import type { Entity, TaskEntity } from '@backlog-mcp/shared';
 import type { Resource } from '@backlog-mcp/memory/search';
 import { resolveFocal, taskToContextEntity } from '../context/stages/focal-resolution.js';
 import { expandRelations, type RelationalExpansionDeps } from '../context/stages/relational-expansion.js';
@@ -36,7 +36,7 @@ import type { ContextEntity, ContextResource, SessionSummary } from '../context/
 
 // ── Test data ────────────────────────────────────────────────────────
 
-function makeTask(overrides: Partial<Entity> & { id: string; title: string }): Task {
+function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): TaskEntity {
   return {
     status: 'open',
     type: 'task',
@@ -46,14 +46,14 @@ function makeTask(overrides: Partial<Entity> & { id: string; title: string }): T
   };
 }
 
-const EPIC = makeTask({
+const EPIC = makeEntity({
   id: 'EPIC-0005',
   title: 'Search & Context Engineering',
   type: 'epic',
   description: 'Epic for all search and context hydration work.',
 });
 
-const TASK_FOCAL = makeTask({
+const TASK_FOCAL = makeEntity({
   id: 'TASK-0042',
   title: 'Implement context hydration',
   parent_id: 'EPIC-0005',
@@ -63,49 +63,49 @@ const TASK_FOCAL = makeTask({
   references: [{ url: 'https://github.com/org/repo/issues/42', title: 'GitHub issue' }],
 });
 
-const TASK_SIBLING_1 = makeTask({
+const TASK_SIBLING_1 = makeEntity({
   id: 'TASK-0040',
   title: 'Add search ranking',
   parent_id: 'EPIC-0005',
   status: 'done',
 });
 
-const TASK_SIBLING_2 = makeTask({
+const TASK_SIBLING_2 = makeEntity({
   id: 'TASK-0041',
   title: 'Normalize scoring pipeline',
   parent_id: 'EPIC-0005',
   status: 'done',
 });
 
-const TASK_CHILD_1 = makeTask({
+const TASK_CHILD_1 = makeEntity({
   id: 'TASK-0043',
   title: 'Stage 1: Focal resolution',
   parent_id: 'TASK-0042',
   status: 'done',
 });
 
-const TASK_CHILD_2 = makeTask({
+const TASK_CHILD_2 = makeEntity({
   id: 'TASK-0044',
   title: 'Stage 2: Relational expansion',
   parent_id: 'TASK-0042',
   status: 'in_progress',
 });
 
-const TASK_UNRELATED = makeTask({
+const TASK_UNRELATED = makeEntity({
   id: 'TASK-0099',
   title: 'Unrelated feature',
   parent_id: 'EPIC-0010',
 });
 
 // Semantically related tasks (not in the direct graph)
-const TASK_SEMANTIC_1 = makeTask({
+const TASK_SEMANTIC_1 = makeEntity({
   id: 'TASK-0050',
   title: 'Research context window optimization',
   parent_id: 'EPIC-0010',
   description: 'Research how to optimize context windows for LLM agents.',
 });
 
-const TASK_SEMANTIC_2 = makeTask({
+const TASK_SEMANTIC_2 = makeEntity({
   id: 'TASK-0051',
   title: 'Agent memory persistence layer',
   parent_id: 'EPIC-0010',
@@ -113,14 +113,14 @@ const TASK_SEMANTIC_2 = makeTask({
 });
 
 // Grandchildren (children of TASK_CHILD_1) — for depth 2+ tests (Phase 3)
-const TASK_GRANDCHILD_1 = makeTask({
+const TASK_GRANDCHILD_1 = makeEntity({
   id: 'TASK-0045',
   title: 'Grandchild subtask A',
   parent_id: 'TASK-0043',
   status: 'open',
 });
 
-const TASK_GRANDCHILD_2 = makeTask({
+const TASK_GRANDCHILD_2 = makeEntity({
   id: 'TASK-0046',
   title: 'Grandchild subtask B',
   parent_id: 'TASK-0043',
@@ -128,7 +128,7 @@ const TASK_GRANDCHILD_2 = makeTask({
 });
 
 // Great-grandparent — for depth 3 tests (Phase 3)
-const EPIC_GRANDPARENT = makeTask({
+const EPIC_GRANDPARENT = makeEntity({
   id: 'EPIC-0001',
   title: 'Platform Engineering',
   type: 'epic',
@@ -136,7 +136,7 @@ const EPIC_GRANDPARENT = makeTask({
 });
 
 // Make EPIC-0005 a child of EPIC-0001 for depth 3 ancestor traversal
-const EPIC_WITH_PARENT = makeTask({
+const EPIC_WITH_PARENT = makeEntity({
   ...EPIC,
   parent_id: 'EPIC-0001',
 });
@@ -407,7 +407,7 @@ describe('taskToContextEntity fidelity levels', () => {
   });
 
   it('resolves parent_id from epic_id as fallback', () => {
-    const task = makeTask({ id: 'TASK-0050', title: 'Legacy task', epic_id: 'EPIC-0003' });
+    const task = makeEntity({ id: 'TASK-0050', title: 'Legacy task', epic_id: 'EPIC-0003' });
     const entity = taskToContextEntity(task);
     expect(entity.parent_id).toBe('EPIC-0003');
   });
@@ -473,7 +473,7 @@ describe('Stage 2: Relational Expansion', () => {
   });
 
   it('handles entity with no parent', () => {
-    const orphan = makeTask({ id: 'TASK-0060', title: 'Orphan task' });
+    const orphan = makeEntity({ id: 'TASK-0060', title: 'Orphan task' });
     const result = expandRelations(orphan, 1, deps);
     expect(result.parent).toBeNull();
     expect(result.siblings).toHaveLength(0);
@@ -547,7 +547,7 @@ describe('Stage 3: Semantic Enrichment', () => {
   it('caps semantic entities at 5', async () => {
     // Create many tasks that would match
     const manyTasks = Array.from({ length: 20 }, (_, i) =>
-      makeTask({ id: `TASK-${String(200 + i).padStart(4, '0')}`, title: `Context hydration subtask ${i}` }),
+      makeEntity({ id: `TASK-${String(200 + i).padStart(4, '0')}`, title: `Context hydration subtask ${i}` }),
     );
 
     const result = await enrichSemantic(
@@ -993,7 +993,7 @@ describe('ContextHydrationService: end-to-end pipeline', () => {
 
   it('handles orphan task (no parent)', async () => {
     const orphanDeps = makeDeps([
-      makeTask({ id: 'TASK-0060', title: 'Orphan' }),
+      makeEntity({ id: 'TASK-0060', title: 'Orphan' }),
     ], []);
     const result = await hydrateContext({ task_id: 'TASK-0060', include_related: false, include_activity: false }, orphanDeps);
     expect(result).not.toBeNull();
@@ -1336,12 +1336,12 @@ describe('Phase 3: Depth 2+ Relational Expansion', () => {
 
   it('cycle detection: does not revisit focal entity', () => {
     // Even if somehow a task has a circular parent reference, the visited set prevents looping
-    const circularTask = makeTask({
+    const circularTask = makeEntity({
       id: 'TASK-LOOP-1',
       title: 'Circular A',
       parent_id: 'TASK-LOOP-2',
     });
-    const circularParent = makeTask({
+    const circularParent = makeEntity({
       id: 'TASK-LOOP-2',
       title: 'Circular B',
       parent_id: 'TASK-LOOP-1', // Circular reference!
@@ -1787,7 +1787,7 @@ describe('Phase 3: Contract invariants', () => {
 // ══════════════════════════════════════════════════════════════════════
 
 // Cross-reference test data: tasks with references[] pointing to other entities
-const TASK_WITH_XREFS = makeTask({
+const TASK_WITH_XREFS = makeEntity({
   id: 'TASK-0060',
   title: 'Task with cross-references',
   parent_id: 'EPIC-0005',
@@ -1801,7 +1801,7 @@ const TASK_WITH_XREFS = makeTask({
   ],
 });
 
-const TASK_WITH_SELF_REF = makeTask({
+const TASK_WITH_SELF_REF = makeEntity({
   id: 'TASK-0061',
   title: 'Task that references itself and its parent',
   parent_id: 'EPIC-0005',
@@ -1811,13 +1811,13 @@ const TASK_WITH_SELF_REF = makeTask({
   ],
 });
 
-const TASK_NO_REFS = makeTask({
+const TASK_NO_REFS = makeEntity({
   id: 'TASK-0062',
   title: 'Task with no references',
   parent_id: 'EPIC-0005',
 });
 
-const PARENT_WITH_REFS = makeTask({
+const PARENT_WITH_REFS = makeEntity({
   ...EPIC,
   references: [
     { url: 'TASK-0050', title: 'Research task' },
@@ -1955,7 +1955,7 @@ describe('Phase 4: traverseCrossReferences (unit tests)', () => {
   });
 
   it('skips references pointing to non-existent entities', () => {
-    const taskWithBadRef = makeTask({
+    const taskWithBadRef = makeEntity({
       id: 'TASK-0070',
       title: 'Bad ref task',
       references: [
@@ -1972,7 +1972,7 @@ describe('Phase 4: traverseCrossReferences (unit tests)', () => {
 
   it('caps at MAX_CROSS_REFS (10)', () => {
     // Create a task with 15 references to different entities
-    const manyRefTask = makeTask({
+    const manyRefTask = makeEntity({
       id: 'TASK-0071',
       title: 'Many refs',
       references: Array.from({ length: 15 }, (_, i) => ({
@@ -1985,7 +1985,7 @@ describe('Phase 4: traverseCrossReferences (unit tests)', () => {
       ...XREF_TASKS,
       manyRefTask,
       ...Array.from({ length: 15 }, (_, i) =>
-        makeTask({ id: `TASK-${String(2000 + i).padStart(4, '0')}`, title: `Target ${i}` }),
+        makeEntity({ id: `TASK-${String(2000 + i).padStart(4, '0')}`, title: `Target ${i}` }),
       ),
     ];
     const deps: CrossReferenceTraversalDeps = { getTask: makeGetTask(tasks) };
@@ -2216,7 +2216,7 @@ describe('Phase 4: Contract invariants', () => {
 
 // Reverse reference test data: tasks that reference other tasks in the backlog
 // TASK-0080 references TASK-0042 (the standard focal task)
-const TASK_REFERENCING_FOCAL = makeTask({
+const TASK_REFERENCING_FOCAL = makeEntity({
   id: 'TASK-0080',
   title: 'Depends on context hydration',
   parent_id: 'EPIC-0010',
@@ -2227,7 +2227,7 @@ const TASK_REFERENCING_FOCAL = makeTask({
 });
 
 // TASK-0081 also references TASK-0042 via a URL
-const TASK_REFERENCING_FOCAL_VIA_URL = makeTask({
+const TASK_REFERENCING_FOCAL_VIA_URL = makeEntity({
   id: 'TASK-0081',
   title: 'Related to hydration pipeline',
   parent_id: 'EPIC-0010',
@@ -2237,7 +2237,7 @@ const TASK_REFERENCING_FOCAL_VIA_URL = makeTask({
 });
 
 // TASK-0082 references TASK-0042 and also TASK-0060 (cross-references target)
-const TASK_REFERENCING_MULTIPLE = makeTask({
+const TASK_REFERENCING_MULTIPLE = makeEntity({
   id: 'TASK-0082',
   title: 'Multi-reference task',
   parent_id: 'EPIC-0010',
@@ -2248,7 +2248,7 @@ const TASK_REFERENCING_MULTIPLE = makeTask({
 });
 
 // TASK-0083 references itself (self-ref should not appear in reverse index)
-const TASK_SELF_REFERENCING = makeTask({
+const TASK_SELF_REFERENCING = makeEntity({
   id: 'TASK-0083',
   title: 'Self-referencing task',
   references: [
@@ -2257,7 +2257,7 @@ const TASK_SELF_REFERENCING = makeTask({
 });
 
 // TASK-0084 has no references (control case)
-const TASK_NO_REFS_CONTROL = makeTask({
+const TASK_NO_REFS_CONTROL = makeEntity({
   id: 'TASK-0084',
   title: 'No references control',
   parent_id: 'EPIC-0010',
@@ -2304,7 +2304,7 @@ describe('Phase 5: buildReverseReferenceIndex', () => {
   });
 
   it('handles multiple references from one source to same target', () => {
-    const taskWithDuplicateRefs = makeTask({
+    const taskWithDuplicateRefs = makeEntity({
       id: 'TASK-0090',
       title: 'Duplicate refs',
       references: [
@@ -2396,7 +2396,7 @@ describe('Phase 5: lookupReverseReferences', () => {
   it('caps at MAX_REVERSE_REFS (10)', () => {
     // Create 15 tasks that all reference TASK-0042
     const manyReferencers = Array.from({ length: 15 }, (_, i) =>
-      makeTask({
+      makeEntity({
         id: `TASK-${String(3000 + i).padStart(4, '0')}`,
         title: `Ref ${i}`,
         references: [{ url: 'TASK-0042', title: 'Target' }],
@@ -2461,7 +2461,7 @@ describe('Phase 5: traverseCrossReferences with reverse references', () => {
   it('reverse refs dedup against forward refs (visited set)', () => {
     // Create a scenario: TASK-0042 (focal) has forward ref to TASK-0080,
     // and TASK-0080 also references TASK-0042 (bidirectional).
-    const focalWithForwardRef = makeTask({
+    const focalWithForwardRef = makeEntity({
       ...TASK_FOCAL,
       references: [{ url: 'TASK-0080', title: 'Forward link' }],
     });
@@ -2523,7 +2523,7 @@ describe('Phase 5: Reverse references in pipeline', () => {
 
   it('referenced_by does not include entities already in relational graph', async () => {
     // Create a task whose parent references it (already in relational graph as parent)
-    const parentRefsFocal = makeTask({
+    const parentRefsFocal = makeEntity({
       ...EPIC,
       references: [{ url: 'TASK-0042', title: 'My child' }],
     });
@@ -2565,7 +2565,7 @@ describe('Phase 5: Reverse references in pipeline', () => {
     // TASK-0084 has no references[] but is not referenced by anyone either.
     // Use TASK-0042 which has no forward entity refs but IS referenced by others.
     const tasksNoForwardRefs = REVERSE_REF_TASKS.map(t =>
-      t.id === 'TASK-0042' ? makeTask({ ...t, references: undefined }) : t,
+      t.id === 'TASK-0042' ? makeEntity({ ...t, references: undefined }) : t,
     );
     const deps = makeDeps(tasksNoForwardRefs, ALL_RESOURCES);
     const result = await hydrateContext({ task_id: 'TASK-0042', include_related: false, include_activity: false, max_tokens: 100000 }, deps);
@@ -2579,7 +2579,7 @@ describe('Phase 5: Reverse references in pipeline', () => {
 
   it('bidirectional references handled correctly', async () => {
     // TASK-0042 references TASK-0080, and TASK-0080 references TASK-0042
-    const focalWithRef = makeTask({
+    const focalWithRef = makeEntity({
       ...TASK_FOCAL,
       references: [
         ...(TASK_FOCAL.references || []),
@@ -2765,7 +2765,7 @@ describe('Phase 5: Contract invariants', () => {
   it('referenced_by capped at 10', async () => {
     // Create 15 tasks that all reference TASK-0042
     const manyReferencers = Array.from({ length: 15 }, (_, i) =>
-      makeTask({
+      makeEntity({
         id: `TASK-${String(4000 + i).padStart(4, '0')}`,
         title: `Referencing ${i}`,
         parent_id: 'EPIC-0010',

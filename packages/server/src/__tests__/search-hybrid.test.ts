@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
-import type { Entity } from '@backlog-mcp/shared';
+import type { Entity, TaskEntity } from '@backlog-mcp/shared';
 
 /**
  * Semantic/Hybrid search tests.
@@ -11,7 +11,7 @@ import type { Entity } from '@backlog-mcp/shared';
  * Subsequent runs use cached model.
  */
 
-function makeTask(overrides: Partial<Entity> & { id: string; title: string }): Task {
+function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): TaskEntity {
   return {
     status: 'open',
     created_at: new Date().toISOString(),
@@ -27,27 +27,27 @@ describe('Hybrid Search (Semantic)', () => {
 
   // Tasks designed to test semantic similarity
   const tasks: Entity[] = [
-    makeTask({
+    makeEntity({
       id: 'TASK-0001',
       title: 'Implement user authentication',
       description: 'Add OAuth2 and SSO support for secure user access',
     }),
-    makeTask({
+    makeEntity({
       id: 'TASK-0002',
       title: 'Fix CI/CD pipeline',
       description: 'Deployment automation is failing on staging environment',
     }),
-    makeTask({
+    makeEntity({
       id: 'TASK-0003',
       title: 'Database performance optimization',
       description: 'Query response times are too slow, need indexing improvements',
     }),
-    makeTask({
+    makeEntity({
       id: 'TASK-0004',
       title: 'Add user profile page',
       description: 'Users should be able to view and edit their account settings',
     }),
-    makeTask({
+    makeEntity({
       id: 'TASK-0005',
       title: 'Implement rate limiting',
       description: 'Protect API endpoints from abuse and DDoS attacks',
