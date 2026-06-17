@@ -401,8 +401,14 @@ export interface RecallResult {
 // ── Remember / Forget (ADR-0092.3 Phase C, ADR-0092.5 R-1/R-2/R-7) ──
 
 export interface RememberParams {
-  /** The memory body (markdown). First line becomes the title/digest. */
+  /** The memory body (markdown). */
   content: string;
+  /**
+   * Optional explicit title. When provided (and non-empty after trimming),
+   * it becomes the memory's title verbatim. When absent, the store falls
+   * back to deriving a title from the content's first line.
+   */
+  title?: string;
   /** Memory layer. Default: 'semantic' — remember is the knowledge verb. */
   layer?: 'episodic' | 'semantic' | 'procedural';
   /** Scope container (e.g. FLDR-0001) — becomes parent_id / recall context. */

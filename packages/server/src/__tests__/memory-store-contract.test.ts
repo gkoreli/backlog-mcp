@@ -334,6 +334,40 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     expect(recalled.items[0]?.id).toBe(knowledge.id);
   });
 
+  // ── Optional explicit title (TASK-0687) ──────────────────────────
+
+  it('explicit title is used verbatim; body stays the full content', async () => {
+    const composer = createDefaultComposer(() => service);
+    const r = await coreRemember(
+      { content: 'A single paragraph fact with no line breaks that would otherwise become the title.', title: 'Clean Title', layer: 'semantic' },
+      { memoryComposer: composer },
+    );
+    const m = await service.get(r.id) as { title?: string; description?: string };
+    expect(m.title).toBe('Clean Title');
+    expect(m.description).toBe('A single paragraph fact with no line breaks that would otherwise become the title.');
+  });
+
+  it('absent title falls back to the derived first-line title (existing behavior)', async () => {
+    const composer = createDefaultComposer(() => service);
+    const r = await coreRemember(
+      { content: 'First line is the title\n\nSecond paragraph is the body.', layer: 'semantic' },
+      { memoryComposer: composer },
+    );
+    const m = await service.get(r.id) as { title?: string; description?: string };
+    expect(m.title).toBe('First line is the title');
+    expect(m.description).toContain('Second paragraph');
+  });
+
+  it('whitespace-only title is treated as absent and falls back to derivation', async () => {
+    const composer = createDefaultComposer(() => service);
+    const r = await coreRemember(
+      { content: 'Derived heading here\n\nrest of body', title: '   ', layer: 'semantic' },
+      { memoryComposer: composer },
+    );
+    const m = await service.get(r.id) as { title?: string };
+    expect(m.title).toBe('Derived heading here');
+  });
+
   // ── End-to-end: capture → durable entity → core recall ────────────
 
   it('E2E: implicit capture writes a durable MEMO entity recallable via core recall', async () => {

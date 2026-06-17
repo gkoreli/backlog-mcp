@@ -78,7 +78,7 @@ export class BacklogMemoryStore implements MemoryStore {
     const memory = MemorySchema.parse({
       id,
       type: 'memory',
-      title: titleFromContent(entry.content),
+      title: entry.title?.trim() || titleFromContent(entry.content),
       description: entry.content,
       layer: entry.layer,
       ...(entry.source ? { source: entry.source } : {}),

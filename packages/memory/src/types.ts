@@ -5,6 +5,13 @@
 export interface MemoryEntry {
   /** Unique ID, auto-generated if not provided */
   id: string;
+  /**
+   * Optional explicit title. When set, the store uses it verbatim; when
+   * absent the store derives one from the content's first line. Forced
+   * derivation is correct for implicit episodic capture (no human to title);
+   * explicit `remember` callers may supply a clean title here.
+   */
+  title?: string;
   /** The content to remember */
   content: string;
   /** Which layer this belongs to */

@@ -32,7 +32,8 @@ export function registerBacklogRememberTool(
       description:
         'Write a durable memory — a stable fact, a procedure, or a preference you should know next session. Use when you learn something worth keeping: "this repo deploys via wrangler", "Goga prefers terse evidence bullets". To CORRECT existing knowledge, pass supersedes (the old MEMO- id is expired, lineage kept) or state_key (previous holders of the same evolving fact are closed). Do not use for task events — completions are captured automatically.',
       inputSchema: z.object({
-        content: z.string().describe('The memory body (markdown). First line becomes the title/digest.'),
+        content: z.string().describe('The memory body (markdown).'),
+        title: z.string().optional().describe('Explicit title for the memory. When omitted, the title is derived from the first line of content. Provide this for single-paragraph facts so the title is a clean label rather than a truncated copy of the body.'),
         layer: z.enum(['episodic', 'semantic', 'procedural']).optional().describe(
           'semantic = stable fact (default). procedural = how-to/process. episodic = a specific event worth keeping.',
         ),
@@ -56,6 +57,7 @@ export function registerBacklogRememberTool(
         const result = await remember(
           {
             content: params.content,
+            ...(params.title !== undefined ? { title: params.title } : {}),
             ...(params.layer !== undefined ? { layer: params.layer } : {}),
             ...(params.context !== undefined ? { context: params.context } : {}),
             ...(params.tags !== undefined ? { tags: params.tags } : {}),
