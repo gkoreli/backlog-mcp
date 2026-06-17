@@ -18,7 +18,7 @@ const SNIPPET_WINDOW = 120; // chars of context around match
 export function generateTaskSnippet(task: Entity, query: string): SearchSnippet {
   const fields: { name: string; value: string }[] = [
     { name: 'title', value: task.title },
-    { name: 'description', value: task.description || '' },
+    { name: 'content', value: task.content || '' },
     { name: 'evidence', value: (task.evidence || []).join(' ') },
     { name: 'blocked_reason', value: (task.blocked_reason || []).join(' ') },
     { name: 'references', value: (task.references || []).map(r => `${r.title || ''} ${r.url}`).join(' ') },

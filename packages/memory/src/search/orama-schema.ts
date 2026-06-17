@@ -6,7 +6,7 @@ import { EMBEDDING_DIMENSIONS } from './embedding-service.js';
 export type OramaDoc = {
   id: string;
   title: string;
-  description: string;
+  content: string;
   status: string;
   type: string;
   epic_id: string;
@@ -26,7 +26,7 @@ export type OramaDocWithEmbeddings = OramaDoc & {
 export const schema = {
   id: 'string',
   title: 'string',
-  description: 'string',
+  content: 'string',
   status: 'enum',
   type: 'enum',
   epic_id: 'enum',
@@ -46,7 +46,7 @@ export type OramaInstance = import('@orama/orama').Orama<typeof schema>;
 export type OramaInstanceWithEmbeddings = import('@orama/orama').Orama<typeof schemaWithEmbeddings>;
 
 /** Bump when tokenizer or schema changes to force index rebuild. */
-export const INDEX_VERSION = 4;  // ADR-0080: added updated_at, unsortableProperties
+export const INDEX_VERSION = 5;  // ADR-0106.4: entity body field renamed description→content (forces rebuild)
 
 // ── Search constants ────────────────────────────────────────────────
 
@@ -61,13 +61,13 @@ export const INDEX_VERSION = 4;  // ADR-0080: added updated_at, unsortableProper
  * queries are handled *before* BM25 by the query-intent parser (id_lookup
  * short-circuit), which is both exact and cheaper.
  */
-export const TEXT_PROPERTIES = ['title', 'description', 'evidence', 'blocked_reason', 'references', 'path'] as const;
+export const TEXT_PROPERTIES = ['title', 'content', 'evidence', 'blocked_reason', 'references', 'path'] as const;
 
 /**
  * Properties that should NOT have sort indexes (ADR-0080).
  * Only `updated_at` needs a sort index for native "recent" mode.
  */
-export const UNSORTABLE_PROPERTIES = ['id', 'title', 'description', 'evidence', 'blocked_reason', 'references', 'path'] as const;
+export const UNSORTABLE_PROPERTIES = ['id', 'title', 'content', 'evidence', 'blocked_reason', 'references', 'path'] as const;
 
 /**
  * Facet configuration for enum fields (ADR-0080).

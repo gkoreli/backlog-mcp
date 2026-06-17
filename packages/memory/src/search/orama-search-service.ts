@@ -89,7 +89,7 @@ export class OramaSearchService implements SearchService {
   // ── Document conversion ─────────────────────────────────────────
 
   private getTextForEmbedding(task: Entity): string {
-    return `${task.title} ${task.description || ''}`.trim();
+    return `${task.title} ${task.content || ''}`.trim();
   }
 
   private taskToDoc(task: Entity): OramaDoc {
@@ -106,7 +106,7 @@ export class OramaSearchService implements SearchService {
     return {
       id: task.id,
       title: task.title,
-      description: task.description || '',
+      content: task.content || '',
       status: task.status ?? 'open',
       type: task.type || 'task',
       epic_id: task.parent_id ?? task.epic_id ?? '',  // Effective parent for where filtering (ADR-0079)
@@ -122,7 +122,7 @@ export class OramaSearchService implements SearchService {
     return {
       id: resource.id,
       title: resource.title,
-      description: resource.content,  // Full content for search
+      content: resource.content,  // Full content for search
       status: '',
       type: 'resource',
       epic_id: '',
@@ -373,7 +373,7 @@ export class OramaSearchService implements SearchService {
   private _getSearchableText(id: string): string {
     const task = this.taskCache.get(id);
     if (task) {
-      return [task.title, task.description || '', (task.evidence || []).join(' ')].join(' ');
+      return [task.title, task.content || '', (task.evidence || []).join(' ')].join(' ');
     }
     const resource = this.resourceCache.get(id);
     if (resource) {
@@ -637,7 +637,7 @@ export class OramaSearchService implements SearchService {
     const { hits } = await this._fusedSearch({
       query,
       limit,
-      boost: { title: 2, description: 1 },
+      boost: { title: 2, content: 1 },
       where: { type: { eq: 'resource' } },
     });
 
