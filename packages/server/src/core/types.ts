@@ -404,11 +404,12 @@ export interface RememberParams {
   /** The memory body (markdown). */
   content: string;
   /**
-   * Optional explicit title. When provided (and non-empty after trimming),
-   * it becomes the memory's title verbatim. When absent, the store falls
-   * back to deriving a title from the content's first line.
+   * Memory title — REQUIRED, like a task's title. Title and body are both
+   * first-class: the title is the human-readable label/digest, the content is
+   * the fact. (Implicit episodic auto-capture derives a title from the entity
+   * instead — that path does not use RememberParams.)
    */
-  title?: string;
+  title: string;
   /** Memory layer. Default: 'semantic' — remember is the knowledge verb. */
   layer?: 'episodic' | 'semantic' | 'procedural';
   /** Scope container (e.g. FLDR-0001) — becomes parent_id / recall context. */

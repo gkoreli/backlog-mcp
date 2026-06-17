@@ -27,7 +27,7 @@ describe('core/remember', () => {
 
   it('stores with default layer semantic and returns the stored id', async () => {
     const result = await remember(
-      { content: 'This repo deploys via wrangler' },
+      { content: 'This repo deploys via wrangler', title: 'Deploy via wrangler' },
       { memoryComposer: composer, actorName: 'claude' },
     );
     expect(result.layer).toBe('semantic');
@@ -37,7 +37,7 @@ describe('core/remember', () => {
 
   it('respects an explicit layer and passes source through', async () => {
     await remember(
-      { content: 'Release = typecheck → test → tag → publish', layer: 'procedural', source: 'goga' },
+      { content: 'Release = typecheck → test → tag → publish', title: 'Release steps', layer: 'procedural', source: 'goga' },
       { memoryComposer: composer },
     );
     const recalled = await store.recall({ query: 'release publish' });
@@ -49,6 +49,7 @@ describe('core/remember', () => {
     await remember(
       {
         content: 'Bundler is tsdown',
+        title: 'Bundler is tsdown',
         kind: 'current',
         state_key: 'build.bundler',
         occurred_at: '2026-06-01',
@@ -65,35 +66,39 @@ describe('core/remember', () => {
   });
 
   it('rejects empty content', async () => {
-    await expect(remember({ content: '   ' }, { memoryComposer: composer })).rejects.toThrow(ValidationError);
+    await expect(remember({ content: '   ', title: 't' }, { memoryComposer: composer })).rejects.toThrow(ValidationError);
+  });
+
+  it('rejects empty title', async () => {
+    await expect(remember({ content: 'x', title: '   ' }, { memoryComposer: composer })).rejects.toThrow(/title is required/);
   });
 
   it('rejects when no composer is configured', async () => {
-    await expect(remember({ content: 'x' }, {})).rejects.toThrow(/no memory store/i);
+    await expect(remember({ content: 'x', title: 't' }, {})).rejects.toThrow(/no memory store/i);
   });
 
   it('rejects malformed context and entity_refs ids', async () => {
-    await expect(remember({ content: 'x', context: 'not-an-id' }, { memoryComposer: composer }))
+    await expect(remember({ content: 'x', title: 't', context: 'not-an-id' }, { memoryComposer: composer }))
       .rejects.toThrow(/context/);
-    await expect(remember({ content: 'x', entity_refs: ['TASK-1', 'bogus'] }, { memoryComposer: composer }))
+    await expect(remember({ content: 'x', title: 't', entity_refs: ['TASK-1', 'bogus'] }, { memoryComposer: composer }))
       .rejects.toThrow(/entity_refs/);
   });
 
   it('rejects supersedes that is not a MEMO- id', async () => {
-    await expect(remember({ content: 'x', supersedes: 'TASK-0001' }, { memoryComposer: composer }))
+    await expect(remember({ content: 'x', title: 't', supersedes: 'TASK-0001' }, { memoryComposer: composer }))
       .rejects.toThrow(/MEMO-/);
   });
 
   it('rejects non-ISO dates with explicit errors (R-7)', async () => {
-    await expect(remember({ content: 'x', occurred_at: 'March 2026' }, { memoryComposer: composer }))
+    await expect(remember({ content: 'x', title: 't', occurred_at: 'March 2026' }, { memoryComposer: composer }))
       .rejects.toThrow(/occurred_at must be an ISO/);
-    await expect(remember({ content: 'x', valid_until: 'next week' }, { memoryComposer: composer }))
+    await expect(remember({ content: 'x', title: 't', valid_until: 'next week' }, { memoryComposer: composer }))
       .rejects.toThrow(/valid_until must be an ISO/);
   });
 
   it('rejects inverted validity intervals (R-7: silently-invisible facts)', async () => {
     await expect(remember(
-      { content: 'x', occurred_at: '2026-06-10', valid_until: '2026-06-01' },
+      { content: 'x', title: 't', occurred_at: '2026-06-10', valid_until: '2026-06-01' },
       { memoryComposer: composer },
     )).rejects.toThrow(/must be after/);
   });

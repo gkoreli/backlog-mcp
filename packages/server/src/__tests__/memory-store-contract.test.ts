@@ -279,12 +279,12 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     const composer = createDefaultComposer(() => service);
 
     await expect(coreRemember(
-      { content: 'Unfounded conclusion', derived: true },
+      { content: 'Unfounded conclusion', title: 'Unfounded', derived: true },
       { memoryComposer: composer },
     )).rejects.toThrow(/entity_refs is required/);
 
     const ok = await coreRemember(
-      { content: 'Founded conclusion', derived: true, entity_refs: ['TASK-0042'], layer: 'semantic' },
+      { content: 'Founded conclusion', title: 'Founded conclusion', derived: true, entity_refs: ['TASK-0042'], layer: 'semantic' },
       { memoryComposer: composer },
     );
     const stored = await service.get(ok.id) as { derived?: boolean; entity_refs?: string[] };
@@ -299,7 +299,7 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     // Three aged episodics in one context (backdate created_at via save).
     for (let i = 0; i < 3; i++) {
       const r = await coreRemember(
-        { content: `Episode ${i}: fixed a flaky SSE case`, layer: 'episodic', context: 'FLDR-0001', entity_refs: ['TASK-0001'] },
+        { content: `Episode ${i}: fixed a flaky SSE case`, title: `Episode ${i}`, layer: 'episodic', context: 'FLDR-0001', entity_refs: ['TASK-0001'] },
         { memoryComposer: composer },
       );
       const e = await service.get(r.id);
@@ -317,6 +317,7 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     const knowledge = await coreRemember(
       {
         content: 'SSE reconnects flake under load; the fix pattern is reconnect backoff. Seen 3×.',
+        title: 'SSE reconnect backoff pattern',
         layer: 'semantic', derived: true, context: 'FLDR-0001',
         entity_refs: [...bundle.member_ids, 'TASK-0001'],
       },
@@ -334,7 +335,7 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     expect(recalled.items[0]?.id).toBe(knowledge.id);
   });
 
-  // ── Optional explicit title (TASK-0687) ──────────────────────────
+  // ── Mandatory title (TASK-0687 + follow-up) ──────────────────────
 
   it('explicit title is used verbatim; body stays the full content', async () => {
     const composer = createDefaultComposer(() => service);
@@ -347,25 +348,21 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     expect(m.description).toBe('A single paragraph fact with no line breaks that would otherwise become the title.');
   });
 
-  it('absent title falls back to the derived first-line title (existing behavior)', async () => {
+  it('title is mandatory on the explicit remember path — absent title is rejected', async () => {
     const composer = createDefaultComposer(() => service);
-    const r = await coreRemember(
+    await expect(coreRemember(
+      // @ts-expect-error — title is required; this asserts the runtime guard too.
       { content: 'First line is the title\n\nSecond paragraph is the body.', layer: 'semantic' },
       { memoryComposer: composer },
-    );
-    const m = await service.get(r.id) as { title?: string; description?: string };
-    expect(m.title).toBe('First line is the title');
-    expect(m.description).toContain('Second paragraph');
+    )).rejects.toThrow(/title is required/);
   });
 
-  it('whitespace-only title is treated as absent and falls back to derivation', async () => {
+  it('whitespace-only title is rejected (treated as absent)', async () => {
     const composer = createDefaultComposer(() => service);
-    const r = await coreRemember(
+    await expect(coreRemember(
       { content: 'Derived heading here\n\nrest of body', title: '   ', layer: 'semantic' },
       { memoryComposer: composer },
-    );
-    const m = await service.get(r.id) as { title?: string };
-    expect(m.title).toBe('Derived heading here');
+    )).rejects.toThrow(/title is required/);
   });
 
   // ── End-to-end: capture → durable entity → core recall ────────────

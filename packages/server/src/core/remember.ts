@@ -39,6 +39,9 @@ export async function remember(params: RememberParams, deps: RememberDeps): Prom
   const content = (params.content ?? '').trim();
   if (!content) throw new ValidationError('content is required');
 
+  const title = (params.title ?? '').trim();
+  if (!title) throw new ValidationError('title is required');
+
   if (!deps.memoryComposer) {
     throw new ValidationError('No memory store is configured — cannot remember');
   }
@@ -76,13 +79,12 @@ export async function remember(params: RememberParams, deps: RememberDeps): Prom
 
   const now = Date.now();
   const layer = params.layer ?? 'semantic';
-  const title = params.title?.trim();
 
   const entry: MemoryEntry = {
     id: `mem-remember-${now}`,  // transient — the store mints the canonical MEMO- id
     layer,
     content,
-    ...(title ? { title } : {}),
+    title,
     source: params.source ?? deps.actorName ?? 'unknown',
     ...(params.context ? { context: params.context } : {}),
     ...(params.tags && params.tags.length > 0 ? { tags: params.tags } : {}),

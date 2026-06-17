@@ -17,7 +17,7 @@ export function registerRemember(program: Command): void {
   program
     .command('remember <content...>')
     .description('Write a durable memory — a fact, procedure, or preference (ADR 0092.3 Phase C)')
-    .option('--title <title>', 'Explicit title (defaults to first line of content)')
+    .requiredOption('--title <title>', 'Memory title (required, like a task title)')
     .option('--layer <layer>', 'episodic | semantic (default) | procedural')
     .option('--context <id>', 'Scope container (e.g. FLDR-0001)')
     .option('--tags <tag...>', 'Freeform labels')
@@ -35,7 +35,7 @@ export function registerRemember(program: Command): void {
         const result = await remember(
         {
           content: contentParts.join(' '),
-          ...(opts.title !== undefined ? { title: opts.title } : {}),
+          title: opts.title,
           ...(opts.layer !== undefined ? { layer: opts.layer } : {}),
           ...(context !== undefined ? { context } : {}),
           ...(opts.tags !== undefined ? { tags: opts.tags } : {}),
