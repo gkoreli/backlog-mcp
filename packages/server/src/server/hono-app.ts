@@ -8,6 +8,7 @@ import type { IOperationLog, Actor } from '../operations/types.js';
 import { extractTargetFilename } from '../operations/resource-id.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';
 import { detectContradictions, contradictsFor } from '../core/contradictions.js';
+import { usageSeries, hasUsage } from '../core/usage-series.js';
 import type { Entity, Memory } from '@backlog-mcp/shared';
 import {
   createAuthRuntime,
@@ -49,6 +50,7 @@ export interface AppDeps extends ToolDeps {
   staticMiddleware?: any;  // result of serveStatic({ root: '...' }) from @hono/node-server/serve-static
   eventBus?: any;          // for SSE push
   readLocalFile?: (filePath: string) => string | null;  // injected by node-server.ts; absent in Worker
+  readUsageLines?: () => string[];  // memory-usage.jsonl reader (ADR 0092.14); Node-only, absent in Worker
   db?: any;                // cloud: D1 database — used for mode detection only
 }
 
@@ -147,12 +149,23 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     // other live holders, surface them so MetadataCard renders navigable
     // links + a contradiction chip. Empty/absent for the no-conflict case.
     let contradicts: string[] | undefined;
+    // usage_series (ADR 0092.14): per-day touch counts from the JSONL, for the
+    // viewer sparkline. Node-only (reader injected); omitted if no activity.
+    let usage_series: number[] | undefined;
     if ((task.type ?? 'task') === 'memory') {
       const conflicts = await contradictsFor(service, task as Entity as Memory);
       if (conflicts.length > 0) contradicts = conflicts;
+      if (deps?.readUsageLines) {
+        const series = usageSeries(deps.readUsageLines(), id);
+        if (hasUsage(series)) usage_series = series;
+      }
     }
 
-    return c.json({ ...task, raw, parentTitle, children, ...(contradicts ? { contradicts } : {}) });
+    return c.json({
+      ...task, raw, parentTitle, children,
+      ...(contradicts ? { contradicts } : {}),
+      ...(usage_series ? { usage_series } : {}),
+    });
   });
 
   // GET /search

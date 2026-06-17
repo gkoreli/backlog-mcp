@@ -34,6 +34,12 @@ function renderValue(value: unknown, key: string, splitState: SplitPaneState): T
   // Array
   if (Array.isArray(value)) {
     if (value.length === 0) return html`<span class="meta-empty">—</span>`;
+    // Array of numbers → sparkline (ADR 0092.14). Generic, key-agnostic:
+    // usage_series (per-day memory touches from the JSONL) renders as an
+    // inline bar chart — the strong/weak usage history made legible.
+    if (value.every(v => typeof v === 'number')) {
+      return renderSparkline(value as number[]);
+    }
     // contradicts (ADR 0092.13 R-9): live memories sharing this one's
     // state_key. A red chip flags the conflict; the ids below it are the
     // navigable evidence for human adjudication (resolve via remember/forget).
@@ -85,6 +91,32 @@ function renderScalar(value: unknown, key: string, splitState: SplitPaneState): 
     return html`<span class="meta-chip meta-chip--derived">inference — see entity_refs for evidence</span>`;
   }
   return html`<span>${String(value)}</span>`;
+}
+
+/**
+ * Inline SVG bar sparkline (ADR 0092.14). Renders an array of per-day counts
+ * as fixed-width bars, newest on the right. Pure presentation — heights scale
+ * to the series max; a label gives the total so a glance reads "how used".
+ */
+function renderSparkline(series: number[]): TemplateResult {
+  const W = 2, GAP = 1, H = 16;
+  const max = Math.max(1, ...series);
+  const total = series.reduce((a, b) => a + b, 0);
+  const width = series.length * (W + GAP);
+  // Precompute geometry so rendering doesn't depend on each()'s index.
+  const rects = series.map((v, i) => {
+    const h = v === 0 ? 1 : Math.max(1, Math.round((v / max) * H));
+    return { key: i, x: i * (W + GAP), y: H - h, h, empty: v === 0 };
+  });
+  const items = signal(rects);
+  const bars = each(items, (r) => r.key, (cell) => {
+    const r = cell.value;
+    return html`<rect x="${String(r.x)}" y="${String(r.y)}" width="${String(W)}" height="${String(r.h)}" class="${r.empty ? 'spark-bar spark-bar--empty' : 'spark-bar'}"></rect>`;
+  });
+  return html`<span class="sparkline" title="${String(total)} usage events over ${String(series.length)} days">
+    <svg width="${String(width)}" height="${String(H)}" viewBox="0 0 ${String(width)} ${String(H)}" class="spark-svg">${bars}</svg>
+    <span class="spark-total">${String(total)}</span>
+  </span>`;
 }
 
 function renderLink(url: string, title: string, splitState: SplitPaneState): TemplateResult {
