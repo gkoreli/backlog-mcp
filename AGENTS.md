@@ -85,6 +85,28 @@ vi.mock('../storage/backlog.js', () => ({
 - **Composable, modular, no god files** — decompose into meaningful single-purpose modules; composition over inheritance; strongly typed throughout; JSDoc on exported functions and non-obvious decisions
 - **Core-first layering (ADR 0090)** — business logic lives in `src/core/*` as standalone, transport-free functions; MCP tools, CLI commands, and HTTP routes are thin adapters that map params and call core. Any consumer can reuse core.
 
+### File naming convention (ADR 0109)
+
+The repo historically mixed `types.ts`, `*-types.ts`, and would-be `*.types.ts`.
+Settle on **suffix-based naming where files are tightly related**, by role:
+
+- **Satellite types** (types that serve exactly one sibling module) → co-locate as
+  `<base>.types.ts`. Example: `disk-storage-adapter.ts` + `disk-storage-adapter.types.ts`.
+- **Module-wide types** (shared across a whole folder) → keep the folder's
+  `types.ts` (already the dominant pattern in `core/`, `context/`, `resources/`,
+  `operations/`). Do not split these into per-file satellites.
+- **Shared contracts/interfaces** (an interface implemented by several modules and
+  consumed widely) → name by the *contract*, not an implementation:
+  `<name>.contract.ts`. Example: `IBacklogService` lives in
+  `backlog-service.contract.ts` (implemented by local + D1 services, imported by
+  ~40 files) — naming it after one implementation would misrepresent ownership.
+- **Tightly-coupled siblings in general** share a base name and differ only by
+  suffix (`.types.ts`, `.contract.ts`, `.test.ts`) so they sort adjacently and the
+  relationship is obvious.
+
+Apply to new and touched files; do not do a sweeping repo-wide rename (churn +
+merge-conflict risk) — let legacy `types.ts` files migrate opportunistically.
+
 ## The Development Loop (maintainer decision, 2026-06-10)
 
 backlog-mcp evolves through a deliberate loop, recorded in the ADR thread:
