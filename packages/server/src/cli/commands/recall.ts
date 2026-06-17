@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { recall } from '../../core/recall.js';
+import { resolveScope } from '../../core/config.js';
 import { defaultMemoryComposer, defaultUsageTracker } from '../../memory/bootstrap.js';
 import type { RecallResult } from '../../core/types.js';
 import { run } from '../runner.js';
@@ -36,10 +37,12 @@ export function registerRecall(program: Command): void {
     .option('--budget <tokens>', 'Approximate token budget — results packed to fit', parseInt)
     .action((queryParts: string[], opts) => run(
       async () => {
+        // ADR 0105: explicit --context wins; else per-repo config / env default.
+        const context = resolveScope({ explicit: opts.context });
         const result = await recall(
         {
           query: queryParts.join(' '),
-          ...(opts.context !== undefined ? { context: opts.context } : {}),
+          ...(context !== undefined ? { context } : {}),
           ...(opts.tags !== undefined ? { tags: opts.tags } : {}),
           ...(opts.layers !== undefined ? { layers: opts.layers } : {}),
           ...(opts.limit !== undefined ? { limit: opts.limit } : {}),

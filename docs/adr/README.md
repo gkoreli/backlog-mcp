@@ -8,6 +8,7 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0105. Per-Repo Config (.backlog-mcp/) — Auto-Scope Memory & Wakeup](./0105-per-repo-config-auto-scope.md) - `.backlog-mcp/config.json` (committed) + `config.local.json` (gitignored) supply a default scope; precedence explicit > BACKLOG_SCOPE env > local > committed; CLI auto-scopes per project, detached MCP server uses the env layer - 2026-06-16
 - [0013.7. Transport, Bridge & Hosting — Decision Framework (the mcp-remote question)](./0013.7-transport-bridge-and-hosting-decision-framework.md) **[head of transport thread → 0013]** - Stops the recurring "do I still need mcp-remote?" loop: daemon model affirmed, mcp-remote correct *by destination* (local-no-auth → native bridge, stdio→remote-OAuth → keep it), Workers+D1-vs-Fly parked as explicit Open Tension - 2026-06-03
 - [0100. Remote Auth Architecture — GitHub OAuth + PKCE + JWT Access Tokens](./0100-remote-auth-architecture.md) - Cloud deployment auth for MCP clients (renumbered from 0092 on 2026-05-07 to resolve number conflict with agentic-memory family) - 2026-04-03
 - [0099. Fix Build OOM — Separate tsc Declarations from tsdown Bundling](./0099-fix-build-oom-separate-tsc-declarations.md) - Split dts generation (tsc) from JS bundling (tsdown) to fix 3.5GB→511MB OOM on Cloudflare Workers CI/CD - 2026-04-30

@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { remember } from '../../core/remember.js';
+import { resolveScope } from '../../core/config.js';
 import { defaultMemoryComposer, defaultUsageTracker } from '../../memory/bootstrap.js';
 import { envActor } from '../../operations/logger.js';
 import type { RememberResult } from '../../core/types.js';
@@ -29,12 +30,14 @@ export function registerRemember(program: Command): void {
     .option('--derived', 'Mark as inference (consolidator output) — requires --refs')
     .action((contentParts: string[], opts) => run(
       async () => {
+        // ADR 0105: explicit --context wins; else per-repo config / env default.
+        const context = resolveScope({ explicit: opts.context });
         const result = await remember(
         {
           content: contentParts.join(' '),
           ...(opts.title !== undefined ? { title: opts.title } : {}),
           ...(opts.layer !== undefined ? { layer: opts.layer } : {}),
-          ...(opts.context !== undefined ? { context: opts.context } : {}),
+          ...(context !== undefined ? { context } : {}),
           ...(opts.tags !== undefined ? { tags: opts.tags } : {}),
           ...(opts.refs !== undefined ? { entity_refs: opts.refs } : {}),
           ...(opts.kind !== undefined ? { kind: opts.kind } : {}),
