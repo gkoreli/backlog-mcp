@@ -121,7 +121,7 @@ export interface GetResult {
 
 export interface CreateParams {
   title: string;
-  description?: string;
+  content?: string;
   type?: EntityType;
   epic_id?: string;
   parent_id?: string;
@@ -195,7 +195,6 @@ export interface SearchResultItem {
   snippet?: string;
   matched_fields?: string[];
   score?: number;
-  description?: string;
   content?: string;
 }
 

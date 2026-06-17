@@ -37,7 +37,7 @@ export interface ContextEntity {
   parent_id?: string;
   fidelity: Fidelity;
   /** Present when fidelity is 'full' */
-  description?: string;
+  content?: string;
   /** Present when fidelity is 'full' and entity has evidence */
   evidence?: string[];
   /** Present when fidelity is 'full' and entity has blocked_reason */

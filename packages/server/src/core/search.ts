@@ -38,7 +38,7 @@ export async function searchItems(service: IBacklogService, params: SearchParams
     if (parentId) item.parent_id = parentId;
     if (r.snippet) { item.snippet = r.snippet.text; item.matched_fields = r.snippet.matched_fields; }
     if (include_scores) item.score = Math.round(r.score * 1000) / 1000;
-    if (include_content) item.description = task.description;
+    if (include_content) item.content = task.content;
     return item;
   });
 

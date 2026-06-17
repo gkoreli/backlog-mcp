@@ -34,8 +34,8 @@ export function taskToContextEntity(task: Entity, fidelity: 'full' | 'summary' |
 
   if (fidelity === 'summary') return entity;
 
-  // Full: include description, evidence, blocked_reason
-  if (task.description) entity.description = task.description;
+  // Full: include content, evidence, blocked_reason
+  if (task.content) entity.content = task.content;
   if (task.evidence?.length) entity.evidence = task.evidence;
   if (task.blocked_reason?.length) entity.blocked_reason = task.blocked_reason;
 

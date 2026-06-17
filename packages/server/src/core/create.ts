@@ -20,7 +20,7 @@ import { captureArtifact } from '../memory/capture.js';
  *   - cron entities get enabled=true by default (CronSchema default)
  *
  * Note: source_path resolution is a transport concern — MCP and CLI
- * resolve the file and pass the content as `description`. Core never
+ * resolve the file and pass the file's text as `content`. Core never
  * touches the filesystem.
  *
  * Journal: on success, appends a `backlog_create` entry to ctx.operationLog
@@ -32,7 +32,7 @@ export async function createItem(
   params: CreateParams,
   ctx: WriteContext,
 ): Promise<CreateResult> {
-  const { title, description, type, epic_id, parent_id, references, schedule, command, enabled } = params;
+  const { title, content, type, epic_id, parent_id, references, schedule, command, enabled } = params;
 
   const resolvedType = (type ?? EntityType.Task) as EntityType;
   const resolvedParent = parent_id ?? epic_id;
@@ -41,7 +41,7 @@ export async function createItem(
   let task;
   try {
     task = createEntity({
-      id, title, description, type: resolvedType,
+      id, title, content, type: resolvedType,
       parent_id: resolvedParent, references,
       schedule, command, enabled,
     });

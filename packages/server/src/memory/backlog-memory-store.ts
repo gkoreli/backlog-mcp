@@ -69,7 +69,7 @@ export class BacklogMemoryStore implements MemoryStore {
       id,
       type: 'memory',
       title: entry.title.trim(),
-      description: entry.content,
+      content: entry.content,
       layer: entry.layer,
       ...(entry.source ? { source: entry.source } : {}),
       ...(entry.context && isValidEntityId(entry.context) ? { parent_id: entry.context } : {}),
@@ -196,7 +196,7 @@ export class BacklogMemoryStore implements MemoryStore {
     return {
       id: m.id,
       title: m.title,
-      content: m.description,
+      content: m.content,
       layer: (m.layer ?? 'episodic') as MemoryLayer,
       source: m.source ?? 'unknown',
       ...(m.parent_id ? { context: m.parent_id } : {}),

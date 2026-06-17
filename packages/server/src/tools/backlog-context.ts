@@ -154,7 +154,7 @@ function formatEntity(entity: ContextResponse['focal']) {
     type: entity.type,
   };
   if (entity.parent_id) out.parent_id = entity.parent_id;
-  if (entity.description) out.description = entity.description;
+  if (entity.content) out.content = entity.content;
   if (entity.evidence?.length) out.evidence = entity.evidence;
   if (entity.blocked_reason?.length) out.blocked_reason = entity.blocked_reason;
   if (entity.references?.length) out.references = entity.references;

@@ -48,8 +48,8 @@ export interface SemanticEnrichmentResult {
  */
 function buildSearchQuery(focalTask: Entity): string {
   let query = focalTask.title;
-  if (focalTask.description) {
-    const descSnippet = focalTask.description.slice(0, 200).trim();
+  if (focalTask.content) {
+    const descSnippet = focalTask.content.slice(0, 200).trim();
     if (descSnippet) {
       query += ' ' + descSnippet;
     }

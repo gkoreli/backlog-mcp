@@ -57,8 +57,8 @@ export function estimateEntityTokens(entity: ContextEntity): number {
     return cost;
   }
 
-  // Full adds: description, evidence, blocked_reason
-  if (entity.description) cost += estimateTokens(entity.description);
+  // Full adds: content, evidence, blocked_reason
+  if (entity.content) cost += estimateTokens(entity.content);
   if (entity.evidence?.length) {
     for (const e of entity.evidence) cost += estimateTokens(e) + 3;
   }

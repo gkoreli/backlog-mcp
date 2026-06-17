@@ -21,8 +21,8 @@ export async function editItem(
   if (!task) throw new NotFoundError(id);
 
   try {
-    const newBody = applyOperation(task.description ?? '', operation as Operation);
-    await service.save({ ...task, description: newBody, updated_at: new Date().toISOString() });
+    const newBody = applyOperation(task.content ?? '', operation as Operation);
+    await service.save({ ...task, content: newBody, updated_at: new Date().toISOString() });
     const result: EditResult = { success: true, message: `Successfully applied ${operation.type} to ${id}` };
     recordMutation(ctx, 'write_resource', params as unknown as Record<string, unknown>, result);
     return result;

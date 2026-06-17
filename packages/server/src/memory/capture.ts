@@ -49,7 +49,7 @@ export function buildCompletionEntry(entity: Entity, actor: Actor, now: number):
 
 /** Build a memory entry for an artifact creation. Exported for unit tests. */
 export function buildArtifactEntry(entity: Entity, actor: Actor, now: number): MemoryEntry {
-  const desc = (entity.description ?? '').trim();
+  const desc = (entity.content ?? '').trim();
   const content = desc
     ? `${entity.title} — ${desc}`.slice(0, entity.title.length + 3 + ARTIFACT_DESC_MAX)
     : entity.title;
