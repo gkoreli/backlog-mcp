@@ -23,31 +23,31 @@ function generateNoisyBacklogTasks(n: number): Entity[] {
     (i: number) => makeEntity({
       id: `TASK-${String(100 + i).padStart(4, '0')}`,
       title: `Improve backlog search performance`,
-      description: `The backlog-mcp search is slow. The backlog needs optimization for mcp agents. The backlog indexing for mcp needs caching. Backlog queries through mcp are timing out. The backlog-mcp server backlog queue is growing. MCP clients querying the backlog need faster responses from the backlog-mcp API.`,
+      content: `The backlog-mcp search is slow. The backlog needs optimization for mcp agents. The backlog indexing for mcp needs caching. Backlog queries through mcp are timing out. The backlog-mcp server backlog queue is growing. MCP clients querying the backlog need faster responses from the backlog-mcp API.`,
     }),
     // Medium TF: "backlog" in title + both in body
     (i: number) => makeEntity({
       id: `TASK-${String(100 + i).padStart(4, '0')}`,
       title: `Backlog item validation for MCP protocol`,
-      description: `Validate backlog items against MCP schema. The backlog data needs to conform to mcp standards. Backlog validation errors should be reported through mcp notifications.`,
+      content: `Validate backlog items against MCP schema. The backlog data needs to conform to mcp standards. Backlog validation errors should be reported through mcp notifications.`,
     }),
     // Medium TF: "mcp" in title + both in body
     (i: number) => makeEntity({
       id: `TASK-${String(100 + i).padStart(4, '0')}`,
       title: `MCP server backlog endpoint redesign`,
-      description: `Redesign the MCP endpoint that serves backlog data. The current mcp backlog endpoint is too slow. The backlog response from the mcp server needs pagination.`,
+      content: `Redesign the MCP endpoint that serves backlog data. The current mcp backlog endpoint is too slow. The backlog response from the mcp server needs pagination.`,
     }),
     // Lower TF but both terms present
     (i: number) => makeEntity({
       id: `TASK-${String(100 + i).padStart(4, '0')}`,
       title: `Fix caching layer for MCP tools`,
-      description: `The backlog-mcp caching layer has stale entries. Need to invalidate cache when backlog items change.`,
+      content: `The backlog-mcp caching layer has stale entries. Need to invalidate cache when backlog items change.`,
     }),
     // Both in title
     (i: number) => makeEntity({
       id: `TASK-${String(100 + i).padStart(4, '0')}`,
       title: `Backlog MCP integration testing`,
-      description: `Write integration tests for the backlog MCP tools. Ensure the backlog list and backlog search MCP endpoints return correct results.`,
+      content: `Write integration tests for the backlog MCP tools. Ensure the backlog list and backlog search MCP endpoints return correct results.`,
     }),
   ];
 
@@ -65,7 +65,7 @@ describe('Scaling Diagnostic: "backlog mcp" ranking vs corpus size', () => {
       const target = makeEntity({
         id: 'EPIC-0001',
         title: 'backlog-mcp 10x',
-        description: 'Transform backlog-mcp from task tracker to agentic work system with keyboard-first UX',
+        content: 'Transform backlog-mcp from task tracker to agentic work system with keyboard-first UX',
         type: 'epic',
       });
 

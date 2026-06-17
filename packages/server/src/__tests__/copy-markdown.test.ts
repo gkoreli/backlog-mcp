@@ -9,7 +9,7 @@ describe('Viewer Routes - Copy Markdown', () => {
     const task = createEntity({
       id: testTaskId,
       title: 'Test Copy Markdown',
-      description: 'This is a test task for copy markdown functionality',
+      content: 'This is a test task for copy markdown functionality',
     });
     await storage.add(task);
   });

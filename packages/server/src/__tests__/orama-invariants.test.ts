@@ -53,7 +53,7 @@ describe('Invariant: enum fields excluded from text search (ADR-0079)', () => {
   it('searching "open" does NOT match tasks just because status=open', async () => {
     const results = await service.search('open');
     // TASK-0002 has "open" in title ("Fix open issue") — should match
-    // TASK-0001 has status=open but "open" is NOT in title/description — should NOT match
+    // TASK-0001 has status=open but "open" is NOT in title/content — should NOT match
     const ids = results.map(r => r.id);
     expect(ids).toContain('TASK-0002'); // title match
     expect(ids).not.toContain('TASK-0001'); // status-only, no text match
@@ -75,7 +75,7 @@ describe('Invariant: enum fields excluded from text search (ADR-0079)', () => {
 
   it('searching "in_progress" does NOT match tasks by status value', async () => {
     const results = await service.search('in_progress');
-    // No task has "in_progress" in title or description
+    // No task has "in_progress" in title or content
     expect(results.length).toBe(0);
   });
 });

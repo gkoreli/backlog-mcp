@@ -98,7 +98,7 @@ describe('HTTP Server', () => {
     it('should register backlog_create tool', () => {
       // Expected behavior:
       // Tool: backlog_create
-      // Params: title, description, type, epic_id, references
+      // Params: title, content, type, epic_id, references
       // Returns: 'Created {id}'
       expect(true).toBe(true);
     });
@@ -106,7 +106,7 @@ describe('HTTP Server', () => {
     it('should register backlog_update tool', () => {
       // Expected behavior:
       // Tool: backlog_update
-      // Params: id, title, description, status, epic_id, blocked_reason, evidence, references
+      // Params: id, title, content, status, epic_id, blocked_reason, evidence, references
       // Returns: 'Updated {id}'
       expect(true).toBe(true);
     });

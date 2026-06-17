@@ -64,7 +64,7 @@ describe('edit error resilience invariants', () => {
 
   describe('editItem surfaces rich error in result.error', () => {
     it('returns success: false with full error message on str_replace failure', async () => {
-      const svc = mockService([{ id: 'TASK-0001', title: 'T', description: 'actual content here', status: 'open', created_at: '', updated_at: '' } as Entity]);
+      const svc = mockService([{ id: 'TASK-0001', title: 'T', content: 'actual content here', status: 'open', created_at: '', updated_at: '' } as Entity]);
       const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'wrong text', new_str: 'x' } }, testCtx());
 
       expect(result.success).toBe(false);
@@ -74,7 +74,7 @@ describe('edit error resilience invariants', () => {
     });
 
     it('result.error is a string transports can pass directly to users', async () => {
-      const svc = mockService([{ id: 'TASK-0001', title: 'T', description: 'hello', status: 'open', created_at: '', updated_at: '' } as Entity]);
+      const svc = mockService([{ id: 'TASK-0001', title: 'T', content: 'hello', status: 'open', created_at: '', updated_at: '' } as Entity]);
       const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'goodbye', new_str: 'x' } }, testCtx());
 
       // Transport contract: result.error is a ready-to-display string
@@ -87,7 +87,7 @@ describe('edit error resilience invariants', () => {
 
   describe('transport isError contract', () => {
     it('success: false means transport MUST signal error to client', async () => {
-      const svc = mockService([{ id: 'TASK-0001', title: 'T', description: 'content', status: 'open', created_at: '', updated_at: '' } as Entity]);
+      const svc = mockService([{ id: 'TASK-0001', title: 'T', content: 'content', status: 'open', created_at: '', updated_at: '' } as Entity]);
       const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'MISSING', new_str: 'x' } }, testCtx());
 
       // This is the invariant all transports must respect:
@@ -99,7 +99,7 @@ describe('edit error resilience invariants', () => {
     });
 
     it('success: true means transport signals success', async () => {
-      const svc = mockService([{ id: 'TASK-0001', title: 'T', description: 'hello world', status: 'open', created_at: '', updated_at: '' } as Entity]);
+      const svc = mockService([{ id: 'TASK-0001', title: 'T', content: 'hello world', status: 'open', created_at: '', updated_at: '' } as Entity]);
       const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'hello', new_str: 'goodbye' } }, testCtx());
 
       expect(result.success).toBe(true);

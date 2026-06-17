@@ -18,9 +18,9 @@ describe('OramaSearchService', () => {
   let service: OramaSearchService;
 
   const tasks: Entity[] = [
-    makeEntity({ id: 'TASK-0001', title: 'Implement authentication', description: 'Add OAuth2 login flow' }),
-    makeEntity({ id: 'TASK-0002', title: 'Fix login bug', description: 'Users cannot authenticate with SSO' }),
-    makeEntity({ id: 'TASK-0003', title: 'Add search feature', description: 'Full-text search for tasks', status: 'in_progress' }),
+    makeEntity({ id: 'TASK-0001', title: 'Implement authentication', content: 'Add OAuth2 login flow' }),
+    makeEntity({ id: 'TASK-0002', title: 'Fix login bug', content: 'Users cannot authenticate with SSO' }),
+    makeEntity({ id: 'TASK-0003', title: 'Add search feature', content: 'Full-text search for tasks', status: 'in_progress' }),
     makeEntity({ id: 'EPIC-0001', title: 'User Management Epic', type: 'epic' }),
     makeEntity({ id: 'TASK-0004', title: 'Database migration', epic_id: 'EPIC-0001', status: 'blocked', blocked_reason: ['Waiting for DBA approval'] }),
   ];
@@ -37,7 +37,7 @@ describe('OramaSearchService', () => {
       expect(results[0].task.id).toBe('TASK-0001');
     });
 
-    it('finds tasks by description', async () => {
+    it('finds tasks by content', async () => {
       const results = await service.search('OAuth2');
       expect(results.length).toBeGreaterThan(0);
       expect(results[0].task.id).toBe('TASK-0001');
@@ -49,9 +49,9 @@ describe('OramaSearchService', () => {
       expect(results.some(r => r.task.id === 'TASK-0001')).toBe(true);
     });
 
-    it('boosts title matches over description', async () => {
+    it('boosts title matches over content', async () => {
       const results = await service.search('login');
-      // TASK-0002 has "login" in title, TASK-0001 has "login" in description
+      // TASK-0002 has "login" in title, TASK-0001 has "login" in content
       expect(results[0].task.id).toBe('TASK-0002');
     });
 

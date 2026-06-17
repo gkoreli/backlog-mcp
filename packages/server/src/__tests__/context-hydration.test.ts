@@ -50,14 +50,14 @@ const EPIC = makeEntity({
   id: 'EPIC-0005',
   title: 'Search & Context Engineering',
   type: 'epic',
-  description: 'Epic for all search and context hydration work.',
+  content: 'Epic for all search and context hydration work.',
 });
 
 const TASK_FOCAL = makeEntity({
   id: 'TASK-0042',
   title: 'Implement context hydration',
   parent_id: 'EPIC-0005',
-  description: 'Build the context hydration pipeline for agent context delivery.',
+  content: 'Build the context hydration pipeline for agent context delivery.',
   evidence: ['Designed pipeline in ADR-0074'],
   blocked_reason: [],
   references: [{ url: 'https://github.com/org/repo/issues/42', title: 'GitHub issue' }],
@@ -102,14 +102,14 @@ const TASK_SEMANTIC_1 = makeEntity({
   id: 'TASK-0050',
   title: 'Research context window optimization',
   parent_id: 'EPIC-0010',
-  description: 'Research how to optimize context windows for LLM agents.',
+  content: 'Research how to optimize context windows for LLM agents.',
 });
 
 const TASK_SEMANTIC_2 = makeEntity({
   id: 'TASK-0051',
   title: 'Agent memory persistence layer',
   parent_id: 'EPIC-0010',
-  description: 'Build persistent memory for agent sessions.',
+  content: 'Build persistent memory for agent sessions.',
 });
 
 // Grandchildren (children of TASK_CHILD_1) — for depth 2+ tests (Phase 3)
@@ -132,7 +132,7 @@ const EPIC_GRANDPARENT = makeEntity({
   id: 'EPIC-0001',
   title: 'Platform Engineering',
   type: 'epic',
-  description: 'Top-level epic for all platform work.',
+  content: 'Top-level epic for all platform work.',
 });
 
 // Make EPIC-0005 a child of EPIC-0001 for depth 3 ancestor traversal
@@ -241,10 +241,10 @@ function makeSearchUnified(tasks: Entity[] = ALL_TASKS, resources: Resource[] = 
     const types = options?.types || ['task', 'epic', 'resource'];
     const limit = options?.limit || 20;
 
-    // Simple scoring: count query words that appear in title + description
+    // Simple scoring: count query words that appear in title + content
     if (types.includes('task') || types.includes('epic')) {
       for (const task of tasks) {
-        const searchText = `${task.title} ${task.description || ''}`.toLowerCase();
+        const searchText = `${task.title} ${task.content || ''}`.toLowerCase();
         const words = queryLower.split(/\s+/);
         const matchCount = words.filter(w => searchText.includes(w)).length;
         if (matchCount > 0) {
@@ -317,7 +317,7 @@ describe('Stage 1: Focal Resolution', () => {
     expect(result!.focal.id).toBe('TASK-0042');
     expect(result!.focal.title).toBe('Implement context hydration');
     expect(result!.focal.fidelity).toBe('full');
-    expect(result!.focal.description).toBe(TASK_FOCAL.description);
+    expect(result!.focal.content).toBe(TASK_FOCAL.content);
     expect(result!.focalTask).toEqual(TASK_FOCAL);
     expect(result!.resolved_from).toBe('id');
   });
@@ -372,17 +372,17 @@ describe('taskToContextEntity fidelity levels', () => {
   it('full fidelity includes all fields', () => {
     const entity = taskToContextEntity(TASK_FOCAL, 'full');
     expect(entity.fidelity).toBe('full');
-    expect(entity.description).toBe(TASK_FOCAL.description);
+    expect(entity.content).toBe(TASK_FOCAL.content);
     expect(entity.evidence).toEqual(TASK_FOCAL.evidence);
     expect(entity.references).toEqual(TASK_FOCAL.references);
     expect(entity.created_at).toBe(TASK_FOCAL.created_at);
     expect(entity.updated_at).toBe(TASK_FOCAL.updated_at);
   });
 
-  it('summary fidelity excludes description, evidence, blocked_reason', () => {
+  it('summary fidelity excludes content, evidence, blocked_reason', () => {
     const entity = taskToContextEntity(TASK_FOCAL, 'summary');
     expect(entity.fidelity).toBe('summary');
-    expect(entity.description).toBeUndefined();
+    expect(entity.content).toBeUndefined();
     expect(entity.evidence).toBeUndefined();
     expect(entity.blocked_reason).toBeUndefined();
     expect(entity.references).toEqual(TASK_FOCAL.references);
@@ -396,7 +396,7 @@ describe('taskToContextEntity fidelity levels', () => {
     expect(entity.title).toBe('Implement context hydration');
     expect(entity.status).toBe('open');
     expect(entity.type).toBe('task');
-    expect(entity.description).toBeUndefined();
+    expect(entity.content).toBeUndefined();
     expect(entity.references).toBeUndefined();
     expect(entity.created_at).toBeUndefined();
   });
@@ -772,7 +772,7 @@ describe('Entity downgrading', () => {
   it('downgrades full to summary', () => {
     const summary = downgradeEntity(fullEntity, 'summary');
     expect(summary.fidelity).toBe('summary');
-    expect(summary.description).toBeUndefined();
+    expect(summary.content).toBeUndefined();
     expect(summary.evidence).toBeUndefined();
     expect(summary.references).toEqual(fullEntity.references);
   });
@@ -780,7 +780,7 @@ describe('Entity downgrading', () => {
   it('downgrades full to reference', () => {
     const ref = downgradeEntity(fullEntity, 'reference');
     expect(ref.fidelity).toBe('reference');
-    expect(ref.description).toBeUndefined();
+    expect(ref.content).toBeUndefined();
     expect(ref.references).toBeUndefined();
     expect(ref.created_at).toBeUndefined();
     expect(ref.id).toBe(fullEntity.id);
@@ -895,7 +895,7 @@ describe('ContextHydrationService: end-to-end pipeline', () => {
     // Focal
     expect(result!.focal.id).toBe('TASK-0042');
     expect(result!.focal.fidelity).toBe('full');
-    expect(result!.focal.description).toBeDefined();
+    expect(result!.focal.content).toBeDefined();
 
     // Parent
     expect(result!.parent).not.toBeNull();
@@ -1791,7 +1791,7 @@ const TASK_WITH_XREFS = makeEntity({
   id: 'TASK-0060',
   title: 'Task with cross-references',
   parent_id: 'EPIC-0005',
-  description: 'This task references several other tasks.',
+  content: 'This task references several other tasks.',
   references: [
     { url: 'TASK-0099', title: 'Unrelated feature' },
     { url: 'https://github.com/org/repo/issues/TASK-0050', title: 'Related GH issue' },
@@ -2220,7 +2220,7 @@ const TASK_REFERENCING_FOCAL = makeEntity({
   id: 'TASK-0080',
   title: 'Depends on context hydration',
   parent_id: 'EPIC-0010',
-  description: 'This task depends on TASK-0042 being completed first.',
+  content: 'This task depends on TASK-0042 being completed first.',
   references: [
     { url: 'TASK-0042', title: 'Context hydration task' },
   ],

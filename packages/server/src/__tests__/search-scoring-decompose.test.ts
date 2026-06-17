@@ -29,7 +29,7 @@ function taskToDoc(task: Entity): OramaDoc {
   return {
     id: task.id,
     title: task.title,
-    description: task.description || '',
+    content: task.content || '',
     status: task.status,
     type: task.type || 'task',
     epic_id: task.parent_id ?? task.epic_id ?? '',
@@ -43,23 +43,23 @@ function taskToDoc(task: Entity): OramaDoc {
 
 // Same dataset as the diagnostic test
 const TASKS: Entity[] = [
-  makeEntity({ id: 'EPIC-0001', title: 'backlog-mcp 10x', description: 'Transform backlog-mcp from task tracker to agentic work system with keyboard-first UX', type: 'epic' }),
-  makeEntity({ id: 'TASK-0010', title: 'Implement Spotlight-style search UI', description: 'Global search modal for backlog-mcp triggered by Cmd+J. The backlog search needs to support mcp tool integration.', references: [{ url: 'https://github.com/user/backlog-mcp', title: 'backlog-mcp repo' }] }),
-  makeEntity({ id: 'TASK-0011', title: 'Fix search ranking quality', description: 'Search in backlog-mcp returns wrong results. The backlog items are not ranked properly when using mcp tools. Need to improve the backlog search for mcp agents.', evidence: ['Searched backlog for mcp-related tasks, got wrong results', 'backlog-mcp search needs improvement'] }),
-  makeEntity({ id: 'TASK-0012', title: 'Add MCP tool documentation', description: 'Document all backlog-mcp tools. The MCP protocol requires specific schemas. The backlog tools should follow mcp best practices for backlog management.', references: [{ url: 'https://github.com/user/backlog-mcp/docs', title: 'backlog-mcp docs' }, { url: 'https://modelcontextprotocol.io', title: 'MCP specification' }] }),
-  makeEntity({ id: 'TASK-0013', title: 'Performance optimization for large backlogs', description: 'The backlog-mcp server is slow with >500 items. Need to optimize backlog queries. The mcp server should handle large backlog collections efficiently. Current backlog-mcp indexing takes too long.' }),
-  makeEntity({ id: 'TASK-0014', title: 'Implement backlog import/export', description: 'Add import/export functionality to backlog-mcp. Users need to migrate their backlog from other tools into mcp format. The backlog export should preserve all mcp metadata.' }),
-  makeEntity({ id: 'TASK-0015', title: 'API rate limiting for MCP server', description: 'Add rate limiting to the backlog-mcp MCP server endpoints. The backlog API needs throttling when mcp clients send too many requests to the backlog service.' }),
-  makeEntity({ id: 'TASK-0016', title: 'Hybrid search architecture', description: 'Implement BM25 + vector hybrid search for backlog-mcp. The search should combine text and semantic matching for the backlog. MCP tool responses should include relevance scores.' }),
-  makeEntity({ id: 'TASK-0017', title: 'Test infrastructure improvements', description: 'Improve test coverage for backlog-mcp. Add golden tests for backlog search. The mcp tool tests need better assertions. Current backlog test suite is incomplete.' }),
-  makeEntity({ id: 'TASK-0018', title: 'Backlog notifications via MCP', description: 'Send notifications through MCP when backlog items change. The backlog-mcp server should emit events. MCP clients consuming the backlog need real-time updates.' }),
+  makeEntity({ id: 'EPIC-0001', title: 'backlog-mcp 10x', content: 'Transform backlog-mcp from task tracker to agentic work system with keyboard-first UX', type: 'epic' }),
+  makeEntity({ id: 'TASK-0010', title: 'Implement Spotlight-style search UI', content: 'Global search modal for backlog-mcp triggered by Cmd+J. The backlog search needs to support mcp tool integration.', references: [{ url: 'https://github.com/user/backlog-mcp', title: 'backlog-mcp repo' }] }),
+  makeEntity({ id: 'TASK-0011', title: 'Fix search ranking quality', content: 'Search in backlog-mcp returns wrong results. The backlog items are not ranked properly when using mcp tools. Need to improve the backlog search for mcp agents.', evidence: ['Searched backlog for mcp-related tasks, got wrong results', 'backlog-mcp search needs improvement'] }),
+  makeEntity({ id: 'TASK-0012', title: 'Add MCP tool documentation', content: 'Document all backlog-mcp tools. The MCP protocol requires specific schemas. The backlog tools should follow mcp best practices for backlog management.', references: [{ url: 'https://github.com/user/backlog-mcp/docs', title: 'backlog-mcp docs' }, { url: 'https://modelcontextprotocol.io', title: 'MCP specification' }] }),
+  makeEntity({ id: 'TASK-0013', title: 'Performance optimization for large backlogs', content: 'The backlog-mcp server is slow with >500 items. Need to optimize backlog queries. The mcp server should handle large backlog collections efficiently. Current backlog-mcp indexing takes too long.' }),
+  makeEntity({ id: 'TASK-0014', title: 'Implement backlog import/export', content: 'Add import/export functionality to backlog-mcp. Users need to migrate their backlog from other tools into mcp format. The backlog export should preserve all mcp metadata.' }),
+  makeEntity({ id: 'TASK-0015', title: 'API rate limiting for MCP server', content: 'Add rate limiting to the backlog-mcp MCP server endpoints. The backlog API needs throttling when mcp clients send too many requests to the backlog service.' }),
+  makeEntity({ id: 'TASK-0016', title: 'Hybrid search architecture', content: 'Implement BM25 + vector hybrid search for backlog-mcp. The search should combine text and semantic matching for the backlog. MCP tool responses should include relevance scores.' }),
+  makeEntity({ id: 'TASK-0017', title: 'Test infrastructure improvements', content: 'Improve test coverage for backlog-mcp. Add golden tests for backlog search. The mcp tool tests need better assertions. Current backlog test suite is incomplete.' }),
+  makeEntity({ id: 'TASK-0018', title: 'Backlog notifications via MCP', content: 'Send notifications through MCP when backlog items change. The backlog-mcp server should emit events. MCP clients consuming the backlog need real-time updates.' }),
 
   // FeatureStore scenario
-  makeEntity({ id: 'TASK-0009', title: 'Create YavapaiMFE ownership transfer documentation', description: 'Create comprehensive starter doc for new team taking ownership of FeatureStore (YavapaiMFE).\n\nMFE ID: `featurestore`\nFeature flag: `featureStore`\nMain package: RhinestoneMonarchYavapaiMFE', status: 'done' }),
-  makeEntity({ id: 'TASK-0020', title: 'Feature flag cleanup', description: 'Remove old feature flags from the codebase. The feature toggle system has accumulated stale feature flags. Clean up the feature management store.' }),
-  makeEntity({ id: 'TASK-0021', title: 'Feature prioritization framework', description: 'Create a feature prioritization framework. Each feature should have a score. The product feature backlog needs a feature ranking system to store priorities.' }),
-  makeEntity({ id: 'TASK-0022', title: 'Implement feature toggle service', description: 'Build a centralized feature toggle service. Features can be enabled per user. The feature store should persist feature state. Add feature flag support for A/B testing.' }),
-  makeEntity({ id: 'TASK-0023', title: 'Add feature request template', description: 'Create a feature request template for the backlog. Feature requests should include feature description, feature impact, and feature store integration requirements.' }),
+  makeEntity({ id: 'TASK-0009', title: 'Create YavapaiMFE ownership transfer documentation', content: 'Create comprehensive starter doc for new team taking ownership of FeatureStore (YavapaiMFE).\n\nMFE ID: `featurestore`\nFeature flag: `featureStore`\nMain package: RhinestoneMonarchYavapaiMFE', status: 'done' }),
+  makeEntity({ id: 'TASK-0020', title: 'Feature flag cleanup', content: 'Remove old feature flags from the codebase. The feature toggle system has accumulated stale feature flags. Clean up the feature management store.' }),
+  makeEntity({ id: 'TASK-0021', title: 'Feature prioritization framework', content: 'Create a feature prioritization framework. Each feature should have a score. The product feature backlog needs a feature ranking system to store priorities.' }),
+  makeEntity({ id: 'TASK-0022', title: 'Implement feature toggle service', content: 'Build a centralized feature toggle service. Features can be enabled per user. The feature store should persist feature state. Add feature flag support for A/B testing.' }),
+  makeEntity({ id: 'TASK-0023', title: 'Add feature request template', content: 'Create a feature request template for the backlog. Feature requests should include feature content, feature impact, and feature store integration requirements.' }),
 ];
 
 const taskMap = new Map<string, Task>(TASKS.map(t => [t.id, t]));
@@ -162,7 +162,7 @@ describe('Scoring Decomposition', () => {
     // Stage 3: After coordination bonus
     const getText = (id: string) => {
       const t = taskMap.get(id);
-      return t ? [t.title, t.description || '', (t.evidence || []).join(' ')].join(' ') : '';
+      return t ? [t.title, t.content || '', (t.evidence || []).join(' ')].join(' ') : '';
     };
     const getTitle = (id: string) => taskMap.get(id)?.title || '';
     const coordinated = applyCoordinationBonus(fused, query, getText, getTitle);

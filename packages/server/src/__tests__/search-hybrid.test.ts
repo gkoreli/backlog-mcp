@@ -30,27 +30,27 @@ describe('Hybrid Search (Semantic)', () => {
     makeEntity({
       id: 'TASK-0001',
       title: 'Implement user authentication',
-      description: 'Add OAuth2 and SSO support for secure user access',
+      content: 'Add OAuth2 and SSO support for secure user access',
     }),
     makeEntity({
       id: 'TASK-0002',
       title: 'Fix CI/CD pipeline',
-      description: 'Deployment automation is failing on staging environment',
+      content: 'Deployment automation is failing on staging environment',
     }),
     makeEntity({
       id: 'TASK-0003',
       title: 'Database performance optimization',
-      description: 'Query response times are too slow, need indexing improvements',
+      content: 'Query response times are too slow, need indexing improvements',
     }),
     makeEntity({
       id: 'TASK-0004',
       title: 'Add user profile page',
-      description: 'Users should be able to view and edit their account settings',
+      content: 'Users should be able to view and edit their account settings',
     }),
     makeEntity({
       id: 'TASK-0005',
       title: 'Implement rate limiting',
-      description: 'Protect API endpoints from abuse and DDoS attacks',
+      content: 'Protect API endpoints from abuse and DDoS attacks',
     }),
   ];
 
@@ -99,7 +99,7 @@ describe('Hybrid Search (Semantic)', () => {
       expect(results[0].task.id).toBe('TASK-0001');
     });
 
-    it('exact description match is found', async () => {
+    it('exact content match is found', async () => {
       const results = await service.search('OAuth2');
       expect(results.some(r => r.task.id === 'TASK-0001')).toBe(true);
     });

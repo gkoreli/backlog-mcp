@@ -33,13 +33,13 @@ const GOLDEN_TASKS: Entity[] = [
   makeEntity({
     id: 'EPIC-0001',
     title: 'backlog-mcp 10x',
-    description: 'Transform backlog-mcp from task tracker to agentic work system with keyboard-first UX',
+    content: 'Transform backlog-mcp from task tracker to agentic work system with keyboard-first UX',
     type: 'epic',
   }),
   makeEntity({
     id: 'EPIC-0002',
     title: 'Search & Discovery',
-    description: 'Comprehensive search with RAG-ready architecture',
+    content: 'Comprehensive search with RAG-ready architecture',
     type: 'epic',
   }),
 
@@ -47,7 +47,7 @@ const GOLDEN_TASKS: Entity[] = [
   makeEntity({
     id: 'TASK-0001',
     title: 'Implement Spotlight-style search UI',
-    description: 'Global search modal triggered by Cmd+J with keyboard-first navigation',
+    content: 'Global search modal triggered by Cmd+J with keyboard-first navigation',
     epic_id: 'EPIC-0001',
     references: [
       { url: 'https://docs.orama.com', title: 'Orama documentation' },
@@ -57,51 +57,51 @@ const GOLDEN_TASKS: Entity[] = [
   makeEntity({
     id: 'TASK-0002',
     title: 'Fix authentication bug',
-    description: 'Users cannot log in with SSO when MFA is enabled',
+    content: 'Users cannot log in with SSO when MFA is enabled',
     status: 'in_progress',
   }),
   makeEntity({
     id: 'TASK-0003',
     title: 'Add keyboard shortcuts',
-    description: 'Implement Cmd+K for command palette, Cmd+J for search',
+    content: 'Implement Cmd+K for command palette, Cmd+J for search',
     epic_id: 'EPIC-0001',
   }),
   makeEntity({
     id: 'TASK-0004',
     title: 'Database schema migration',
-    description: 'Migrate from SQLite to PostgreSQL for better concurrency',
+    content: 'Migrate from SQLite to PostgreSQL for better concurrency',
     status: 'blocked',
     blocked_reason: ['Waiting for DBA approval', 'Need production backup first'],
   }),
   makeEntity({
     id: 'TASK-0005',
     title: 'SearchService abstraction layer',
-    description: 'Create pluggable search backend interface for Orama, future RAG',
+    content: 'Create pluggable search backend interface for Orama, future RAG',
     epic_id: 'EPIC-0002',
     evidence: ['Implemented SearchService interface', 'Added OramaSearchService'],
   }),
   makeEntity({
     id: 'TASK-0006',
     title: 'Fix first-time user onboarding',
-    description: 'New users see blank screen on first load',
+    content: 'New users see blank screen on first load',
     status: 'done',
     evidence: ['Fixed in PR #42', 'Added loading state'],
   }),
   makeEntity({
     id: 'TASK-0007',
     title: 'API rate limiting',
-    description: 'Implement rate-limiting middleware for REST endpoints',
+    content: 'Implement rate-limiting middleware for REST endpoints',
   }),
   makeEntity({
     id: 'TASK-0008',
     title: 'Real-time collaboration',
-    description: 'WebSocket-based real-time updates for multi-user editing',
+    content: 'WebSocket-based real-time updates for multi-user editing',
   }),
   // CamelCase compound word task (mirrors real TASK-0273 pattern)
   makeEntity({
     id: 'TASK-0009',
     title: 'Create YavapaiMFE ownership transfer documentation',
-    description: 'Create comprehensive starter doc for new team taking ownership of FeatureStore (YavapaiMFE).\n\nMFE ID: `featurestore`\nFeature flag: `featureStore`\nMain package: RhinestoneMonarchYavapaiMFE',
+    content: 'Create comprehensive starter doc for new team taking ownership of FeatureStore (YavapaiMFE).\n\nMFE ID: `featurestore`\nFeature flag: `featureStore`\nMain package: RhinestoneMonarchYavapaiMFE',
     status: 'done',
   }),
 ];
@@ -126,7 +126,7 @@ describe('Search Golden Benchmark', () => {
         expect(results[0].task.id).toBe('TASK-0001');
       });
 
-      it('finds exact word in description', async () => {
+      it('finds exact word in content', async () => {
         const results = await service.search('PostgreSQL');
         expect(results[0].task.id).toBe('TASK-0004');
       });
@@ -205,7 +205,7 @@ describe('Search Golden Benchmark', () => {
     });
 
     describe('camelCase compound words', () => {
-      it('"feature store" finds task with "FeatureStore" in description', async () => {
+      it('"feature store" finds task with "FeatureStore" in content', async () => {
         const results = await service.search('feature store');
         expect(results.some(r => r.task.id === 'TASK-0009')).toBe(true);
       });
@@ -421,7 +421,7 @@ describe('Search Golden Benchmark', () => {
 
     it('"backlog mcp" → EPIC-0001 ranks #1 (title match beats body-only mentions)', async () => {
       // Both terms appear in EPIC-0001's title "backlog-mcp 10x".
-      // Other tasks may mention "backlog" and "mcp" in description/references
+      // Other tasks may mention "backlog" and "mcp" in content/references
       // but title coordination should push the exact title match to #1.
       const results = await service.search('backlog mcp');
       expect(results[0].task.id).toBe('EPIC-0001');
@@ -436,7 +436,7 @@ describe('Search Golden Benchmark', () => {
 
     it('"search" → EPIC-0002 and TASK-0005 both in top 3', async () => {
       // ADR-0083: BM25-only mode cannot express "aboutness" — TASK-0005's
-      // compound title ("SearchService" → "search") plus a description match
+      // compound title ("SearchService" → "search") plus a content match
       // legitimately outscores EPIC-0002 on term statistics. The strict
       // "epic above task" ordering only holds when the vector retriever
       // contributes (semantic closeness of "Search & Discovery" to "search").
@@ -451,8 +451,8 @@ describe('Search Golden Benchmark', () => {
       expect(taskIdx).toBeLessThan(3);
     });
 
-    it('"search" → title matches rank above description-only matches', async () => {
-      // TASK-0001 has "search" in title. TASK-0003 has "search" only in description.
+    it('"search" → title matches rank above content-only matches', async () => {
+      // TASK-0001 has "search" in title. TASK-0003 has "search" only in content.
       const results = await service.search('search');
       const titleMatch = results.findIndex(r => r.task.id === 'TASK-0001');
       const descMatch = results.findIndex(r => r.task.id === 'TASK-0003');
@@ -504,7 +504,7 @@ describe('Search Golden Benchmark', () => {
     it('Finding 3: single-term "feature" — TASK-0009 is visible with score > 0', async () => {
       // MinMax normalization mapped the lowest BM25 scorer to literally
       // 0.0000, making TASK-0009 (which matches "feature" only via the
-      // compound expansion of "FeatureStore" in its description) invisible.
+      // compound expansion of "FeatureStore" in its content) invisible.
       // Rank normalization guarantees the lowest scorer keeps 1/n > 0.
       const results = await service.search('feature');
       const hit = results.find(r => r.task.id === 'TASK-0009');

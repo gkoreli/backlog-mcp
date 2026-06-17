@@ -140,11 +140,11 @@ describe('Storage', () => {
   });
 
   describe('getMarkdown', () => {
-    it('should preserve description with markdown formatting', async () => {
+    it('should preserve content with markdown formatting', async () => {
       const task = createEntity({
         id: 'TASK-0001',
         title: 'Test',
-        description: '## Heading\n\n- Item 1\n- Item 2'
+        content: '## Heading\n\n- Item 1\n- Item 2'
       });
 
       await storage.add(task);

@@ -20,11 +20,11 @@ function freshCachePath(): string {
   return join(process.cwd(), 'test-data', '.cache', `intent-${++cacheCounter}-${Date.now()}.json`);
 }
 
-function makeEntity(overrides: { id: string; title: string; description?: string; status?: any; type?: any }): Entity {
+function makeEntity(overrides: { id: string; title: string; content?: string; status?: any; type?: any }): Entity {
   return {
     id: overrides.id,
     title: overrides.title,
-    description: overrides.description ?? '',
+    content: overrides.content ?? '',
     type: overrides.type ?? 'task',
     status: overrides.status ?? 'open',
     created_at: '2026-05-01T00:00:00.000Z',
@@ -226,8 +226,8 @@ describe('OramaSearchService.searchAll: intent routing', () => {
     await svc.index([
       makeEntity({ id: 'TASK-0596', title: 'Research: Fredrika Unified Diff Viewer' }),
       // Decoys that BM25 would otherwise rank higher
-      makeEntity({ id: 'TASK-0001', title: 'TASK 596 mention in title to confuse ranker', description: 'task 596' }),
-      makeEntity({ id: 'TASK-0002', title: 'task 596 again', description: 'task 596 task 596 task 596' }),
+      makeEntity({ id: 'TASK-0001', title: 'TASK 596 mention in title to confuse ranker', content: 'task 596' }),
+      makeEntity({ id: 'TASK-0002', title: 'task 596 again', content: 'task 596 task 596 task 596' }),
     ]);
 
     const results = await svc.searchAll('task 596', { limit: 5 });

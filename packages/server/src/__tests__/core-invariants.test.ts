@@ -63,7 +63,7 @@ function mockService(entities: Entity[] = []): IBacklogService {
     getMarkdown: vi.fn(async (id: string) => {
       const e = store.get(id);
       if (!e) return null;
-      return `---\nid: ${e.id}\ntitle: ${e.title}\nstatus: ${e.status}\n---\n\n${e.description ?? ''}`;
+      return `---\nid: ${e.id}\ntitle: ${e.title}\nstatus: ${e.status}\n---\n\n${e.content ?? ''}`;
     }),
     list: vi.fn(async (filter?: any) => {
       let result = [...store.values()];
@@ -86,7 +86,7 @@ function mockService(entities: Entity[] = []): IBacklogService {
     searchUnified: vi.fn(async (query: string) => {
       const matches = [...store.values()].filter(e =>
         e.title.toLowerCase().includes(query.toLowerCase()) ||
-        (e.description ?? '').toLowerCase().includes(query.toLowerCase())
+        (e.content ?? '').toLowerCase().includes(query.toLowerCase())
       );
       return matches.map(e => ({
         item: e,
@@ -249,10 +249,10 @@ describe('core/createItem', () => {
     expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({ epic_id: 'EPIC-0001' }));
   });
 
-  it('accepts pre-resolved description (no source_path in core)', async () => {
+  it('accepts pre-resolved content (no source_path in core)', async () => {
     const svc = mockService();
-    await createItem(svc, { title: 'T', description: 'Content from file' }, testCtx());
-    expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({ description: 'Content from file' }));
+    await createItem(svc, { title: 'T', content: 'Content from file' }, testCtx());
+    expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({ content: 'Content from file' }));
   });
 
   it('includes references when provided', async () => {
@@ -379,9 +379,9 @@ describe('core/searchItems', () => {
   });
 
   it('includes content only when requested', async () => {
-    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'Test', description: 'Full desc' })]);
-    expect((await searchItems(svc, { query: 'test' })).results[0].description).toBeUndefined();
-    expect((await searchItems(svc, { query: 'test', include_content: true })).results[0].description).toBe('Full desc');
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'Test', content: 'Full desc' })]);
+    expect((await searchItems(svc, { query: 'test' })).results[0].content).toBeUndefined();
+    expect((await searchItems(svc, { query: 'test', include_content: true })).results[0].content).toBe('Full desc');
   });
 
   it('includes snippet and matched_fields', async () => {
@@ -422,24 +422,24 @@ describe('core/searchItems', () => {
 
 describe('core/editItem', () => {
   it('applies str_replace operation', async () => {
-    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', description: 'Hello world' })]);
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', content: 'Hello world' })]);
     const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'Hello', new_str: 'Goodbye' } }, testCtx());
     expect(result.success).toBe(true);
-    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ description: 'Goodbye world' }));
+    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ content: 'Goodbye world' }));
   });
 
   it('applies append operation', async () => {
-    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', description: 'Line 1' })]);
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', content: 'Line 1' })]);
     const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'append', new_str: 'Line 2' } }, testCtx());
     expect(result.success).toBe(true);
-    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ description: 'Line 1\nLine 2' }));
+    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ content: 'Line 1\nLine 2' }));
   });
 
   it('applies insert operation', async () => {
-    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', description: 'Line 1\nLine 3' })]);
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', content: 'Line 1\nLine 3' })]);
     const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'insert', insert_line: 1, new_str: 'Line 2' } }, testCtx());
     expect(result.success).toBe(true);
-    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ description: 'Line 1\nLine 2\nLine 3' }));
+    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ content: 'Line 1\nLine 2\nLine 3' }));
   });
 
   it('throws NotFoundError for missing task', async () => {
@@ -448,28 +448,28 @@ describe('core/editItem', () => {
   });
 
   it('returns { success: false } for failed str_replace (not found)', async () => {
-    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', description: 'Hello' })]);
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', content: 'Hello' })]);
     const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'MISSING', new_str: 'X' } }, testCtx());
     expect(result.success).toBe(false);
     expect(result.error).toContain('old_str not found');
   });
 
   it('returns { success: false } for non-unique str_replace', async () => {
-    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', description: 'foo foo' })]);
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', content: 'foo foo' })]);
     const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'foo', new_str: 'bar' } }, testCtx());
     expect(result.success).toBe(false);
     expect(result.error).toContain('not unique');
   });
 
-  it('handles empty description gracefully', async () => {
+  it('handles empty content gracefully', async () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
     const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'append', new_str: 'First content' } }, testCtx());
     expect(result.success).toBe(true);
-    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ description: 'First content' }));
+    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ content: 'First content' }));
   });
 
   it('sets updated_at on successful edit', async () => {
-    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', description: 'text' })]);
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', content: 'text' })]);
     await editItem(svc, { id: 'TASK-0001', operation: { type: 'append', new_str: 'more' } }, testCtx());
     expect((svc.save as any).mock.calls[0][0].updated_at).not.toBe('2026-01-01T00:00:00.000Z');
   });

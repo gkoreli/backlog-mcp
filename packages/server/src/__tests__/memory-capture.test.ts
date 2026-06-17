@@ -163,7 +163,7 @@ describe('memory capture — create artifact', () => {
     const svc = mockService();
     await createItem(
       svc,
-      { title: 'Review Notes', description: 'Detailed review of the PR', type: 'artifact' as any, parent_id: 'TASK-0629' },
+      { title: 'Review Notes', content: 'Detailed review of the PR', type: 'artifact' as any, parent_id: 'TASK-0629' },
       makeCtx(composer),
     );
 
@@ -182,7 +182,7 @@ describe('memory capture — create artifact', () => {
     const svc = mockService();
     await createItem(
       svc,
-      { title: 'A task', description: 'some desc' },
+      { title: 'A task', content: 'some desc' },
       makeCtx(composer),
     );
     expect(await store.size()).toBe(0);
@@ -222,14 +222,14 @@ describe('memory entry builders', () => {
     expect(entry.id).toBe(`mem-TASK-0042-${NOW}`);
   });
 
-  it('buildArtifactEntry uses description when present', () => {
-    const e = { id: 'ARTF-0001', title: 'Short', type: 'artifact', description: 'Some useful description.', created_at: '', updated_at: '' } as Entity;
+  it('buildArtifactEntry uses content when present', () => {
+    const e = { id: 'ARTF-0001', title: 'Short', type: 'artifact', content: 'Some useful content.', created_at: '', updated_at: '' } as Entity;
     const entry = buildArtifactEntry(e, { type: 'user', name: 'g' }, NOW);
-    expect(entry.content).toBe('Short — Some useful description.');
+    expect(entry.content).toBe('Short — Some useful content.');
     expect(entry.metadata?.kind).toBe('artifact');
   });
 
-  it('buildArtifactEntry falls back to title only when description absent', () => {
+  it('buildArtifactEntry falls back to title only when content absent', () => {
     const e = { id: 'ARTF-0001', title: 'Titleonly', type: 'artifact', created_at: '', updated_at: '' } as Entity;
     const entry = buildArtifactEntry(e, { type: 'user', name: 'g' }, NOW);
     expect(entry.content).toBe('Titleonly');

@@ -108,7 +108,7 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     const memo = await service.get('MEMO-0001');
     expect(memo).toBeDefined();
     expect((memo as { layer?: string }).layer).toBe('episodic');
-    expect(memo!.description).toContain('runtime-clean');
+    expect(memo!.content).toContain('runtime-clean');
   });
 
   // ── R2: Ranked ─────────────────────────────────────────────────────
@@ -344,9 +344,9 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
       { content: 'A single paragraph fact with no line breaks that would otherwise become the title.', title: 'Clean Title', layer: 'semantic' },
       { memoryComposer: composer },
     );
-    const m = await service.get(r.id) as { title?: string; description?: string };
+    const m = await service.get(r.id) as { title?: string; content?: string };
     expect(m.title).toBe('Clean Title');
-    expect(m.description).toBe('A single paragraph fact with no line breaks that would otherwise become the title.');
+    expect(m.content).toBe('A single paragraph fact with no line breaks that would otherwise become the title.');
   });
 
   it('title is mandatory on the explicit remember path — absent title is rejected', async () => {
@@ -379,7 +379,7 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     await createItem(service, {
       title: 'ADR 0092.3 memory experience design',
       type: 'artifact',
-      description: 'Four verbs: wakeup, recall, remember, forget',
+      content: 'Four verbs: wakeup, recall, remember, forget',
     }, ctx);
 
     const result = await coreRecall({ query: 'memory experience four verbs' }, { memoryComposer: composer });
