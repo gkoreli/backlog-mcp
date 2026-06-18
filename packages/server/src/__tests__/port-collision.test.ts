@@ -134,12 +134,30 @@ describe('createPortCollisionResolver', () => {
     const effects = makeEffects({ getIncumbentVersion: vi.fn(async () => '0.53.2') });
     const resolve = createPortCollisionResolver(cfg({ maxTakeoverAttempts: 2 }), effects);
 
-    await resolve(); // attempt 0 → rebind
-    await resolve(); // attempt 1 → rebind
-    await resolve(); // attempt 2 → budget exhausted
+    await resolve(); // initiate takeover → rebind #1
+    await resolve(); // still held → retry bind #2
+    await resolve(); // budget exhausted → exit 1
 
     expect(effects.rebind).toHaveBeenCalledTimes(2);
     expect(effects.exit).toHaveBeenCalledWith(1);
+  });
+
+  it('mid-takeover, a transient unreachable incumbent retries the bind instead of deferring', async () => {
+    // Race: after shutdown the old server stops answering /version but still
+    // briefly holds the TCP port. Re-deciding would see null → defer → exit 0,
+    // abandoning the upgrade. The sticky takeover must retry the bind instead.
+    const getVer = vi.fn<[], Promise<string | null>>()
+      .mockResolvedValueOnce('0.53.2') // first probe: older → takeover
+      .mockResolvedValue(null);        // would-be defer if we re-decided
+    const effects = makeEffects({ getIncumbentVersion: getVer });
+    const resolve = createPortCollisionResolver(cfg(), effects);
+
+    await resolve(); // initiate takeover → rebind #1
+    await resolve(); // port still held, incumbent now null → MUST retry, not defer
+
+    expect(effects.rebind).toHaveBeenCalledTimes(2);
+    expect(effects.exit).not.toHaveBeenCalled();
+    expect(getVer).toHaveBeenCalledTimes(1); // sticky: second collision skips the probe
   });
 
   it('never goes silent — the takeover and defer branches emit a console line', async () => {

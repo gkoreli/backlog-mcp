@@ -105,20 +105,34 @@ export function createPortCollisionResolver(
   const { port, ourVersion, isDevelopment } = config;
   const maxAttempts = config.maxTakeoverAttempts ?? 5;
   let takeoverAttempts = 0;
+  let takeoverInProgress = false;
 
   return async function resolvePortCollision(): Promise<void> {
+    // Once a takeover is underway, a re-fired EADDRINUSE means the incumbent is
+    // still releasing the port — and it may have already stopped answering
+    // `/version`. Keep retrying the bind under a bounded budget rather than
+    // re-running the decision: a re-decide could see a transient `null`
+    // incumbent and wrongly defer + exit *mid-takeover*, abandoning the upgrade.
+    if (takeoverInProgress) {
+      if (takeoverAttempts++ >= maxAttempts) {
+        effects.errorLog(`Port ${port}: incumbent did not release the port after ${maxAttempts} attempts.`);
+        effects.fatalSync('Takeover exhausted', { port, ours: ourVersion });
+        effects.exit(1);
+        return;
+      }
+      await effects.sleep(1000);
+      effects.rebind();
+      return;
+    }
+
     const incumbent = await effects.getIncumbentVersion(port);
     const action = decidePortCollision(incumbent, ourVersion, isDevelopment);
 
     if (action === 'takeover') {
-      // incumbent is non-null here (decision returns 'takeover' only for an
-      // existing backlog-mcp: a strictly-older one in prod, or any in dev).
-      if (takeoverAttempts++ >= maxAttempts) {
-        effects.errorLog(`Port ${port}: could not take over v${incumbent} after ${maxAttempts} attempts.`);
-        effects.fatalSync('Takeover exhausted', { port, incumbent, ours: ourVersion });
-        effects.exit(1);
-        return;
-      }
+      // Commit to the takeover: subsequent collisions become bind-retries
+      // (see the takeoverInProgress guard above) so we never abandon midway.
+      takeoverInProgress = true;
+      takeoverAttempts++; // count this first bind against the budget
       // Only call the incumbent "older" when it genuinely is — in dev we reclaim
       // an equal (or even newer) incumbent, so "older" would be misleading.
       const descriptor = isOlderVersion(incumbent ?? '', ourVersion) ? `older v${incumbent}` : `v${incumbent}`;
