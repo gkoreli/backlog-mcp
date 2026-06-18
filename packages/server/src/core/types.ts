@@ -9,7 +9,7 @@
  * - delete: returns { id, deleted } so caller knows if it existed
  * - edit: returns { success, error? } for operation failures (expected outcome, not exceptional)
  */
-import type { Status, EntityType, Reference } from '@backlog-mcp/shared';
+import type { Status, EntityType, Reference, EditOperation } from '@backlog-mcp/shared';
 import type { MemoryComposer, MemoryLayer } from '@backlog-mcp/memory';
 import type { ResourceContent } from '../resources/manager.js';
 import type { Actor, IOperationLog } from '../operations/types.js';
@@ -547,13 +547,7 @@ export interface ContradictionsResult {
 }
 
 // ── Edit (body operations) ──
-
-export interface EditOperation {
-  type: 'str_replace' | 'insert' | 'append';
-  old_str?: string;
-  new_str?: string;
-  insert_line?: number;
-}
+// EditOperation is the shared loose boundary form (@backlog-mcp/shared).
 
 export interface EditParams {
   id: string;

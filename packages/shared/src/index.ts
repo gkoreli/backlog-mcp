@@ -60,3 +60,12 @@ export {
 } from './substrates/index.js';
 
 export { isValidCronExpression } from './cron-expression.js';
+
+export {
+  type OperationType,
+  type StrReplaceOperation,
+  type InsertOperation,
+  type AppendOperation,
+  type Operation,
+  type EditOperation,
+} from './write-operation.js';

@@ -17,7 +17,7 @@ export type {
   UpdateParams, UpdateResult,
   DeleteParams, DeleteResult,
   SearchParams, SearchResult, SearchResultItem,
-  EditOperation, EditParams, EditResult,
+  EditParams, EditResult,
   WakeupParams, WakeupResult, WakeupEntitySummary, WakeupCompletion, WakeupActivity,
   RecallParams, RecallResult, RecallItem,
   WriteContext, Actor, IOperationLog,

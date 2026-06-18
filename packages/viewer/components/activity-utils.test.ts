@@ -7,6 +7,7 @@ import {
   getToolLabel,
   getToolIcon,
   mergeConsecutiveEdits,
+  operationToDiff,
   type OperationEntry,
   type JournalEntry,
 } from './activity-utils.js';
@@ -443,6 +444,43 @@ describe('activity-utils', () => {
       const groups = groupByTask(operations);
 
       expect(groups[0].title).toBe('TASK-0042.md');
+    });
+  });
+
+  describe('operationToDiff', () => {
+    it('renders a str_replace as a diff with both removals and additions', () => {
+      const diff = operationToDiff(
+        { type: 'str_replace', old_str: 'old line', new_str: 'new line' },
+        'TASK-1.md',
+      );
+      expect(diff).not.toBeNull();
+      expect(diff).toContain('-old line');
+      expect(diff).toContain('+new line');
+    });
+
+    it('renders an append as a pure-additions diff (regression: was blank)', () => {
+      const diff = operationToDiff(
+        { type: 'append', new_str: 'appended paragraph' },
+        'TASK-1.md',
+      );
+      expect(diff).not.toBeNull();
+      expect(diff).toContain('+appended paragraph');
+      // No prior content removed — append is additions-only.
+      expect(diff).not.toContain('-appended paragraph');
+    });
+
+    it('renders an insert as a pure-additions diff (regression: was blank)', () => {
+      const diff = operationToDiff(
+        { type: 'insert', insert_line: 3, new_str: 'inserted line' },
+        'TASK-1.md',
+      );
+      expect(diff).not.toBeNull();
+      expect(diff).toContain('+inserted line');
+    });
+
+    it('returns null when there is no renderable text', () => {
+      // e.g. a malformed/str_replace op missing new_str
+      expect(operationToDiff({ type: 'str_replace' } as never)).toBeNull();
     });
   });
 });

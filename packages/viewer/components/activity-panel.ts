@@ -9,7 +9,6 @@
  */
 import * as Diff2Html from 'diff2html';
 import { ColorSchemeType } from 'diff2html/lib/types';
-import { createTwoFilesPatch } from 'diff';
 import { signal, computed, effect, component, html, when, each, inject, onCleanup } from '@nisli/core';
 import { AppState } from '../services/app-state.js';
 import { SplitPaneState } from '../services/split-pane-state.js';
@@ -31,17 +30,15 @@ import {
   getToolLabel,
   getToolIcon,
   mergeConsecutiveEdits,
+  operationToDiff,
   type OperationEntry,
   type TaskGroup,
   type JournalEntry,
   type EpicGroup,
 } from './activity-utils.js';
+import type { EditOperation } from '@backlog-mcp/shared';
 
 type ViewMode = 'timeline' | 'journal';
-
-function createUnifiedDiff(oldStr: string, newStr: string, filename: string = 'file'): string {
-  return createTwoFilesPatch(filename, filename, oldStr, newStr, '', '', { context: 5 });
-}
 
 const MODE_STORAGE_KEY = 'backlog:activity-mode';
 const DEFAULT_VISIBLE_ITEMS = 2;
@@ -225,6 +222,11 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
     return html`<div class="activity-expanded" @click.stop=${() => {}}>${parts}</div>`;
   }
 
+  const DIFF2HTML_OPTS = {
+    drawFileList: false, matching: 'lines' as const,
+    outputFormat: 'line-by-line' as const, diffStyle: 'word' as const, colorScheme: ColorSchemeType.DARK,
+  };
+
   function renderDiffHtml(op: OperationEntry): string | null {
     const mergedOps = op.params._mergedOps as OperationEntry[] | undefined;
     const filename = op.targetFilename ?? 'file';
@@ -232,28 +234,15 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
     if (mergedOps && mergedOps.length > 1) {
       let combinedDiff = '';
       for (const mergedOp of [...mergedOps].reverse()) {
-        const operation = mergedOp.params.operation as { type: string; old_str?: string; new_str?: string };
-        if (operation.old_str !== undefined && operation.new_str !== undefined) {
-          combinedDiff += createUnifiedDiff(operation.old_str, operation.new_str, filename) + '\n';
-        }
+        const operation = mergedOp.params.operation as EditOperation;
+        const diff = operationToDiff(operation, filename);
+        if (diff) combinedDiff += diff + '\n';
       }
-      if (combinedDiff) {
-        return Diff2Html.html(combinedDiff, {
-          drawFileList: false, matching: 'lines',
-          outputFormat: 'line-by-line', diffStyle: 'word', colorScheme: ColorSchemeType.DARK,
-        });
-      }
+      return combinedDiff ? Diff2Html.html(combinedDiff, DIFF2HTML_OPTS) : null;
     } else if (op.params.operation) {
-      const operation = op.params.operation as { type: string; old_str?: string; new_str?: string };
-      if (operation.type === 'str_replace' && operation.old_str !== undefined && operation.new_str !== undefined) {
-        const unifiedDiff = createUnifiedDiff(operation.old_str, operation.new_str, filename);
-        return Diff2Html.html(unifiedDiff, {
-          drawFileList: false, matching: 'lines',
-          outputFormat: 'line-by-line', diffStyle: 'word', colorScheme: ColorSchemeType.DARK,
-        });
-      } else {
-        return null; // Will render type label instead
-      }
+      const operation = op.params.operation as EditOperation;
+      const diff = operationToDiff(operation, filename);
+      return diff ? Diff2Html.html(diff, DIFF2HTML_OPTS) : null;
     }
     return null;
   }

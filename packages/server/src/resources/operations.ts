@@ -1,6 +1,6 @@
 // Apply operations to text content
 
-import type { Operation } from './types.js';
+import type { Operation } from '@backlog-mcp/shared';
 
 /** Find the most similar line in content to the first line of old_str */
 function findFuzzyHint(content: string, old_str: string): string {

@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { editItem } from '../../core/edit.js';
-import type { EditOperation } from '../../core/types.js';
+import type { EditOperation } from '@backlog-mcp/shared';
 import { run, cliWriteContext } from '../runner.js';
 
 function formatResult(r: { success: boolean; message?: string; error?: string }) {

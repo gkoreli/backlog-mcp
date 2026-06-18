@@ -1,5 +1,5 @@
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
-import type { Operation } from '../resources/types.js';
+import type { Operation } from '@backlog-mcp/shared';
 import { applyOperation } from '../resources/operations.js';
 import { NotFoundError, type EditParams, type EditResult, type WriteContext } from './types.js';
 import { recordMutation } from './operation-log.js';

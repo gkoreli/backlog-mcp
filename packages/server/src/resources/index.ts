@@ -2,4 +2,4 @@
 
 export { resourceManager, ResourceManager } from './manager.js';
 export type { ResourceContent } from './manager.js';
-export type { Operation, WriteResourceResult } from './types.js';
+export type { WriteResourceResult } from './types.js';

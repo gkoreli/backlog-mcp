@@ -3,7 +3,37 @@
  * Extracted for testability.
  */
 
+import { createTwoFilesPatch } from 'diff';
+import type { EditOperation } from '@backlog-mcp/shared';
 import { getLocalDateKey, formatRelativeDay } from '../utils/date.js';
+
+/** Build a unified-diff patch string from old/new text. */
+export function createUnifiedDiff(oldStr: string, newStr: string, filename = 'file'): string {
+  return createTwoFilesPatch(filename, filename, oldStr, newStr, '', '', { context: 5 });
+}
+
+/**
+ * Reduce a write_resource {@link Operation} to a unified-diff string, or `null`
+ * when there's no renderable text.
+ *
+ * - `str_replace` → diff `old_str` vs `new_str`.
+ * - `append` / `insert` → pure-additions diff (no `old_str`, so the base is
+ *   empty): renders as all-green additions. Without this branch, append/insert
+ *   ops produced no diff and the activity panel showed an empty expansion.
+ *
+ * Typed against the shared {@link EditOperation} (the loose boundary form) —
+ * the single source of truth for edit-operation shape.
+ */
+export function operationToDiff(operation: EditOperation, filename = 'file'): string | null {
+  if (operation.type === 'str_replace' && operation.old_str !== undefined && operation.new_str !== undefined) {
+    return createUnifiedDiff(operation.old_str, operation.new_str, filename);
+  }
+  // append / insert carry only new_str → model as insertion into an empty base.
+  if (operation.new_str !== undefined) {
+    return createUnifiedDiff(operation.old_str ?? '', operation.new_str, filename);
+  }
+  return null;
+}
 
 export interface Actor {
   type: 'user' | 'agent';
@@ -137,12 +167,6 @@ export function groupByTask(operations: OperationEntry[]): TaskGroup[] {
 }
 
 const MERGE_WINDOW_MS = 30000; // 30 seconds
-
-interface StrReplaceOp {
-  type: 'str_replace';
-  old_str: string;
-  new_str: string;
-}
 
 /**
  * Resolve the target identifier and display filename from write_resource params.

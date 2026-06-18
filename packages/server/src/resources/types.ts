@@ -1,28 +1,5 @@
-// Operation types for write_resource tool
-
-export type OperationType = 'str_replace' | 'insert' | 'append';
-
-export interface StrReplaceOperation {
-  type: 'str_replace';
-  old_str: string;
-  new_str: string;
-}
-
-export interface InsertOperation {
-  type: 'insert';
-  insert_line: number;
-  new_str: string;
-}
-
-export interface AppendOperation {
-  type: 'append';
-  new_str: string;
-}
-
-export type Operation = 
-  | StrReplaceOperation 
-  | InsertOperation 
-  | AppendOperation;
+// Operation types for write_resource live in @backlog-mcp/shared
+// (single source of truth — server applies them, viewer renders them).
 
 export interface WriteResourceResult {
   success: boolean;
