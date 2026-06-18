@@ -82,9 +82,32 @@ const htmlEmitPlugin = {
 const plugins = [logoPlugin, htmlEmitPlugin];
 
 if (watch) {
+  // Dev-only HMR (nisli ADR 0021, Engineering Plan §4). Loaded via a DYNAMIC
+  // import inside the watch branch on purpose: the prod path (`node build.mjs`,
+  // no --watch) never resolves `@nisli/core/esbuild-hmr`, never loads the
+  // plugin, and never injects the dev client — so prod output is byte-identical
+  // by construction and prod does not require the subpath to exist (ADR 0021
+  // Ruling 5; ADR 0108 content-hash + htmlEmitPlugin pipeline untouched).
+  //
+  // Requires a @nisli/core that ships the `./esbuild-hmr` + `./esbuild-hmr/server`
+  // exports (introduced after 0.48.2 — see build caveat in the commit/PR notes).
+  const { nisliHmrPlugin } = await import('@nisli/core/esbuild-hmr');
+  const { createHmrServer } = await import('@nisli/core/esbuild-hmr/server');
+
+  // SSE change channel: the plugin's onEnd broadcasts an esbuild-shaped
+  // {added,removed,updated} diff to connected dev clients on each rebuild.
+  const hmrServer = createHmrServer();
+  const { port, host } = await hmrServer.listen(Number(process.env.HMR_PORT) || 3031);
+
+  // The plugin (a) injects the browser client banner (connect() → main-<hash>.js,
+  // reached via index.html's <script>) and (b) wraps component() call sites for
+  // tag-keyed re-mount. Pushed AFTER htmlEmitPlugin so ADR 0108's HTML emit is
+  // unaffected; both onEnd hooks run.
+  plugins.push(nisliHmrPlugin({ broadcaster: hmrServer }));
+
   const ctx = await context({ ...shared, plugins });
   await ctx.watch();
-  console.log('watching...');
+  console.log(`watching... (HMR change channel: http://${host}:${port}/esbuild)`);
 } else {
   await build({ ...shared, plugins });
 }
