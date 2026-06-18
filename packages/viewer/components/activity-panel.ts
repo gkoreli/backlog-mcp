@@ -321,7 +321,7 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
             : null}
           <span class="activity-task-recent">${mostRecentDateStr}</span>
         </div>
-        ${computed(() => visibleOps.value.map(op => renderOperation(op)))}
+        ${each(visibleOps, op => op.ts, op => renderOperation(op.value))}
         ${hasMore ? html`
           <button class="activity-toggle-btn" @click.stop=${() => toggleTaskGroup(taskGroup.resourceId)}>
             ${toggleText}
