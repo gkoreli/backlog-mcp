@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isOlderVersion } from '../utils/version.js';
+import { isOlderVersion, parseVersionResponse } from '../utils/version.js';
 
 /**
  * The comparator behind the monotonic upgrade rule: ensureServer (CLI bridge)
@@ -38,5 +38,29 @@ describe('isOlderVersion', () => {
 
   it('compares on the numeric core, ignoring pre-release tags', () => {
     expect(isOlderVersion('0.51.0-beta', '0.51.0')).toBe(false);
+  });
+});
+
+/**
+ * `/version` is served via Hono `c.json`, so the body is a JSON-encoded string
+ * (`"0.53.3"`, with quotes). The decoder must strip that before the comparator
+ * sees it — otherwise a quoted `"1.0.0"` parses its major as NaN→0 and a newer
+ * incumbent is mistaken for older, triggering a wrong takeover.
+ */
+describe('parseVersionResponse', () => {
+  it('decodes the JSON-quoted body produced by c.json', () => {
+    expect(parseVersionResponse('"0.53.3"')).toBe('0.53.3');
+    expect(parseVersionResponse('"1.0.0"\n')).toBe('1.0.0');
+  });
+
+  it('tolerates a plain-text body', () => {
+    expect(parseVersionResponse('0.53.3')).toBe('0.53.3');
+    expect(parseVersionResponse('  0.53.3  ')).toBe('0.53.3');
+  });
+
+  it('regression: a quoted newer major is NOT misread as older', () => {
+    // The pre-fix bug: isOlderVersion('"1.0.0"', '0.53.3') === true (wrong).
+    const incumbent = parseVersionResponse('"1.0.0"'); // as returned by /version
+    expect(isOlderVersion(incumbent, '0.53.3')).toBe(false); // 1.0.0 is newer → defer
   });
 });

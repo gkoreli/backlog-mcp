@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { openSync, closeSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { paths } from '@/utils/paths.js';
-import { isOlderVersion } from '@/utils/version.js';
+import { isOlderVersion, parseVersionResponse } from '@/utils/version.js';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -26,7 +26,7 @@ async function getServerVersion(port: number): Promise<string | null> {
       }
       let data = '';
       res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(data.trim()));
+      res.on('end', () => resolve(parseVersionResponse(data)));
     });
     req.on('error', () => resolve(null));
     req.end();

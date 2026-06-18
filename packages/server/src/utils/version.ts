@@ -26,3 +26,23 @@ export function isOlderVersion(a: string, b: string): boolean {
   }
   return false; // equal
 }
+
+/**
+ * Decode the `/version` response body into a bare version string.
+ *
+ * The endpoint is served via Hono `c.json(version)`, so the body is a
+ * JSON-encoded string (`"0.53.3"`, *with* quotes). Feeding the quoted form
+ * straight into {@link isOlderVersion} mis-parses the major segment (`"1` →
+ * NaN → 0), which at a major-version boundary would make a newer incumbent
+ * look older and trigger a wrong takeover. Parse the JSON; tolerate plain
+ * text or stray quotes as a fallback.
+ */
+export function parseVersionResponse(raw: string): string {
+  const trimmed = raw.trim();
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    return typeof parsed === 'string' ? parsed : String(parsed);
+  } catch {
+    return trimmed.replace(/^"+|"+$/g, '');
+  }
+}
