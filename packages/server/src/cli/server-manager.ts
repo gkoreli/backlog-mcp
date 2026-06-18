@@ -71,6 +71,10 @@ async function shutdownServer(port: number): Promise<void> {
       resolve();
     });
     req.on('error', () => resolve());
+    // Best-effort: a wedged incumbent may accept the socket but never reply,
+    // which would hang the takeover before it can rebind. Time out and move on
+    // — the sticky-retry budget then reclaims the port once it frees.
+    req.setTimeout(PROBE_TIMEOUT_MS, () => { req.destroy(); resolve(); });
     req.end();
   });
 }
