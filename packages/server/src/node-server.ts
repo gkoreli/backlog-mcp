@@ -14,6 +14,7 @@ import { paths } from './utils/paths.js';
 import { resolveViewerPort } from './utils/ports.js';
 import { logger } from './utils/logger.js';
 import { resolveSourcePath } from './utils/resolve-source-path.js';
+import { setViewerCacheHeaders } from './utils/viewer-cache.js';
 
 function readLocalFile(filePath: string): string | null {
   if (!existsSync(filePath)) return null;
@@ -36,7 +37,7 @@ const app = createApp(service, {
   memoryComposer: defaultMemoryComposer,
   usageTracker: defaultUsageTracker,
   resourceManager,
-  staticMiddleware: serveStatic({ root: paths.viewerDist }),
+  staticMiddleware: serveStatic({ root: paths.viewerDist, onFound: setViewerCacheHeaders }),
   readLocalFile,
   readUsageLines,
   resolveSourcePath,
