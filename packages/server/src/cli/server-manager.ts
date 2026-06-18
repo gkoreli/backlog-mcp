@@ -7,12 +7,23 @@ import { isOlderVersion, parseVersionResponse } from '@/utils/version.js';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * Max time to wait for a `/version` probe. A process can hold the port yet
+ * never answer HTTP (half-open socket, wedged server, or a non-backlog
+ * listener that accepts but never replies). Without a timeout the probe — and
+ * therefore server startup / the collision resolver — hangs forever. On
+ * timeout we treat the holder as unreachable (null / not-running), which the
+ * resolver maps to a safe defer in production.
+ */
+const PROBE_TIMEOUT_MS = 2000;
+
 async function isServerRunning(port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const req = request({ host: 'localhost', port, path: '/version', method: 'GET' }, (res) => {
       resolve(res.statusCode === 200);
     });
     req.on('error', () => resolve(false));
+    req.setTimeout(PROBE_TIMEOUT_MS, () => { req.destroy(); resolve(false); });
     req.end();
   });
 }
@@ -29,6 +40,7 @@ async function getServerVersion(port: number): Promise<string | null> {
       res.on('end', () => resolve(parseVersionResponse(data)));
     });
     req.on('error', () => resolve(null));
+    req.setTimeout(PROBE_TIMEOUT_MS, () => { req.destroy(); resolve(null); });
     req.end();
   });
 }

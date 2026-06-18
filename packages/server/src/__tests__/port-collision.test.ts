@@ -6,29 +6,26 @@ import {
 } from '../server/port-collision.js';
 
 /**
- * Port-collision policy: **monotonic newer-wins**. A fresh instance only takes
- * over a strictly-older backlog-mcp; it defers to an equal-or-newer one. This
- * is the invariant that both enables auto-upgrade (newer replaces the
- * long-lived daemon) and prevents the multi-bridge "ping-pong" crash-storm
- * (the loser never fights back).
+ * Port-collision policy. **Dev and production differ on purpose:**
+ * - Production: monotonic newer-wins — take over a strictly-older daemon,
+ *   defer to equal-or-newer. Enables auto-upgrade, prevents the ping-pong
+ *   crash-storm (the loser never fights back).
+ * - Development (`pnpm dev`): always reclaim the port — version is irrelevant
+ *   when iterating; the new watch process must win.
  */
-describe('decidePortCollision', () => {
+describe('decidePortCollision — production (monotonic newer-wins)', () => {
   it('takes over a strictly older incumbent (the upgrade path)', () => {
     expect(decidePortCollision('0.53.2', '0.53.3', false)).toBe('takeover');
-    expect(decidePortCollision('0.53.2', '0.53.3', true)).toBe('takeover');
     expect(decidePortCollision('0.9.0', '1.0.0', false)).toBe('takeover');
   });
 
   it('defers to an equal-or-newer incumbent (never downgrade, never flap)', () => {
     expect(decidePortCollision('0.53.3', '0.53.3', false)).toBe('defer'); // equal
-    expect(decidePortCollision('0.53.3', '0.53.3', true)).toBe('defer');
     expect(decidePortCollision('0.54.0', '0.53.3', false)).toBe('defer'); // newer incumbent
   });
 
-  it('handles an unidentified holder per environment', () => {
-    // null = nothing answered /version (not our server, or already dying)
-    expect(decidePortCollision(null, '0.53.3', true)).toBe('kill-holder'); // dev: reclaim
-    expect(decidePortCollision(null, '0.53.3', false)).toBe('defer');      // prod: stay safe
+  it('defers to an unidentified holder rather than blind-killing it', () => {
+    expect(decidePortCollision(null, '0.53.3', false)).toBe('defer');
   });
 
   it('is anti-symmetric for distinct versions ⇒ no ping-pong', () => {
@@ -43,6 +40,25 @@ describe('decidePortCollision', () => {
         expect([ab, ba].filter(x => x === 'takeover')).toHaveLength(1);
         expect([ab, ba].filter(x => x === 'defer')).toHaveLength(1);
       }
+    }
+  });
+});
+
+describe('decidePortCollision — development (always reclaim)', () => {
+  it('gracefully takes over a responsive backlog-mcp incumbent, regardless of version', () => {
+    expect(decidePortCollision('0.53.3', '0.53.3', true)).toBe('takeover'); // equal — still takes over
+    expect(decidePortCollision('0.53.2', '0.53.3', true)).toBe('takeover'); // older
+    expect(decidePortCollision('0.54.0', '0.53.3', true)).toBe('takeover'); // even newer — dev wins
+  });
+
+  it('hard-kills an unidentified holder', () => {
+    expect(decidePortCollision(null, '0.53.3', true)).toBe('kill-holder');
+  });
+
+  it('never defers in dev — the new process always wins its port', () => {
+    const cases: Array<string | null> = ['0.53.2', '0.53.3', '0.54.0', '1.0.0', null];
+    for (const incumbent of cases) {
+      expect(decidePortCollision(incumbent, '0.53.3', true)).not.toBe('defer');
     }
   });
 });

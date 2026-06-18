@@ -21,13 +21,23 @@ import { isOlderVersion } from '../utils/version.js';
 export type PortCollisionAction = 'takeover' | 'defer' | 'kill-holder';
 
 /**
- * Pure decision for a port collision under the **monotonic newer-wins**
- * invariant. Side-effect free so it can be exhaustively unit-tested.
+ * Pure decision for a port collision. Side-effect free so it can be
+ * exhaustively unit-tested. **The dev and production policies are deliberately
+ * different:**
  *
- * Invariant (anti-symmetry ⇒ no ping-pong): for two *different* backlog-mcp
- * versions a, b exactly one orientation yields `takeover` and the reverse
- * yields `defer`. The loser never fights back, so the multi-bridge flap that
- * 5211cb1 fixed cannot recur. Equal versions always `defer`.
+ * - **Development** (`pnpm dev`): the freshly-started watch process must ALWAYS
+ *   win its port — you are iterating, and the version never changes between
+ *   restarts, so version comparison is meaningless here. Gracefully replace a
+ *   responsive backlog-mcp incumbent (`takeover`); hard-kill any other holder
+ *   (`kill-holder`). Either way we reclaim and start the new server.
+ *
+ * - **Production**: there is ONE long-lived daemon, so the rule is **monotonic
+ *   newer-wins** — replace a strictly-older incumbent (the upgrade path), defer
+ *   to an equal-or-newer one, and defer to an unidentified holder rather than
+ *   blind-killing it. This is anti-symmetric (for two different versions
+ *   exactly one orientation takes over, the other defers), so the loser never
+ *   fights back and the multi-bridge "ping-pong" that 5211cb1 fixed cannot
+ *   recur.
  *
  * @param incumbent      Version reported by the process on the port, or `null`
  *                       when nothing answered `/version` (not our server, or
@@ -40,11 +50,16 @@ export function decidePortCollision(
   ours: string,
   isDevelopment: boolean,
 ): PortCollisionAction {
+  if (isDevelopment) {
+    // Dev always wins its port: gracefully shut down a responsive backlog-mcp,
+    // otherwise hard-kill whatever holds it.
+    return incumbent !== null ? 'takeover' : 'kill-holder';
+  }
+  // Production: monotonic newer-wins; defer to equal/newer/unidentified.
   if (incumbent !== null) {
     return isOlderVersion(incumbent, ours) ? 'takeover' : 'defer';
   }
-  // Unidentified holder: reclaim aggressively in dev, defer safely in prod.
-  return isDevelopment ? 'kill-holder' : 'defer';
+  return 'defer';
 }
 
 /** Side effects the resolver needs — injected so the orchestration is unit-testable. */
@@ -96,14 +111,18 @@ export function createPortCollisionResolver(
     const action = decidePortCollision(incumbent, ourVersion, isDevelopment);
 
     if (action === 'takeover') {
-      // incumbent is non-null here (decision only returns 'takeover' for an older incumbent).
+      // incumbent is non-null here (decision returns 'takeover' only for an
+      // existing backlog-mcp: a strictly-older one in prod, or any in dev).
       if (takeoverAttempts++ >= maxAttempts) {
-        effects.errorLog(`Port ${port}: could not take over older v${incumbent} after ${maxAttempts} attempts.`);
+        effects.errorLog(`Port ${port}: could not take over v${incumbent} after ${maxAttempts} attempts.`);
         effects.fatalSync('Takeover exhausted', { port, incumbent, ours: ourVersion });
         effects.exit(1);
         return;
       }
-      effects.log(`Port ${port} held by older v${incumbent} — shutting it down and taking over as v${ourVersion}...`);
+      // Only call the incumbent "older" when it genuinely is — in dev we reclaim
+      // an equal (or even newer) incumbent, so "older" would be misleading.
+      const descriptor = isOlderVersion(incumbent ?? '', ourVersion) ? `older v${incumbent}` : `v${incumbent}`;
+      effects.log(`Port ${port} held by ${descriptor} — shutting it down and taking over as v${ourVersion}...`);
       await effects.shutdownIncumbent(port);
       await effects.sleep(1000);
       effects.rebind();
