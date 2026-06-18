@@ -103,8 +103,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       '@nisli/core':
-        specifier: ^0.48.1
-        version: 0.48.1
+        specifier: ^0.48.2
+        version: 0.48.2
       '@orama/highlight':
         specifier: ^0.1.9
         version: 0.1.9
@@ -1002,8 +1002,8 @@ packages:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
 
-  '@nisli/core@0.48.1':
-    resolution: {integrity: sha512-YaitaoCKc25GPZcXOdP97lUUXnU+3qsUvXhzlV4CtZjIKMZmqw56Y90INalPvOSr4n3req+lwVLCLSDseh//MQ==}
+  '@nisli/core@0.48.2':
+    resolution: {integrity: sha512-tEwZzh+x7zcH/5/B7A3A4MlJog2pOvJ2ptSCdVY4aG4CFlaLPXecdAdQuc5joNuwRWH72RLfukr3czr9CiGLVg==}
 
   '@orama/highlight@0.1.9':
     resolution: {integrity: sha512-eH4uZMea4R9x9vBFJyS/87oR4Y8oIKxF7e1SItJ9DhPlexZWMVZRlFYvHS1BM/563/dU240ct4ZaGHoYKiCkyQ==}
@@ -3649,7 +3649,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.1
     optional: true
 
-  '@nisli/core@0.48.1': {}
+  '@nisli/core@0.48.2': {}
 
   '@orama/highlight@0.1.9': {}
 

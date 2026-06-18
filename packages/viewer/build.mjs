@@ -1,5 +1,7 @@
 import { build, context } from 'esbuild';
 
+const watch = process.argv.includes('--watch');
+
 const shared = {
   entryPoints: [
     { in: 'main.ts', out: 'main' },
@@ -10,6 +12,7 @@ const shared = {
   format: 'esm',
   splitting: true,
   outdir: 'dist',
+  logLevel: watch ? 'info' : 'warning',
   assetNames: '[name]-[hash]',
   loader: {
     '.css': 'css',
@@ -31,8 +34,6 @@ const logoPlugin = {
     }));
   },
 };
-
-const watch = process.argv.includes('--watch');
 
 if (watch) {
   const ctx = await context({ ...shared, plugins: [logoPlugin] });
