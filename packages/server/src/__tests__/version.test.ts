@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { isOlderVersion } from '../cli/server-manager.js';
+import { isOlderVersion } from '../utils/version.js';
 
 /**
- * The resilient fix: ensureServer only replaces the incumbent when OURS is
- * strictly newer. These cases lock the comparator that prevents the
+ * The comparator behind the monotonic upgrade rule: ensureServer (CLI bridge)
+ * and the server's port-collision resolver both replace an incumbent only when
+ * OURS is strictly newer. These cases lock the comparator that prevents the
  * multi-bridge "version ping-pong" (a stale older bridge must NOT restart a
  * newer server).
  */

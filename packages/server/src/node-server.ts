@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { execSync } from 'node:child_process';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createApp } from './server/hono-app.js';
@@ -11,6 +10,8 @@ import { operationLogger, envActor } from './operations/logger.js';
 import { eventBus } from './events/index.js';
 import { defaultMemoryComposer, defaultUsageTracker, readUsageLines } from './memory/bootstrap.js';
 import { paths } from './utils/paths.js';
+import { getServerVersion, shutdownServer } from './cli/server-manager.js';
+import { createPortCollisionResolver, killPortHolder, sleep } from './server/port-collision.js';
 import { resolveViewerPort } from './utils/ports.js';
 import { logger } from './utils/logger.js';
 import { resolveSourcePath } from './utils/resolve-source-path.js';
@@ -53,46 +54,28 @@ const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, (info) => 
   console.log(`- Data directory: ${paths.backlogDataDir}`);
 });
 
-/** Find and kill the process holding a TCP port. Returns true if killed. */
-async function killPortHolder(targetPort: number): Promise<boolean> {
-  try {
-    const out = execSync(`lsof -ti TCP:${targetPort} -sTCP:LISTEN`, { encoding: 'utf-8' }).trim();
-    const pids = out.split('\n').map(Number).filter(Boolean);
-    for (const pid of pids) {
-      try { process.kill(pid, 'SIGTERM'); } catch {}
-    }
-    if (pids.length > 0) {
-      // Wait for the port to free up
-      await new Promise(resolve => setTimeout(resolve, 200));
-      return true;
-    }
-  } catch {}
-  return false;
-}
+// Port-collision handling lives in ./server/port-collision (pure decision +
+// dependency-injected resolver, unit-tested). Here we only wire the real
+// effects: probe/shutdown the incumbent over HTTP, rebind the Hono server,
+// and surface every branch to the console + structured log (never silent).
+const resolvePortCollision = createPortCollisionResolver(
+  { port, ourVersion: paths.getVersion(), isDevelopment: paths.environment === 'development' },
+  {
+    getIncumbentVersion: getServerVersion,
+    shutdownIncumbent: shutdownServer,
+    killPortHolder,
+    rebind: () => server.listen({ port, hostname: '0.0.0.0' }),
+    exit: (code) => process.exit(code),
+    log: (message) => console.log(message),
+    errorLog: (message) => console.error(message),
+    fatalSync: (message, data) => logger.fatalSync(message, data),
+    sleep,
+  },
+);
 
-// Resilience: a port collision means another instance already owns this port.
-// In development, kill the incumbent and retry — stale zombies from previous
-// sessions silently block `pnpm dev` otherwise.
-// In production, defer to the incumbent and exit *cleanly* (code 0) — the
-// supervisor treats code 0 as "stop", so no respawn loop.
 server.on('error', (err: NodeJS.ErrnoException) => {
   if (err.code === 'EADDRINUSE') {
-    if (paths.environment === 'development') {
-      killPortHolder(port).then((killed) => {
-        if (killed) {
-          console.log(`⚠️  Killed stale process on port ${port} — retrying...`);
-          setTimeout(() => {
-            server.listen({ port, hostname: '0.0.0.0' });
-          }, 300);
-        } else {
-          console.error(`❌ Port ${port} in use and could not kill the holder. Change BACKLOG_VIEWER_PORT or kill it manually.`);
-          process.exit(1);
-        }
-      });
-    } else {
-      logger.fatalSync('Port already owned by another instance — deferring', { port });
-      process.exit(0);
-    }
+    void resolvePortCollision();
     return;
   }
   logger.fatalSync('Server error', { code: err.code, message: err.message, stack: err.stack });
