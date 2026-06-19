@@ -167,6 +167,38 @@ Wiring into our architecture:
   `[A-Z2-7]{8}` vs Rollup's default hash alphabet) — adjust the classifier or
   Rollup's hash format if they diverge.
 
+## Prior art — a framework HMR adapter is the norm, not a workaround
+
+Vite supplies the HMR *plumbing* (`import.meta.hot`, the websocket, module-graph
+invalidation, re-fetching the changed module) but is framework-**agnostic**: a
+module that does not `import.meta.hot.accept` bubbles to a full reload. The
+framework-specific "apply the new code to live instances" step is always a
+dedicated integration:
+
+- **React** — `@vitejs/plugin-react` (Fast Refresh); **Vue** — `@vitejs/plugin-vue`;
+  **Svelte** — the compiler *injects* `import.meta.hot.accept(...)` per component
+  module (verified in `sveltejs/svelte` source); **Solid** — `solid-refresh` /
+  `defineSolidElement` (docs: *"add `if (import.meta.hot) import.meta.hot.accept();`"*).
+- **Web components specifically** carry an extra constraint: `customElements.define`
+  **cannot be re-called** for a tag, so you cannot "replace the module" — you must
+  patch the existing class / swap behavior and re-render live instances. The
+  canonical pattern is the Lit team's `@web/dev-server-hmr` (`modernweb-dev/web`):
+  ```js
+  import.meta.hot.accept(({ module }) => {
+    MyComponent.styles = module.MyComponent.styles;
+    MyComponent.template = module.MyComponent.template;
+    for (const el of liveInstances) /* re-render */;
+  });
+  ```
+
+Our `@nisli/core/vite-hmr` is the Nisli equivalent: `component()` guards the
+one-time `define`; the plugin injects `import.meta.hot.accept` and swaps the
+*setup* behind a stable registry thunk, then re-mounts live elements via the
+lifecycle (ADR 0021, Ruling 2/3). Difference from Lit's property-patch: we do a
+full element re-mount (element-local signal state resets; props + injected
+singletons survive) — coarser but simpler and correct. Conclusion: the adapter
+is the standard amount of framework glue, not a reinvention.
+
 ## nisli's remaining role
 
 - Retire `@nisli/core/esbuild-hmr` **for the viewer** (keep the package published

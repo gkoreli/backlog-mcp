@@ -7,8 +7,16 @@ import {
   setViewerCacheHeaders,
 } from '../utils/viewer-cache.js';
 
-// Real esbuild outputs from the viewer build (entryNames/assetNames '[name]-[hash]').
+// Content-addressed assets — Vite assets/* (primary) and legacy esbuild (secondary).
 const HASHED = [
+  // Vite (ADR 0110): everything under assets/ is content-hashed.
+  'assets/index-ClUxitKd.js',
+  '/assets/index-DJJW2LnF.css',
+  'assets/mermaid.core-Bcetpw2U.js',
+  'assets/logo-535ZNY3M.svg',
+  '/abs/path/to/dist/viewer/assets/index-ClUxitKd.js',
+  'assets/index-ClUxitKd.js.map', // hashed sourcemap under assets/ — also immutable
+  // Legacy esbuild base32 suffix (secondary match, kept for safety).
   'main-3LFQHTR2.js',
   'main-ZBGT667E.css',
   'logo-535ZNY3M.svg',
@@ -17,14 +25,14 @@ const HASHED = [
   '/abs/path/to/main-3LFQHTR2.js',     // full paths classify by basename suffix
 ];
 
-// Stable-URL or otherwise non-content-addressed names.
+// Stable-URL or otherwise non-content-addressed names (NOT under assets/).
 const UNHASHED = [
   'index.html',  // the single stable entry — MUST always revalidate
+  'logo.svg',    // Vite public/ asset, served at the root
   'main.js',     // the pre-0108 unhashed entry (the stale-bug filename)
   'main.css',
-  'logo.svg',
   'favicon.ico',
-  'main-3LFQHTR2.js.map', // sourcemap: trailing ext is .map, not a hash slot
+  'main-3LFQHTR2.js.map', // legacy flat sourcemap: trailing ext is .map, not a hash slot
   'main-0189ABCD.js',     // 0/1/8/9 are NOT in esbuild's base32 alphabet
   'data-deadbeef.js',     // lowercase ≠ esbuild's uppercase base32
   'main-ABC123.js',       // wrong hash length (6, not 8)

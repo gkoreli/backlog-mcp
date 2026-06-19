@@ -31,19 +31,29 @@ export const CacheControl = {
 } as const;
 
 /**
- * esbuild content-hash suffix: a `-` followed by an 8-char RFC-4648 base32 hash
- * (`A–Z`, `2–7` — never `0/1/8/9`) and the file extension at end-of-string.
- * Verified against real outputs: `main-3LFQHTR2.js`, `main-ZBGT667E.css`,
- * `chunk-5RM6L4X6.js`, `architecture-7HQA4BMR-VEV3UYQT.js`.
+ * Legacy esbuild content-hash suffix: a `-` followed by an 8-char RFC-4648
+ * base32 hash (`A–Z`, `2–7`) and the file extension. Kept as a secondary match
+ * for any esbuild-era output; the primary signal is now the Vite `assets/` dir.
  */
 const CONTENT_HASH_SUFFIX = /-[A-Z2-7]{8}\.[a-z0-9]+$/;
 
 /**
- * True when a filename carries an esbuild content hash — i.e. its URL is
- * content-addressed and safe to cache immutably.
+ * Vite (ADR 0110) emits EVERY content-hashed bundle asset under `assets/`
+ * (`build.assetsDir`). Matching the directory is hash-format-agnostic — it does
+ * not depend on Rollup's hash alphabet — and the only stable-URL files
+ * (`index.html`, `public/` assets like `logo.svg`) live at the root, never
+ * under `assets/`. So a file served from an `assets/` segment is content-
+ * addressed and safe to cache immutably.
+ */
+const VITE_ASSETS_DIR = /(^|\/)assets\/[^/]+$/;
+
+/**
+ * True when a filename/path is a content-addressed asset — i.e. its URL is
+ * content-addressed and safe to cache immutably. Matches Vite `assets/*` output
+ * (primary) or a legacy esbuild base32 suffix (secondary).
  */
 export function isContentHashedAsset(path: string): boolean {
-  return CONTENT_HASH_SUFFIX.test(path);
+  return VITE_ASSETS_DIR.test(path) || CONTENT_HASH_SUFFIX.test(path);
 }
 
 /**
