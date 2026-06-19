@@ -11,12 +11,12 @@ function getTooltip(): HTMLDivElement {
     sharedTooltip = document.createElement('div');
     sharedTooltip.style.cssText = `
       position: fixed;
-      background: #2d2d30;
-      color: #fff;
+      background: var(--t-bg-elevated);
+      color: var(--t-fg-default);
       padding: 6px 12px;
       border-radius: 6px;
-      border: 1px solid #444c56;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--t-border-default);
+      box-shadow: var(--t-shadow-sm);
       font-size: 12px;
       pointer-events: none;
       opacity: 0;
