@@ -28,7 +28,7 @@ importers:
         version: 5.9.3
       vite-tsconfig-paths:
         specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@5.4.21(@types/node@22.19.7))
+        version: 6.1.1(typescript@5.9.3)(vite@7.3.5(@types/node@22.19.7)(tsx@4.21.0))
       vitest:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@22.19.7)(happy-dom@20.5.3)
@@ -133,6 +133,9 @@ importers:
       happy-dom:
         specifier: ^20.5.3
         version: 20.5.3
+      vite:
+        specifier: ^7.1.5
+        version: 7.3.5(@types/node@22.19.7)(tsx@4.21.0)
 
 packages:
 
@@ -2894,6 +2897,46 @@ packages:
       terser:
         optional: true
 
+  vite@7.3.5:
+    resolution: {integrity: sha512-KuOaNhcnGFN2zIPGA7wRmzF+lJA1sea7rHq17aiJ++9lzY1WWG6Jpwqwe1KNbRVPIqHmr8GLYx7jbrQcN/7/ww==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    hasBin: true
+    peerDependencies:
+      '@types/node': ^20.19.0 || >=22.12.0
+      jiti: '>=1.21.0'
+      less: ^4.0.0
+      lightningcss: ^1.21.0
+      sass: ^1.70.0
+      sass-embedded: ^1.70.0
+      stylus: '>=0.54.8'
+      sugarss: ^5.0.0
+      terser: ^5.16.0
+      tsx: ^4.8.1
+      yaml: ^2.4.2
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+      jiti:
+        optional: true
+      less:
+        optional: true
+      lightningcss:
+        optional: true
+      sass:
+        optional: true
+      sass-embedded:
+        optional: true
+      stylus:
+        optional: true
+      sugarss:
+        optional: true
+      terser:
+        optional: true
+      tsx:
+        optional: true
+      yaml:
+        optional: true
+
   vitest@2.1.9:
     resolution: {integrity: sha512-MSmPM9REYqDGBI8439mA4mWhV5sKmDlBKWIYbA3lRb2PTHACE0mgKwA8yQ2xq9vxDTuk4iPrECBAEW2aoFXY0Q==}
     engines: {node: ^18.0.0 || >=20.0.0}
@@ -5625,12 +5668,12 @@ snapshots:
       - supports-color
       - terser
 
-  vite-tsconfig-paths@6.1.1(typescript@5.9.3)(vite@5.4.21(@types/node@22.19.7)):
+  vite-tsconfig-paths@6.1.1(typescript@5.9.3)(vite@7.3.5(@types/node@22.19.7)(tsx@4.21.0)):
     dependencies:
       debug: 4.4.3
       globrex: 0.1.2
       tsconfck: 3.1.6(typescript@5.9.3)
-      vite: 5.4.21(@types/node@22.19.7)
+      vite: 7.3.5(@types/node@22.19.7)(tsx@4.21.0)
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -5643,6 +5686,19 @@ snapshots:
     optionalDependencies:
       '@types/node': 22.19.7
       fsevents: 2.3.3
+
+  vite@7.3.5(@types/node@22.19.7)(tsx@4.21.0):
+    dependencies:
+      esbuild: 0.27.3
+      fdir: 6.5.0(picomatch@4.0.4)
+      picomatch: 4.0.4
+      postcss: 8.5.6
+      rollup: 4.55.2
+      tinyglobby: 0.2.16
+    optionalDependencies:
+      '@types/node': 22.19.7
+      fsevents: 2.3.3
+      tsx: 4.21.0
 
   vitest@2.1.9(@types/node@22.19.7)(happy-dom@20.5.3):
     dependencies:

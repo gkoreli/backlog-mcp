@@ -1,4 +1,4 @@
-// Build-time injection via esbuild define (see build.mjs).
+// Build-time injection via Vite `define` (see vite.config.ts).
 // Falls back to current host/port for local mode.
 declare const __API_URL__: string | undefined;
 export const API_URL =
