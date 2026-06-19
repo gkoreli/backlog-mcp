@@ -86,6 +86,21 @@ already-hashed `chunk-<hash>.js`. A content hash in the filename makes the URL
 URL. The browser fetches a changed asset exactly once (new URL), then caches it
 forever.
 
+> **Scope: production only — dev/watch MUST NOT hash (collision with HMR, ADR 0021).**
+> Content hashing rotates the filename on every rebuild (`main-AAAA.js → main-BBBB.js`).
+> The dev HMR client (nisli ADR 0021) re-evaluates the bundle by re-importing the
+> page's `<script src>` with a `?t=<ts>` cache-bust — which requires a **stable
+> module URL**. Hashed names make that re-import 404 (the old hash no longer
+> exists on disk), breaking HMR entirely. The two strategies are fundamentally
+> incompatible, and this is the universal convention: **webpack rejects
+> `[contenthash]`/`[chunkhash]` + HMR outright** (errors: *"use [hash] instead"* —
+> angular-cli #19394, webpack #1363); **Vite** hashes only in the production
+> `build` (`rollupOptions.output.entryFileNames`), while dev serves stable URLs +
+> a `?t=` query. So `build.mjs` gates the hash: `entryNames: watch ? '[name]' :
+> '[name]-[hash]'` (same for `assetNames`). The `?t=` query is the dev
+> cache-buster, and unhashed dev assets fall into this ADR's no-cache/revalidate
+> bucket (Ruling 3 fail-safe), so nothing is served stale despite the stable name.
+
 ### Ruling 2 — `index.html` is the single revalidated entry
 
 `index.html` keeps a stable URL (`/`, `/index.html`) and is rewritten at build

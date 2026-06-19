@@ -14,13 +14,23 @@ const shared = {
   splitting: true,
   outdir: 'dist',
   logLevel: watch ? 'info' : 'warning',
-  // Content-hash BOTH entry outputs (main.js/main.css/logo.svg) and loaded
-  // assets/chunks. Hashed URLs are content-addressed: the URL changes iff the
-  // bytes change, so every asset can be cached immutably and a release is never
-  // served stale. The unhashed entry was the root cause of the stale-viewer bug
-  // (ADR 0108) — esbuild hashes `assetNames` by default but NOT `entryNames`.
-  entryNames: '[name]-[hash]',
-  assetNames: '[name]-[hash]',
+  // Content-hashing is a PRODUCTION-only concern (ADR 0108). In prod, hashed
+  // URLs are content-addressed: the URL changes iff the bytes change, so every
+  // asset is cached immutably and a release is never served stale. The unhashed
+  // entry was the root cause of the stale-viewer bug — esbuild hashes
+  // `assetNames` by default but NOT `entryNames`.
+  //
+  // In WATCH/dev we must NOT hash: HMR (ADR 0021) re-imports the page's
+  // `<script src>` with a `?t=<ts>` cache-bust to re-evaluate the bundle, which
+  // requires a STABLE module URL. Content hashing rotates the filename every
+  // rebuild (main-AAAA.js → main-BBBB.js), so the re-import 404s — the two
+  // strategies are fundamentally incompatible. This is the universal convention:
+  // webpack rejects [contenthash]+HMR outright; Vite hashes only in `build`, dev
+  // uses stable URLs + a `?t=` query. The query is the dev cache-buster, so
+  // nothing is served stale despite the stable name (the dev server also
+  // revalidates unhashed assets — ADR 0108 cache policy).
+  entryNames: watch ? '[name]' : '[name]-[hash]',
+  assetNames: watch ? '[name]' : '[name]-[hash]',
   metafile: true,
   loader: {
     '.css': 'css',
@@ -99,11 +109,17 @@ if (watch) {
   const hmrServer = createHmrServer();
   const { port, host } = await hmrServer.listen(Number(process.env.HMR_PORT) || 3031);
 
-  // The plugin (a) injects the browser client banner (connect() → main-<hash>.js,
-  // reached via index.html's <script>) and (b) wraps component() call sites for
-  // tag-keyed re-mount. Pushed AFTER htmlEmitPlugin so ADR 0108's HTML emit is
-  // unaffected; both onEnd hooks run.
-  plugins.push(nisliHmrPlugin({ broadcaster: hmrServer }));
+  // The plugin (a) injects the browser dev client (bundled into main-<hash>.js
+  // via esbuild `inject`, reached through index.html's <script>) and (b) wraps
+  // component() call sites for tag-keyed re-mount. `clientUrl` points the client
+  // at the SSE hub's ABSOLUTE origin (:3031) because the page is served by Hono
+  // on a different port (:3040); the hub sends `Access-Control-Allow-Origin: *`
+  // so cross-origin SSE works. Pushed AFTER htmlEmitPlugin so ADR 0108's HTML
+  // emit is unaffected; both onEnd hooks run.
+  plugins.push(nisliHmrPlugin({
+    broadcaster: hmrServer,
+    clientUrl: `http://localhost:${port}/esbuild`,
+  }));
 
   const ctx = await context({ ...shared, plugins });
   await ctx.watch();
