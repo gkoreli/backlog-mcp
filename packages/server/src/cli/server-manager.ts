@@ -2,8 +2,8 @@ import { request } from 'node:http';
 import { spawn } from 'node:child_process';
 import { openSync, closeSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { paths } from '@/utils/paths.js';
-import { isOlderVersion, parseVersionResponse } from '@/utils/version.js';
+import { paths } from '@server/utils/paths.js';
+import { isOlderVersion, parseVersionResponse } from '@server/utils/version.js';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 

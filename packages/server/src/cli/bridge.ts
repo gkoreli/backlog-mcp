@@ -4,9 +4,9 @@ import { spawn, ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { ensureServer } from './server-manager.js';
 import { Supervisor, DEFAULT_CONFIG } from './supervisor.js';
-import { paths } from '@/utils/paths.js';
-import { resolveViewerPort } from '@/utils/ports.js';
-import { logger } from '@/utils/logger.js';
+import { paths } from '@server/utils/paths.js';
+import { resolveViewerPort } from '@server/utils/ports.js';
+import { logger } from '@server/utils/logger.js';
 
 async function runBridge(port: number): Promise<void> {
   await ensureServer(port);

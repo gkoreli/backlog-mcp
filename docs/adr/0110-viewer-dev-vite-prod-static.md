@@ -1,7 +1,7 @@
 # 0110. Vite for Viewer Dev (HMR) — Static Bundle in Prod
 
 **Date**: 2026-06-19
-**Status**: Accepted — implemented (viewer dev+build on Vite; `@nisli/core/vite-hmr` 0.50.0; prod parity + cache headers verified). See *Engineering Record (executed)*.
+**Status**: Accepted — implemented. Viewer dev+build on Vite; `@nisli/core/vite-hmr` 0.50.0; prod parity + cache headers verified. **Dev is single-origin** via `@hono/vite-dev-server` (one process, no proxy, no tsx). See *Engineering Record*.
 **Triggered by**: Live testing of the esbuild dev-HMR client (nisli ADR 0021, shipped `@nisli/core/esbuild-hmr` 0.49.0–0.49.2) surfaced a structural failure: re-importing the bundled entry to apply a change instantiates a **second copy of the entire framework runtime**, so live elements and new component setups disagree about the lifecycle/reactive context.
 **Supersedes**: the dev-HMR *approach* of nisli **ADR 0021** (`@nisli/core/esbuild-hmr`) for the backlog-mcp viewer. ADR 0021's correctness analysis (re-mount lifecycle, ADR 0008.1) stays valid and is reused.
 **Relates to**: [0108. Content-Hashed Viewer Assets](./0108-viewer-asset-cache-busting.md) · [0104. Local-First Deployment Posture](./0104-local-first-deployment-posture.md)
@@ -141,20 +141,23 @@ Rationale, evidence-led:
   static `dist/`, then exits. `import.meta.hot` is `undefined` and tree-shaken →
   **zero HMR bytes in prod**.
 
-Dependency posture: **Vite is a `devDependency` of `packages/viewer` only.** It
-is never a runtime dep of `backlog-mcp`, never `npx`-installed by users. The
-published package ships only the static built assets, exactly as today.
-
 Wiring into our architecture:
 
-- **Dev (`pnpm dev`)** — two processes, like today's `concurrently`:
-  - backlog **Hono** server: `/mcp`, API, `/events` (SSE);
-  - **Vite dev server**: serves the viewer with HMR, `server.proxy` forwards
-    API/SSE to Hono. (Middleware mode — Vite mounted inside Hono on one port —
-    is the alternative; default to the proxy for simplicity.)
+- **Dev (`pnpm dev`)** — **ONE process, ONE origin** (supersedes the original
+  two-process proxy design below; see *Engineering Record — single-origin
+  cutover*). `@hono/vite-dev-server` mounts the backlog **Hono** app on Vite's
+  dev server: Vite serves the SPA + client modules + granular HMR, and every
+  request Vite does not own (API, `/events` SSE, `/mcp`, OAuth) is handled by the
+  Hono app, loaded through Vite's **SSR module graph**. No proxy, no second
+  process, no `tsx` — dev mirrors prod (one server serves SPA + API).
 - **Prod** — no dev server. `vite build` → static hashed `dist/` → copied into
   the server package → **Hono serves it** (unchanged). `npx backlog-mcp`
   unchanged.
+
+Dependency posture: **Vite + `@hono/vite-dev-server` + `vite-tsconfig-paths` are
+root `devDependencies`** (the root config orchestrates both packages in dev).
+They are never runtime deps of `backlog-mcp`, never `npx`-installed by users; the
+published package ships only the static built assets.
 
 ## ADR 0108 Mapping (cache-busting survives)
 
@@ -286,6 +289,53 @@ Granular HMR was verified up to the transport (transform injected, single
 framework instance, self-accept present). The final visual — a component edit
 hot-swaps in place with no full page reload — is confirmed in a browser: run
 `pnpm dev`, open the Vite URL (default `:5173`), edit a component.
+
+## Engineering Record — single-origin dev cutover
+
+The initial implementation kept the ecosystem-default **two-process proxy**
+(Vite on its own port, `server.proxy` forwarding API/SSE to a `tsx`-run Hono on
+`:3040`). Live use exposed its costs: a hand-maintained proxy route list, a
+startup race (`ECONNREFUSED` on `/events` when Vite outraced the backend), two
+ports, and a dev topology *inverted* from prod (frontend-primary vs Hono-primary).
+We replaced it with the maintained prior art — **`@hono/vite-dev-server`** — so
+**dev is single-origin and mirrors prod**.
+
+**Model.** A root `vite.config.ts` (it orchestrates *both* packages, so it lives
+at the monorepo root, not in the viewer) mounts the backlog Hono app on Vite via
+`@hono/vite-dev-server`. Vite serves the SPA + client modules + HMR; the plugin's
+`exclude` is the **inverse of the old proxy list** — defaults already cover Vite
+internals (`.ts`, `.css`, `/@vite`, `?t=`, `node_modules`), and we add the SPA
+shell `/` (regex `^\/(\?.*)?$` — the viewer routes via query string, so the path
+is always `/`). Everything else falls through to the Hono app, loaded via Vite's
+**`ssrLoadModule`**. One process, one origin (`:5173`), no proxy, no `tsx`,
+no `concurrently`.
+
+**Backend under Vite SSR — verified, not assumed.** The risk was the native
+`@huggingface/transformers` (onnxruntime) embedding dep choking Vite's SSR
+loader. A spike proved it boots cleanly (Vite externalizes `node_modules` for
+SSR): `/version`,`/tasks` → 200, `/events` → `text/event-stream`, `/` → SPA with
+`@vite/client`, and `[vite] (client) hmr update /components/task-badge.ts` on
+edit.
+
+**Gotcha (the only real blocker).** The server's `@/*` tsconfig path alias is
+invisible to Vite's resolver → `Cannot find module '@/utils/paths.js'` during
+SSR. Fixed with **`vite-tsconfig-paths`** pointed at the server tsconfig — the
+production-grade fix (reads tsconfig `paths`, no hand-kept aliases). The alias
+was also renamed `@/*` → **`@server/*`** (single `@server/* → src/*` mapping):
+in a root config that loads both packages, a bare `@/` is ambiguous.
+
+**Single source of truth.** Extracted `createNodeApp()`
+(`packages/server/src/server/node-app.ts`) — the fully-wired app graph — used by
+both the published `node-server.ts` (adds listener + port collision + lifecycle)
+and the Vite dev entry (`packages/server/src/dev-entry.ts`, `export default
+createNodeApp()`). `.env` is loaded into `process.env` in the config
+(`loadEnv` + `Object.assign`) to replace `tsx --env-file` for the SSR backend.
+
+**Removed:** `concurrently`, `tsx`, `esbuild` devDeps; the proxy route list; the
+server `dev` (tsx) + viewer `dev`/`build` scripts; the dev-only "open :5173"
+message in `node-server.ts` (dev no longer runs it). **Verified:** typecheck
+(both) clean; full `pnpm build` ok; prod serve `index.html` `no-cache` + assets
+`immutable` (resolve 200); tests memory 26 / viewer 100 / server 912.
 
 
 ## Authoritative Sources

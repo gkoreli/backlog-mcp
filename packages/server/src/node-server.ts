@@ -1,64 +1,23 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { serve } from '@hono/node-server';
-import { serveStatic } from '@hono/node-server/serve-static';
-import { createApp } from './server/hono-app.js';
+import { createNodeApp } from './server/node-app.js';
 import { BacklogService } from './storage/local/backlog-service.js';
-import { resourceManager } from './resources/manager.js';
-import { operationLogger, envActor } from './operations/logger.js';
-import { eventBus } from './events/index.js';
-import { defaultMemoryComposer, defaultUsageTracker, readUsageLines } from './memory/bootstrap.js';
-import { paths, RuntimeEnvironment } from './utils/paths.js';
+import { paths } from './utils/paths.js';
 import { getServerVersion, shutdownServer } from './cli/server-manager.js';
 import { createPortCollisionResolver, killPortHolder, sleep } from './server/port-collision.js';
 import { resolveViewerPort } from './utils/ports.js';
 import { logger } from './utils/logger.js';
-import { resolveSourcePath } from './utils/resolve-source-path.js';
-import { setViewerCacheHeaders } from './utils/viewer-cache.js';
-
-function readLocalFile(filePath: string): string | null {
-  if (!existsSync(filePath)) return null;
-  try { return readFileSync(filePath, 'utf-8'); } catch { return null; }
-}
 
 const service = BacklogService.getInstance();
 const port = resolveViewerPort(paths.environment);
-
-// Node mode wires actor from env, JSONL operation log, and the real
-// event bus for SSE push. Core write functions build a WriteContext
-// from these pieces per-request (see ADR 0094).
-const app = createApp(service, {
-  name: paths.packageJson.name,
-  version: paths.getVersion(),
-  dataDir: paths.backlogDataDir,
-  actor: envActor(),
-  operationLog: operationLogger,
-  eventBus,
-  memoryComposer: defaultMemoryComposer,
-  usageTracker: defaultUsageTracker,
-  resourceManager,
-  staticMiddleware: serveStatic({ root: paths.viewerDist, onFound: setViewerCacheHeaders }),
-  readLocalFile,
-  readUsageLines,
-  resolveSourcePath,
-  identityPath: join(paths.backlogDataDir, 'identity.md'),
-  logError: (message, data) => logger.error(message, data),
-});
+// Single source of truth for the wired app graph — shared with the Vite dev
+// entry (ADR 0110). This server adds the listener + port collision + lifecycle.
+const app = createNodeApp();
 
 const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, (info) => {
   logger.info('Server started', { port: info.port, dataDir: paths.backlogDataDir, version: paths.getVersion() });
   console.log(`Backlog MCP server running on http://localhost:${info.port}`);
-  if (paths.environment === RuntimeEnvironment.Development) {
-    // In dev the VIEWER is served by Vite (HMR), NOT by this server. This server
-    // is the API/MCP backend that Vite proxies to. Serving the viewer here would
-    // be a STALE static build with no HMR — so point developers at Vite (ADR 0110).
-    const vitePort = process.env.VITE_PORT ?? '5173';
-    console.log(`- Viewer (dev): http://localhost:${vitePort}/  <-- open THIS (Vite dev server, HMR)`);
-    console.log(`  (http://localhost:${info.port}/ is API/MCP only in dev — no viewer HMR)`);
-  } else {
-    console.log(`- Viewer: http://localhost:${info.port}/`);
-  }
+  console.log(`- Viewer: http://localhost:${info.port}/`);
   console.log(`- MCP endpoint: http://localhost:${info.port}/mcp`);
   console.log(`- Data directory: ${paths.backlogDataDir}`);
 });

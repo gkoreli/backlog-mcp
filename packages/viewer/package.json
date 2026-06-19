@@ -6,17 +6,14 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "tsc --noEmit && vite build",
-    "dev": "vite",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
-    "happy-dom": "^20.5.3",
-    "vite": "^7.1.5"
+    "happy-dom": "^20.5.3"
   },
   "dependencies": {
-    "@nisli/core": "^0.50.0",
     "@backlog-mcp/shared": "workspace:*",
+    "@nisli/core": "^0.50.0",
     "@orama/highlight": "^0.1.9",
     "diff": "^8.0.3",
     "diff2html": "^3.4.56",

@@ -9,15 +9,7 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "@/utils/*": ["src/utils/*"],
-      "@/server/*": ["src/server/*"],
-      "@/storage/*": ["src/storage/*"],
-      "@/tools/*": ["src/tools/*"],
-      "@/resources/*": ["src/resources/*"],
-      "@/middleware/*": ["src/middleware/*"],
-      "@/cli/*": ["src/cli/*"],
-      "@/search/*": ["src/search/*"],
-      "@/operations/*": ["src/operations/*"]
+      "@server/*": ["src/*"]
     }
   },
   "include": ["src/**/*.ts"],

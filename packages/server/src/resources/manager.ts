@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import matter from 'gray-matter';
-import { paths } from '@/utils/paths.js';
+import { paths } from '@server/utils/paths.js';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Resource } from '@backlog-mcp/memory/search';
 

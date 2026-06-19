@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { paths } from '@/utils/paths.js';
-import { resolveViewerPort } from '@/utils/ports.js';
+import { paths } from '@server/utils/paths.js';
+import { resolveViewerPort } from '@server/utils/ports.js';
 import { isServerRunning, getServerVersion, shutdownServer } from './server-manager.js';
 import { registerList } from './commands/list.js';
 import { registerGet } from './commands/get.js';
