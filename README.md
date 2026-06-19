@@ -103,10 +103,12 @@ Features:
 - Real-time updates via SSE
 - Activity timeline
 - Filter by status, type, epic
-- GitHub-style markdown rendering with Mermaid diagrams
+- Dark/light theme toggle (Tsa design system)
+- Syntax highlighting via [Shiki](https://shiki.style) (VS Code-quality, dual-theme CSS variables)
+- GitHub-flavored markdown rendering with Mermaid diagrams
 - URL state persistence
 
-The viewer UI is built with [Nisli](https://github.com/gkoreli/nisli) (`@nisli/core`).
+The viewer UI is built with [Nisli](https://github.com/gkoreli/nisli) (`@nisli/core`) and styled with **Tsa** (ცა, Georgian for "sky") — our design system that pairs with Nisli.
 
 ## Entity Types
 
