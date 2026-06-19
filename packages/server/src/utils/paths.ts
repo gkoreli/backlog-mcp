@@ -198,7 +198,7 @@ export class PathResolver {
     const isRunningFromSource = currentDir.includes('/src/');
 
     if (isRunningFromSource) {
-      // Source mode via tsx: this file is at packages/server/src/utils/paths.ts.
+      // Source mode via Vite SSR: this file is at packages/server/src/utils/paths.ts.
       const srcIndex = currentDir.indexOf('/src/');
       const projectRoot = currentDir.substring(0, srcIndex);
       const distRoot = join(projectRoot, 'dist');
