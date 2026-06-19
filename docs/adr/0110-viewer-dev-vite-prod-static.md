@@ -270,12 +270,15 @@ server 912, memory 26):
 ### Gotcha found by verification (would have broken prod)
 
 `tsdown`'s `copy` glob `../viewer/dist/** → dist/viewer` **flattens**
-subdirectories. Invisible with esbuild's flat output, but it dropped Vite's
-`assets/` directory, so every `/assets/*` URL in the emitted `index.html` 404'd
-in production. Fixed with a deterministic `fs.cpSync(recursive)` post-build step
-(`packages/server/scripts/copy-viewer.mjs`) that preserves the tree. Lesson:
-directory-structure assumptions in a copy step must be re-verified when the
-producer's output layout changes (flat esbuild → nested Vite `assets/`).
+subdirectories (its `flatten` option defaults to `true`, and a `/**` pattern is
+resolved to individual files). Invisible with esbuild's flat output, but it
+dropped Vite's `assets/` directory, so every `/assets/*` URL in the emitted
+`index.html` 404'd in production. Fix uses tsdown's copy **natively** — a plain
+directory `from` (not a glob) with `rename` so `fsCopy` (`cp` recursive) does a
+structure-preserving copy to `<outDir>/viewer`:
+`copy: [{ from: '../viewer/dist', rename: 'viewer' }]`. Lesson: directory-
+structure assumptions in a copy step must be re-verified when the producer's
+output layout changes (flat esbuild → nested Vite `assets/`).
 
 ### Operator-verifiable (not assertable headlessly)
 
