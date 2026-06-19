@@ -1,3 +1,4 @@
+import './theme/index.css';
 import './styles.css';
 import './github-markdown.css';
 import 'diff2html/bundles/css/diff2html.min.css';
@@ -12,6 +13,7 @@ import './components/system-info-modal.js';
 import './components/copy-button.js';
 import './components/spotlight-search.js';
 import './components/activity-panel.js';
+import './components/theme-toggle.js';
 import './components/backlog-app.js';
 import { backlogEvents } from './services/event-source-client.js';
 import { inject } from '@nisli/core';

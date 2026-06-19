@@ -1,0 +1,113 @@
+/*
+ * Tsa Dark — Default theme (night sky)
+ *
+ * Dark canvas with the brand tri-color gradient as signature accent.
+ * The markdown renderer uses GitHub's dark markdown theme separately.
+ */
+
+:root[data-theme="dark"], :root:not([data-theme]) {
+  color-scheme: dark;
+
+  /* ─── Backgrounds ─── */
+  --t-bg-base: #1e1e1e;
+  --t-bg-surface: #252526;
+  --t-bg-elevated: #2d2d30;
+  --t-bg-sunken: #161b22;
+  --t-bg-inset: #0d1117;
+  --t-bg-overlay: #21262d;
+  --t-bg-hover: #2d2d30;
+  --t-bg-active: #37373d;
+  --t-bg-selected: #094771;
+
+  /* ─── Foreground / Text ─── */
+  --t-fg-default: #d4d4d4;
+  --t-fg-muted: #8b949e;
+  --t-fg-subtle: #6e7681;
+  --t-fg-faint: #888;
+  --t-fg-on-accent: white;
+  --t-fg-heading: #e6edf3;
+  --t-fg-link: #4fc3f7;
+  --t-fg-secondary: #c9d1d9;
+
+  /* ─── Borders ─── */
+  --t-border-default: #3e3e42;
+  --t-border-muted: #30363d;
+  --t-border-subtle: #3d444d;
+  --t-border-active: #007acc;
+
+  /* ─── Accent (primary interactive) ─── */
+  --t-accent-primary: #007acc;
+  --t-accent-link: #58a6ff;
+  --t-accent-hover: #58a6ff;
+  --t-accent-bg: rgba(88, 166, 255, 0.15);
+  --t-accent-border: #58a6ff;
+
+  /* ─── Status colors ─── */
+  --t-status-open: #1f6feb;
+  --t-status-in-progress: #d97706;
+  --t-status-blocked: #cf222e;
+  --t-status-done: #1a7f37;
+  --t-status-cancelled: #57606a;
+
+  /* ─── Semantic colors ─── */
+  --t-green: #3fb950;
+  --t-green-emphasis: #238636;
+  --t-red: #f85149;
+  --t-red-emphasis: #cf222e;
+  --t-red-bg: rgba(248, 81, 73, 0.08);
+  --t-red-bg-muted: rgba(248, 81, 73, 0.15);
+  --t-red-bg-strong: rgba(248, 81, 73, 0.2);
+  --t-red-border: rgba(248, 81, 73, 0.4);
+  --t-orange: #f0b429;
+  --t-orange-emphasis: #ff8c00;
+  --t-orange-border: rgba(219, 109, 40, 0.5);
+  --t-orange-bg: rgba(219, 109, 40, 0.18);
+  --t-purple: #a371f7;
+  --t-purple-emphasis: #8b5cf6;
+  --t-purple-bg: rgba(163, 113, 247, 0.15);
+  --t-purple-bg-strong: rgba(163, 113, 247, 0.2);
+  --t-purple-border: rgba(163, 113, 247, 0.4);
+  --t-yellow-match: rgba(255, 213, 0, 0.3);
+  --t-yellow-match-fg: #ffd500;
+
+  /* ─── Entity type solid colors (for type icons/labels) ─── */
+  --t-type-epic: #f0b429;
+  --t-type-task: #3b82f6;
+  --t-type-folder: #3fb950;
+  --t-type-artifact: #a371f7;
+  --t-type-milestone: #f85149;
+
+  /* ─── Shadows & Overlays ─── */
+  --t-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --t-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.5);
+  --t-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --t-overlay-backdrop: rgba(0, 0, 0, 0.7);
+  --t-overlay-day-separator: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  /* ─── Scrollbar ─── */
+  --t-scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --t-scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+
+  /* ─── Interactive / Focus ─── */
+  --t-focus-ring: rgba(9, 105, 218, 0.3);
+  --t-focus-ring-active: rgba(9, 105, 218, 0.5);
+  --t-btn-hover-bg: rgba(56, 139, 253, 0.1);
+
+  /* ─── Sparkline ─── */
+  --t-spark-bar: #3fb950;
+  --t-spark-bar-empty: rgba(255, 255, 255, 0.12);
+
+  /* ─── Code / Resource viewer ─── */
+  --t-code-bg: #2d2d30;
+  --t-code-fg: #d4d4d4;
+  --t-code-uri: #79c0ff;
+
+  /* ─── Diff ─── */
+  --t-diff-add: #3fb950;
+  --t-diff-remove: #f85149;
+
+  /* ─── Misc ─── */
+  --t-error-bg: #5a1d1d;
+  --t-error-fg: #f48771;
+  --t-separator-gradient: rgba(9, 105, 218, 0.3);
+}

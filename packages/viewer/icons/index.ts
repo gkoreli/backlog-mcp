@@ -12,6 +12,8 @@ import settingsIconSvg from './settings.svg';
 import ringIconSvg from './ring.svg';
 import activityIconSvg from './activity.svg';
 import sparkleIconSvg from './sparkle.svg';
+import moonIconSvg from './moon.svg';
+import sunIconSvg from './sun.svg';
 
 export const copyIcon = copyIconSvg;
 export const pinIcon = pinIconSvg;
@@ -27,3 +29,5 @@ export const ringIcon = ringIconSvg;
 export const activityIcon = activityIconSvg;
 /** Memory substrate icon (ADR 0092.3) — sparkle, until a dedicated glyph lands. */
 export const memoryIcon = sparkleIconSvg;
+export const moonIcon = moonIconSvg;
+export const sunIcon = sunIconSvg;

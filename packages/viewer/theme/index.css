@@ -1,0 +1,13 @@
+/*
+ * Tsa (ცა) — the backlog-mcp design system
+ *
+ * "Sky" in Georgian. The canvas that holds night (dark) and day (light),
+ * where the brand gradient lives: cyan → purple → pink.
+ *
+ * Import this single file for full theming support.
+ * Set `data-theme="dark"` or `data-theme="light"` on <html> to switch.
+ * Default (no attribute): dark.
+ */
+@import './tokens.css';
+@import './dark.css';
+@import './light.css';

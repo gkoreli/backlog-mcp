@@ -16,6 +16,7 @@ import { settingsIcon, activityIcon } from '../icons/index.js';
 import { SvgIcon } from './svg-icon.js';
 import { CopyButton } from './copy-button.js';
 import { ResizeHandle } from './resize-handle.js';
+import { ThemeToggle } from './theme-toggle.js';
 import { AppState } from '../services/app-state.js';
 import { SplitPaneState } from '../services/split-pane-state.js';
 
@@ -155,6 +156,7 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
               </svg>
               <kbd>${shortcut}</kbd>
             </button>
+            ${ThemeToggle({})}
             <button class="btn-outline activity-btn" title="Recent Activity" @click="${handleActivityClick}">
               ${activityIconEl}
             </button>

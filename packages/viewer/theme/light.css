@@ -1,0 +1,110 @@
+/*
+ * Tsa Light — Light variant (day sky)
+ */
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* ─── Backgrounds ─── */
+  --t-bg-base: #ffffff;
+  --t-bg-surface: #f6f8fa;
+  --t-bg-elevated: #ffffff;
+  --t-bg-sunken: #f0f2f5;
+  --t-bg-inset: #f6f8fa;
+  --t-bg-overlay: #f6f8fa;
+  --t-bg-hover: #f3f4f6;
+  --t-bg-active: #eaecef;
+  --t-bg-selected: #ddf4ff;
+
+  /* ─── Foreground / Text ─── */
+  --t-fg-default: #1f2328;
+  --t-fg-muted: #656d76;
+  --t-fg-subtle: #6e7781;
+  --t-fg-faint: #8b949e;
+  --t-fg-on-accent: white;
+  --t-fg-heading: #1f2328;
+  --t-fg-link: #0969da;
+  --t-fg-secondary: #31363f;
+
+  /* ─── Borders ─── */
+  --t-border-default: #d1d9e0;
+  --t-border-muted: #d8dee4;
+  --t-border-subtle: #e1e4e8;
+  --t-border-active: #0969da;
+
+  /* ─── Accent (primary interactive) ─── */
+  --t-accent-primary: #0969da;
+  --t-accent-link: #0969da;
+  --t-accent-hover: #0550ae;
+  --t-accent-bg: rgba(9, 105, 218, 0.08);
+  --t-accent-border: #0969da;
+
+  /* ─── Status colors ─── */
+  --t-status-open: #0969da;
+  --t-status-in-progress: #bf8700;
+  --t-status-blocked: #cf222e;
+  --t-status-done: #1a7f37;
+  --t-status-cancelled: #6e7781;
+
+  /* ─── Semantic colors ─── */
+  --t-green: #1a7f37;
+  --t-green-emphasis: #116329;
+  --t-red: #cf222e;
+  --t-red-emphasis: #a40e26;
+  --t-red-bg: rgba(207, 34, 46, 0.06);
+  --t-red-bg-muted: rgba(207, 34, 46, 0.1);
+  --t-red-bg-strong: rgba(207, 34, 46, 0.15);
+  --t-red-border: rgba(207, 34, 46, 0.4);
+  --t-orange: #bf8700;
+  --t-orange-emphasis: #9a6700;
+  --t-orange-border: rgba(154, 103, 0, 0.4);
+  --t-orange-bg: rgba(154, 103, 0, 0.1);
+  --t-purple: #8250df;
+  --t-purple-emphasis: #6639ba;
+  --t-purple-bg: rgba(130, 80, 223, 0.08);
+  --t-purple-bg-strong: rgba(130, 80, 223, 0.15);
+  --t-purple-border: rgba(130, 80, 223, 0.4);
+  --t-yellow-match: rgba(210, 153, 34, 0.2);
+  --t-yellow-match-fg: #7a4f01;
+
+  /* ─── Entity type solid colors (for type icons/labels) ─── */
+  --t-type-epic: #9a6700;
+  --t-type-task: #0550ae;
+  --t-type-folder: #116329;
+  --t-type-artifact: #6639ba;
+  --t-type-milestone: #cf222e;
+
+  /* ─── Shadows & Overlays ─── */
+  --t-shadow-sm: 0 1px 3px rgba(31, 35, 40, 0.12);
+  --t-shadow-md: 0 3px 12px rgba(31, 35, 40, 0.12);
+  --t-shadow-lg: 0 8px 24px rgba(31, 35, 40, 0.16);
+  --t-overlay-backdrop: rgba(31, 35, 40, 0.5);
+  --t-overlay-day-separator: 0 1px 3px rgba(31, 35, 40, 0.1);
+
+  /* ─── Scrollbar ─── */
+  --t-scrollbar-thumb: rgba(31, 35, 40, 0.2);
+  --t-scrollbar-thumb-hover: rgba(31, 35, 40, 0.35);
+
+  /* ─── Interactive / Focus ─── */
+  --t-focus-ring: rgba(9, 105, 218, 0.3);
+  --t-focus-ring-active: rgba(9, 105, 218, 0.5);
+  --t-btn-hover-bg: rgba(9, 105, 218, 0.08);
+
+  /* ─── Sparkline ─── */
+  --t-spark-bar: #1a7f37;
+  --t-spark-bar-empty: rgba(31, 35, 40, 0.1);
+
+  /* ─── Code / Resource viewer ─── */
+  --t-code-bg: #f6f8fa;
+  --t-code-fg: #1f2328;
+  --t-code-uri: #0550ae;
+
+  /* ─── Diff ─── */
+  --t-diff-add: #1a7f37;
+  --t-diff-remove: #cf222e;
+
+  /* ─── Misc ─── */
+  --t-error-bg: #ffebe9;
+  --t-error-fg: #cf222e;
+  --t-separator-gradient: rgba(9, 105, 218, 0.2);
+}

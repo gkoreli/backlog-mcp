@@ -1,0 +1,41 @@
+/*
+ * Tsa (ცა) — the backlog-mcp design system
+ * ──────────────────────────────────────────
+ * "Tsa" is Georgian for "sky" — the canvas that holds both night and day,
+ * where the brand gradient lives (cyan dawn → purple dusk → pink sunrise).
+ * Companion to Nisli (ნისლი, "fog"), the rendering framework.
+ *
+ * Token contract: theme files (dark.css / light.css) set all --t-* variables
+ * on :root via [data-theme] selectors. Import theme/index.css to activate.
+ *
+ * Naming: --t-{category}-{element}-{modifier}
+ *   category: bg, fg, border, accent, status, type, shadow, overlay
+ */
+
+:root {
+  /* ─── Typography ─── */
+  --t-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --t-font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+
+  /* ─── Radius ─── */
+  --t-radius-sm: 3px;
+  --t-radius-md: 4px;
+  --t-radius-lg: 6px;
+  --t-radius-xl: 8px;
+  --t-radius-pill: 10px;
+  --t-radius-round: 12px;
+
+  /* ─── Brand Gradient (theme-invariant — identity) ─── */
+  --t-brand-cyan: #00d4ff;
+  --t-brand-purple: #7b2dff;
+  --t-brand-pink: #ff2d7b;
+  --t-brand-gradient: linear-gradient(135deg, #00d4ff 0%, #7b2dff 50%, #ff2d7b 100%);
+  --t-brand-gradient-conic: conic-gradient(from 0deg, #00d4ff, #7b2dff, #ff2d7b, #00d4ff);
+
+  /* ─── Entity Type Gradients (theme-invariant — Prism icon system) ─── */
+  --t-type-task-gradient: linear-gradient(135deg, #00d4ff 0%, #7b2dff 100%);
+  --t-type-epic-gradient: linear-gradient(135deg, #f0b429 0%, #ff6b2d 100%);
+  --t-type-folder-gradient: linear-gradient(135deg, #3fb950 0%, #1f883d 100%);
+  --t-type-artifact-gradient: linear-gradient(135deg, #a371f7 0%, #ff2d7b 100%);
+  --t-type-milestone-gradient: linear-gradient(135deg, #f85149 0%, #ff8c00 100%);
+}
