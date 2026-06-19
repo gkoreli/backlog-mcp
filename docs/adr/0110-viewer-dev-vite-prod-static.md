@@ -1,7 +1,7 @@
 # 0110. Vite for Viewer Dev (HMR) — Static Bundle in Prod
 
 **Date**: 2026-06-19
-**Status**: Accepted — implemented. Viewer dev+build on Vite; `@nisli/core/vite-hmr` 0.50.0; prod parity + cache headers verified. **Dev is single-origin** via `@hono/vite-dev-server` (one process, no proxy, no tsx). See *Engineering Record*.
+**Status**: Accepted — implemented. Viewer dev+build on Vite; `@nisli/core/vite-hmr` 0.50.0; prod parity + cache headers verified. **Dev is single-origin** via a `configureServer` post-hook (Vite serves SPA+assets, Hono handles API/SSE as fallback). See *Engineering Record*.
 **Triggered by**: Live testing of the esbuild dev-HMR client (nisli ADR 0021, shipped `@nisli/core/esbuild-hmr` 0.49.0–0.49.2) surfaced a structural failure: re-importing the bundled entry to apply a change instantiates a **second copy of the entire framework runtime**, so live elements and new component setups disagree about the lifecycle/reactive context.
 **Supersedes**: the dev-HMR *approach* of nisli **ADR 0021** (`@nisli/core/esbuild-hmr`) for the backlog-mcp viewer. ADR 0021's correctness analysis (re-mount lifecycle, ADR 0008.1) stays valid and is reused.
 **Relates to**: [0108. Content-Hashed Viewer Assets](./0108-viewer-asset-cache-busting.md) · [0104. Local-First Deployment Posture](./0104-local-first-deployment-posture.md)
@@ -143,21 +143,23 @@ Rationale, evidence-led:
 
 Wiring into our architecture:
 
-- **Dev (`pnpm dev`)** — **ONE process, ONE origin** (supersedes the original
-  two-process proxy design below; see *Engineering Record — single-origin
-  cutover*). `@hono/vite-dev-server` mounts the backlog **Hono** app on Vite's
-  dev server: Vite serves the SPA + client modules + granular HMR, and every
-  request Vite does not own (API, `/events` SSE, `/mcp`, OAuth) is handled by the
-  Hono app, loaded through Vite's **SSR module graph**. No proxy, no second
-  process, no `tsx` — dev mirrors prod (one server serves SPA + API).
+- **Dev (`pnpm dev`)** — **ONE process, ONE origin.** A root `vite.config.ts`
+  runs Vite as the primary dev server. Vite natively serves the SPA, all client
+  assets (SVGs, CSS, JS modules), and HMR — no exclude list needed. A
+  `configureServer` post-hook mounts the Hono backend as a **fallback** via
+  `ssrLoadModule` + `getRequestListener`: anything Vite doesn't own (API, SSE
+  `/events`, `/mcp`, OAuth) falls through to Hono. `appType: 'custom'` disables
+  Vite's blanket SPA fallback; an inline handler serves `index.html` for `/`
+  only (the viewer routes via query string). No proxy, no second process, no
+  `tsx` — dev mirrors prod (one server serves SPA + API).
 - **Prod** — no dev server. `vite build` → static hashed `dist/` → copied into
   the server package → **Hono serves it** (unchanged). `npx backlog-mcp`
   unchanged.
 
-Dependency posture: **Vite + `@hono/vite-dev-server` + `vite-tsconfig-paths` are
-root `devDependencies`** (the root config orchestrates both packages in dev).
-They are never runtime deps of `backlog-mcp`, never `npx`-installed by users; the
-published package ships only the static built assets.
+Dependency posture: **Vite + `vite-tsconfig-paths` are root `devDependencies`**
+(the root config orchestrates both packages in dev). They are never runtime deps
+of `backlog-mcp`, never `npx`-installed by users; the published package ships
+only the static built assets.
 
 ## ADR 0108 Mapping (cache-busting survives)
 
@@ -243,7 +245,7 @@ is the standard amount of framework glue, not a reinvention.
    asset-copy-into-server step; remove the esbuild-HMR dev wiring + SSE hub.
 6. **Record:** update this ADR with executed findings; cross-link nisli ADR 0021
    as superseded-for-viewer; update ADR 0108 if Rollup hashing changed anything.
-## Engineering Record (executed)
+## Engineering Record (executed — phase 1, superseded by phase 2 below)
 
 Implemented in sequenced commits (all tests green: nisli 266, viewer 100,
 server 912, memory 26):
@@ -290,52 +292,79 @@ framework instance, self-accept present). The final visual — a component edit
 hot-swaps in place with no full page reload — is confirmed in a browser: run
 `pnpm dev`, open the Vite URL (default `:5173`), edit a component.
 
-## Engineering Record — single-origin dev cutover
+## Engineering Record — single-origin dev (phase 2, current)
+
+### Dead ends explored
+
+1. **Two-process proxy (`server.proxy`)** — the phase 1 implementation. Vite on
+   `:5173` proxied API/SSE routes to a `tsx`-run Hono on `:3040`. Worked but had
+   costs: a hand-maintained proxy route list (`BACKEND_ROUTES`), a startup race
+   (`ECONNREFUSED` on `/events` when Vite outraced the backend), two ports (users
+   opened the wrong one and saw stale static), and `concurrently` + `tsx`
+   dependencies.
+2. **`@hono/vite-dev-server`** — the official Hono+Vite plugin. It puts **Hono
+   first** and uses an `exclude` list to hand requests back to Vite. This design
+   is for SSR apps where Hono renders HTML. For a static SPA it requires
+   enumerating every asset type Vite owns (`.svg`, fonts, images…); any omission
+   leaks to Hono → 404. SVG icons broke because the default exclude doesn't
+   cover `.svg?import`. The `exclude` list IS the problem — it's structural, not
+   a config mistake. Wrong tool for a static SPA + API backend.
+3. **Vite middleware mode inside Hono** (issue honojs/hono#3162 pattern) — Hono
+   primary, Vite as middleware. Would work but requires `@hono/node-server`'s
+   `HttpBindings` + manual bridge code, and inverts the natural dev topology
+   (Vite should own HMR, not Hono). Over-engineered for our case.
+
+### Final design (what shipped)
 
 The initial implementation kept the ecosystem-default **two-process proxy**
 (Vite on its own port, `server.proxy` forwarding API/SSE to a `tsx`-run Hono on
 `:3040`). Live use exposed its costs: a hand-maintained proxy route list, a
 startup race (`ECONNREFUSED` on `/events` when Vite outraced the backend), two
 ports, and a dev topology *inverted* from prod (frontend-primary vs Hono-primary).
-We replaced it with the maintained prior art — **`@hono/vite-dev-server`** — so
-**dev is single-origin and mirrors prod**.
 
-**Model.** A root `vite.config.ts` (it orchestrates *both* packages, so it lives
-at the monorepo root, not in the viewer) mounts the backlog Hono app on Vite via
-`@hono/vite-dev-server`. Vite serves the SPA + client modules + HMR; the plugin's
-`exclude` is the **inverse of the old proxy list** — defaults already cover Vite
-internals (`.ts`, `.css`, `/@vite`, `?t=`, `node_modules`), and we add the SPA
-shell `/` (regex `^\/(\?.*)?$` — the viewer routes via query string, so the path
-is always `/`). Everything else falls through to the Hono app, loaded via Vite's
-**`ssrLoadModule`**. One process, one origin (`:5173`), no proxy, no `tsx`,
-no `concurrently`.
+**First attempt: `@hono/vite-dev-server`** — this plugin puts Hono *first* and
+uses an `exclude` list to hand assets back to Vite. That design is intended for
+SSR apps where Hono renders HTML. For a static SPA, it requires enumerating every
+asset type Vite owns (SVG, fonts, images…); any omission leaks to Hono (e.g. SVG
+icons 404'd). The `exclude` list *is* the problem — wrong tool for the job.
 
-**Backend under Vite SSR — verified, not assumed.** The risk was the native
-`@huggingface/transformers` (onnxruntime) embedding dep choking Vite's SSR
-loader. A spike proved it boots cleanly (Vite externalizes `node_modules` for
-SSR): `/version`,`/tasks` → 200, `/events` → `text/event-stream`, `/` → SPA with
-`@vite/client`, and `[vite] (client) hmr update /components/task-badge.ts` on
-edit.
+**Final design: Vite-first with Hono as fallback.** A root `vite.config.ts`
+(orchestrates both packages) runs Vite as the primary dev server:
 
-**Gotcha (the only real blocker).** The server's `@/*` tsconfig path alias is
-invisible to Vite's resolver → `Cannot find module '@/utils/paths.js'` during
-SSR. Fixed with **`vite-tsconfig-paths`** pointed at the server tsconfig — the
-production-grade fix (reads tsconfig `paths`, no hand-kept aliases). The alias
-was also renamed `@/*` → **`@server/*`** (single `@server/* → src/*` mapping):
-in a root config that loads both packages, a bare `@/` is ambiguous.
+1. Vite serves the SPA, all assets, modules, and HMR **natively** — no exclude
+   list, no asset enumeration. This is Vite's core job.
+2. `appType: 'custom'` disables Vite's blanket SPA fallback (which would serve
+   `index.html` for API paths like `/version`, preventing them from reaching
+   Hono).
+3. A `configureServer` **post-hook** (returns a function → runs after Vite's
+   own middlewares) mounts two handlers:
+   - Serve `index.html` (via `transformIndexHtml`) for `/` only (the viewer
+     routes via query string, so the path is always `/`).
+   - Everything else → Hono via `ssrLoadModule(devEntry)` which exports a
+     Connect-compatible `handler` (built with `getRequestListener(app.fetch)`
+     from `@hono/node-server`).
+4. `createNodeApp({ skipStatic: true })` omits the static middleware in dev
+   (Vite already handled assets); prod calls `createNodeApp()` without args →
+   gets the full static-serving catch-all.
 
-**Single source of truth.** Extracted `createNodeApp()`
-(`packages/server/src/server/node-app.ts`) — the fully-wired app graph — used by
-both the published `node-server.ts` (adds listener + port collision + lifecycle)
-and the Vite dev entry (`packages/server/src/dev-entry.ts`, `export default
-createNodeApp()`). `.env` is loaded into `process.env` in the config
-(`loadEnv` + `Object.assign`) to replace `tsx --env-file` for the SSR backend.
+**Key decisions:**
+- **`vite-tsconfig-paths`** resolves the server's `@server/*` alias under SSR.
+- **`loadEnv` + `Object.assign`** loads `.env` into `process.env` for the SSR
+  backend (replaces `tsx --env-file`).
+- **`assetsInlineLimit: 0`** — SVG icons served as file URLs (not data URIs) so
+  `mask-image: url()` works without quote-escaping issues and icons are
+  individually cacheable.
+- **`@server/*` alias** (renamed from `@/*`) — unambiguous in a root config that
+  loads both packages. Single `@server/* → src/*` mapping in server tsconfig.
 
-**Removed:** `concurrently`, `tsx`, `esbuild` devDeps; the proxy route list; the
-server `dev` (tsx) + viewer `dev`/`build` scripts; the dev-only "open :5173"
-message in `node-server.ts` (dev no longer runs it). **Verified:** typecheck
-(both) clean; full `pnpm build` ok; prod serve `index.html` `no-cache` + assets
-`immutable` (resolve 200); tests memory 26 / viewer 100 / server 912.
+**Removed:** `@hono/vite-dev-server`, `concurrently`, `tsx`, `esbuild` devDeps;
+the proxy route list; the server `dev` + viewer `dev`/`build` scripts (root
+owns); the dev-only startup message in `node-server.ts`.
+
+**Verified:** `/version`,`/tasks` 200; `/events` `text/event-stream`; `/`
+SPA with `@vite/client`; `/icons/copy.svg` 200 (was 404 with the old plugin);
+HMR hot-swap; typecheck clean; full build; prod cache headers intact; tests
+memory 26 / viewer 100 / server 912.
 
 
 ## Authoritative Sources

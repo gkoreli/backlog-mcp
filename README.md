@@ -297,7 +297,7 @@ cd backlog-mcp
 pnpm install
 pnpm build          # Build all packages
 pnpm test           # Run all workspace tests
-pnpm dev            # Server + viewer with hot reload
+pnpm dev            # Vite dev server (SPA + API on one port, HMR)
 ```
 
 ## Architecture
