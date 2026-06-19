@@ -47,7 +47,7 @@ export const SvgIcon = component<{ src: string; size?: string; class?: string }>
     const size = props.size?.value || '1em';
     if (props.class?.value) host.className = props.class.value;
     if (!src) return;
-    host.style.cssText = `display:inline-block;width:${size};height:${size};background-color:currentColor;mask-image:url("${src}");-webkit-mask-image:url("${src}");mask-size:contain;-webkit-mask-size:contain;mask-repeat:no-repeat;-webkit-mask-repeat:no-repeat;mask-position:center;-webkit-mask-position:center;vertical-align:middle;`;
+    host.style.cssText = `display:inline-block;width:${size};height:${size};background-color:currentColor;mask-image:url("${src}");mask-size:contain;mask-repeat:no-repeat;mask-position:center;vertical-align:middle;`;
   });
 
   return html``;
