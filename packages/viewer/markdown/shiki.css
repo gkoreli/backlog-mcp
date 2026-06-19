@@ -1,0 +1,29 @@
+/* Shiki dual-theme CSS variable switching */
+
+/* Dark theme (default): use --shiki-dark values */
+:is([data-theme="dark"], :root:not([data-theme])) .shiki,
+:is([data-theme="dark"], :root:not([data-theme])) .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
+
+/* Light theme: use --shiki-light values */
+[data-theme="light"] .shiki,
+[data-theme="light"] .shiki span {
+  color: var(--shiki-light) !important;
+  background-color: var(--shiki-light-bg) !important;
+}
+
+/* Code block base styles */
+.shiki {
+  padding: 1em;
+  border-radius: var(--t-radius-lg);
+  overflow-x: auto;
+  font-family: var(--t-font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.shiki-wrapper .shiki {
+  margin: 0;
+}

@@ -7,7 +7,7 @@
  */
 import { signal, computed, effect, component, html, inject } from '@nisli/core';
 import { SplitPaneState } from '../services/split-pane-state.js';
-import { hljs } from '../services/markdown.js';
+import { highlight } from '../markdown/index.js';
 import { DocumentView } from './document-view.js';
 
 interface ResourceData {
@@ -134,12 +134,9 @@ export const ResourceViewer = component('resource-viewer', () => {
       const highlighted = computed(() => {
         const code = data.value?.content || '';
         const lang = data.value?.ext || '';
-        if (lang && hljs.getLanguage(lang)) {
-          return hljs.highlight(code, { language: lang }).value;
-        }
-        return code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return highlight(code, lang);
       });
-      return html`<article class="document-view"><pre><code class="hljs" html:inner=${highlighted}></code></pre></article>`;
+      return html`<article class="document-view"><div class="shiki-wrapper" html:inner=${highlighted}></div></article>`;
     }
 
     // Plain text fallback

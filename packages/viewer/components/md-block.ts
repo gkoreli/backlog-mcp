@@ -8,7 +8,7 @@
  * file:// / mcp:// links → click event delegation on host
  */
 
-import { marked } from '../services/markdown.js';
+import { marked } from '../markdown/index.js';
 import { computed, effect, component, html, useHostEvent, ref } from '@nisli/core';
 
 export type MdBlockProps = {

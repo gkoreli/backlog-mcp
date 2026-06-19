@@ -1,9 +1,8 @@
 import './theme/index.css';
-import './theme/hljs-dark.css';
-import './theme/hljs-light.css';
+import './markdown/shiki.css';
+import './markdown/github-dark.css';
+import './markdown/github-light.css';
 import './styles.css';
-import './github-markdown.css';
-import './github-markdown-light.css';
 import 'diff2html/bundles/css/diff2html.min.css';
 import './components/svg-icon.js';
 import './components/task-filter-bar.js';
@@ -19,6 +18,7 @@ import './components/activity-panel.js';
 import './components/theme-toggle.js';
 import './components/backlog-app.js';
 import { backlogEvents } from './services/event-source-client.js';
+import { initHighlighter } from './markdown/index.js';
 import { inject } from '@nisli/core';
 import { AppState } from './services/app-state.js';
 import { SplitPaneState } from './services/split-pane-state.js';
@@ -26,6 +26,9 @@ import { SplitPaneState } from './services/split-pane-state.js';
 // Bootstrap singletons (di-bootstrap-eager)
 inject(AppState);
 inject(SplitPaneState);
+
+// Initialize shiki highlighter (async, non-blocking)
+initHighlighter();
 
 // Connect to SSE for real-time updates
 backlogEvents.connect();
