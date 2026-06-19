@@ -15,7 +15,4 @@ export default defineConfig({
   treeshake: true,
   logLevel: 'info',
   report: false,
-  copy: [
-    { from: '../viewer/dist/**', to: 'dist/viewer' },
-  ],
 });
