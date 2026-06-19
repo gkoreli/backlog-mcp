@@ -2,7 +2,7 @@
  * type-registry.ts — Viewer UI extension on top of shared SUBSTRATES.
  *
  * The canonical substrate registry lives in `@backlog-mcp/shared`. This module
- * augments it with viewer-only concerns (icon assets, which require esbuild's
+ * augments it with viewer-only concerns (icon assets, which require Vite's
  * file loader and can't live in shared).
  *
  * Prefix, label, gradient, isContainer, hasStatus, extraFields, opensInPane

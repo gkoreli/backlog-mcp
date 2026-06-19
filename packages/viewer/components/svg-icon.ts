@@ -5,9 +5,9 @@
  * 
  * **Build System:**
  * - SVG files are pure shapes (no hardcoded colors)
- * - esbuild bundles with `--loader:.svg=file` (serves as separate files)
- * - Files get content hashes for cache busting (e.g., `task-ABC123.svg`)
- * - TypeScript imports and CSS url() references auto-updated by esbuild
+ * - Vite serves them as file URLs in dev, content-hashes them in prod
+ * - TypeScript `import x from './icon.svg'` resolves to the URL
+ * - `mask-image: url(...)` renders the shape, `background-color` sets color
  * 
  * **Why This Is Resilient:**
  * 1. **Proper caching:** Each icon cached separately, change one = re-download one

@@ -63,12 +63,13 @@ When running via `backlog-mcp` (or `pnpm start`):
 ### Development Mode
 
 When running `pnpm dev`:
-- Runs HTTP server directly in foreground on port 3040
-- Uses `tsx watch` for hot reload on file changes
+- Runs Vite as the single dev server on one port (default `:5173`)
+- Vite serves the SPA + assets + HMR natively
+- The Hono backend (API/SSE/MCP) is loaded via Vite's SSR module graph as a fallback handler
+- Single origin — mirrors prod topology (no proxy, no second process)
+- Component edits hot-swap in place via `@nisli/core/vite-hmr`
 - Ctrl+C cleanly shuts down
-- Reads port from `.env` file (`BACKLOG_VIEWER_PORT`)
-
-Node 24 LTS is the local development baseline. Native Node TypeScript is not used for the server dev runner yet; `tsx` remains in place because the current source uses TypeScript and module-resolution features that Node's built-in type stripping does not fully support.
+- Reads env from root `.env` file (loaded via Vite's `loadEnv`)
 
 ## Architecture Principles
 
