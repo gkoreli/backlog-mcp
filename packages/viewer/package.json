@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@backlog-mcp/shared": "workspace:*",
-    "@nisli/core": "^0.50.0",
+    "@nisli/core": "^0.51.0",
     "@orama/highlight": "^0.1.9",
     "diff": "^8.0.3",
     "diff2html": "^3.4.56",
