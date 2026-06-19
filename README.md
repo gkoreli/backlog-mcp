@@ -300,6 +300,8 @@ pnpm test           # Run all workspace tests
 pnpm dev            # Vite dev server (SPA + API on one port, HMR)
 ```
 
+`pnpm dev` runs a single Vite process that serves the viewer (with granular component HMR) and the Hono backend (API, SSE, MCP) on one origin — edit a component and it hot-swaps in the browser without a page reload. The architecture mirrors prod: one server, one port, same dispatch.
+
 ## Architecture
 
 ```
