@@ -53,6 +53,7 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       emptyOutDir: true,
       sourcemap: true,
+      assetsInlineLimit: 0,
       assetsDir: 'assets',
       rollupOptions: {
         output: {
