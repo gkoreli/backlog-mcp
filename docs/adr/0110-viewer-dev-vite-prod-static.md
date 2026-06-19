@@ -1,7 +1,7 @@
 # 0110. Vite for Viewer Dev (HMR) — Static Bundle in Prod
 
 **Date**: 2026-06-19
-**Status**: Proposed — design-first
+**Status**: Accepted — implemented (viewer dev+build on Vite; `@nisli/core/vite-hmr` 0.50.0; prod parity + cache headers verified). See *Engineering Record (executed)*.
 **Triggered by**: Live testing of the esbuild dev-HMR client (nisli ADR 0021, shipped `@nisli/core/esbuild-hmr` 0.49.0–0.49.2) surfaced a structural failure: re-importing the bundled entry to apply a change instantiates a **second copy of the entire framework runtime**, so live elements and new component setups disagree about the lifecycle/reactive context.
 **Supersedes**: the dev-HMR *approach* of nisli **ADR 0021** (`@nisli/core/esbuild-hmr`) for the backlog-mcp viewer. ADR 0021's correctness analysis (re-mount lifecycle, ADR 0008.1) stays valid and is reused.
 **Relates to**: [0108. Content-Hashed Viewer Assets](./0108-viewer-asset-cache-busting.md) · [0104. Local-First Deployment Posture](./0104-local-first-deployment-posture.md)
@@ -240,6 +240,50 @@ is the standard amount of framework glue, not a reinvention.
    asset-copy-into-server step; remove the esbuild-HMR dev wiring + SSE hub.
 6. **Record:** update this ADR with executed findings; cross-link nisli ADR 0021
    as superseded-for-viewer; update ADR 0108 if Rollup hashing changed anything.
+## Engineering Record (executed)
+
+Implemented in sequenced commits (all tests green: nisli 266, viewer 100,
+server 912, memory 26):
+
+1. **Vite build+dev, esbuild retired** — `vite.config.ts` (dev proxy of backend
+   routes to Hono `:3040`; prod hashed output under `assets/` + rewritten
+   `index.html`; `__API_URL__` define). `index.html` → `/main.ts` source entry;
+   CSS flows from JS imports; `logo.svg` → `public/`. Scripts `dev=vite`,
+   `build=tsc --noEmit && vite build`. `build.mjs` (and the esbuild dev-HMR / SSE
+   hub) deleted. Verified: Vite resolves NodeNext `.js` specifiers to `.ts`.
+2. **`@nisli/core/vite-hmr` (0.50.0)** — dev-only Vite plugin (`apply:'serve'`)
+   wraps `component()` (shared `transformSource`) and appends
+   `import.meta.hot.accept(() => __drain())`; runtime re-exports the shared
+   registry/remount. Extracted the transport-agnostic core to `src/hmr/{registry,
+   transform}.ts`, consumed by both esbuild-hmr and vite-hmr (no duplication;
+   esbuild surface unchanged via re-exports). Verified in the dev server:
+   component module transformed + self-accepting; `@nisli/core` resolves to ONE
+   deps chunk (single instance — no split-brain); non-component modules untouched.
+3. **Server cache classifier** — `viewer-cache.ts` treats files under `assets/`
+   as immutable (hash-format-agnostic), legacy esbuild base32 as secondary;
+   ADR 0108 fail-safe invariants preserved.
+4. **Dev proxy verified** — through Vite: `/version`,`/health`,`/tasks` → 200;
+   `/events` → 200 `text/event-stream` (SSE streams).
+5. **Prod serve verified** — `index.html`/`logo.svg` → `no-cache`; `/assets/*.js`
+   and `*.css` → `immutable`; the index's `/assets/*` references resolve (200).
+
+### Gotcha found by verification (would have broken prod)
+
+`tsdown`'s `copy` glob `../viewer/dist/** → dist/viewer` **flattens**
+subdirectories. Invisible with esbuild's flat output, but it dropped Vite's
+`assets/` directory, so every `/assets/*` URL in the emitted `index.html` 404'd
+in production. Fixed with a deterministic `fs.cpSync(recursive)` post-build step
+(`packages/server/scripts/copy-viewer.mjs`) that preserves the tree. Lesson:
+directory-structure assumptions in a copy step must be re-verified when the
+producer's output layout changes (flat esbuild → nested Vite `assets/`).
+
+### Operator-verifiable (not assertable headlessly)
+
+Granular HMR was verified up to the transport (transform injected, single
+framework instance, self-accept present). The final visual — a component edit
+hot-swaps in place with no full page reload — is confirmed in a browser: run
+`pnpm dev`, open the Vite URL (default `:5173`), edit a component.
+
 
 ## Authoritative Sources
 
