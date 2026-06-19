@@ -145,6 +145,12 @@ packages/viewer/markdown/
 - **Async is a side effect** — consumers use `effect()` + `signal`, never `computed()`, for markdown rendering
 - **One render, both themes** — shiki outputs `--shiki-light`/`--shiki-dark` per token; CSS picks the active one
 
+**Shiki bundle rules (critical for dist size):**
+- **Never import `shiki` directly** — it bundles ALL 350+ grammars as async chunks even if unused
+- **Use fine-grained imports**: `shiki/core` + `@shikijs/langs/<name>` + `@shikijs/themes/<name>`
+- **Use `shiki/engine/javascript`** (`createJavaScriptRegexEngine`) — pure JS, no WASM binary
+- **Only add grammars you need** — each `import('@shikijs/langs/x')` becomes one lazy chunk
+
 ## The Development Loop (maintainer decision, 2026-06-10)
 
 backlog-mcp evolves through a deliberate loop, recorded in the ADR thread:

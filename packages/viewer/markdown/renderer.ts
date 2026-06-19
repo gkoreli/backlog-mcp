@@ -4,35 +4,51 @@
  * Single source of truth for markdown parsing and syntax highlighting.
  * Consumed by md-block (markdown rendering) and resource-viewer (code files).
  *
- * Shiki provides dual-theme highlighting via CSS variables — one render pass
- * produces HTML that switches between light/dark themes instantly via
- * `[data-theme]` on <html>.
+ * Uses shiki's fine-grained bundle approach per their best-performance guide:
+ * - Import from `shiki/core` (no bundled languages/themes)
+ * - Import only the specific `@shikijs/langs/*` and `@shikijs/themes/*` we need
+ * - Use `shiki/engine/javascript` (pure JS regex, no WASM overhead)
+ *
+ * This ensures Vite only bundles the 12 grammars we use, not all 350+.
  *
  * marked-shiki makes marked.parse() async. Consumers use effect() + signal
  * to handle the Promise naturally.
  */
 
 import { Marked } from 'marked';
-import { createHighlighter, type Highlighter } from 'shiki';
+import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
+import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 import markedShiki from 'marked-shiki';
 
-// ── Shiki highlighter (lazy-initialized) ────────────────────────────
+// ── Shiki highlighter (lazy-initialized, fine-grained bundle) ───────
 
-let highlighter: Highlighter | null = null;
+let highlighter: HighlighterCore | null = null;
 let initPromise: Promise<void> | null = null;
-
-const LANGS = [
-  'typescript', 'javascript', 'json', 'bash', 'css',
-  'html', 'xml', 'yaml', 'markdown', 'python', 'go', 'rust',
-] as const;
 
 export async function initHighlighter(): Promise<void> {
   if (highlighter) return;
   if (initPromise) return initPromise;
   initPromise = (async () => {
-    highlighter = await createHighlighter({
-      themes: ['github-light', 'github-dark'],
-      langs: [...LANGS],
+    highlighter = await createHighlighterCore({
+      themes: [
+        import('@shikijs/themes/github-light'),
+        import('@shikijs/themes/github-dark'),
+      ],
+      langs: [
+        import('@shikijs/langs/typescript'),
+        import('@shikijs/langs/javascript'),
+        import('@shikijs/langs/json'),
+        import('@shikijs/langs/bash'),
+        import('@shikijs/langs/css'),
+        import('@shikijs/langs/html'),
+        import('@shikijs/langs/xml'),
+        import('@shikijs/langs/yaml'),
+        import('@shikijs/langs/markdown'),
+        import('@shikijs/langs/python'),
+        import('@shikijs/langs/go'),
+        import('@shikijs/langs/rust'),
+      ],
+      engine: createJavaScriptRegexEngine(),
     });
   })();
   return initPromise;
