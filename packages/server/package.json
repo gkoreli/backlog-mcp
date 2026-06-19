@@ -35,7 +35,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsdown && tsc && node scripts/copy-viewer.mjs",
+    "build": "tsdown && tsc",
     "typecheck": "tsc --noEmit",
     "dev": "tsx watch --env-file=../../.env src/node-server.ts",
     "clean": "rm -rf dist",
