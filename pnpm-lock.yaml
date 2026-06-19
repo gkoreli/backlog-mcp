@@ -103,8 +103,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       '@nisli/core':
-        specifier: ^0.49.2
-        version: 0.49.2(esbuild@0.27.3)
+        specifier: ^0.50.0
+        version: 0.50.0(esbuild@0.27.3)
       '@orama/highlight':
         specifier: ^0.1.9
         version: 0.1.9
@@ -1005,8 +1005,8 @@ packages:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
 
-  '@nisli/core@0.49.2':
-    resolution: {integrity: sha512-U8fRNL8im+z8DtB1xUFOVUaPR04+1VEOZ2f+wbtGDqPOb4lId8ZBkCEf6VXqzBEfOYiXAPtZxUr3X7QS0r41Jw==}
+  '@nisli/core@0.50.0':
+    resolution: {integrity: sha512-QGBxTIlyHtnoR5x+l7680CWpxiaaOcx4B6PXI0GRcQVMfm0ySVcnzE0pR+Pi7Nd30kkIN+ZhivLBnXMYPfMRsg==}
     peerDependencies:
       esbuild: '*'
     peerDependenciesMeta:
@@ -3697,7 +3697,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.1
     optional: true
 
-  '@nisli/core@0.49.2(esbuild@0.27.3)':
+  '@nisli/core@0.50.0(esbuild@0.27.3)':
     optionalDependencies:
       esbuild: 0.27.3
 

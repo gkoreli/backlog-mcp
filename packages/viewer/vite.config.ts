@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { nisliHmr } from '@nisli/core/vite-hmr';
 
 /**
  * Viewer build/dev config (ADR 0110).
@@ -49,6 +50,11 @@ const proxy = Object.fromEntries(
 
 export default defineConfig({
   root: __dirname,
+  // Dev-only granular component HMR (ADR 0110): wraps component() and marks each
+  // component module self-accepting via import.meta.hot, so an edit re-evaluates
+  // only that module against the stable @nisli/core instance and re-mounts its
+  // custom element in place. apply:'serve' keeps it off the production build.
+  plugins: [nisliHmr()],
   // Mirror the esbuild `__API_URL__` define. Empty string ⇒ api.ts falls back to
   // window.location.origin (correct for both proxied dev and same-origin prod).
   define: {

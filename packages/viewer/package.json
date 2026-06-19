@@ -15,7 +15,7 @@
     "vite": "^7.1.5"
   },
   "dependencies": {
-    "@nisli/core": "^0.49.2",
+    "@nisli/core": "^0.50.0",
     "@backlog-mcp/shared": "workspace:*",
     "@orama/highlight": "^0.1.9",
     "diff": "^8.0.3",
