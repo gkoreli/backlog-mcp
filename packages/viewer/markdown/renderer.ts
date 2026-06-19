@@ -1,12 +1,15 @@
 /**
- * markdown.ts — Shared marked + shiki configuration.
+ * renderer.ts — Shared marked + shiki configuration.
  *
  * Single source of truth for markdown parsing and syntax highlighting.
  * Consumed by md-block (markdown rendering) and resource-viewer (code files).
  *
  * Shiki provides dual-theme highlighting via CSS variables — one render pass
  * produces HTML that switches between light/dark themes instantly via
- * `[data-theme]` on <html>. No separate CSS theme files needed.
+ * `[data-theme]` on <html>.
+ *
+ * marked-shiki makes marked.parse() async. Consumers use effect() + signal
+ * to handle the Promise naturally.
  */
 
 import { Marked } from 'marked';
@@ -35,7 +38,7 @@ export async function initHighlighter(): Promise<void> {
   return initPromise;
 }
 
-/** Highlight a code string. Falls back to escaped text if highlighter not ready. */
+/** Highlight a code string (sync — returns escaped fallback if highlighter not ready). */
 export function highlight(code: string, lang: string): string {
   if (!highlighter) return code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const resolvedLang = highlighter.getLoadedLanguages().includes(lang) ? lang : 'text';
@@ -50,15 +53,15 @@ export function highlight(code: string, lang: string): string {
 
 const marked = new Marked({ gfm: true, breaks: true });
 
-// Shiki integration via marked-shiki (highlight code fences)
+// Shiki integration via marked-shiki (async highlighting)
 marked.use(markedShiki({
   highlight(code: string, lang: string) {
     if (lang === 'mermaid') return code;
-    return highlight(code, lang || 'text');
+    return highlight(code, lang);
   },
 }));
 
-// Custom extensions and renderers (preserved from original)
+// Custom extensions and renderers
 marked.use({
   extensions: [{
     name: 'autolink',
