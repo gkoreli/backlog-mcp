@@ -1,6 +1,9 @@
 import './theme/index.css';
+import './theme/hljs-dark.css';
+import './theme/hljs-light.css';
 import './styles.css';
 import './github-markdown.css';
+import './github-markdown-light.css';
 import 'diff2html/bundles/css/diff2html.min.css';
 import './components/svg-icon.js';
 import './components/task-filter-bar.js';

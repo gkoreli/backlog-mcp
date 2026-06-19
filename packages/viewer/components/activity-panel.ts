@@ -222,10 +222,14 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
     return html`<div class="activity-expanded" @click.stop=${() => {}}>${parts}</div>`;
   }
 
-  const DIFF2HTML_OPTS = {
-    drawFileList: false, matching: 'lines' as const,
-    outputFormat: 'line-by-line' as const, diffStyle: 'word' as const, colorScheme: ColorSchemeType.DARK,
-  };
+  function getDiff2HtmlOpts() {
+    const dark = document.documentElement.getAttribute('data-theme') !== 'light';
+    return {
+      drawFileList: false, matching: 'lines' as const,
+      outputFormat: 'line-by-line' as const, diffStyle: 'word' as const,
+      colorScheme: dark ? ColorSchemeType.DARK : ColorSchemeType.LIGHT,
+    };
+  }
 
   function renderDiffHtml(op: OperationEntry): string | null {
     const mergedOps = op.params._mergedOps as OperationEntry[] | undefined;
@@ -238,11 +242,11 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
         const diff = operationToDiff(operation, filename);
         if (diff) combinedDiff += diff + '\n';
       }
-      return combinedDiff ? Diff2Html.html(combinedDiff, DIFF2HTML_OPTS) : null;
+      return combinedDiff ? Diff2Html.html(combinedDiff, getDiff2HtmlOpts()) : null;
     } else if (op.params.operation) {
       const operation = op.params.operation as EditOperation;
       const diff = operationToDiff(operation, filename);
-      return diff ? Diff2Html.html(diff, DIFF2HTML_OPTS) : null;
+      return diff ? Diff2Html.html(diff, getDiff2HtmlOpts()) : null;
     }
     return null;
   }

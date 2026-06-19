@@ -1,5 +1,5 @@
-/* dark */
-.markdown-body {
+/* GitHub Markdown Dark (sindresorhus/github-markdown-css) */
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body {
   color-scheme: dark;
   -ms-text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
@@ -12,18 +12,18 @@
   word-wrap: break-word;
 }
 
-.markdown-body .octicon {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .octicon {
   display: inline-block;
   fill: currentColor;
   vertical-align: text-bottom;
 }
 
-.markdown-body h1:hover .anchor .octicon-link:before,
-.markdown-body h2:hover .anchor .octicon-link:before,
-.markdown-body h3:hover .anchor .octicon-link:before,
-.markdown-body h4:hover .anchor .octicon-link:before,
-.markdown-body h5:hover .anchor .octicon-link:before,
-.markdown-body h6:hover .anchor .octicon-link:before {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h1:hover .anchor .octicon-link:before,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h2:hover .anchor .octicon-link:before,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h3:hover .anchor .octicon-link:before,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h4:hover .anchor .octicon-link:before,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h5:hover .anchor .octicon-link:before,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h6:hover .anchor .octicon-link:before {
   width: 16px;
   height: 16px;
   content: ' ';
@@ -33,42 +33,42 @@
   mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' version='1.1' aria-hidden='true'><path fill-rule='evenodd' d='M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z'></path></svg>");
 }
 
-.markdown-body details,
-.markdown-body figcaption,
-.markdown-body figure {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body details,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body figcaption,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body figure {
   display: block;
 }
 
-.markdown-body summary {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary {
   display: list-item;
 }
 
-.markdown-body [hidden] {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [hidden] {
   display: none !important;
 }
 
-.markdown-body a {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body a {
   background-color: transparent;
   color: #4493f8;
   text-decoration: none;
 }
 
-.markdown-body abbr[title] {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body abbr[title] {
   border-bottom: none;
   -webkit-text-decoration: underline dotted;
   text-decoration: underline dotted;
 }
 
-.markdown-body b,
-.markdown-body strong {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body b,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body strong {
   font-weight: 600;
 }
 
-.markdown-body dfn {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body dfn {
   font-style: italic;
 }
 
-.markdown-body h1 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h1 {
   margin: .67em 0;
   font-weight: 600;
   padding-bottom: .3em;
@@ -76,50 +76,50 @@
   border-bottom: 1px solid #3d444db3;
 }
 
-.markdown-body mark {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body mark {
   background-color: #bb800926;
   color: #f0f6fc;
 }
 
-.markdown-body small {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body small {
   font-size: 90%;
 }
 
-.markdown-body sub,
-.markdown-body sup {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body sub,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body sup {
   font-size: 75%;
   line-height: 0;
   position: relative;
   vertical-align: baseline;
 }
 
-.markdown-body sub {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body sub {
   bottom: -0.25em;
 }
 
-.markdown-body sup {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body sup {
   top: -0.5em;
 }
 
-.markdown-body img {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body img {
   border-style: none;
   max-width: 100%;
   box-sizing: content-box;
 }
 
-.markdown-body code,
-.markdown-body kbd,
-.markdown-body pre,
-.markdown-body samp {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body code,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body kbd,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body pre,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body samp {
   font-family: monospace;
   font-size: 1em;
 }
 
-.markdown-body figure {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body figure {
   margin: 1em 2.5rem;
 }
 
-.markdown-body hr {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body hr {
   box-sizing: content-box;
   overflow: hidden;
   background: transparent;
@@ -131,7 +131,7 @@
   border: 0;
 }
 
-.markdown-body input {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body input {
   font: inherit;
   margin: 0;
   overflow: visible;
@@ -140,62 +140,62 @@
   line-height: inherit;
 }
 
-.markdown-body [type=button],
-.markdown-body [type=reset],
-.markdown-body [type=submit] {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [type=button],
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [type=reset],
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [type=submit] {
   -webkit-appearance: button;
   appearance: button;
 }
 
-.markdown-body [type=checkbox],
-.markdown-body [type=radio] {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [type=checkbox],
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [type=radio] {
   box-sizing: border-box;
   padding: 0;
 }
 
-.markdown-body [type=number]::-webkit-inner-spin-button,
-.markdown-body [type=number]::-webkit-outer-spin-button {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [type=number]::-webkit-inner-spin-button,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [type=number]::-webkit-outer-spin-button {
   height: auto;
 }
 
-.markdown-body [type=search]::-webkit-search-cancel-button,
-.markdown-body [type=search]::-webkit-search-decoration {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [type=search]::-webkit-search-cancel-button,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [type=search]::-webkit-search-decoration {
   -webkit-appearance: none;
   appearance: none;
 }
 
-.markdown-body ::-webkit-input-placeholder {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ::-webkit-input-placeholder {
   color: inherit;
   opacity: .54;
 }
 
-.markdown-body ::-webkit-file-upload-button {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ::-webkit-file-upload-button {
   -webkit-appearance: button;
   appearance: button;
   font: inherit;
 }
 
-.markdown-body a:hover {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body a:hover {
   text-decoration: underline;
 }
 
-.markdown-body ::placeholder {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ::placeholder {
   color: #9198a1;
   opacity: 1;
 }
 
-.markdown-body hr::before {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body hr::before {
   display: table;
   content: "";
 }
 
-.markdown-body hr::after {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body hr::after {
   display: table;
   clear: both;
   content: "";
 }
 
-.markdown-body table {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body table {
   border-spacing: 0;
   border-collapse: collapse;
   display: block;
@@ -205,50 +205,50 @@
   font-variant: tabular-nums;
 }
 
-.markdown-body td,
-.markdown-body th {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body td,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body th {
   padding: 0;
 }
 
-.markdown-body details summary {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body details summary {
   cursor: pointer;
 }
 
-.markdown-body a:focus,
-.markdown-body [role=button]:focus,
-.markdown-body input[type=radio]:focus,
-.markdown-body input[type=checkbox]:focus {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body a:focus,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [role=button]:focus,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body input[type=radio]:focus,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body input[type=checkbox]:focus {
   outline: 2px solid #1f6feb;
   outline-offset: -2px;
   box-shadow: none;
 }
 
-.markdown-body a:focus:not(:focus-visible),
-.markdown-body [role=button]:focus:not(:focus-visible),
-.markdown-body input[type=radio]:focus:not(:focus-visible),
-.markdown-body input[type=checkbox]:focus:not(:focus-visible) {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body a:focus:not(:focus-visible),
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [role=button]:focus:not(:focus-visible),
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body input[type=radio]:focus:not(:focus-visible),
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body input[type=checkbox]:focus:not(:focus-visible) {
   outline: solid 1px transparent;
 }
 
-.markdown-body a:focus-visible,
-.markdown-body [role=button]:focus-visible,
-.markdown-body input[type=radio]:focus-visible,
-.markdown-body input[type=checkbox]:focus-visible {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body a:focus-visible,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [role=button]:focus-visible,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body input[type=radio]:focus-visible,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body input[type=checkbox]:focus-visible {
   outline: 2px solid #1f6feb;
   outline-offset: -2px;
   box-shadow: none;
 }
 
-.markdown-body a:not([class]):focus,
-.markdown-body a:not([class]):focus-visible,
-.markdown-body input[type=radio]:focus,
-.markdown-body input[type=radio]:focus-visible,
-.markdown-body input[type=checkbox]:focus,
-.markdown-body input[type=checkbox]:focus-visible {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body a:not([class]):focus,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body a:not([class]):focus-visible,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body input[type=radio]:focus,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body input[type=radio]:focus-visible,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body input[type=checkbox]:focus,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body input[type=checkbox]:focus-visible {
   outline-offset: 0;
 }
 
-.markdown-body kbd {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body kbd {
   display: inline-block;
   padding: 0.25rem;
   font: 11px ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
@@ -262,89 +262,89 @@
   box-shadow: inset 0 -1px 0 #3d444db3;
 }
 
-.markdown-body h1,
-.markdown-body h2,
-.markdown-body h3,
-.markdown-body h4,
-.markdown-body h5,
-.markdown-body h6 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h1,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h2,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h3,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h4,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h5,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h6 {
   margin-top: 1.5rem;
   margin-bottom: 1rem;
   font-weight: 600;
   line-height: 1.25;
 }
 
-.markdown-body h2 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h2 {
   font-weight: 600;
   padding-bottom: .3em;
   font-size: 1.5em;
   border-bottom: 1px solid #3d444db3;
 }
 
-.markdown-body h3 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h3 {
   font-weight: 600;
   font-size: 1.25em;
 }
 
-.markdown-body h4 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h4 {
   font-weight: 600;
   font-size: 1em;
 }
 
-.markdown-body h5 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h5 {
   font-weight: 600;
   font-size: .875em;
 }
 
-.markdown-body h6 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h6 {
   font-weight: 600;
   font-size: .85em;
   color: #9198a1;
 }
 
-.markdown-body p {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body p {
   margin-top: 0;
   margin-bottom: 10px;
 }
 
-.markdown-body blockquote {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body blockquote {
   margin: 0;
   padding: 0 1em;
   color: #9198a1;
   border-left: .25em solid #3d444d;
 }
 
-.markdown-body ul,
-.markdown-body ol {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ul,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol {
   margin-top: 0;
   margin-bottom: 0;
   padding-left: 2em;
 }
 
-.markdown-body ol ol,
-.markdown-body ul ol {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol ol,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ul ol {
   list-style-type: lower-roman;
 }
 
-.markdown-body ul ul ol,
-.markdown-body ul ol ol,
-.markdown-body ol ul ol,
-.markdown-body ol ol ol {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ul ul ol,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ul ol ol,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol ul ol,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol ol ol {
   list-style-type: lower-alpha;
 }
 
-.markdown-body dd {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body dd {
   margin-left: 0;
 }
 
-.markdown-body tt,
-.markdown-body code,
-.markdown-body samp {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body tt,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body code,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body samp {
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
   font-size: 12px;
 }
 
-.markdown-body pre {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body pre {
   margin-top: 0;
   margin-bottom: 0;
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
@@ -352,202 +352,202 @@
   word-wrap: normal;
 }
 
-.markdown-body .octicon {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .octicon {
   display: inline-block;
   overflow: visible !important;
   vertical-align: text-bottom;
   fill: currentColor;
 }
 
-.markdown-body input::-webkit-outer-spin-button,
-.markdown-body input::-webkit-inner-spin-button {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body input::-webkit-outer-spin-button,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body input::-webkit-inner-spin-button {
   margin: 0;
   appearance: none;
 }
 
-.markdown-body .mr-2 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .mr-2 {
   margin-right: 0.5rem !important;
 }
 
-.markdown-body::before {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body::before {
   display: table;
   content: "";
 }
 
-.markdown-body::after {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body::after {
   display: table;
   clear: both;
   content: "";
 }
 
-.markdown-body>*:first-child {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body>*:first-child {
   margin-top: 0 !important;
 }
 
-.markdown-body>*:last-child {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body>*:last-child {
   margin-bottom: 0 !important;
 }
 
-.markdown-body a:not([href]) {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body a:not([href]) {
   color: inherit;
   text-decoration: none;
 }
 
-.markdown-body .absent {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .absent {
   color: #f85149;
 }
 
-.markdown-body .anchor {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .anchor {
   float: left;
   padding-right: 0.25rem;
   margin-left: -20px;
   line-height: 1;
 }
 
-.markdown-body .anchor:focus {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .anchor:focus {
   outline: none;
 }
 
-.markdown-body p,
-.markdown-body blockquote,
-.markdown-body ul,
-.markdown-body ol,
-.markdown-body dl,
-.markdown-body table,
-.markdown-body pre,
-.markdown-body details {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body p,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body blockquote,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ul,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body dl,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body table,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body pre,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body details {
   margin-top: 0;
   margin-bottom: 1rem;
 }
 
-.markdown-body blockquote>:first-child {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body blockquote>:first-child {
   margin-top: 0;
 }
 
-.markdown-body blockquote>:last-child {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body blockquote>:last-child {
   margin-bottom: 0;
 }
 
-.markdown-body h1 .octicon-link,
-.markdown-body h2 .octicon-link,
-.markdown-body h3 .octicon-link,
-.markdown-body h4 .octicon-link,
-.markdown-body h5 .octicon-link,
-.markdown-body h6 .octicon-link {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h1 .octicon-link,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h2 .octicon-link,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h3 .octicon-link,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h4 .octicon-link,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h5 .octicon-link,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h6 .octicon-link {
   color: #f0f6fc;
   vertical-align: middle;
   visibility: hidden;
 }
 
-.markdown-body h1:hover .anchor,
-.markdown-body h2:hover .anchor,
-.markdown-body h3:hover .anchor,
-.markdown-body h4:hover .anchor,
-.markdown-body h5:hover .anchor,
-.markdown-body h6:hover .anchor {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h1:hover .anchor,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h2:hover .anchor,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h3:hover .anchor,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h4:hover .anchor,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h5:hover .anchor,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h6:hover .anchor {
   text-decoration: none;
 }
 
-.markdown-body h1:hover .anchor .octicon-link,
-.markdown-body h2:hover .anchor .octicon-link,
-.markdown-body h3:hover .anchor .octicon-link,
-.markdown-body h4:hover .anchor .octicon-link,
-.markdown-body h5:hover .anchor .octicon-link,
-.markdown-body h6:hover .anchor .octicon-link {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h1:hover .anchor .octicon-link,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h2:hover .anchor .octicon-link,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h3:hover .anchor .octicon-link,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h4:hover .anchor .octicon-link,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h5:hover .anchor .octicon-link,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h6:hover .anchor .octicon-link {
   visibility: visible;
 }
 
-.markdown-body h1 tt,
-.markdown-body h1 code,
-.markdown-body h2 tt,
-.markdown-body h2 code,
-.markdown-body h3 tt,
-.markdown-body h3 code,
-.markdown-body h4 tt,
-.markdown-body h4 code,
-.markdown-body h5 tt,
-.markdown-body h5 code,
-.markdown-body h6 tt,
-.markdown-body h6 code {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h1 tt,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h1 code,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h2 tt,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h2 code,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h3 tt,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h3 code,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h4 tt,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h4 code,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h5 tt,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h5 code,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h6 tt,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body h6 code {
   padding: 0 .2em;
   font-size: inherit;
 }
 
-.markdown-body summary h1,
-.markdown-body summary h2,
-.markdown-body summary h3,
-.markdown-body summary h4,
-.markdown-body summary h5,
-.markdown-body summary h6 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h1,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h2,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h3,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h4,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h5,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h6 {
   display: inline-block;
 }
 
-.markdown-body summary h1 .anchor,
-.markdown-body summary h2 .anchor,
-.markdown-body summary h3 .anchor,
-.markdown-body summary h4 .anchor,
-.markdown-body summary h5 .anchor,
-.markdown-body summary h6 .anchor {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h1 .anchor,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h2 .anchor,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h3 .anchor,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h4 .anchor,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h5 .anchor,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h6 .anchor {
   margin-left: -40px;
 }
 
-.markdown-body summary h1,
-.markdown-body summary h2 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h1,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary h2 {
   padding-bottom: 0;
   border-bottom: 0;
 }
 
-.markdown-body ul.no-list,
-.markdown-body ol.no-list {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ul.no-list,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol.no-list {
   padding: 0;
   list-style-type: none;
 }
 
-.markdown-body ol[type="a s"] {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol[type="a s"] {
   list-style-type: lower-alpha;
 }
 
-.markdown-body ol[type="A s"] {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol[type="A s"] {
   list-style-type: upper-alpha;
 }
 
-.markdown-body ol[type="i s"] {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol[type="i s"] {
   list-style-type: lower-roman;
 }
 
-.markdown-body ol[type="I s"] {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol[type="I s"] {
   list-style-type: upper-roman;
 }
 
-.markdown-body ol[type="1"] {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol[type="1"] {
   list-style-type: decimal;
 }
 
-.markdown-body div>ol:not([type]) {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body div>ol:not([type]) {
   list-style-type: decimal;
 }
 
-.markdown-body ul ul,
-.markdown-body ul ol,
-.markdown-body ol ol,
-.markdown-body ol ul {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ul ul,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ul ol,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol ol,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol ul {
   margin-top: 0;
   margin-bottom: 0;
 }
 
-.markdown-body li>p {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body li>p {
   margin-top: 1rem;
 }
 
-.markdown-body li+li {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body li+li {
   margin-top: .25em;
 }
 
-.markdown-body dl {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body dl {
   padding: 0;
 }
 
-.markdown-body dl dt {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body dl dt {
   padding: 0;
   margin-top: 1rem;
   font-size: 1em;
@@ -555,58 +555,58 @@
   font-weight: 600;
 }
 
-.markdown-body dl dd {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body dl dd {
   padding: 0 1rem;
   margin-bottom: 1rem;
 }
 
-.markdown-body table th {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body table th {
   font-weight: 600;
 }
 
-.markdown-body table th,
-.markdown-body table td {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body table th,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body table td {
   padding: 6px 13px;
   border: 1px solid #3d444d;
 }
 
-.markdown-body table td>:last-child {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body table td>:last-child {
   margin-bottom: 0;
 }
 
-.markdown-body table tr {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body table tr {
   background-color: #0d1117;
   border-top: 1px solid #3d444db3;
 }
 
-.markdown-body table tr:nth-child(2n) {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body table tr:nth-child(2n) {
   background-color: #151b23;
 }
 
-.markdown-body table img {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body table img {
   background-color: transparent;
 }
 
-.markdown-body img[align=right] {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body img[align=right] {
   padding-left: 20px;
 }
 
-.markdown-body img[align=left] {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body img[align=left] {
   padding-right: 20px;
 }
 
-.markdown-body .emoji {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .emoji {
   max-width: none;
   vertical-align: text-top;
   background-color: transparent;
 }
 
-.markdown-body span.frame {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.frame {
   display: block;
   overflow: hidden;
 }
 
-.markdown-body span.frame>span {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.frame>span {
   display: block;
   float: left;
   width: auto;
@@ -616,81 +616,81 @@
   border: 1px solid #3d444d;
 }
 
-.markdown-body span.frame span img {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.frame span img {
   display: block;
   float: left;
 }
 
-.markdown-body span.frame span span {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.frame span span {
   display: block;
   padding: 5px 0 0;
   clear: both;
   color: #f0f6fc;
 }
 
-.markdown-body span.align-center {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.align-center {
   display: block;
   overflow: hidden;
   clear: both;
 }
 
-.markdown-body span.align-center>span {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.align-center>span {
   display: block;
   margin: 13px auto 0;
   overflow: hidden;
   text-align: center;
 }
 
-.markdown-body span.align-center span img {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.align-center span img {
   margin: 0 auto;
   text-align: center;
 }
 
-.markdown-body span.align-right {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.align-right {
   display: block;
   overflow: hidden;
   clear: both;
 }
 
-.markdown-body span.align-right>span {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.align-right>span {
   display: block;
   margin: 13px 0 0;
   overflow: hidden;
   text-align: right;
 }
 
-.markdown-body span.align-right span img {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.align-right span img {
   margin: 0;
   text-align: right;
 }
 
-.markdown-body span.float-left {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.float-left {
   display: block;
   float: left;
   margin-right: 13px;
   overflow: hidden;
 }
 
-.markdown-body span.float-left span {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.float-left span {
   margin: 13px 0 0;
 }
 
-.markdown-body span.float-right {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.float-right {
   display: block;
   float: right;
   margin-left: 13px;
   overflow: hidden;
 }
 
-.markdown-body span.float-right>span {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body span.float-right>span {
   display: block;
   margin: 13px auto 0;
   overflow: hidden;
   text-align: right;
 }
 
-.markdown-body code,
-.markdown-body tt {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body code,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body tt {
   padding: .2em .4em;
   margin: 0;
   font-size: 85%;
@@ -699,24 +699,24 @@
   border-radius: 6px;
 }
 
-.markdown-body code br,
-.markdown-body tt br {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body code br,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body tt br {
   display: none;
 }
 
-.markdown-body del code {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body del code {
   text-decoration: inherit;
 }
 
-.markdown-body samp {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body samp {
   font-size: 85%;
 }
 
-.markdown-body pre code {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body pre code {
   font-size: 100%;
 }
 
-.markdown-body pre>code {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body pre>code {
   padding: 0;
   margin: 0;
   word-break: normal;
@@ -725,17 +725,17 @@
   border: 0;
 }
 
-.markdown-body .highlight {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .highlight {
   margin-bottom: 1rem;
 }
 
-.markdown-body .highlight pre {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .highlight pre {
   margin-bottom: 0;
   word-break: normal;
 }
 
-.markdown-body .highlight pre,
-.markdown-body pre {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .highlight pre,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body pre {
   padding: 1rem;
   overflow: auto;
   font-size: 85%;
@@ -745,8 +745,8 @@
   border-radius: 6px;
 }
 
-.markdown-body pre code,
-.markdown-body pre tt {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body pre code,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body pre tt {
   display: inline;
   max-width: auto;
   padding: 0;
@@ -758,8 +758,8 @@
   border: 0;
 }
 
-.markdown-body .csv-data td,
-.markdown-body .csv-data th {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .csv-data td,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .csv-data th {
   padding: 5px;
   overflow: hidden;
   font-size: 12px;
@@ -768,52 +768,52 @@
   white-space: nowrap;
 }
 
-.markdown-body .csv-data .blob-num {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .csv-data .blob-num {
   padding: 10px 0.5rem 9px;
   text-align: right;
   background: #0d1117;
   border: 0;
 }
 
-.markdown-body .csv-data tr {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .csv-data tr {
   border-top: 0;
 }
 
-.markdown-body .csv-data th {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .csv-data th {
   font-weight: 600;
   background: #151b23;
   border-top: 0;
 }
 
-.markdown-body [data-footnote-ref]::before {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [data-footnote-ref]::before {
   content: "[";
 }
 
-.markdown-body [data-footnote-ref]::after {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [data-footnote-ref]::after {
   content: "]";
 }
 
-.markdown-body .footnotes {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .footnotes {
   font-size: 12px;
   color: #9198a1;
   border-top: 1px solid #3d444d;
 }
 
-.markdown-body .footnotes ol {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .footnotes ol {
   padding-left: 1rem;
 }
 
-.markdown-body .footnotes ol ul {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .footnotes ol ul {
   display: inline-block;
   padding-left: 1rem;
   margin-top: 1rem;
 }
 
-.markdown-body .footnotes li {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .footnotes li {
   position: relative;
 }
 
-.markdown-body .footnotes li:target::before {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .footnotes li:target::before {
   position: absolute;
   top: calc(0.5rem*-1);
   right: calc(0.5rem*-1);
@@ -825,153 +825,153 @@
   border-radius: 6px;
 }
 
-.markdown-body .footnotes li:target {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .footnotes li:target {
   color: #f0f6fc;
 }
 
-.markdown-body .footnotes .data-footnote-backref g-emoji {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .footnotes .data-footnote-backref g-emoji {
   font-family: monospace;
 }
 
-.markdown-body body:has(:modal) {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body body:has(:modal) {
   padding-right: var(--dialog-scrollgutter) !important;
 }
 
-.markdown-body .pl-c {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-c {
   color: #9198a1;
 }
 
-.markdown-body .pl-c1,
-.markdown-body .pl-s .pl-v {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-c1,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-s .pl-v {
   color: #79c0ff;
 }
 
-.markdown-body .pl-e,
-.markdown-body .pl-en {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-e,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-en {
   color: #d2a8ff;
 }
 
-.markdown-body .pl-smi,
-.markdown-body .pl-s .pl-s1 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-smi,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-s .pl-s1 {
   color: #f0f6fc;
 }
 
-.markdown-body .pl-ent {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-ent {
   color: #7ee787;
 }
 
-.markdown-body .pl-k {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-k {
   color: #ff7b72;
 }
 
-.markdown-body .pl-s,
-.markdown-body .pl-pds,
-.markdown-body .pl-s .pl-pse .pl-s1,
-.markdown-body .pl-sr,
-.markdown-body .pl-sr .pl-cce,
-.markdown-body .pl-sr .pl-sre,
-.markdown-body .pl-sr .pl-sra {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-s,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-pds,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-s .pl-pse .pl-s1,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-sr,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-sr .pl-cce,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-sr .pl-sre,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-sr .pl-sra {
   color: #a5d6ff;
 }
 
-.markdown-body .pl-v,
-.markdown-body .pl-smw {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-v,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-smw {
   color: #ffa657;
 }
 
-.markdown-body .pl-bu {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-bu {
   color: #f85149;
 }
 
-.markdown-body .pl-ii {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-ii {
   color: #f0f6fc;
   background-color: #8e1519;
 }
 
-.markdown-body .pl-c2 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-c2 {
   color: #f0f6fc;
   background-color: #b62324;
 }
 
-.markdown-body .pl-sr .pl-cce {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-sr .pl-cce {
   font-weight: bold;
   color: #7ee787;
 }
 
-.markdown-body .pl-ml {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-ml {
   color: #f2cc60;
 }
 
-.markdown-body .pl-mh,
-.markdown-body .pl-mh .pl-en,
-.markdown-body .pl-ms {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-mh,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-mh .pl-en,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-ms {
   font-weight: bold;
   color: #1f6feb;
 }
 
-.markdown-body .pl-mi {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-mi {
   font-style: italic;
   color: #f0f6fc;
 }
 
-.markdown-body .pl-mb {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-mb {
   font-weight: bold;
   color: #f0f6fc;
 }
 
-.markdown-body .pl-md {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-md {
   color: #ffdcd7;
   background-color: #67060c;
 }
 
-.markdown-body .pl-mi1 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-mi1 {
   color: #aff5b4;
   background-color: #033a16;
 }
 
-.markdown-body .pl-mc {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-mc {
   color: #ffdfb6;
   background-color: #5a1e02;
 }
 
-.markdown-body .pl-mi2 {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-mi2 {
   color: #f0f6fc;
   background-color: #1158c7;
 }
 
-.markdown-body .pl-mdr {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-mdr {
   font-weight: bold;
   color: #d2a8ff;
 }
 
-.markdown-body .pl-ba {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-ba {
   color: #9198a1;
 }
 
-.markdown-body .pl-sg {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-sg {
   color: #3d444d;
 }
 
-.markdown-body .pl-corl {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .pl-corl {
   text-decoration: underline;
   color: #a5d6ff;
 }
 
-.markdown-body [role=button]:focus:not(:focus-visible),
-.markdown-body [role=tabpanel][tabindex="0"]:focus:not(:focus-visible),
-.markdown-body button:focus:not(:focus-visible),
-.markdown-body summary:focus:not(:focus-visible),
-.markdown-body a:focus:not(:focus-visible) {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [role=button]:focus:not(:focus-visible),
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [role=tabpanel][tabindex="0"]:focus:not(:focus-visible),
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body button:focus:not(:focus-visible),
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body summary:focus:not(:focus-visible),
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body a:focus:not(:focus-visible) {
   outline: none;
   box-shadow: none;
 }
 
-.markdown-body [tabindex="0"]:focus:not(:focus-visible),
-.markdown-body details-dialog:focus:not(:focus-visible) {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body [tabindex="0"]:focus:not(:focus-visible),
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body details-dialog:focus:not(:focus-visible) {
   outline: none;
 }
 
-.markdown-body g-emoji {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body g-emoji {
   display: inline-block;
   min-width: 1ch;
   font-family: "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
@@ -982,46 +982,46 @@
   vertical-align: -0.075em;
 }
 
-.markdown-body g-emoji img {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body g-emoji img {
   width: 1em;
   height: 1em;
 }
 
-.markdown-body .task-list-item {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .task-list-item {
   list-style-type: none;
 }
 
-.markdown-body .task-list-item label {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .task-list-item label {
   font-weight: 400;
 }
 
-.markdown-body .task-list-item.enabled label {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .task-list-item.enabled label {
   cursor: pointer;
 }
 
-.markdown-body .task-list-item+.task-list-item {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .task-list-item+.task-list-item {
   margin-top: 0.25rem;
 }
 
-.markdown-body .task-list-item .handle {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .task-list-item .handle {
   display: none;
 }
 
-.markdown-body .task-list-item-checkbox {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .task-list-item-checkbox {
   margin: 0 .2em .25em -1.4em;
   vertical-align: middle;
 }
 
-.markdown-body ul:dir(rtl) .task-list-item-checkbox {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ul:dir(rtl) .task-list-item-checkbox {
   margin: 0 -1.6em .25em .2em;
 }
 
-.markdown-body ol:dir(rtl) .task-list-item-checkbox {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ol:dir(rtl) .task-list-item-checkbox {
   margin: 0 -1.6em .25em .2em;
 }
 
-.markdown-body .contains-task-list:hover .task-list-item-convert-container,
-.markdown-body .contains-task-list:focus-within .task-list-item-convert-container {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .contains-task-list:hover .task-list-item-convert-container,
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .contains-task-list:focus-within .task-list-item-convert-container {
   display: block;
   width: auto;
   height: 24px;
@@ -1029,77 +1029,77 @@
   clip: auto;
 }
 
-.markdown-body ::-webkit-calendar-picker-indicator {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body ::-webkit-calendar-picker-indicator {
   filter: invert(50%);
 }
 
-.markdown-body .markdown-alert {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert {
   padding: 0.5rem 1rem;
   margin-bottom: 1rem;
   color: inherit;
   border-left: .25em solid #3d444d;
 }
 
-.markdown-body .markdown-alert>:first-child {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert>:first-child {
   margin-top: 0;
 }
 
-.markdown-body .markdown-alert>:last-child {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert>:last-child {
   margin-bottom: 0;
 }
 
-.markdown-body .markdown-alert .markdown-alert-title {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert .markdown-alert-title {
   display: flex;
   font-weight: 500;
   align-items: center;
   line-height: 1;
 }
 
-.markdown-body .markdown-alert.markdown-alert-note {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert.markdown-alert-note {
   border-left-color: #1f6feb;
 }
 
-.markdown-body .markdown-alert.markdown-alert-note .markdown-alert-title {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert.markdown-alert-note .markdown-alert-title {
   color: #4493f8;
 }
 
-.markdown-body .markdown-alert.markdown-alert-important {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert.markdown-alert-important {
   border-left-color: #8957e5;
 }
 
-.markdown-body .markdown-alert.markdown-alert-important .markdown-alert-title {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert.markdown-alert-important .markdown-alert-title {
   color: #ab7df8;
 }
 
-.markdown-body .markdown-alert.markdown-alert-warning {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert.markdown-alert-warning {
   border-left-color: #9e6a03;
 }
 
-.markdown-body .markdown-alert.markdown-alert-warning .markdown-alert-title {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert.markdown-alert-warning .markdown-alert-title {
   color: #d29922;
 }
 
-.markdown-body .markdown-alert.markdown-alert-tip {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert.markdown-alert-tip {
   border-left-color: #238636;
 }
 
-.markdown-body .markdown-alert.markdown-alert-tip .markdown-alert-title {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert.markdown-alert-tip .markdown-alert-title {
   color: #3fb950;
 }
 
-.markdown-body .markdown-alert.markdown-alert-caution {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert.markdown-alert-caution {
   border-left-color: #da3633;
 }
 
-.markdown-body .markdown-alert.markdown-alert-caution .markdown-alert-title {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .markdown-alert.markdown-alert-caution .markdown-alert-title {
   color: #f85149;
 }
 
-.markdown-body>*:first-child>.heading-element:first-child {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body>*:first-child>.heading-element:first-child {
   margin-top: 0 !important;
 }
 
-.markdown-body .highlight pre:has(+.zeroclipboard-container) {
+:is([data-theme="dark"], :root:not([data-theme])) .markdown-body .highlight pre:has(+.zeroclipboard-container) {
   min-height: 52px;
 }
 
