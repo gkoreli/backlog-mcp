@@ -107,6 +107,44 @@ Settle on **suffix-based naming where files are tightly related**, by role:
 Apply to new and touched files; do not do a sweeping repo-wide rename (churn +
 merge-conflict risk) — let legacy `types.ts` files migrate opportunistically.
 
+## Viewer Architecture
+
+### Design System: Tsa (ცა)
+
+The viewer is styled with **Tsa** ("sky" in Georgian) — our design system paired with Nisli.
+
+- All colors are CSS custom properties (`--t-*` prefix), defined in `packages/viewer/theme/`
+- Theme switching via `data-theme="dark"|"light"` on `<html>`, persisted to localStorage
+- Brand gradient (`#00d4ff → #7b2dff → #ff2d7b`) and entity type gradients are theme-invariant
+- Never add hardcoded color values — always use `var(--t-*)` tokens
+
+```
+packages/viewer/theme/
+├── index.css      # Barrel import
+├── tokens.css     # Invariants (fonts, radius, brand gradients)
+├── dark.css       # Dark values (default)
+└── light.css      # Light values
+```
+
+### Markdown & Syntax Highlighting
+
+All markdown concerns live in `packages/viewer/markdown/`:
+
+```
+packages/viewer/markdown/
+├── index.ts         # Barrel: { marked, highlight, initHighlighter }
+├── renderer.ts      # marked + shiki config + custom plugins
+├── shiki.css        # Dual-theme CSS variable switching
+├── github-dark.css  # GitHub markdown prose (dark, scoped)
+└── github-light.css # GitHub markdown prose (light, scoped)
+```
+
+**Key decisions (ADR 0111):**
+- **Shiki** for syntax highlighting (not highlight.js) — TextMate grammars, VS Code-quality, dual-theme via CSS variables
+- **`marked-shiki`** as the bridge — makes `marked.parse()` async
+- **Async is a side effect** — consumers use `effect()` + `signal`, never `computed()`, for markdown rendering
+- **One render, both themes** — shiki outputs `--shiki-light`/`--shiki-dark` per token; CSS picks the active one
+
 ## The Development Loop (maintainer decision, 2026-06-10)
 
 backlog-mcp evolves through a deliberate loop, recorded in the ADR thread:
