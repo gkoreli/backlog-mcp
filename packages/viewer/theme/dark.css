@@ -110,4 +110,12 @@
   --t-error-bg: #5a1d1d;
   --t-error-fg: #f48771;
   --t-separator-gradient: rgba(9, 105, 218, 0.3);
+
+  /* ─── Diff ─── */
+  --t-diff-add-bg: rgba(46, 160, 67, 0.15);
+  --t-diff-add-fg: #7ee787;
+  --t-diff-add-inline: rgba(46, 160, 67, 0.4);
+  --t-diff-del-bg: rgba(248, 81, 73, 0.15);
+  --t-diff-del-fg: #ffa198;
+  --t-diff-del-inline: rgba(248, 81, 73, 0.4);
 }

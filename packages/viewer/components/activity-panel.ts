@@ -4,12 +4,11 @@
  * Reads SplitPaneState.activityTaskId directly via inject().
  * Replaces the class-based ActivityPanel with signal-driven reactivity.
  *
- * Uses html:inner directive for trusted HTML (diff rendering from diff2html).
+ * Uses html:inner directive for trusted HTML (diff rendering via diff-block).
  * Uses each() for reactive list rendering of day groups and task groups.
  */
-import * as Diff2Html from 'diff2html';
-import { ColorSchemeType } from 'diff2html/lib/types';
 import { signal, computed, effect, component, html, when, each, inject, onCleanup } from '@nisli/core';
+import { DiffBlock } from '../diff/index.js';
 import { AppState } from '../services/app-state.js';
 import { SplitPaneState } from '../services/split-pane-state.js';
 import { backlogEvents, type ChangeCallback } from '../services/event-source-client.js';
@@ -30,13 +29,11 @@ import {
   getToolLabel,
   getToolIcon,
   mergeConsecutiveEdits,
-  operationToDiff,
   type OperationEntry,
   type TaskGroup,
   type JournalEntry,
   type EpicGroup,
 } from './activity-utils.js';
-import type { EditOperation } from '@backlog-mcp/shared';
 
 type ViewMode = 'timeline' | 'journal';
 
@@ -213,42 +210,10 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
         </div>
       `);
     } else if (op.tool === 'write_resource') {
-      const diffHtml = renderDiffHtml(op);
-      if (diffHtml) {
-        parts.push(html`<div class="activity-diff" html:inner="${signal(diffHtml)}"></div>`);
-      }
+      parts.push(html`<div class="activity-diff">${DiffBlock({ operation: signal(op) })}</div>`);
     }
 
     return html`<div class="activity-expanded" @click.stop=${() => {}}>${parts}</div>`;
-  }
-
-  function getDiff2HtmlOpts() {
-    const dark = document.documentElement.getAttribute('data-theme') !== 'light';
-    return {
-      drawFileList: false, matching: 'lines' as const,
-      outputFormat: 'line-by-line' as const, diffStyle: 'word' as const,
-      colorScheme: dark ? ColorSchemeType.DARK : ColorSchemeType.LIGHT,
-    };
-  }
-
-  function renderDiffHtml(op: OperationEntry): string | null {
-    const mergedOps = op.params._mergedOps as OperationEntry[] | undefined;
-    const filename = op.targetFilename ?? 'file';
-
-    if (mergedOps && mergedOps.length > 1) {
-      let combinedDiff = '';
-      for (const mergedOp of [...mergedOps].reverse()) {
-        const operation = mergedOp.params.operation as EditOperation;
-        const diff = operationToDiff(operation, filename);
-        if (diff) combinedDiff += diff + '\n';
-      }
-      return combinedDiff ? Diff2Html.html(combinedDiff, getDiff2HtmlOpts()) : null;
-    } else if (op.params.operation) {
-      const operation = op.params.operation as EditOperation;
-      const diff = operationToDiff(operation, filename);
-      return diff ? Diff2Html.html(diff, getDiff2HtmlOpts()) : null;
-    }
-    return null;
   }
 
   function renderOperation(op: OperationEntry) {

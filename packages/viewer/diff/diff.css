@@ -1,0 +1,68 @@
+/* diff/diff.css — Diff viewer styles using Tsa design tokens */
+
+.diff-block {
+  border-radius: var(--t-radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--t-border);
+}
+
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--t-font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.diff-row {
+  border: none;
+}
+
+.diff-gutter {
+  width: 40px;
+  min-width: 40px;
+  padding: 0 8px;
+  text-align: right;
+  color: var(--t-fg-muted);
+  user-select: none;
+  vertical-align: top;
+  opacity: 0.5;
+}
+
+.diff-code {
+  padding: 0 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.diff-context .diff-code {
+  color: var(--t-fg);
+}
+
+.diff-add {
+  background: var(--t-diff-add-bg);
+}
+
+.diff-add .diff-code {
+  color: var(--t-diff-add-fg);
+}
+
+.diff-del {
+  background: var(--t-diff-del-bg);
+}
+
+.diff-del .diff-code {
+  color: var(--t-diff-del-fg);
+}
+
+.diff-inline-add {
+  background: var(--t-diff-add-inline);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.diff-inline-del {
+  background: var(--t-diff-del-inline);
+  border-radius: 2px;
+  padding: 0 1px;
+}

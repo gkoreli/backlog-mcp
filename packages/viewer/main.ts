@@ -3,7 +3,7 @@ import './markdown/shiki.css';
 import './markdown/github-dark.css';
 import './markdown/github-light.css';
 import './styles.css';
-import 'diff2html/bundles/css/diff2html.min.css';
+import './diff/diff.css';
 import './components/svg-icon.js';
 import './components/task-filter-bar.js';
 import './components/task-list.js';
