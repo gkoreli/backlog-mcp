@@ -37,14 +37,16 @@ function normalizeNumericKey(
   }).join('.');
 }
 
-function claimPathKey(
+function storageKey(
   pathKey: string,
   identity: StorageIdentityPolicy,
 ): string | undefined {
   const digits = rootDigits(pathKey, identity);
   if (!digits) return undefined;
   if (digits.length < (identity.minimumDigits ?? 1)) return undefined;
-  return normalizeNumericKey(pathKey, identity);
+  return identity.strategy === 'prefixed-number' && identity.prefix
+    ? pathKey.slice(identity.prefix.length + 1)
+    : pathKey;
 }
 
 function isWithinFolder(sourcePath: string, folder: string): boolean {
@@ -61,12 +63,13 @@ function claimDocument(
   for (const substrate of substrates) {
     const claim = substrate.storageClaim;
     if (!isWithinFolder(document.sourcePath, claim.folder)) continue;
-    const semanticKey = claimPathKey(pathKey, claim.identity);
-    if (!semanticKey) continue;
+    const claimedStorageKey = storageKey(pathKey, claim.identity);
+    if (!claimedStorageKey) continue;
     return {
       document,
       type: claim.type,
-      semanticKey,
+      storageKey: claimedStorageKey,
+      semanticKey: normalizeNumericKey(pathKey, claim.identity),
     };
   }
   return undefined;

@@ -8,6 +8,10 @@ import {
 import type { Entity, EntityType, Status } from '@backlog-mcp/shared';
 import { describe, expect, it } from 'vitest';
 import { createBacklogHome } from '../core/backlog-home.js';
+import {
+  createBuiltinSubstrateRegistrations,
+  loadProjectSubstrateDefinitions,
+} from '../core/substrates/index.js';
 import { ResourceManager } from '../resources/manager.js';
 import { BacklogService } from '../storage/local/backlog-service.js';
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
@@ -261,10 +265,12 @@ describe('BacklogService composition', function describeComposition() {
     const root = uniquePath('docs-native-home');
     mkdirSync(join(root, 'docs'), { recursive: true });
     const home = createBacklogHome({ kind: 'project', root });
-    const docsStorage = new DocsNativeFilesystemStorage(
-      home,
-      new BuiltinSubstrateStorageCatalog(),
-    );
+    const catalog = new BuiltinSubstrateStorageCatalog();
+    const registry = loadProjectSubstrateDefinitions(
+      [],
+      createBuiltinSubstrateRegistrations(catalog),
+    ).registry;
+    const docsStorage = new DocsNativeFilesystemStorage(home, registry);
     const typedEntity = createEntity({
       id: 'TASK-0004',
       title: 'Typed marker entity',

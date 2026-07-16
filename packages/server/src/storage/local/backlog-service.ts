@@ -1,9 +1,12 @@
 import { join } from 'node:path';
 import {
+  EntityType,
+  STATUSES,
   nextEntityId,
+  type AnyEntity,
   type Entity,
   type Status,
-  type EntityType,
+  type SubstrateType,
 } from '@backlog-mcp/shared';
 import { FilesystemStorage } from './filesystem-storage.js';
 import type {
@@ -18,6 +21,10 @@ import {
 import { resourceManager } from '../../resources/manager.js';
 import { paths } from '../../utils/paths.js';
 import { logger } from '../../utils/logger.js';
+import {
+  asBuiltinEntity,
+  isBuiltinSubstrateType,
+} from '../../core/substrates/index.js';
 import type { IBacklogService } from '../backlog-service.contract.js';
 import type {
   BacklogReconciliationResult,
@@ -38,6 +45,17 @@ function isDocumentStorageAdapter(
     && typeof storageAdapter.iterateDocuments === 'function';
 }
 
+function builtinStatuses(statuses: readonly string[] | undefined): Status[] | undefined {
+  if (statuses === undefined) return undefined;
+  const allowed = new Set<string>(STATUSES);
+  if (statuses.some(function isUnknownStatus(status) {
+    return !allowed.has(status);
+  })) {
+    return undefined;
+  }
+  return statuses as Status[];
+}
+
 /**
  * Typed entity Markdown is indexed through the entity collection. Excluding
  * its source path here prevents one document from appearing again as a
@@ -50,11 +68,13 @@ function listIndexableResources(
   const resources = manager.list();
   if (!isDocumentStorageAdapter(storageAdapter)) return resources;
 
-  const entitySourcePaths = new Set(
-    Array.from(storageAdapter.iterateDocuments(), function getSourcePath(document) {
-      return document.sourcePath;
-    }),
-  );
+  const entitySourcePaths = new Set(Array.from(
+    storageAdapter.iterateDocuments(),
+  ).flatMap(function getCompiledSourcePath(document) {
+    return asBuiltinEntity(document.entity) === undefined
+      ? []
+      : [document.sourcePath];
+  }));
   return resources.filter(function isGenericResource(resource) {
     return !entitySourcePaths.has(resource.path);
   });
@@ -131,7 +151,12 @@ export class BacklogService implements IBacklogService {
    * drift are repaired together, including stale removals and native edits.
    */
   async reconcile(): Promise<BacklogReconciliationResult> {
-    const allEntities = Array.from(this.storage.iterateEntities());
+    const allEntities = Array.from(this.storage.iterateEntities()).flatMap(
+      function getBuiltinEntity(entity) {
+        const builtin = asBuiltinEntity(entity);
+        return builtin === undefined ? [] : [builtin];
+      },
+    );
     if (!this.searchReady) {
       await this.search.index(allEntities);
     }
@@ -162,11 +187,11 @@ export class BacklogService implements IBacklogService {
     return this.storage.getFilePath(id);
   }
 
-  getSync(id: string): Entity | undefined {
+  getSync(id: string): AnyEntity | undefined {
     return this.storage.get(id);
   }
 
-  async get(id: string): Promise<Entity | undefined> {
+  async get(id: string): Promise<AnyEntity | undefined> {
     return this.storage.get(id);
   }
 
@@ -174,13 +199,31 @@ export class BacklogService implements IBacklogService {
     return this.storage.getMarkdown(id);
   }
 
-  async list(filter?: { status?: Status[]; type?: EntityType; epic_id?: string; parent_id?: string; query?: string; limit?: number }): Promise<Entity[]> {
+  async list(filter?: {
+    status?: string[];
+    type?: SubstrateType;
+    parent_id?: string;
+    query?: string;
+    limit?: number;
+  }): Promise<AnyEntity[]> {
     const { query, ...storageFilter } = filter ?? {};
 
     if (query) {
+      if (
+        storageFilter.type !== undefined
+        && !isBuiltinSubstrateType(storageFilter.type)
+      ) {
+        return [];
+      }
+      const status = builtinStatuses(storageFilter.status);
+      if (storageFilter.status !== undefined && status === undefined) return [];
       await this.ensureSearchReady();
       const results = await this.search.search(query, {
-        filters: { status: storageFilter.status, type: storageFilter.type, epic_id: storageFilter.epic_id, parent_id: storageFilter.parent_id },
+        filters: {
+          status,
+          type: storageFilter.type,
+          parent_id: storageFilter.parent_id,
+        },
         limit: storageFilter.limit,
       });
       return results.map(r => ({ ...r.task, score: r.score }));
@@ -247,22 +290,30 @@ export class BacklogService implements IBacklogService {
     return this.search.isHybridSearchActive();
   }
 
-  async add(task: Entity): Promise<void> {
-    this.storage.add(task);
-    if (this.searchReady) {
-      this.search.addDocument(task);
-    } else {
-      this.pendingOps.push({ op: 'add', entity: task });
+  async add(candidate: AnyEntity): Promise<AnyEntity> {
+    const entity = this.storage.add(candidate);
+    const builtin = asBuiltinEntity(entity);
+    if (builtin !== undefined) {
+      if (this.searchReady) {
+        this.search.addDocument(builtin);
+      } else {
+        this.pendingOps.push({ op: 'add', entity: builtin });
+      }
     }
+    return entity;
   }
 
-  async save(task: Entity): Promise<void> {
-    this.storage.save(task);
-    if (this.searchReady) {
-      this.search.updateDocument(task);
-    } else {
-      this.pendingOps.push({ op: 'update', entity: task });
+  async save(candidate: AnyEntity): Promise<AnyEntity> {
+    const entity = this.storage.save(candidate);
+    const builtin = asBuiltinEntity(entity);
+    if (builtin !== undefined) {
+      if (this.searchReady) {
+        this.search.updateDocument(builtin);
+      } else {
+        this.pendingOps.push({ op: 'update', entity: builtin });
+      }
     }
+    return entity;
   }
 
   async delete(id: string): Promise<boolean> {
@@ -288,19 +339,29 @@ export class BacklogService implements IBacklogService {
    *
    * For search-based listing, use the async list() method instead.
    */
-  listSync(filter?: { status?: Status[]; type?: EntityType; parent_id?: string; limit?: number }): Entity[] {
+  listSync(filter?: {
+    status?: string[];
+    type?: SubstrateType;
+    parent_id?: string;
+    limit?: number;
+  }): AnyEntity[] {
     return this.storage.list(filter);
   }
 
-  async getMaxId(type?: EntityType): Promise<number> {
+  async getMaxId(type: SubstrateType = EntityType.Task): Promise<number> {
     return this.storage.getMaxId(type);
   }
 
   /** Allocate an id through this runtime's storage identity policy. */
-  async allocateId(type: EntityType): Promise<string> {
+  async allocateId(type: SubstrateType): Promise<string> {
     const currentMaxId = await this.getMaxId(type);
-    return this.allocateEntityId?.(type, currentMaxId)
-      ?? nextEntityId(currentMaxId, type);
+    if (this.allocateEntityId !== undefined) {
+      return this.allocateEntityId(type, currentMaxId);
+    }
+    if (!isBuiltinSubstrateType(type)) {
+      throw new Error(`No storage identity allocator for substrate type: ${type}`);
+    }
+    return nextEntityId(currentMaxId, type);
   }
 
   flush(): void {

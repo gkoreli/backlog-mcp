@@ -1,4 +1,9 @@
 export { claimSubstrateDocuments } from './claim-substrate-documents.js';
+export {
+  asBuiltinEntity,
+  isBuiltinSubstrateType,
+} from './builtin-entity.js';
+export { SubstrateWriteError } from './substrate-write-error.js';
 export { compileSubstrateDefinition } from './compile-substrate-definition.js';
 export {
   createBuiltinSubstrateRegistrations,

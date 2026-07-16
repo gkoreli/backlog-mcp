@@ -9,7 +9,12 @@
  * - delete: returns { id, deleted } so caller knows if it existed
  * - edit: returns { success, error? } for operation failures (expected outcome, not exceptional)
  */
-import type { Status, EntityType, Reference, EditOperation } from '@backlog-mcp/shared';
+import type {
+  EditOperation,
+  Reference,
+  Status,
+  SubstrateType,
+} from '@backlog-mcp/shared';
 import type { MemoryComposer, MemoryLayer } from '@backlog-mcp/memory';
 import type { ResourceContent } from '../resources/manager.js';
 import type { Actor, IOperationLog } from '../operations/types.js';
@@ -74,9 +79,8 @@ export class ValidationError extends Error {
 // ── List ──
 
 export interface ListParams {
-  status?: Status[];
-  type?: EntityType;
-  epic_id?: string;
+  status?: string[];
+  type?: SubstrateType;
   parent_id?: string;
   query?: string;
   counts?: boolean;
@@ -86,7 +90,7 @@ export interface ListParams {
 export interface ListItem {
   id: string;
   title: string;
-  status?: Status;
+  status?: string;
   type: string;
   parent_id?: string;
 }
@@ -133,10 +137,10 @@ export interface GetResult {
 export interface CreateParams {
   title: string;
   content?: string;
-  type?: EntityType;
-  epic_id?: string;
+  type?: SubstrateType;
   parent_id?: string;
   references?: Reference[];
+  fields?: Record<string, unknown>;
   // Cron-only fields (validated in core/create.ts)
   schedule?: string;
   command?: string;
@@ -152,9 +156,9 @@ export interface CreateResult {
 export interface UpdateParams {
   id: string;
   title?: string;
-  status?: Status;
-  epic_id?: string | null;
+  status?: string;
   parent_id?: string | null;
+  fields?: Record<string, unknown>;
   blocked_reason?: string[];
   evidence?: string[];
   references?: Reference[];

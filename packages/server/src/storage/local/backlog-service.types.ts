@@ -1,5 +1,5 @@
 import type { OramaSearchService } from '@backlog-mcp/memory/search';
-import type { EntityType } from '@backlog-mcp/shared';
+import type { SubstrateType } from '@backlog-mcp/shared';
 import type { ResourceManager } from '../../resources/manager.js';
 import type { StorageAdapter } from '../storage-adapter.js';
 
@@ -8,7 +8,7 @@ export interface BacklogServiceDependencies {
   storage: StorageAdapter;
   search: OramaSearchService;
   resourceManager: ResourceManager;
-  allocateId?: (type: EntityType, currentMaxId: number) => string;
+  allocateId?: (type: SubstrateType, currentMaxId: number) => string;
 }
 
 /** Drift repaired for one search-index document family. */

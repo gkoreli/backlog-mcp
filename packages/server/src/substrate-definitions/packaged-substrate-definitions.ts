@@ -26,8 +26,6 @@ function canonicalDocumentSchema(
       'type',
       'title',
       'content',
-      'created_at',
-      'updated_at',
       ...required,
     ],
     ...(allOf.length === 0 ? {} : { allOf }),

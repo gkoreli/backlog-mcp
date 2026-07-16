@@ -1,6 +1,7 @@
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { ValidationError, type GetParams, type GetResult, type GetItem } from './types.js';
 import { composeContextStubs, type ComposeContextDeps } from './get-context/index.js';
+import { asBuiltinEntity } from './substrates/index.js';
 
 function isResourceUri(id: string): boolean {
   return id.startsWith('mcp://backlog/');
@@ -16,8 +17,14 @@ function contextDeps(service: IBacklogService): ComposeContextDeps | null {
   const listSync = service.listSync?.bind(service);
   if (!getSync || !listSync) return null;
   return {
-    getTask: (id) => getSync(id),
-    listTasks: (filter) => listSync(filter),
+    getTask: (id) => {
+      const entity = getSync(id);
+      return entity === undefined ? undefined : asBuiltinEntity(entity);
+    },
+    listTasks: (filter) => listSync(filter).flatMap(function getBuiltin(entity) {
+      const builtin = asBuiltinEntity(entity);
+      return builtin === undefined ? [] : [builtin];
+    }),
     searchUnified: (q, options) => service.searchUnified(q, options),
   };
 }

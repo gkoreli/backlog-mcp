@@ -108,6 +108,9 @@ export type LoadSubstrateDefinitionsResult = CreateProjectSubstrateRegistryResul
 export interface ClaimedSubstrateDocument {
   document: DiscoveredDocument;
   type: string;
+  /** Canonical path key with declared digit width retained for display formatting. */
+  storageKey: string;
+  /** Width-insensitive key used only for semantic collision detection. */
   semanticKey: string;
 }
 
