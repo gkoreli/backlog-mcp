@@ -5,6 +5,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   readdirSync,
   renameSync,
   rmSync,
@@ -73,6 +74,14 @@ const REQUIRED_MODEL_CACHE_FILES = [
 
 function fail(message) {
   throw new Error(message);
+}
+
+function canonicalPath(filePath) {
+  const absolutePath = resolve(filePath);
+  if (existsSync(absolutePath)) return realpathSync(absolutePath);
+  const parentPath = dirname(absolutePath);
+  if (parentPath === absolutePath) return absolutePath;
+  return join(canonicalPath(parentPath), basename(absolutePath));
 }
 
 function isRecord(value) {
@@ -793,10 +802,10 @@ function loadProductCorpus(args, runtime) {
   const entitySourcePaths = new Set(storedDocuments.map(function sourcePath(stored) {
     return stored.sourcePath;
   }));
-  const outputPath = resolve(args.output);
+  const outputPath = canonicalPath(args.output);
   const resourceManager = new runtime.ResourceManager(home.documentsDir);
   const resources = resourceManager.list().filter(function excludeDerivedInputs(resource) {
-    const absolutePath = resolve(home.documentsDir, resource.path);
+    const absolutePath = canonicalPath(resolve(home.documentsDir, resource.path));
     return !entitySourcePaths.has(resource.path) && absolutePath !== outputPath;
   });
   const ids = new Set();
@@ -911,6 +920,7 @@ async function main() {
           count: corpus.ids.size,
           entity_count: corpus.entityDocuments.length,
           resource_count: corpus.resources.length,
+          excluded_output_path: canonicalPath(args.output),
           entity_types: countEntityTypes(corpus.entityDocuments),
         },
         queries: { path: args.queries, sha256: sha256(queryInput.raw), count: queries.length },
