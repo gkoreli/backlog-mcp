@@ -276,6 +276,11 @@ describe('LocalRuntime', function describeLocalRuntime() {
         matched_fields: ['summary'],
       },
     });
+    expect(searchResults[0]?.item).not.toHaveProperty('status');
+    expect(await runtime.service.searchUnified(
+      'Updated summary',
+      { status: ['open'] },
+    )).toEqual([]);
     expect(await runtime.service.searchUnified('hiddenambermarker')).toEqual([]);
     expect(await runtime.service.searchUnified(
       'undeclaredcontentmarker',
@@ -524,6 +529,17 @@ describe('LocalRuntime', function describeLocalRuntime() {
       join(home.documentsDir, 'notes/native.md'),
       '# Native note\n\ngenericnativeopal',
     );
+    writeFileSync(
+      join(home.documentsDir, 'tasks/TASK-0003-malformed.md'),
+      [
+        '---',
+        'title: [unterminated',
+        '---',
+        '# Malformed task',
+        '',
+        'malformedclaimmarker',
+      ].join('\n'),
+    );
 
     await watcher.emit();
 
@@ -534,6 +550,9 @@ describe('LocalRuntime', function describeLocalRuntime() {
     expect(typedResults[0]?.type).toBe('task');
     expect((await runtime.service.searchUnified(
       'genericnativeopal',
+    ))[0]?.type).toBe('resource');
+    expect((await runtime.service.searchUnified(
+      'malformedclaimmarker',
     ))[0]?.type).toBe('resource');
 
     await runtime.stop();

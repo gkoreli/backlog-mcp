@@ -1191,6 +1191,18 @@ The important consequences are:
   `get(context: true)` stubs per ADR 0114; do not create a Requirement-only retrieval
   stack.
 
+Phase C keeps four search-boundary semantics explicit:
+
+1. Generic filtered lists continue to exclude Memory; only an explicit Memory request
+   may surface that private corpus.
+2. A malformed document in a claimed folder remains searchable as a generic resource,
+   preserving ADR 0112's lossless-read posture instead of disappearing.
+3. `parent_id` is the sole canonical containment filter. The retired `epic_id` alias is
+   not carried into the runtime substrate API.
+4. Runtime type and status filters accept strings because project definitions supply
+   their vocabulary. An unknown value therefore returns no matches. A substrate with
+   no declared status indexes the empty facet and never fabricates Task's `open` state.
+
 ### Phase D — semantic intents and viewer registry
 
 - Add `packages/server/src/core/substrates/execute-substrate-intent.ts` for the safe

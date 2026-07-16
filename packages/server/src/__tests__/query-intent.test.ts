@@ -13,7 +13,7 @@ import {
   extractLeadingFilters,
   OramaSearchService,
 } from '@backlog-mcp/memory/search';
-import type { Entity } from '@backlog-mcp/shared';
+import type { Entity, Memory } from '@backlog-mcp/shared';
 import { searchDocuments } from './helpers/search-document.js';
 
 let cacheCounter = 0;
@@ -262,6 +262,36 @@ describe('OramaSearchService.searchAll: intent routing', () => {
     const results = await svc.searchAll('blocked tasks', { limit: 10 });
     const ids = results.map(r => r.id).sort();
     expect(ids).toEqual(['TASK-0002', 'TASK-0003']);
+  });
+
+  it('keeps memories out of generic filtered lists unless explicitly requested', async () => {
+    const svc = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
+    const memory: Memory = {
+      id: 'MEMO-0001',
+      type: 'memory',
+      title: 'Private project memory',
+      content: 'Memory-only context',
+      layer: 'semantic',
+      created_at: '2026-05-01T00:00:00.000Z',
+      updated_at: '2026-05-01T00:00:00.000Z',
+    };
+    await svc.index(searchDocuments([
+      makeEntity({ id: 'TASK-0001', title: 'Open work', status: 'open' }),
+      memory,
+    ]));
+
+    function resultId(result: { id: string }): string {
+      return result.id;
+    }
+
+    // BacklogService supplies an options object whose absent filter values are
+    // undefined. That still exercises the no-BM25 filtered-list branch.
+    expect((await svc.searchAll('open', {
+      limit: 10,
+      filters: { status: undefined },
+    })).map(resultId)).toEqual(['TASK-0001']);
+    expect((await svc.searchAll('memories', { limit: 10 })).map(resultId))
+      .toEqual(['MEMO-0001']);
   });
 
   it('filtered intent with residual text runs BM25 scoped to filter', async () => {
