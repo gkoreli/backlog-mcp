@@ -57,8 +57,11 @@ export interface ContextResource {
 export interface ContextStub {
   id: string;
   title: string;
-  status?: Status;
-  type: EntityType;
+  status?: string;
+  /** Open substrate type — builtin (task/epic/...) or runtime (adr/requirement/...). */
+  type: string;
+  /** Compliance — present only on requirement stubs (ADR 0113.1 R-3): a violated constraint reads red without hydration. */
+  compliance?: string;
   /** Relevance score — present only for semantically discovered stubs. */
   relevance_score?: number;
   /** Hops from the focal entity — present only for depth-2 relations. */
@@ -83,4 +86,11 @@ export interface ContextStubs {
   ancestors?: ContextStub[];
   /** Descendants beyond direct children — depth 2 only. */
   descendants?: ContextStub[];
+  /**
+   * Typed relations declared as frontmatter fields (ADR 0113.1 R-3), keyed
+   * by role — forward roles use the declared field name (respects, spawned,
+   * violated_by…), reverse roles the computed counterpart (respected_by,
+   * spawned_by…). Omitted when no typed relations touch the focal entity.
+   */
+  relations?: Record<string, ContextStub[]>;
 }

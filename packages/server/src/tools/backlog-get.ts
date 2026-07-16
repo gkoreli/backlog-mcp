@@ -13,6 +13,9 @@ export interface BacklogGetDeps {
 function formatStub(stub: ContextStub): string {
   const parts = [stub.id, stub.type];
   if (stub.status) parts.push(stub.status);
+  // Compliance reads red in place (ADR 0113.1 R-3) — a violated requirement
+  // must be visible in the relation list itself, before any hydration.
+  if (stub.compliance) parts.push(stub.compliance === 'violated' ? '⚠ violated' : stub.compliance);
   let line = `- ${parts.join(' · ')} — ${stub.title}`;
   if (stub.graph_depth !== undefined) line += ` (depth ${stub.graph_depth})`;
   return line;
@@ -33,6 +36,11 @@ function formatContext(context: ContextStubs): string {
   ];
   for (const [role, stubs] of groups) {
     if (stubs?.length) sections.push(`${role} (${stubs.length}):\n${stubs.map(formatStub).join('\n')}`);
+  }
+  // Typed relations (ADR 0113.1 R-3) — declared frontmatter edges
+  // (respects/violates/spawned/…), forward and computed-reverse.
+  for (const [role, stubs] of Object.entries(context.relations ?? {})) {
+    if (stubs.length) sections.push(`${role} (${stubs.length}):\n${stubs.map(formatStub).join('\n')}`);
   }
   return sections.join('\n\n');
 }

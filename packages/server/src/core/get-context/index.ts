@@ -8,3 +8,5 @@ export type { CrossReferenceTraversalDeps, CrossReferenceTraversalResult } from 
 export { enrichSemantic } from './semantic-enrichment.js';
 export type { SemanticEnrichmentDeps, SemanticEnrichmentResult } from './semantic-enrichment.js';
 export type { ContextStub, ContextStubs, ContextEntity, ContextResource, Fidelity } from './types.js';
+export { traverseTypedRelations } from './typed-relations.js';
+export type { TypedRelationDeps } from './typed-relations.js';
