@@ -59,6 +59,7 @@ export function createBuiltinSubstrateRegistrations(
       kind: 'compiled',
       sourcePath: `builtin:${type}@compiled`,
       type,
+      intents: [],
       storageClaim,
       validateWrite: function validateWrite(candidate) {
         return validateBuiltin(type, candidate);

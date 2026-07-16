@@ -263,6 +263,430 @@ describe('compileSubstrateDefinition', function describeCompiler() {
     expect(withoutDefault).not.toHaveProperty('status');
   });
 
+  it('compiles semantic intents into resolved names, bindings, and mechanics', () => {
+    const schema = {
+      ...BASE_SCHEMA,
+      properties: {
+        ...BASE_SCHEMA.properties,
+        content: { type: 'string', maxLength: 2_000 },
+        status: {
+          type: 'string',
+          enum: ['proposed', 'accepted', 'superseded'],
+        },
+        evidence: {
+          type: 'array',
+          items: { type: 'string', maxLength: 200 },
+          maxItems: 20,
+        },
+        enabled: { type: 'boolean' },
+        supersedes: {
+          type: 'array',
+          items: { type: 'string', maxLength: 200 },
+          maxItems: 20,
+        },
+      },
+    };
+    const result = compile({
+      ...(createDefinition(schema) as Record<string, unknown>),
+      workflow: {
+        field: 'status',
+        initial: ['proposed'],
+        terminal: ['superseded'],
+        transitions: [
+          {
+            name: 'accept',
+            from: ['proposed'],
+            to: 'accepted',
+          },
+          {
+            name: 'supersede',
+            from: ['accepted'],
+            to: 'superseded',
+          },
+        ],
+      },
+      relations: {
+        supersedes: {
+          targets: ['adr'],
+          cardinality: 'many',
+        },
+      },
+      intents: [
+        {
+          verb: 'propose',
+          operation: 'create',
+          description: 'Propose one ADR.',
+          requiredInputs: ['title', 'content'],
+          defaults: { status: 'proposed' },
+        },
+        {
+          verb: 'accept',
+          operation: 'transition',
+          description: 'Accept one ADR.',
+          requiredInputs: ['id'],
+          optionalInputs: ['evidence'],
+          transition: 'accept',
+        },
+        {
+          verb: 'pause',
+          operation: 'set-field',
+          description: 'Pause one ADR-shaped fixture.',
+          requiredInputs: ['id'],
+          field: 'enabled',
+          value: false,
+        },
+        {
+          verb: 'supersede',
+          operation: 'relate-and-transition',
+          description: 'Supersede an older ADR.',
+          requiredInputs: ['replacement_id', 'superseded_id'],
+          relation: 'supersedes',
+          sourceInput: 'replacement_id',
+          targetInput: 'superseded_id',
+          targetTransition: 'supersede',
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    if (!result.ok) return;
+    expect(result.substrate.intents.map(function intentName(intent) {
+      return intent.toolName;
+    })).toEqual([
+      'backlog_propose_adr',
+      'backlog_accept_adr',
+      'backlog_pause_adr',
+      'backlog_supersede_adr',
+    ]);
+    expect(result.substrate.intents[0]?.operation).toEqual({
+      kind: 'create',
+      fields: [
+        { input: 'title', field: 'title' },
+        { input: 'content', field: 'content' },
+      ],
+      fixedFields: { status: 'proposed' },
+    });
+    expect(result.substrate.intents[1]?.operation).toEqual({
+      kind: 'transition',
+      subjectInput: 'id',
+      transition: {
+        field: 'status',
+        from: ['proposed'],
+        to: 'accepted',
+      },
+      fields: [{ input: 'evidence', field: 'evidence' }],
+    });
+    expect(result.substrate.intents[2]?.operation).toEqual({
+      kind: 'set-field',
+      subjectInput: 'id',
+      field: 'enabled',
+      value: false,
+    });
+    expect(result.substrate.intents[3]?.operation).toEqual({
+      kind: 'relate-and-transition',
+      sourceInput: 'replacement_id',
+      targetInput: 'superseded_id',
+      relation: {
+        field: 'supersedes',
+        cardinality: 'many',
+        targets: ['adr'],
+      },
+      targetTransition: {
+        field: 'status',
+        from: ['accepted'],
+        to: 'superseded',
+      },
+    });
+    expect(result.substrate.intents[0]?.intentInputSchema.parse({
+      title: 'Use compiled intents',
+      content: 'Decision body',
+    })).toEqual({
+      title: 'Use compiled intents',
+      content: 'Decision body',
+    });
+    expect(result.substrate.intents[3]?.intentInputSchema.safeParse({
+      replacement_id: '0002',
+      superseded_id: '0001',
+      extra: true,
+    }).success).toBe(false);
+  });
+
+  it('lowers exposed defaults into input parsing and keeps fixed fields unoverrideable', () => {
+    const schema = {
+      ...BASE_SCHEMA,
+      properties: {
+        ...BASE_SCHEMA.properties,
+        status: {
+          type: 'string',
+          enum: ['intake', 'done'],
+        },
+        compliance: {
+          type: 'string',
+          enum: ['unchecked', 'satisfied'],
+        },
+      },
+    };
+    const result = compile({
+      ...(createDefinition(schema) as Record<string, unknown>),
+      intents: [{
+        verb: 'capture',
+        toolName: 'backlog_capture_requirement',
+        operation: 'create',
+        description: 'Capture one requirement.',
+        requiredInputs: ['title'],
+        optionalInputs: ['status'],
+        defaults: {
+          status: 'intake',
+          compliance: 'unchecked',
+        },
+      }],
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    if (!result.ok) return;
+    const intent = result.substrate.intents[0];
+    expect(intent?.intentInputSchema.parse({ title: 'Protect the vision' })).toEqual({
+      title: 'Protect the vision',
+      status: 'intake',
+    });
+    expect(intent?.operation).toEqual({
+      kind: 'create',
+      fields: [
+        { input: 'title', field: 'title' },
+        { input: 'status', field: 'status' },
+      ],
+      fixedFields: {
+        compliance: 'unchecked',
+      },
+    });
+  });
+
+  it('rejects generated tool names that exceed the explicit name contract', () => {
+    const type = `a${'b'.repeat(63)}`;
+    const verb = `v${'e'.repeat(79)}`;
+    const schema = {
+      ...BASE_SCHEMA,
+      properties: {
+        ...BASE_SCHEMA.properties,
+        type: { const: type },
+      },
+    };
+    const result = compile({
+      ...(createDefinition(schema) as Record<string, unknown>),
+      type,
+      intents: [{
+        verb,
+        operation: 'create',
+        description: 'Generated name is too long.',
+        requiredInputs: ['title'],
+      }],
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostic: {
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            path: '/intents/0/toolName',
+            message: expect.stringContaining('at most 128 characters'),
+          }),
+        ]),
+      },
+    });
+  });
+
+  it('resolves local relation item schemas and rejects non-string target arrays', () => {
+    const relationIntent = {
+      verb: 'link',
+      operation: 'append-relation',
+      description: 'Link two ADRs.',
+      requiredInputs: ['source_id', 'target_id'],
+      relation: 'links',
+      sourceInput: 'source_id',
+      targetInput: 'target_id',
+    };
+    const relation = {
+      links: {
+        targets: ['adr'],
+        cardinality: 'many',
+      },
+    };
+    const referencedSchema = {
+      ...BASE_SCHEMA,
+      properties: {
+        ...BASE_SCHEMA.properties,
+        links: { $ref: '#/$defs/linkList' },
+      },
+      $defs: {
+        linkList: {
+          anyOf: [
+            {
+              type: 'array',
+              items: { $ref: '#/$defs/entityId' },
+              maxItems: 20,
+            },
+            { type: 'null' },
+          ],
+        },
+        entityId: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 200,
+        },
+      },
+    };
+    expect(compile({
+      ...(createDefinition(referencedSchema) as Record<string, unknown>),
+      relations: relation,
+      intents: [relationIntent],
+    })).toMatchObject({ ok: true });
+
+    const numericSchema = {
+      ...BASE_SCHEMA,
+      properties: {
+        ...BASE_SCHEMA.properties,
+        links: {
+          type: 'array',
+          items: { type: 'number' },
+          maxItems: 20,
+        },
+      },
+    };
+    expect(compile({
+      ...(createDefinition(numericSchema) as Record<string, unknown>),
+      relations: relation,
+      intents: [relationIntent],
+    })).toMatchObject({
+      ok: false,
+      diagnostic: {
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            path: '/relations/links/cardinality',
+            message: expect.stringContaining('array of string entity IDs'),
+          }),
+        ]),
+      },
+    });
+  });
+
+  it.each([
+    {
+      name: 'required and optional input overlap',
+      intent: {
+        verb: 'capture',
+        operation: 'create',
+        description: 'Invalid overlap.',
+        requiredInputs: ['title'],
+        optionalInputs: ['title'],
+      },
+    },
+    {
+      name: 'set-field targets workflow state',
+      workflow: {
+        field: 'status',
+        initial: ['open'],
+        transitions: [],
+      },
+      intent: {
+        verb: 'pause',
+        operation: 'set-field',
+        description: 'Invalid workflow mutation.',
+        requiredInputs: ['id'],
+        field: 'status',
+        value: 'done',
+      },
+    },
+    {
+      name: 'two-entity selectors are ambiguous',
+      relations: {
+        supersedes: {
+          targets: ['adr'],
+          cardinality: 'many',
+        },
+      },
+      intent: {
+        verb: 'supersede',
+        operation: 'relate-and-transition',
+        description: 'Invalid selectors.',
+        requiredInputs: ['replacement_id'],
+        relation: 'supersedes',
+        sourceInput: 'replacement_id',
+        targetInput: 'replacement_id',
+        targetTransition: 'supersede',
+      },
+    },
+    {
+      name: 'required input also declares a default',
+      intent: {
+        verb: 'capture',
+        operation: 'create',
+        description: 'Invalid required default.',
+        requiredInputs: ['title'],
+        defaults: {
+          title: 'Compiler-owned title',
+        },
+      },
+    },
+    {
+      name: 'fixed field targets server-owned identity',
+      intent: {
+        verb: 'capture',
+        operation: 'create',
+        description: 'Invalid fixed identity.',
+        requiredInputs: ['title'],
+        defaults: {
+          id: '0001',
+        },
+      },
+    },
+    {
+      name: 'relation operation exposes a non-selector input',
+      relations: {
+        supersedes: {
+          targets: ['adr'],
+          cardinality: 'many',
+        },
+      },
+      intent: {
+        verb: 'link',
+        operation: 'append-relation',
+        description: 'Invalid relation payload.',
+        requiredInputs: ['source_id', 'target_id'],
+        optionalInputs: ['title'],
+        relation: 'supersedes',
+        sourceInput: 'source_id',
+        targetInput: 'target_id',
+      },
+    },
+  ])('rejects invalid intent plan: $name', ({ workflow, relations, intent }) => {
+    const schema = {
+      ...BASE_SCHEMA,
+      properties: {
+        ...BASE_SCHEMA.properties,
+        status: { type: 'string', enum: ['open', 'done'] },
+        supersedes: {
+          type: 'array',
+          items: { type: 'string' },
+          maxItems: 10,
+        },
+      },
+    };
+    const result = compile({
+      ...(createDefinition(schema) as Record<string, unknown>),
+      ...(workflow === undefined ? {} : { workflow }),
+      ...(relations === undefined ? {} : { relations }),
+      intents: [intent],
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostic: {
+        issues: expect.arrayContaining([
+          expect.objectContaining({ path: expect.stringContaining('/intents/0') }),
+        ]),
+      },
+    });
+  });
+
   it('allows resolved local definitions and rejects remote, unresolved, and cyclic refs', () => {
     const localSchema = {
       ...BASE_SCHEMA,

@@ -353,6 +353,14 @@ declaration. Examples:
 - `backlog_capture_requirement`;
 - `backlog_capture_prompt`.
 
+Compilation resolves the complete consumer contract. It owns the final tool name,
+builds a strict intent-only Zod input object, lowers invocation fields into explicit
+input-to-field bindings, separates caller defaults from unoverrideable fixed create
+fields, and resolves transition/relation names into field/state/cardinality/target-type
+mechanics. Two-entity declarations explicitly name `sourceInput` and `targetInput`;
+input ordering has no meaning. The consumer supplies its reserved static MCP names so
+compiler-wide collision quarantine covers both generated and hand-written tools.
+
 `set-field` is deliberately narrower than generic update. Version one assigns one
 declaration-fixed scalar value to one canonical scalar field; invocation supplies
 only the entity ID. Compilation rejects `id`, `type`, the workflow field, and declared
@@ -825,6 +833,8 @@ is the runtime compatibility gate.
         "superseded_id"
       ],
       "relation": "supersedes",
+      "sourceInput": "replacement_id",
+      "targetInput": "superseded_id",
       "targetTransition": "supersede"
     }
   ],

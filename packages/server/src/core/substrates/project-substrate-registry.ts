@@ -1,4 +1,7 @@
 import type {
+  CompiledSubstrateIntent,
+} from '@backlog-mcp/shared';
+import type {
   SubstrateStorageCatalog,
   SubstrateStorageClaim,
 } from '../../storage/substrate-storage-catalog.contract.js';
@@ -13,7 +16,7 @@ import type {
   SubstrateWriteValidationResult,
 } from './types.js';
 
-type CollisionField = 'folder' | 'identity.prefix';
+type CollisionField = 'folder' | 'identity.prefix' | 'intents.toolName';
 
 interface Collision {
   field: CollisionField;
@@ -48,6 +51,19 @@ export class ProjectSubstrateRegistry implements SubstrateStorageCatalog {
     return [...this.#substrates.values()].sort(function compareSources(left, right) {
       return left.sourcePath.localeCompare(right.sourcePath);
     });
+  }
+
+  listIntents(): readonly CompiledSubstrateIntent[] {
+    return [...this.#substrates.values()]
+      .flatMap(function substrateIntents(substrate) {
+        return [...substrate.intents];
+      })
+      .sort(function compareIntents(left, right) {
+        const nameOrder = left.toolName.localeCompare(right.toolName);
+        return nameOrder !== 0
+          ? nameOrder
+          : left.sourcePath.localeCompare(right.sourcePath);
+      });
   }
 
   /** Validate one canonical managed write through its registered implementation. */
@@ -107,7 +123,11 @@ function createCollisionIssue(collision: Collision): SubstrateDefinitionIssue {
   const sourcePaths = collision.sources.map(function getSourcePath(source) {
     return source.sourcePath;
   }).sort();
-  const path = collision.field === 'folder' ? '/folder' : '/identity/prefix';
+  const path = collision.field === 'folder'
+    ? '/folder'
+    : collision.field === 'identity.prefix'
+      ? '/identity/prefix'
+      : '/intents';
   return {
     code: 'shape',
     path,
@@ -133,6 +153,7 @@ function findClaimCollisions(
 ): Collision[] {
   const collisions: Collision[] = [];
   const prefixes = new Map<string, RegisteredSubstrate[]>();
+  const intentTools = new Map<string, RegisteredSubstrate[]>();
 
   for (const definition of definitions) {
     const prefix = definition.storageClaim.identity.prefix;
@@ -140,6 +161,11 @@ function findClaimCollisions(
       const prefixGroup = prefixes.get(prefix) ?? [];
       prefixGroup.push(definition);
       prefixes.set(prefix, prefixGroup);
+    }
+    for (const intent of definition.intents) {
+      const toolGroup = intentTools.get(intent.toolName) ?? [];
+      toolGroup.push(definition);
+      intentTools.set(intent.toolName, toolGroup);
     }
   }
 
@@ -166,6 +192,14 @@ function findClaimCollisions(
   for (const sources of prefixes.values()) {
     if (sources.length > 1) {
       collisions.push({ field: 'identity.prefix', sources: sources.sort(compareSources) });
+    }
+  }
+  for (const sources of intentTools.values()) {
+    if (sources.length > 1) {
+      collisions.push({
+        field: 'intents.toolName',
+        sources: sources.sort(compareSources),
+      });
     }
   }
   return collisions.sort(function compareCollisions(left, right) {
@@ -214,6 +248,7 @@ export function createProjectSubstrateRegistry(
   const rejectedSources = new Set<string>();
   const issuesBySource = new Map<string, SubstrateDefinitionIssue[]>();
   const candidates: CompiledSubstrateDefinition[] = [];
+  const reservedToolNames = new Set(params.reservedToolNames ?? []);
 
   for (const builtin of builtins) {
     const type = substrateType(builtin);
@@ -297,6 +332,28 @@ export function createProjectSubstrateRegistry(
       candidates,
       rejectedSources,
     );
+    for (const source of composed) {
+      const reservedIntent = source.intents.find(function isReserved(intent) {
+        return reservedToolNames.has(intent.toolName);
+      });
+      if (!reservedIntent) continue;
+      const collisionIssue: SubstrateDefinitionIssue = {
+        code: 'shape',
+        path: '/intents',
+        message: `intent tool name ${reservedIntent.toolName} is reserved by the consumer`,
+      };
+      if (
+        source.kind === 'declarative'
+        && candidates.includes(source)
+        && !rejectedSources.has(source.sourcePath)
+      ) {
+        reject(source, collisionIssue);
+        addedRejection = true;
+        continue;
+      }
+      throw new Error(collisionIssue.message);
+    }
+    if (addedRejection) continue;
     for (const collision of findClaimCollisions(composed)) {
       const issue = createCollisionIssue(collision);
       const projectSources = collision.sources.filter(

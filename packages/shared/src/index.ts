@@ -30,8 +30,12 @@ export {
   MemorySchema,
   RuntimeSubstrateDefinitionJsonSchema,
   RuntimeSubstrateDefinitionSchema,
+  RuntimeSubstrateIntentDefinitionSchema,
   SUBSTRATE_DEFINITION_SCHEMA_URI,
   SubstrateIdentityDefinitionSchema,
+  SubstrateRelationDefinitionSchema,
+  SubstrateWorkflowDefinitionSchema,
+  SubstrateWorkflowTransitionDefinitionSchema,
   MEMORY_LAYERS,
   MEMORY_KINDS,
   TaskSubstrate,
@@ -62,7 +66,11 @@ export {
   type MemoryLayerName,
   type MemoryKind,
   type RuntimeSubstrateDefinition,
+  type RuntimeSubstrateIntentDefinition,
+  type SubstrateRelationDefinition,
   type SubstrateIdentityDefinition,
+  type SubstrateWorkflowDefinition,
+  type SubstrateWorkflowTransitionDefinition,
 } from './substrates/index.js';
 
 export { isValidCronExpression } from './cron-expression.js';
@@ -81,3 +89,14 @@ export type {
   RuntimeEntity,
   SubstrateType,
 } from './runtime-entity.types.js';
+
+export type {
+  CompiledFieldBinding,
+  CompiledSubstrateIntent,
+  CompiledSubstrateIntentOperation,
+  CompiledSubstrateRelation,
+  CompiledSubstrateTransition,
+  JsonScalar,
+  JsonValue,
+  SubstrateRelationCardinality,
+} from './substrates/substrate-intent.types.js';

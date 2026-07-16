@@ -46,6 +46,7 @@ export function loadSubstrateDefinitions(
     builtins: params.builtins,
     packaged: packaged.substrates,
     project: project.substrates,
+    reservedToolNames: params.reservedToolNames,
   });
   return {
     registry: composed.registry,
@@ -63,10 +64,12 @@ export function loadSubstrateDefinitions(
 export function loadProjectSubstrateDefinitions(
   declarations: readonly DiscoveredSubstrateDeclaration[],
   builtins: LoadSubstrateDefinitionsParams['builtins'] = [],
+  reservedToolNames: readonly string[] = [],
 ): LoadSubstrateDefinitionsResult {
   return loadSubstrateDefinitions({
     builtins,
     packagedDefinitions: PACKAGED_SUBSTRATE_DEFINITIONS,
     declarations,
+    reservedToolNames,
   });
 }

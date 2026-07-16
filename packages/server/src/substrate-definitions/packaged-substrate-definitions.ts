@@ -123,6 +123,38 @@ const REQUIREMENT_SCHEMA = canonicalDocumentSchema(
   ],
 );
 
+const ADR_STATUS = [
+  'draft',
+  'proposed',
+  'living',
+  'accepted',
+  'deferred',
+  'rejected',
+  'superseded',
+] as const;
+
+const ADR_SCHEMA = canonicalDocumentSchema('adr', {
+  status: {
+    type: 'string',
+    enum: ADR_STATUS,
+  },
+  date: { type: 'string', format: 'date' },
+  supersedes: stringArray(),
+  extends: stringArray(),
+  implements: stringArray(),
+  backlog_item: stringArray(),
+  spawned_by: stringArray(),
+  respects: stringArray(),
+  violates: stringArray(),
+});
+
+const PROMPT_SCHEMA = canonicalDocumentSchema('prompt', {
+  date: { type: 'string', format: 'date' },
+  uploaded_by: { type: 'string', maxLength: 200 },
+  supersedes: stringArray(),
+  spawned: stringArray(),
+});
+
 /**
  * Pre-installed declarative substrates.
  *
@@ -146,7 +178,92 @@ export const PACKAGED_SUBSTRATE_DEFINITIONS = [
         minimumDigits: 4,
         displayTemplate: 'ADR {key}',
       },
-      schema: canonicalDocumentSchema('adr'),
+      schema: ADR_SCHEMA,
+      workflow: {
+        field: 'status',
+        initial: ['draft', 'proposed', 'living'],
+        terminal: ['rejected', 'superseded'],
+        transitions: [
+          {
+            name: 'accept',
+            from: ['draft', 'proposed', 'living'],
+            to: 'accepted',
+          },
+          {
+            name: 'supersede',
+            from: ['accepted', 'living'],
+            to: 'superseded',
+            requiresRelation: 'superseded_by',
+          },
+        ],
+      },
+      relations: {
+        supersedes: {
+          targets: ['adr'],
+          cardinality: 'many',
+          inverse: 'superseded_by',
+        },
+        extends: {
+          targets: ['adr'],
+          cardinality: 'many',
+        },
+        implements: {
+          targets: ['adr', 'requirement', 'task'],
+          cardinality: 'many',
+        },
+        backlog_item: {
+          targets: ['task', 'epic', 'artifact'],
+          cardinality: 'many',
+        },
+        spawned_by: {
+          targets: ['prompt', 'requirement'],
+          cardinality: 'many',
+        },
+        respects: {
+          targets: ['requirement'],
+          cardinality: 'many',
+        },
+        violates: {
+          targets: ['requirement'],
+          cardinality: 'many',
+        },
+      },
+      intents: [
+        {
+          verb: 'propose',
+          operation: 'create',
+          description: 'Use when recording a proposed architectural decision in the current project.',
+          requiredInputs: ['title', 'content'],
+          optionalInputs: [
+            'extends',
+            'implements',
+            'backlog_item',
+            'spawned_by',
+            'respects',
+            'violates',
+          ],
+          defaults: {
+            status: 'proposed',
+          },
+        },
+        {
+          verb: 'accept',
+          operation: 'transition',
+          description: 'Use when ratifying an existing proposed ADR.',
+          requiredInputs: ['id'],
+          transition: 'accept',
+        },
+        {
+          verb: 'supersede',
+          operation: 'relate-and-transition',
+          description: 'Use when a newer ADR replaces an accepted or living ADR while preserving lineage.',
+          requiredInputs: ['replacement_id', 'superseded_id'],
+          relation: 'supersedes',
+          sourceInput: 'replacement_id',
+          targetInput: 'superseded_id',
+          targetTransition: 'supersede',
+        },
+      ],
     },
   },
   {
@@ -167,6 +284,33 @@ export const PACKAGED_SUBSTRATE_DEFINITIONS = [
         displayTemplate: 'REQ-{key}',
       },
       schema: REQUIREMENT_SCHEMA,
+      intents: [
+        {
+          verb: 'capture_requirement',
+          toolName: 'backlog_capture_requirement',
+          operation: 'create',
+          description: 'Use when recording a human or system requirement in the current project.',
+          requiredInputs: ['title', 'content'],
+          optionalInputs: [
+            'status',
+            'compliance',
+            'domain',
+            'date',
+            'uploaded_by',
+            'grounds_in',
+            'spawned',
+            'supersedes',
+            'checked_at',
+            'checked_by',
+            'check_evidence',
+            'violated_by',
+          ],
+          defaults: {
+            status: 'intake',
+            compliance: 'unchecked',
+          },
+        },
+      ],
     },
   },
   {
@@ -185,7 +329,22 @@ export const PACKAGED_SUBSTRATE_DEFINITIONS = [
         minimumDigits: 4,
         displayTemplate: 'PROMPT {key}',
       },
-      schema: canonicalDocumentSchema('prompt'),
+      schema: PROMPT_SCHEMA,
+      intents: [
+        {
+          verb: 'capture_prompt',
+          toolName: 'backlog_capture_prompt',
+          operation: 'create',
+          description: 'Use when preserving a verbatim human directive as a chronological project prompt.',
+          requiredInputs: ['title', 'content'],
+          optionalInputs: [
+            'date',
+            'uploaded_by',
+            'supersedes',
+            'spawned',
+          ],
+        },
+      ],
     },
   },
 ] as const satisfies readonly CompileSubstrateDefinitionParams[];

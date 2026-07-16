@@ -16,6 +16,7 @@ import type {
   SubstrateDefinitionIssue,
   SubstrateWriteValidationResult,
 } from './types.js';
+import { compileSubstrateIntents } from './compile-substrate-intents.js';
 import { validateRuntimeJsonSchema } from './validate-runtime-json-schema.js';
 
 const MAX_DECLARATION_BYTES = 256 * 1_024;
@@ -282,6 +283,14 @@ export function compileSubstrateDefinition(
   ];
   if (issues.length > 0) return failure(params, issues);
 
+  const compiledIntents = compileSubstrateIntents(
+    params.sourcePath,
+    definition,
+  );
+  if (compiledIntents.issues.length > 0) {
+    return failure(params, [...compiledIntents.issues]);
+  }
+
   let validate: ValidateFunction;
   try {
     validate = createAjv().compile(definition.schema);
@@ -299,6 +308,7 @@ export function compileSubstrateDefinition(
       kind: 'declarative',
       sourcePath: params.sourcePath,
       definition,
+      intents: compiledIntents.intents,
       storageClaim: createStorageClaim(definition),
       validateWrite: createWriteValidator(validate),
     },

@@ -1,5 +1,6 @@
 import type {
   AnyEntity,
+  CompiledSubstrateIntent,
   RuntimeEntity,
   RuntimeSubstrateDefinition,
   SubstrateType,
@@ -49,6 +50,7 @@ export interface CompiledSubstrateDefinition {
   kind: 'declarative';
   sourcePath: string;
   definition: RuntimeSubstrateDefinition;
+  intents: readonly CompiledSubstrateIntent[];
   storageClaim: Readonly<SubstrateStorageClaim>;
   validateWrite(candidate: unknown): SubstrateWriteValidationResult;
 }
@@ -57,6 +59,7 @@ export interface CompiledBuiltinSubstrate {
   kind: 'compiled';
   sourcePath: string;
   type: SubstrateType;
+  intents: readonly CompiledSubstrateIntent[];
   storageClaim: Readonly<SubstrateStorageClaim>;
   validateWrite(candidate: unknown): SubstrateWriteValidationResult;
 }
@@ -90,6 +93,7 @@ export interface CreateProjectSubstrateRegistryParams {
   builtins?: readonly CompiledBuiltinSubstrate[];
   packaged: readonly CompiledSubstrateDefinition[];
   project: readonly CompiledSubstrateDefinition[];
+  reservedToolNames?: readonly string[];
 }
 
 export interface CreateProjectSubstrateRegistryResult {
@@ -101,6 +105,7 @@ export interface LoadSubstrateDefinitionsParams {
   builtins?: readonly CompiledBuiltinSubstrate[];
   packagedDefinitions: readonly CompileSubstrateDefinitionParams[];
   declarations: readonly DiscoveredSubstrateDeclaration[];
+  reservedToolNames?: readonly string[];
 }
 
 export type LoadSubstrateDefinitionsResult = CreateProjectSubstrateRegistryResult;

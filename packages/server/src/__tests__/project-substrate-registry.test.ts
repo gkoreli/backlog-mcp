@@ -70,6 +70,29 @@ function compileDefinition(options: DefinitionOptions): CompiledSubstrateDefinit
   return result.substrate;
 }
 
+function compileIntentDefinition(
+  options: DefinitionOptions,
+  toolName: string,
+): CompiledSubstrateDefinition {
+  const params = definition(options);
+  const value = params.value as Record<string, unknown>;
+  const result = compileSubstrateDefinition({
+    ...params,
+    value: {
+      ...value,
+      intents: [{
+        verb: 'capture',
+        toolName,
+        operation: 'create',
+        description: `Capture ${options.type}.`,
+        requiredInputs: ['title'],
+      }],
+    },
+  });
+  if (!result.ok) throw new Error(JSON.stringify(result.diagnostic));
+  return result.substrate;
+}
+
 function document(sourcePath: string): DiscoveredDocument {
   return {
     sourcePath,
@@ -116,6 +139,18 @@ describe('ProjectSubstrateRegistry', function describeRegistry() {
         displayTemplate: 'REQ-{key}',
       },
     });
+  });
+
+  it('lists packaged semantic intents in deterministic compiler-owned order', () => {
+    expect(PACKAGED_RESULT.registry.listIntents().map(function intentName(intent) {
+      return intent.toolName;
+    })).toEqual([
+      'backlog_accept_adr',
+      'backlog_capture_prompt',
+      'backlog_capture_requirement',
+      'backlog_propose_adr',
+      'backlog_supersede_adr',
+    ]);
   });
 
   it('enforces the packaged Requirement field contract and human-authority invariants', () => {
@@ -313,6 +348,66 @@ describe('ProjectSubstrateRegistry', function describeRegistry() {
       'substrates/note.json',
       'substrates/specification.json',
     ]);
+  });
+
+  it('quarantines project intent collisions and restores packaged replacements', () => {
+    const collidingProject = compileIntentDefinition({
+      sourcePath: 'substrates/decision.json',
+      type: 'decision',
+      folder: 'decisions',
+    }, 'backlog_propose_adr');
+    const collidingReplacement = compileIntentDefinition({
+      sourcePath: 'substrates/adr.json',
+      type: 'adr',
+      folder: 'decisions',
+      strategy: 'numbered-threaded',
+      replaces: 'builtin:adr@1',
+    }, 'backlog_delete');
+    const result = createProjectSubstrateRegistry({
+      packaged: [PACKAGED_ADR, PACKAGED_REQUIREMENT, PACKAGED_PROMPT],
+      project: [collidingProject, collidingReplacement],
+      reservedToolNames: ['backlog_delete'],
+    });
+
+    expect(result.registry.getStorageClaim('decision')).toBeUndefined();
+    expect(result.registry.getStorageClaim('adr')?.folder).toBe('adr');
+    expect(result.registry.listIntents().map(function intentName(intent) {
+      return intent.toolName;
+    })).toContain('backlog_propose_adr');
+    expect(result.diagnostics.map(function projectPath(item) {
+      return item.sourcePath;
+    })).toEqual([
+      'substrates/adr.json',
+      'substrates/decision.json',
+    ]);
+    expect(result.diagnostics.flatMap(function diagnosticIssues(item) {
+      return item.issues;
+    })).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: '/intents',
+        message: expect.stringContaining('reserved by the consumer'),
+      }),
+      expect.objectContaining({
+        path: '/intents',
+        message: expect.stringContaining('intents.toolName claim collides'),
+      }),
+    ]));
+  });
+
+  it('treats packaged intent collisions with reserved consumer tools as invariants', () => {
+    const packaged = compileIntentDefinition({
+      sourcePath: 'builtin:decision@1',
+      type: 'decision',
+      folder: 'decisions',
+    }, 'backlog_delete');
+
+    expect(function createInvalidRegistry() {
+      createProjectSubstrateRegistry({
+        packaged: [packaged],
+        project: [],
+        reservedToolNames: ['backlog_delete'],
+      });
+    }).toThrow('intent tool name backlog_delete is reserved by the consumer');
   });
 
   it('loads parsed discovery values without rereading and keeps valid siblings active', () => {
