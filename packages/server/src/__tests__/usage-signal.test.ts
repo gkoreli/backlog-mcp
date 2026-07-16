@@ -1,9 +1,12 @@
 /**
  * Tests for the usage-signal multiplier and usage tracker (ADR 0092.9).
  */
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import type { Entity } from '@backlog-mcp/shared';
 import { usageFactor, USAGE_FLOOR, USAGE_CEIL } from '../memory/usage-signal.js';
+import { MemoryUsageOverlay } from '../memory/memory-usage-overlay.js';
 import { MemoryUsageTracker, extractMemoCitations } from '../memory/usage-tracker.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 
@@ -123,5 +126,111 @@ describe('MemoryUsageTracker (R-13/R-14/R-16)', () => {
     });
     await expect(tracker.recordExpand('MEMO-0001')).resolves.toBeUndefined();
     expect(() => tracker.recordRecall('q', ['MEMO-0001'])).not.toThrow();
+  });
+});
+
+interface ProjectTrackerFixture {
+  tracker: MemoryUsageTracker;
+  overlay: MemoryUsageOverlay;
+  save: ReturnType<typeof vi.fn>;
+}
+
+function createProjectTrackerFixture(
+  name: string,
+  summary: { usageCount: number; lastUsedAt: string },
+): ProjectTrackerFixture {
+  const memory = {
+    id: 'MEMO-0001',
+    type: 'memory',
+    layer: 'episodic',
+    title: 'Project memory',
+    usage_count: 89,
+    last_used_at: iso(60 * 60 * 1000),
+    created_at: iso(60 * DAY),
+    updated_at: iso(60 * DAY),
+  } as Entity;
+  const save = vi.fn(async function saveMemory() {});
+  const service = {
+    get: vi.fn(async function getMemory(id: string) {
+      return id === memory.id ? memory : undefined;
+    }),
+    save,
+  } as unknown as IBacklogService;
+  const overlay = new MemoryUsageOverlay(
+    join(tmpdir(), 'usage-signal-project', name, '.backlog-mcp'),
+  );
+  overlay.set(memory.id, summary);
+  const tracker = new MemoryUsageTracker({
+    getService: function getService() {
+      return service;
+    },
+    appendLine: function appendUsageLine(line) {
+      overlay.appendLine(line);
+    },
+    summaryStore: overlay,
+    now: function getNow() {
+      return NOW;
+    },
+  });
+  return { tracker, overlay, save };
+}
+
+function usageSummaryCount(overlay: MemoryUsageOverlay): number {
+  return overlay.readLines().filter(function isUsageSummary(line) {
+    try {
+      return (JSON.parse(line) as { type?: string }).type === 'usage_summary';
+    } catch {
+      return false;
+    }
+  }).length;
+}
+
+describe('MemoryUsageTracker project summary store', function describeProjectTracker() {
+  it('derives the count from the overlay and checkpoints on a bucket', async function checkpointsBucket() {
+    const fixture = createProjectTrackerFixture('bucket', {
+      usageCount: 2,
+      lastUsedAt: iso(60 * 60 * 1000),
+    });
+
+    await fixture.tracker.recordExpand('MEMO-0001');
+
+    expect(fixture.overlay.get('MEMO-0001')).toEqual({
+      usageCount: 3,
+      lastUsedAt: new Date(NOW).toISOString(),
+    });
+    expect(usageSummaryCount(fixture.overlay)).toBe(2);
+    expect(fixture.save).not.toHaveBeenCalled();
+  });
+
+  it('keeps off-bucket increments lossy inside the stale window', async function keepsLossyGate() {
+    const fixture = createProjectTrackerFixture('off-bucket', {
+      usageCount: 3,
+      lastUsedAt: iso(60 * 60 * 1000),
+    });
+
+    await fixture.tracker.recordExpand('MEMO-0001');
+
+    expect(fixture.overlay.get('MEMO-0001')).toEqual({
+      usageCount: 3,
+      lastUsedAt: iso(60 * 60 * 1000),
+    });
+    expect(usageSummaryCount(fixture.overlay)).toBe(1);
+    expect(fixture.save).not.toHaveBeenCalled();
+  });
+
+  it('checkpoints an off-bucket count after the stale gate', async function checkpointsStaleSummary() {
+    const fixture = createProjectTrackerFixture('stale', {
+      usageCount: 3,
+      lastUsedAt: iso(2 * DAY),
+    });
+
+    await fixture.tracker.recordExpand('MEMO-0001');
+
+    expect(fixture.overlay.get('MEMO-0001')).toEqual({
+      usageCount: 4,
+      lastUsedAt: new Date(NOW).toISOString(),
+    });
+    expect(usageSummaryCount(fixture.overlay)).toBe(2);
+    expect(fixture.save).not.toHaveBeenCalled();
   });
 });

@@ -7,12 +7,13 @@
  *     every event is appended — recall demand lines (query + returned ids;
  *     the signal ADR 0092.7 deferred), expands, cites. Append-only,
  *     greppable, replayable: `usage_count` can be rebuilt from it.
- *  2. **Frontmatter summary** (`usage_count`, `last_used_at`): updated only
- *     on STRONG events (expand/cite — Fine-Mem's performance credit), and
- *     flushed relatime-gated: when the new count lands on a Fibonacci
- *     bucket boundary, or the stored `last_used_at` is >24h stale, or was
- *     never set. Per-read file rewrites (strictatime) are deliberately
- *     avoided; the JSONL holds exact history.
+ *  2. **Durable summary** (`usage_count`, `last_used_at`): global mode keeps
+ *     frontmatter; project mode injects a local overlay. Both update only on
+ *     STRONG events (expand/cite — Fine-Mem's performance credit), and flush
+ *     relatime-gated: when the new count lands on a Fibonacci bucket boundary,
+ *     or the stored `last_used_at` is >24h stale, or was never set. Per-read
+ *     file rewrites (strictatime) are deliberately avoided; the JSONL holds
+ *     exact history.
  *
  * Failures never propagate — usage tracking is a derived signal, not an
  * outcome (same posture as capture, ADR 0092.2 §D7).
@@ -20,6 +21,7 @@
 
 import type { Memory, Entity } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { MemoryUsageSummaryStore } from './memory-usage.contract.js';
 
 /** Fibonacci flush buckets — diminishing flush frequency as counts grow. */
 const FLUSH_BUCKETS = new Set([1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]);
@@ -37,6 +39,8 @@ export interface UsageTrackerDeps {
   getService: () => IBacklogService;
   /** Append one line to the usage JSONL. Omit to disable the audit log. */
   appendLine?: (line: string) => void;
+  /** Project-home summary overlay. Omit to keep global frontmatter writes. */
+  summaryStore?: MemoryUsageSummaryStore;
   now?: () => number;
 }
 
@@ -86,13 +90,28 @@ export class MemoryUsageTracker {
       const entity = await service.get(id);
       if (!entity || (entity.type as string) !== 'memory') return;
       const m = entity as Memory;
+      const summaryStore = this.deps.summaryStore;
+      const summary = summaryStore?.get(id);
 
-      const newCount = Math.min((m.usage_count ?? 0) + 1, COUNT_CAP);
-      const lastFlushed = m.last_used_at ? Date.parse(m.last_used_at) : NaN;
+      const currentCount = summaryStore === undefined
+        ? m.usage_count ?? 0
+        : summary?.usageCount ?? 0;
+      const lastUsedAt = summaryStore === undefined
+        ? m.last_used_at
+        : summary?.lastUsedAt;
+      const newCount = Math.min(currentCount + 1, COUNT_CAP);
+      const lastFlushed = lastUsedAt ? Date.parse(lastUsedAt) : NaN;
       const stale = Number.isNaN(lastFlushed) || this.now() - lastFlushed > STALE_FLUSH_MS;
 
       if (FLUSH_BUCKETS.has(newCount) || stale) {
         const nowIso = new Date(this.now()).toISOString();
+        if (summaryStore !== undefined) {
+          summaryStore.set(id, {
+            usageCount: newCount,
+            lastUsedAt: nowIso,
+          });
+          return;
+        }
         await service.save({ ...m, usage_count: newCount, last_used_at: nowIso, updated_at: nowIso } as Entity);
       }
     } catch { /* derived signal — never propagate */ }
