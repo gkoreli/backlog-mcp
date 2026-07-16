@@ -328,6 +328,52 @@ describe('core/createEntity', () => {
     await createEntity(svc, { title: 'T', references: refs }, testCtx());
     expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({ references: refs }));
   });
+
+  it('named create params take precedence over generic fields', async () => {
+    const svc = mockService();
+    await createEntity(svc, {
+      title: 'Named title',
+      parent_id: 'FLDR-0001',
+      fields: {
+        title: 'Field title',
+        parent_id: 'EPIC-0001',
+      },
+    }, testCtx());
+
+    expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Named title',
+      parent_id: 'FLDR-0001',
+    }));
+  });
+
+  it('records semantic create attribution, direct resource identity, and SSE class', async () => {
+    const entries: unknown[] = [];
+    const emit = vi.fn();
+    const ctx: WriteContext = {
+      actor: { type: 'agent', name: 'tester' },
+      operationLog: {
+        append: (entry) => entries.push(entry),
+        query: async () => [],
+        countForTask: async () => 0,
+      },
+      eventBus: { emit },
+    };
+
+    await createEntity(mockService(), { title: 'Tracked task' }, ctx);
+
+    expect(entries).toEqual([
+      expect.objectContaining({
+        tool: 'backlog_create_work',
+        mutation: 'create',
+        resourceId: 'TASK-0001',
+      }),
+    ]);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'task_created',
+      id: 'TASK-0001',
+      tool: 'backlog_create_work',
+    }));
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -448,6 +494,36 @@ describe('core/updateEntity', () => {
       id: 'TASK-0001',
       type: 'task',
       created_at: '2026-01-01T00:00:00.000Z',
+    }));
+  });
+
+  it('records semantic update attribution and emits update-class SSE', async () => {
+    const entries: unknown[] = [];
+    const emit = vi.fn();
+    const ctx: WriteContext = {
+      actor: { type: 'agent', name: 'tester' },
+      operationLog: {
+        append: (entry) => entries.push(entry),
+        query: async () => [],
+        countForTask: async () => 0,
+      },
+      eventBus: { emit },
+    };
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
+
+    await updateEntity(svc, { id: 'TASK-0001', status: 'done' }, ctx);
+
+    expect(entries).toEqual([
+      expect.objectContaining({
+        tool: 'backlog_complete_task',
+        mutation: 'update',
+        resourceId: 'TASK-0001',
+      }),
+    ]);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'task_changed',
+      id: 'TASK-0001',
+      tool: 'backlog_complete_task',
     }));
   });
 

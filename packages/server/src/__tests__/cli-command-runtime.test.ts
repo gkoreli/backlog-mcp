@@ -8,7 +8,7 @@ import type { CliRuntime } from '../cli/runner.types.js';
 const mocks = vi.hoisted(function createMocks() {
   return {
     run: vi.fn(),
-    createItem: vi.fn(),
+    createEntity: vi.fn(),
   };
 });
 
@@ -31,7 +31,7 @@ vi.mock('../cli/runner.js', function mockRunner() {
 });
 
 vi.mock('../core/create.js', function mockCreate() {
-  return { createItem: mocks.createItem };
+  return { createEntity: mocks.createEntity };
 });
 
 import { registerCreate } from '../cli/commands/create.js';
@@ -65,12 +65,12 @@ function createRuntime(): CliRuntime {
 describe('direct CLI command runtime wiring', function describeCommandRuntime() {
   beforeEach(function resetMocks() {
     mocks.run.mockReset();
-    mocks.createItem.mockReset();
+    mocks.createEntity.mockReset();
   });
 
   it('routes create source reads and writes through the selected bundle', async function routesCreate() {
     const runtime = createRuntime();
-    mocks.createItem.mockResolvedValue({ id: 'TASK-0001' });
+    mocks.createEntity.mockResolvedValue({ id: 'TASK-0001' });
     mocks.run.mockImplementation(async function runSelected(
       handler: (selected: CliRuntime) => Promise<unknown>,
     ) {
@@ -96,13 +96,18 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
     ]);
 
     expect(runtime.resolveSourcePath).toHaveBeenCalledWith('input.md');
-    expect(mocks.createItem).toHaveBeenCalledWith(
+    expect(mocks.createEntity).toHaveBeenCalledWith(
       runtime.service,
       expect.objectContaining({
         title: 'Selected task',
         content: 'selected home content: input.md',
+        type: 'task',
       }),
       runtime.writeContext,
+      {
+        tool: 'backlog create',
+        mutation: 'create',
+      },
     );
     expect(mocks.run.mock.calls[0]?.[3]).toEqual({
       home: 'project',
