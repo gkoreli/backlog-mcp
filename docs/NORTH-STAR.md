@@ -162,6 +162,26 @@ product's retrieval story.** Context engineering does not disappear — it survi
 7. **Capture small, compress upward.** Write atomic facts; let consolidation distill
    clusters into fewer derived memories over time (ADRs 0092.7, 0092.12). Usage ranks the
    useful up and decays the stale down — self-curating, no manual gardening (ADR 0092.9).
+8. **A tool must earn its context cost.** Every tool in the manifest is a permanent tax on
+   every session's context. A tool earns its place only when it beats the agent's *native*
+   primitives — Edit, the filesystem, search — by enough to justify the tokens it costs
+   forever: schema-enforced writes, true intent semantics, retrieval the harness can't do.
+   When a tool merely re-skins a capability the agent already has, fold it away or cut it
+   (ADR 0114 folded `backlog_context` into `get`; ADR 0117 weighs `write_resource` against
+   native Edit — and "leave it alone, don't solve it" is a legitimate answer). Prefer
+   folding a capability into an existing verb over minting a new surface (PROMPT 0002 #7,
+   #10).
+9. **Build under pressure; never for a theory.** Build the smallest thing that solves a
+   problem you *actually have*, start using it, let real use uncover the next problem, then
+   address that. Almost never anticipate, and never over-engineer a solution to a problem
+   that doesn't exist yet. New surface is earned by a *felt* pressure — this whole
+   architecture is the residue of that loop, not a plan drawn up front (PROMPT 0002 #9;
+   essay: *One Hundred Pull Requests*).
+10. **Audits inform the vision; they never replace it.** Reviews and audits surface real
+    defects — fix them. But do not slide into the audit→fix loop that keeps polishing and
+    forgets what we are building. The North Star outranks the finding: when a fix would
+    over-engineer, complicate, or drift from the vision, the vision wins and the fix shrinks
+    to fit (PROMPT 0002 #4).
 
 ## Invariants (violate these = malfunctioning)
 
@@ -176,11 +196,14 @@ product's retrieval story.** Context engineering does not disappear — it survi
 3. **The viewer observes; agents mutate; humans steer agents.** The viewer is never an
    editor. Humans change the store by conversing with agents, or by editing the markdown
    directly — never through a mutating UI (ARTF-0189, ADR 0097).
-4. **Local-first, forever — local IS the architecture, not the primary of two.** Your files,
-   your git, your embeddings. Remote hosting, when it exists, is a **VPS running the same
-   local-filesystem stack** — never Workers, never a D1-like DB. The D1/Workers code is
-   retained but descoped: it is never evolved and nothing owes it parity (supersedes-in-part
-   ADR 0104's satellite framing).
+4. **Local-first, forever — local IS the architecture, and remote is sync, not a server.**
+   Your files, your git, your embeddings: all data lives **private and local by default.**
+   Remoteness is achieved by **synchronizing local stores**, never by promoting a remote
+   database to the source of truth — remote-first storage is not a mode we offer. Remote
+   hosting, when it exists, is a **VPS running the same local-filesystem stack** — never
+   Workers, never a D1-like DB as the primary. The D1/Workers code is retained but descoped:
+   never evolved, owed no parity (supersedes-in-part ADR 0104's satellite framing; PROMPT
+   0002 #2, #8).
 5. **One source of truth per fact.** Corrections supersede; they do not accumulate as
    contradicting duplicates (`supersedes` / `state_key`, ADR 0092.3). History is preserved,
    recall stays clean, and the human can adjudicate surfaced contradictions (ADR 0092.13).
@@ -191,6 +214,13 @@ product's retrieval story.** Context engineering does not disappear — it survi
 7. **The store never orchestrates and never runs user code.** No scheduler, no executor, no
    retry/timeout semantics inside the core (ADR 0097). External actors do the acting; the
    store is the shared memory they read and write.
+8. **Never mutate what the human wrote, uninvited.** Markdown already in the repo is read
+   **losslessly and leniently** — indexed by its H1/slug, surfaced with *labeled*
+   diagnostics where it doesn't fit a canonical schema — but never silently rewritten,
+   reformatted, or auto-upgraded to satisfy the tool. The tool tightens only what *it*
+   authors; a human's prose is source it may read, never its own to normalize. Where
+   enforcing a schema would mean editing a human's file, that may simply be a problem we
+   choose not to solve (PROMPT 0002 #1, #7; ADR 0117 open).
 
 ## The Four Pillars
 
@@ -295,6 +325,12 @@ constraints are not negotiable:
   what's there; it only tightens what it authors.
 - **Global + project scopes compose**, and `wakeup`/`recall` resolve `cwd → this project's
   scope` automatically (extending ADR 0105).
+- **Organize at intake, not after the fact.** Per-substrate folders give each artifact a
+  *pre-determined* home the instant it's created — routing is decided ahead of time by the
+  substrate's identity, not reconstructed later by a cleanup pass. After-the-fact
+  organization of a large pile is slow and complicated (the very pressure that drove this
+  pivot); intake-time routing is what keeps it cheap and is why the structure never becomes
+  a chore to maintain (PROMPT 0002 #11).
 
 ## The Stack
 
@@ -415,18 +451,29 @@ prefix") is on the table.
 ## How We Build
 
 **Building is cheap now. Knowing what deserves to exist is not.** The methodology is
-pressure-driven engineering: *feel the problem, build the smallest answer, extend at the
-pressure point.* The evidence is this very thread — memory grew verb by verb as sessions
-demanded it; the docs-native pivot answered a ~1,000-entity pile that made organization
-overhead; the context surface got *folded* (ADR 0114), not expanded, the moment its shape
-proved to be the problem. New surface is earned by a felt pressure, never added
-speculatively (essay: *One Hundred Pull Requests*).
+pressure-driven engineering (Tenet 9): *feel the problem, build the smallest answer, extend
+at the pressure point.* The evidence is this very thread — memory grew verb by verb as
+sessions demanded it; the docs-native pivot answered a ~1,000-entity pile that made
+organization overhead; the context surface got *folded* (ADR 0114), not expanded, the moment
+its shape proved to be the problem. New surface is earned by a felt pressure, never added
+speculatively (essay: *One Hundred Pull Requests*; PROMPT 0002 #9).
+
+And the discipline that protects it: **audits inform the vision, they never replace it**
+(Tenet 10). After an audit or review it is easy to loop — fix, re-audit, fix again — until
+the polishing has quietly become the work and the North Star is out of frame. When a
+finding's fix would over-engineer or drift, the fix shrinks to fit the vision, not the
+reverse (PROMPT 0002 #4). We build as high-level agents who **delegate breadth to
+subagents** and spend our own judgment on the load-bearing security and design calls (PROMPT
+0002 #5) — and every review verifies **fail-closed behavior on malformed and adversarial
+input**, not just the happy path.
 
 ## References
 
 - **Vision lineage:** ADR 0097 (agentic storage engine positioning) · ADR 0092.3 ("the
   backlog IS the memory") · `docs/prompts/0001-tasks-and-vision.md` (the human prompt that
-  opened this uplift) · essay *One Hundred Pull Requests*
+  opened this uplift) · `docs/prompts/0002-operating-principles-directives.md` (Goga's
+  verbatim operating-principles directives — the source for Tenets 8–10, Invariants 4 & 8,
+  and the Pillar-4 organize-at-intake note) · essay *One Hundred Pull Requests*
   (<https://gkoreli.com/one-hundred-pull-requests>) — progressive disclosure as a
   filesystem, undeserved-authority of stale memory, pressure-driven engineering.
 - **Substrates:** ADR 0098 (unified substrate architecture) · ADR 0106.1 (vocabulary:
