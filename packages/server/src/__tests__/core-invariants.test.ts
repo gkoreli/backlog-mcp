@@ -373,6 +373,84 @@ describe('core/updateEntity', () => {
     expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ evidence: ['Fixed in PR #1'] }));
   });
 
+  it('named update params take precedence over generic fields', async () => {
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
+    await updateEntity(svc, {
+      id: 'TASK-0001',
+      title: 'Named title',
+      fields: {
+        title: 'Field title',
+        status: 'blocked',
+      },
+      status: 'done',
+    }, testCtx());
+
+    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Named title',
+      status: 'done',
+    }));
+  });
+
+  it('null in generic fields clears a substrate field', async () => {
+    const svc = mockService([
+      makeEntity({
+        id: 'MLST-0001',
+        title: 'M',
+        type: 'milestone',
+        due_date: '2026-03-01',
+      } as Entity),
+    ]);
+
+    await updateEntity(svc, {
+      id: 'MLST-0001',
+      fields: { due_date: null },
+    }, testCtx());
+
+    expect(vi.mocked(svc.save).mock.calls[0]?.[0].due_date).toBeUndefined();
+  });
+
+  it('journals generic fields as effective top-level changes', async () => {
+    const entries: Array<{ params: Record<string, unknown> }> = [];
+    const ctx: WriteContext = {
+      actor: { type: 'agent', name: 'tester' },
+      operationLog: {
+        append: (entry) => entries.push(entry),
+        query: async () => [],
+        countForTask: async () => 0,
+      },
+    };
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
+
+    await updateEntity(svc, {
+      id: 'TASK-0001',
+      fields: { status: 'done' },
+    }, ctx);
+
+    expect(entries[0]?.params).toEqual({
+      id: 'TASK-0001',
+      status: 'done',
+    });
+  });
+
+  it('generic fields cannot replace server-owned identity', async () => {
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
+
+    await updateEntity(svc, {
+      id: 'TASK-0001',
+      fields: {
+        id: 'EPIC-9999',
+        type: 'epic',
+        created_at: '1900-01-01T00:00:00.000Z',
+      },
+    }, testCtx());
+
+    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'TASK-0001',
+      type: 'task',
+      created_at: '2026-01-01T00:00:00.000Z',
+    }));
+  });
+
   it('always sets updated_at timestamp', async () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
     await updateEntity(svc, { id: 'TASK-0001', title: 'New' }, testCtx());
