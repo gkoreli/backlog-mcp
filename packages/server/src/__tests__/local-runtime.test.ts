@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import matter from 'gray-matter';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
-import type { Entity } from '@backlog-mcp/shared';
+import type { Entity, Memory } from '@backlog-mcp/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { createBacklogHome } from '../core/backlog-home.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';
@@ -74,6 +74,13 @@ function createHome(name: string): BacklogHome {
   return createBacklogHome({
     kind: 'project',
     root: join(tmpdir(), 'local-runtime', name),
+  });
+}
+
+function createGlobalHome(name: string): BacklogHome {
+  return createBacklogHome({
+    kind: 'global',
+    root: join(tmpdir(), 'local-runtime-global', name),
   });
 }
 
@@ -289,7 +296,37 @@ describe('LocalRuntime', function describeLocalRuntime() {
       createdAt: Date.now(),
     });
     expect(storedMemory.id).toBe('MEMO-0001');
-    expect(runtime.service.getSync('MEMO-0001')?.title).toBe('Runtime memory');
+    const memoryEntity = runtime.service.getSync('MEMO-0001');
+    expect(memoryEntity?.title).toBe('Runtime memory');
+    if (memoryEntity === undefined) {
+      throw new Error('Runtime memory was not stored');
+    }
+    const markdownBeforeUsage = await runtime.service.getMarkdown(
+      storedMemory.id,
+    );
+    expect(markdownBeforeUsage).not.toContain('usage_count');
+
+    await runtime.usageTracker.recordExpand(storedMemory.id);
+
+    expect(await runtime.service.getMarkdown(storedMemory.id)).toBe(
+      markdownBeforeUsage,
+    );
+    expect(runtime.memoryStore.toMemoryEntry(
+      memoryEntity as Memory,
+    ).metadata).toMatchObject({
+      usageCount: 1,
+    });
+    expect(siblingRuntime.memoryStore.toMemoryEntry(
+      memoryEntity as Memory,
+    ).metadata).toMatchObject({
+      usageCount: 0,
+    });
+    expect(runtime.readUsageLines().map(function parseUsageLine(line) {
+      return JSON.parse(line) as { type?: string };
+    })).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'expand' }),
+      expect.objectContaining({ type: 'usage_summary' }),
+    ]));
 
     runtime.operationLogger.append({
       ts: '2026-07-16T00:00:00.000Z',
@@ -309,8 +346,41 @@ describe('LocalRuntime', function describeLocalRuntime() {
       join(home.controlDir, 'state', 'operations.jsonl'),
       'utf-8',
     )).toContain(task.id);
+    expect(readFileSync(
+      join(home.controlDir, 'state', 'memory-usage.jsonl'),
+      'utf-8',
+    )).toContain('"type":"usage_summary"');
     expect(runtime.eventBus).not.toBe(siblingRuntime.eventBus);
     expect(watcher.unsubscribeCount).toBe(1);
+  });
+
+  it('keeps global usage summaries in memory frontmatter', async function keepsGlobalFrontmatter() {
+    const home = createGlobalHome('frontmatter-usage');
+    const runtime = createLocalRuntime(home, {
+      watcher: new FakeDocsTreeWatcher(),
+      createSearch: createBm25Search,
+    });
+    await runtime.start();
+
+    const stored = await runtime.memoryComposer.store({
+      id: 'transient',
+      title: 'Global memory',
+      content: 'Global usage remains in frontmatter',
+      layer: 'semantic',
+      source: 'test',
+      createdAt: Date.now(),
+    });
+    await runtime.usageTracker.recordExpand(stored.id);
+
+    const markdown = await runtime.service.getMarkdown(stored.id);
+    expect(markdown).toContain('usage_count: 1');
+    expect(markdown).toContain('last_used_at:');
+    expect(readFileSync(
+      join(home.root, 'memory-usage.jsonl'),
+      'utf-8',
+    )).toContain('"type":"expand"');
+
+    await runtime.stop();
   });
 
   it('reconciles native edits without indexing typed Markdown twice', async function reconcilesNativeEdits() {

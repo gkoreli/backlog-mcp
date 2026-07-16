@@ -1,5 +1,9 @@
-import { mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import {
+  appendFileSync,
+  mkdirSync,
+  readFileSync,
+} from 'node:fs';
+import { dirname, join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { MemoryComposer } from '@backlog-mcp/memory';
 import type { SubstrateType } from '@backlog-mcp/shared';
@@ -12,7 +16,10 @@ import {
   type SubstrateDefinitionDiagnostic,
 } from '../../core/substrates/index.js';
 import { LocalEventBus } from '../../events/local-event-bus.js';
-import { createDefaultComposer } from '../../memory/bootstrap.js';
+import { BacklogMemoryStore } from '../../memory/backlog-memory-store.js';
+import { createComposerForStore } from '../../memory/bootstrap.js';
+import { MemoryUsageOverlay } from '../../memory/memory-usage-overlay.js';
+import { MemoryUsageTracker } from '../../memory/usage-tracker.js';
 import {
   createOperationLogger,
   type OperationLogger,
@@ -31,6 +38,7 @@ import { ParcelDocsTreeWatcher } from './parcel-docs-tree-watcher.js';
 import { nextStorageDocumentId } from '../storage-identity.js';
 
 const SEARCH_HALF_LIFE_DAYS = 30;
+const MEMORY_USAGE_LOG = 'memory-usage.jsonl';
 
 function createSearch(home: BacklogHome): OramaSearchService {
   return new OramaSearchService({
@@ -42,6 +50,31 @@ function createSearch(home: BacklogHome): OramaSearchService {
 function ensureRuntimeDirectories(home: BacklogHome): void {
   mkdirSync(home.documentsDir, { recursive: true });
   mkdirSync(home.controlDir, { recursive: true });
+}
+
+function globalUsageLogPath(home: BacklogHome): string {
+  return join(home.root, MEMORY_USAGE_LOG);
+}
+
+function appendUsageLine(path: string, line: string): void {
+  try {
+    mkdirSync(dirname(path), { recursive: true });
+    appendFileSync(path, `${line}\n`);
+  } catch {
+    // Usage telemetry is derived and must never break a user operation.
+  }
+}
+
+function readUsageLines(path: string): string[] {
+  try {
+    return readFileSync(path, 'utf-8')
+      .split('\n')
+      .filter(function isNonEmpty(line) {
+        return line.trim().length > 0;
+      });
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -65,9 +98,12 @@ export class LocalRuntime {
     readonly service: BacklogService,
     readonly operationLogger: OperationLogger,
     readonly eventBus: LocalEventBus,
+    readonly memoryStore: BacklogMemoryStore,
     readonly memoryComposer: MemoryComposer,
     readonly substrateRegistry: ProjectSubstrateRegistry,
     readonly substrateDiagnostics: readonly SubstrateDefinitionDiagnostic[],
+    readonly usageTracker: MemoryUsageTracker,
+    readonly readUsageLines: () => string[],
     private readonly watcher: DocsTreeWatcher,
     private readonly onWatcherError?: DocsTreeWatcherErrorCallback,
   ) {}
@@ -193,9 +229,38 @@ export function createLocalRuntime(
     join(home.controlDir, 'state', 'operations.jsonl'),
   );
   const eventBus = new LocalEventBus();
-  const memoryComposer = createDefaultComposer(function getRuntimeService() {
+  function getRuntimeService(): BacklogService {
     return service;
+  }
+  const usageOverlay = home.kind === 'project'
+    ? new MemoryUsageOverlay(home.controlDir)
+    : undefined;
+  const memoryStore = new BacklogMemoryStore(
+    getRuntimeService,
+    usageOverlay,
+  );
+  const memoryComposer = createComposerForStore(memoryStore);
+  const globalUsagePath = globalUsageLogPath(home);
+  const usageTracker = new MemoryUsageTracker({
+    getService: getRuntimeService,
+    appendLine: usageOverlay === undefined
+      ? function appendGlobalUsage(line) {
+        appendUsageLine(globalUsagePath, line);
+      }
+      : function appendProjectUsage(line) {
+        usageOverlay.appendLine(line);
+      },
+    ...(usageOverlay === undefined
+      ? {}
+      : { summaryStore: usageOverlay }),
   });
+  const runtimeReadUsageLines = usageOverlay === undefined
+    ? function readGlobalUsage(): string[] {
+      return readUsageLines(globalUsagePath);
+    }
+    : function readProjectUsage(): string[] {
+      return usageOverlay.readLines();
+    };
 
   return new LocalRuntime(
     home,
@@ -205,9 +270,12 @@ export function createLocalRuntime(
     service,
     operationLogger,
     eventBus,
+    memoryStore,
     memoryComposer,
     substrateRegistry,
     definitions.diagnostics,
+    usageTracker,
+    runtimeReadUsageLines,
     deps.watcher ?? new ParcelDocsTreeWatcher(),
     deps.onWatcherError,
   );

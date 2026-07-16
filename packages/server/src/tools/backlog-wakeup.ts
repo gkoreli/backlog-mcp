@@ -1,4 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { MemoryEntry } from '@backlog-mcp/memory';
+import type { Memory } from '@backlog-mcp/shared';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { wakeup } from '../core/wakeup.js';
@@ -17,6 +19,7 @@ export interface BacklogWakeupDeps {
   };
   readLocalFile?: (filePath: string) => string | null;
   identityPath?: string;
+  mintMemoryEntry?: (memory: Memory) => MemoryEntry;
 }
 
 /**
@@ -74,6 +77,9 @@ export function registerBacklogWakeupTool(
           ...(operationLogger
             ? { readOperations: (options) => operationLogger.read(options) }
             : {}),
+          ...(deps?.mintMemoryEntry === undefined
+            ? {}
+            : { mintMemoryEntry: deps.mintMemoryEntry }),
         });
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       } catch (e) {

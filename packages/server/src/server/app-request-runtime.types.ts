@@ -1,4 +1,8 @@
-import type { MemoryComposer } from '@backlog-mcp/memory';
+import type {
+  MemoryComposer,
+  MemoryEntry,
+} from '@backlog-mcp/memory';
+import type { Memory } from '@backlog-mcp/shared';
 import type { BacklogHome } from '../core/backlog-home.types.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
@@ -15,6 +19,7 @@ export interface AppRequestRuntime {
   operationLogger?: OperationLogger;
   eventBus?: EventBus;
   memoryComposer?: MemoryComposer;
+  mintMemoryEntry?: (memory: Memory) => MemoryEntry;
   usageTracker?: MemoryUsageTracker;
   resourceManager?: ResourceManager;
   readLocalFile?: (filePath: string) => string | null;

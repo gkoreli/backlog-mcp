@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { MemoryComposer } from '@backlog-mcp/memory';
+import type { MemoryComposer, MemoryEntry } from '@backlog-mcp/memory';
+import type { Memory } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { Actor, IOperationLog } from '../operations/types.js';
 import { registerBacklogListTool } from './backlog-list.js';
@@ -41,6 +42,8 @@ export interface ToolDeps {
    * Worker omits memory for now (see ADR 0092.2 §D4).
    */
   memoryComposer?: MemoryComposer;
+  /** Mint memory metadata through the selected home's store boundary. */
+  mintMemoryEntry?: (memory: Memory) => MemoryEntry;
   /** Read a local file by path. Node-only; Worker omits. */
   readLocalFile?: (filePath: string) => string | null;
   /** Memory usage tracker (ADR 0092.9). Node wires the default; Worker omits. */
@@ -67,6 +70,9 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
     ...(deps?.operationLogger ? { operationLogger: deps.operationLogger } : {}),
     ...(deps?.readLocalFile ? { readLocalFile: deps.readLocalFile } : {}),
     ...(deps?.identityPath ? { identityPath: deps.identityPath } : {}),
+    ...(deps?.mintMemoryEntry
+      ? { mintMemoryEntry: deps.mintMemoryEntry }
+      : {}),
   });
   registerBacklogRecallTool(server, {
     ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),

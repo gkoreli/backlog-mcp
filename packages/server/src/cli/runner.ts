@@ -10,6 +10,7 @@ import { NotFoundError, ValidationError } from '../core/types.js';
 import { operationLogger, envActor } from '../operations/logger.js';
 import {
   defaultMemoryComposer,
+  defaultMemoryStore,
   defaultUsageTracker,
   readUsageLines,
 } from '../memory/bootstrap.js';
@@ -65,6 +66,9 @@ export function createLegacyCliRuntime(
       memoryComposer: defaultMemoryComposer,
     },
     memoryComposer: defaultMemoryComposer,
+    mintMemoryEntry: function mintMemoryEntry(memory) {
+      return defaultMemoryStore.toMemoryEntry(memory);
+    },
     usageTracker: defaultUsageTracker,
     operationLogger,
     readUsageLines,
@@ -133,7 +137,10 @@ async function createDocsNativeCliRuntime(
       memoryComposer: localRuntime.memoryComposer,
     },
     memoryComposer: localRuntime.memoryComposer,
+    mintMemoryEntry: appRuntime.mintMemoryEntry,
+    usageTracker: appRuntime.usageTracker,
     operationLogger: localRuntime.operationLogger,
+    readUsageLines: appRuntime.readUsageLines,
     readIdentity: function readDocsNativeIdentity() {
       return identityPath === undefined
         ? undefined

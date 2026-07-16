@@ -1,4 +1,8 @@
-import type { MemoryComposer } from '@backlog-mcp/memory';
+import type {
+  MemoryComposer,
+  MemoryEntry,
+} from '@backlog-mcp/memory';
+import type { Memory } from '@backlog-mcp/shared';
 import type {
   BacklogHome,
   BacklogHomeSelector,
@@ -16,6 +20,7 @@ export interface CliRuntime {
   service: IBacklogService;
   writeContext: WriteContext;
   memoryComposer: MemoryComposer;
+  mintMemoryEntry?: (memory: Memory) => MemoryEntry;
   usageTracker?: MemoryUsageTracker;
   operationLogger: OperationLogger;
   readUsageLines?: () => string[];

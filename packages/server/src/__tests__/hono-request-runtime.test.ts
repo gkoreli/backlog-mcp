@@ -225,6 +225,60 @@ describe('createApp request runtimes', function describeRequestRuntimes() {
     });
   });
 
+  it('projects memory usage through the selected store mint without changing raw Markdown', async function projectsMemoryUsage() {
+    const memory: Entity = {
+      id: 'MEMO-0001',
+      title: 'Project memory',
+      content: 'Memory body',
+      type: 'memory',
+      layer: 'semantic',
+      usage_count: 89,
+      last_used_at: '2026-01-01T00:00:00.000Z',
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+    };
+    const selectedService = createService(memory);
+    const app = createApp(createService(undefined), {
+      resolveRuntime: async function resolveRuntime() {
+        return {
+          service: selectedService,
+          mintMemoryEntry: function mintMemoryEntry(selectedMemory) {
+            return {
+              id: selectedMemory.id,
+              title: selectedMemory.title,
+              content: selectedMemory.content,
+              layer: selectedMemory.layer,
+              source: selectedMemory.source ?? 'unknown',
+              createdAt: Date.parse(selectedMemory.created_at),
+              metadata: {
+                usageCount: 3,
+                last_used_at: '2026-07-16T12:00:00.000Z',
+              },
+            };
+          },
+        };
+      },
+    });
+
+    const response = await app.request('/tasks/MEMO-0001', {
+      headers: {
+        [BACKLOG_HOME_HEADER]: 'project',
+        [BACKLOG_PROJECT_ROOT_HEADER]: '/workspace/project',
+      },
+    });
+
+    expect(await response.json()).toMatchObject({
+      id: memory.id,
+      usage_count: 3,
+      last_used_at: '2026-07-16T12:00:00.000Z',
+      raw: '# Project memory',
+    });
+    expect(memory).toMatchObject({
+      usage_count: 89,
+      last_used_at: '2026-01-01T00:00:00.000Z',
+    });
+  });
+
   it('uses the selected runtime operation log and service for enrichment', async function selectsOperations() {
     const selectedService = createService(createTask('Selected task'));
     const selectedOperations = createOperationLog([createOperation(SHARED_ID)]);

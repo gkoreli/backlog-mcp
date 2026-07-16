@@ -92,12 +92,32 @@ function createFakeLocalGraph(name: string): FakeLocalGraph {
 }
 
 function adaptFakeLocalRuntime(runtime: LocalRuntime): AppRequestRuntime {
+  const usageTracker = new MemoryUsageTracker({
+    getService: function getService() {
+      return runtime.service;
+    },
+  });
   return {
     service: runtime.service,
     operationLog: runtime.operationLogger,
     operationLogger: runtime.operationLogger,
     eventBus: runtime.eventBus,
     memoryComposer: runtime.memoryComposer,
+    mintMemoryEntry: function mintMemoryEntry(memory) {
+      return {
+        id: memory.id,
+        title: memory.title,
+        content: memory.content,
+        layer: memory.layer,
+        source: memory.source ?? 'unknown',
+        createdAt: Date.parse(memory.created_at),
+        metadata: { usageCount: 0 },
+      };
+    },
+    usageTracker,
+    readUsageLines: function readProjectUsage() {
+      return ['project usage'];
+    },
     resolveSourcePath: function resolveProjectSource(sourcePath) {
       return `project source: ${sourcePath}`;
     },
@@ -185,8 +205,9 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
     expect(selected.resolveSourcePath('input.md')).toBe(
       'project source: input.md',
     );
-    expect(selected.usageTracker).toBeUndefined();
-    expect(selected.readUsageLines).toBeUndefined();
+    expect(selected.mintMemoryEntry).toBeTypeOf('function');
+    expect(selected.usageTracker).toBeInstanceOf(MemoryUsageTracker);
+    expect(selected.readUsageLines?.()).toEqual(['project usage']);
 
     const writeEventBus = selected.writeContext.eventBus;
     if (writeEventBus === undefined) {

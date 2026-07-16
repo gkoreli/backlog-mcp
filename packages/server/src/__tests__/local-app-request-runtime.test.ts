@@ -76,9 +76,12 @@ describe('createLocalAppRequestRuntime', function describeLocalAppRuntime() {
       operationLogger: runtime.operationLogger,
       eventBus: runtime.eventBus,
       memoryComposer: runtime.memoryComposer,
+      usageTracker: runtime.usageTracker,
       resourceManager: runtime.resourceManager,
+      readUsageLines: runtime.readUsageLines,
       identityPath: join(runtime.home.documentsDir, 'identity.md'),
     });
+    expect(appRuntime.mintMemoryEntry).toBeTypeOf('function');
     expect(appRuntime.getSourcePath?.(entity.id)).toBe(
       'tasks/TASK-0001-mapped-task.md',
     );

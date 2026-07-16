@@ -61,12 +61,17 @@ export function createLocalAppRequestRuntime(
     operationLogger: runtime.operationLogger,
     eventBus: runtime.eventBus,
     memoryComposer: runtime.memoryComposer,
+    mintMemoryEntry: function mintMemoryEntry(memory) {
+      return runtime.memoryStore.toMemoryEntry(memory);
+    },
+    usageTracker: runtime.usageTracker,
     resourceManager: runtime.resourceManager,
     readLocalFile: createReadLocalFile(runtime),
     resolveSourcePath: createResolveSourcePath(runtime),
     getSourcePath: function getSourcePath(id) {
       return runtime.storage.getDocumentById(id)?.sourcePath;
     },
+    readUsageLines: runtime.readUsageLines,
     identityPath: join(runtime.home.documentsDir, 'identity.md'),
   };
 }

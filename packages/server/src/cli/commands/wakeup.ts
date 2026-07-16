@@ -74,6 +74,9 @@ export function registerWakeup(program: Command): void {
         ...(opts.evidenceChars !== undefined ? { evidenceSnippetChars: opts.evidenceChars } : {}),
         readIdentity: runtime.readIdentity,
         readOperations: (options) => runtime.operationLogger.read(options),
+        ...(runtime.mintMemoryEntry === undefined
+          ? {}
+          : { mintMemoryEntry: runtime.mintMemoryEntry }),
         });
       },
       format,

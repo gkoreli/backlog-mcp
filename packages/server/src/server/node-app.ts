@@ -7,7 +7,12 @@ import { BacklogService } from '../storage/local/backlog-service.js';
 import { resourceManager } from '../resources/manager.js';
 import { operationLogger, envActor } from '../operations/logger.js';
 import { eventBus } from '../events/index.js';
-import { defaultMemoryComposer, defaultUsageTracker, readUsageLines } from '../memory/bootstrap.js';
+import {
+  defaultMemoryComposer,
+  defaultMemoryStore,
+  defaultUsageTracker,
+  readUsageLines,
+} from '../memory/bootstrap.js';
 import { paths } from '../utils/paths.js';
 import { logger } from '../utils/logger.js';
 import { resolveSourcePath } from '../utils/resolve-source-path.js';
@@ -45,6 +50,9 @@ export function createNodeApp(options: CreateNodeAppOptions = {}): Hono {
     operationLog: operationLogger,
     eventBus,
     memoryComposer: defaultMemoryComposer,
+    mintMemoryEntry: function mintMemoryEntry(memory) {
+      return defaultMemoryStore.toMemoryEntry(memory);
+    },
     usageTracker: defaultUsageTracker,
     resourceManager,
     staticMiddleware: options?.skipStatic

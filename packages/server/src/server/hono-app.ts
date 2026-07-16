@@ -112,6 +112,7 @@ function createStaticRequestRuntime(
     operationLogger: deps?.operationLogger,
     eventBus: deps?.eventBus,
     memoryComposer: deps?.memoryComposer,
+    mintMemoryEntry: deps?.mintMemoryEntry,
     usageTracker: deps?.usageTracker,
     resourceManager: deps?.resourceManager,
     readLocalFile: deps?.readLocalFile,
@@ -131,6 +132,7 @@ function createRequestToolDeps(
     operationLogger: runtime.operationLogger,
     eventBus: runtime.eventBus,
     memoryComposer: runtime.memoryComposer,
+    mintMemoryEntry: runtime.mintMemoryEntry,
     usageTracker: runtime.usageTracker,
     resourceManager: runtime.resourceManager,
     readLocalFile: runtime.readLocalFile,
@@ -142,6 +144,31 @@ function createRequestToolDeps(
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function withMintedMemoryUsage(
+  runtime: AppRequestRuntime,
+  entity: Entity,
+): Entity {
+  if (
+    (entity.type ?? 'task') !== 'memory'
+    || runtime.mintMemoryEntry === undefined
+  ) {
+    return entity;
+  }
+
+  const memory = { ...(entity as Memory) };
+  delete memory.usage_count;
+  delete memory.last_used_at;
+  const entry = runtime.mintMemoryEntry(entity as Memory);
+  const metadata = entry.metadata ?? {};
+  memory.usage_count = typeof metadata.usageCount === 'number'
+    ? metadata.usageCount
+    : 0;
+  if (typeof metadata.last_used_at === 'string') {
+    memory.last_used_at = metadata.last_used_at;
+  }
+  return memory;
 }
 
 export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
@@ -293,7 +320,10 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     }
 
     return c.json({
-      ...withEntityHomeProvenance(runtime, task),
+      ...withEntityHomeProvenance(
+        runtime,
+        withMintedMemoryUsage(runtime, task),
+      ),
       raw,
       parentTitle,
       children,
