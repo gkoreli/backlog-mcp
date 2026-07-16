@@ -167,7 +167,11 @@ backlog-mcp evolves through a deliberate loop, recorded in the ADR thread:
 4. **Engineer in phases** — core-first, modular, committed in logical chunks.
 5. **Validate manually** — run the real loop in real processes, not just the
    test suite; it catches what unit tests structurally miss (pattern:
-   ADR 0092.6 found the composer.forget race).
+   ADR 0092.6 found the composer.forget race). For any boundary that takes
+   untrusted or per-home/tenant input (home headers, project roots, user-defined
+   substrate schemas, claim collisions), verify it **fails closed** on malformed
+   and adversarial input — not just the happy path. A review that only checks the
+   happy-path isolation has not reviewed the boundary.
 6. **Record** — engineering-record ADR with distilled insights, validation
    findings, and next phases (patterns: 0092.4, 0092.6). Then loop.
 
@@ -278,6 +282,19 @@ Shared is in server's `devDependencies`, not `dependencies`:
 - **If `dependencies`**: `npm install backlog-mcp` tries to fetch `@backlog-mcp/shared` from registry → fails (private)
 - **If `devDependencies`**: consumers never try to install it → no problem
 - tsdown bundles it regardless of placement since it's imported
+
+### Versioning & Changelog
+
+Every version bump updates `CHANGELOG.md` in the same change — a bump commit that
+does not touch the changelog is incomplete. The flow (keep-a-changelog format):
+
+- User-facing work lands under `## [Unreleased]` as it merges, grouped into
+  `### Added` / `### Changed` / `### Fixed` / `### Removed`.
+- The `chore: bump versions (server X, viewer Y)` commit renames `[Unreleased]`
+  to `## [X] — YYYY-MM-DD` and opens a fresh empty `[Unreleased]`.
+- *User-facing* means a tool / CLI / viewer behavior, a schema, or a storage-layout
+  change an agent or human would notice. Internal refactors and test-only changes
+  stay out unless they change observable behavior.
 
 ### Publishing
 
