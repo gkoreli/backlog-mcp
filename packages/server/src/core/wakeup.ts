@@ -191,7 +191,8 @@ export async function wakeup(
       .map(m => {
         // Provenance (ADR 0115 R-4): same age/usage grammar as recall stubs,
         // anchored on the knowledge's own timeline (occurred_at ?? created_at).
-        const anchor = m.occurred_at ? Date.parse(m.occurred_at) : Date.parse(m.created_at);
+        const occurred = m.occurred_at ? Date.parse(m.occurred_at) : NaN;
+        const anchor = Number.isNaN(occurred) ? Date.parse(m.created_at) : occurred;
         const item: WakeupKnowledgeItem = {
           id: m.id,
           layer: m.layer ?? 'semantic',

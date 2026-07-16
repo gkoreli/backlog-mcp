@@ -85,7 +85,9 @@ function toRecallItem(entry: MemoryEntry, score: number, full: boolean, now: num
 
   const item: RecallItem = {
     id: entry.id,
-    title: entry.title,
+    // Stores mint titles (substrate requires one), but transient stores may
+    // not — fall back to the digest rather than surfacing "undefined".
+    title: entry.title ?? digestOf(entry.content),
     digest: digestOf(entry.content),
     layer: entry.layer,
     source: entry.source,

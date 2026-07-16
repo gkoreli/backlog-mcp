@@ -57,8 +57,11 @@ describe('core/recall', () => {
     expect(item.kind).toBe('completion');
     expect(item.layer).toBe('episodic');
     // Provenance (ADR 0115 R-1): age derives from createdAt; unused memory
-    // reports uses:0 with no idle_days.
-    expect(item.age_days).toBe(Math.floor((Date.now() - 1_700_000_000_000) / (24 * 60 * 60 * 1000)));
+    // reports uses:0 with no idle_days. ±1 tolerance: the epoch's day
+    // boundary may fall between recall's clock read and this one.
+    const expectedAge = Math.floor((Date.now() - 1_700_000_000_000) / (24 * 60 * 60 * 1000));
+    expect(item.age_days).toBeGreaterThanOrEqual(expectedAge - 1);
+    expect(item.age_days).toBeLessThanOrEqual(expectedAge);
     expect(item.uses).toBe(0);
     expect(item.idle_days).toBeUndefined();
     expect(item.score).toBeGreaterThan(0);
@@ -81,14 +84,14 @@ describe('core/recall', () => {
     });
 
     const result = await recall({ query: 'release' }, { memoryComposer: composer });
-    const item = result.items[0]!;
-    expect(item.title).toBe('Deploy procedure');
-    expect(item.uses).toBe(5);
-    expect(item.idle_days).toBe(3);
-    expect(item.supersedes).toBe('MEMO-0001');
-    expect(item.derived).toBe(true);
-    expect(item.kind).toBe('timeless');           // temporal kind wins over capture kind
-    expect(item.age_days).toBe(60);               // occurred_at anchors age, not createdAt
+    const item = result.items[0];
+    expect(item?.title).toBe('Deploy procedure');
+    expect(item?.uses).toBe(5);
+    expect(item?.idle_days).toBe(3);
+    expect(item?.supersedes).toBe('MEMO-0001');
+    expect(item?.derived).toBe(true);
+    expect(item?.kind).toBe('timeless');          // temporal kind wins over capture kind
+    expect(item?.age_days).toBe(60);              // occurred_at anchors age, not createdAt
   });
 
   it('filters by context (parent_id)', async () => {
