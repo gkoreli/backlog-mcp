@@ -75,3 +75,9 @@ export {
   type Operation,
   type EditOperation,
 } from './write-operation.js';
+
+export type {
+  AnyEntity,
+  RuntimeEntity,
+  SubstrateType,
+} from './runtime-entity.types.js';
