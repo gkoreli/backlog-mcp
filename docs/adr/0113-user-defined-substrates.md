@@ -114,7 +114,7 @@ contains:
 | Section | Purpose |
 |---|---|
 | `definitionVersion` | Version of the backlog-mcp substrate meta-schema. |
-| `type` and `label` | Stable machine key plus singular/plural human labels. |
+| `type`, `label`, and `folder` | Stable machine key, singular/plural human labels, and the validated docs-relative storage claim. |
 | `replaces` / `extendsDefinition` | Explicit relationship to a packaged declarative definition. |
 | `identity` | Type-local identity requirements consumed by ADR 0112's identity service. |
 | `schema` | Draft 2020-12 JSON Schema for the normalized entity projection. |
@@ -424,12 +424,11 @@ is the runtime compatibility gate.
     "singular": "ADR",
     "plural": "ADRs"
   },
+  "folder": "adr",
   "identity": {
     "strategy": "numbered-threaded",
-    "namespace": "ADR",
     "minimumDigits": 4,
-    "slug": "required",
-    "displayTemplate": "ADR {number}{threadPart}"
+    "displayTemplate": "ADR {key}"
   },
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",

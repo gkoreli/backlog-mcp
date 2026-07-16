@@ -66,3 +66,13 @@ export type {
   DocumentIdentity,
   ParseDocumentIdentityParams,
 } from './document-identity.types.js';
+export { compileSubstrateDefinition } from './substrates/index.js';
+export type {
+  CompiledSubstrateDefinition,
+  CompileSubstrateDefinitionParams,
+  CompileSubstrateDefinitionResult,
+  SubstrateDefinitionDiagnostic,
+  SubstrateDefinitionIssue,
+  SubstrateDefinitionIssueCode,
+  SubstrateWriteValidationResult,
+} from './substrates/index.js';
