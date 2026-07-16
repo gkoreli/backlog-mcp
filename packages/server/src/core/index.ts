@@ -121,7 +121,9 @@ export type {
   SubstrateWriteValidationResult,
 } from './substrates/index.js';
 export {
+  assertDocsNativeMigrationComplete,
   DocsNativeMigrationError,
+  DocsNativeMigrationRequiredError,
   migrateDocsNative,
   planDocsNativeMigration,
 } from './migrate-docs-native.js';

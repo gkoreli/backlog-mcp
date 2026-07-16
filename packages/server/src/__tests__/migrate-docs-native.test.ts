@@ -15,6 +15,7 @@ import {
   resolveBacklogHome,
 } from '../core/backlog-home.js';
 import {
+  assertDocsNativeMigrationComplete,
   DocsNativeMigrationError,
   migrateDocsNative,
   planDocsNativeMigration,
@@ -26,6 +27,7 @@ import {
 } from '../core/substrates/index.js';
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
 import { DocsNativeFilesystemStorage } from '../storage/local/docs-native-filesystem-storage.js';
+import { createLocalRuntime } from '../storage/local/local-runtime.js';
 
 const TIMESTAMP = '2026-07-16T00:00:00.000Z';
 
@@ -403,6 +405,20 @@ describe('docs-native global migration', function describeGlobalMigration() {
       }),
     ]);
   });
+
+  it('blocks global runtime construction until the explicit migration runs', function guardsGlobalRuntime() {
+    const home = globalHome('runtime-guard');
+    mkdirSync(join(home.root, 'tasks'), { recursive: true });
+
+    expect(function constructBeforeMigration() {
+      createLocalRuntime(home);
+    }).toThrow('backlog migrate docs-native --home global');
+
+    migrateDocsNative({ home, registry: registry() });
+    expect(function verifyAfterMigration() {
+      assertDocsNativeMigrationComplete(home);
+    }).not.toThrow();
+  });
 });
 
 describe('docs-native project control migration', function describeProjectMigration() {
@@ -511,5 +527,14 @@ describe('docs-native project control migration', function describeProjectMigrat
         sourcePaths: ['.backlog-mcp/.gitignore'],
       }),
     ]);
+  });
+
+  it('blocks project runtime construction until its explicit control migration runs', function guardsProjectRuntime() {
+    const home = projectHome('project-runtime-guard');
+    mkdirSync(join(home.root, '.backlog-mcp', 'state'), { recursive: true });
+
+    expect(function constructBeforeMigration() {
+      createLocalRuntime(home);
+    }).toThrow('backlog migrate docs-native --home project');
   });
 });

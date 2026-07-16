@@ -8,10 +8,8 @@ import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { MemoryComposer } from '@backlog-mcp/memory';
 import type { SubstrateType } from '@backlog-mcp/shared';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
-import { discoverDocuments } from '../../core/document-discovery.js';
+import { assertDocsNativeMigrationComplete } from '../../core/migrate-docs-native.js';
 import {
-  createBuiltinSubstrateRegistrations,
-  loadProjectSubstrateDefinitions,
   type ProjectSubstrateRegistry,
   type SubstrateDefinitionDiagnostic,
 } from '../../core/substrates/index.js';
@@ -34,6 +32,7 @@ import type {
   DocsTreeWatcherSubscription,
 } from './docs-tree-watcher.contract.js';
 import type { LocalRuntimeDependencies } from './local-runtime.types.js';
+import { loadHomeSubstrateRegistry } from './home-substrate-registry.js';
 import { ParcelDocsTreeWatcher } from './parcel-docs-tree-watcher.js';
 import { nextStorageDocumentId } from '../storage-identity.js';
 
@@ -206,12 +205,9 @@ export function createLocalRuntime(
   deps: LocalRuntimeDependencies = {},
 ): LocalRuntime {
   const catalog = deps.catalog ?? new BuiltinSubstrateStorageCatalog();
+  assertDocsNativeMigrationComplete(home);
   ensureRuntimeDirectories(home);
-  const discovery = discoverDocuments({ documentsDir: home.documentsDir });
-  const definitions = loadProjectSubstrateDefinitions(
-    discovery.declarations,
-    createBuiltinSubstrateRegistrations(catalog),
-  );
+  const definitions = loadHomeSubstrateRegistry(home, catalog);
   const substrateRegistry = definitions.registry;
   const storage = new DocsNativeFilesystemStorage(home, substrateRegistry);
   const search = deps.createSearch?.(home) ?? createSearch(home);

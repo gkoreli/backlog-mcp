@@ -89,6 +89,14 @@ export class DocsNativeMigrationError extends Error {
   }
 }
 
+/** Error raised instead of serving a deceptively empty docs-native home. */
+export class DocsNativeMigrationRequiredError extends Error {
+  constructor(readonly homeKind: 'global' | 'project', command: string) {
+    super(`Docs-native migration required; stop the server and run: ${command}`);
+    this.name = 'DocsNativeMigrationRequiredError';
+  }
+}
+
 function fileSystem(
   overrides: Partial<DocsNativeMigrationFileSystem> | undefined,
 ): DocsNativeMigrationFileSystem {
@@ -97,6 +105,73 @@ function fileSystem(
 
 function toPosix(path: string): string {
   return path.split(sep).join('/');
+}
+
+function configHasLegacyScope(
+  path: string,
+  fs: DocsNativeMigrationFileSystem,
+): boolean {
+  if (!fs.exists(path)) return false;
+  try {
+    const value = JSON.parse(fs.readFile(path).toString('utf-8')) as unknown;
+    return typeof value === 'object'
+      && value !== null
+      && !Array.isArray(value)
+      && 'scope' in value;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fail closed while a home still has data the docs-native runtime would ignore.
+ *
+ * The explicit migration command is the only upgrade path; runtime startup
+ * never guesses, merges, or silently dual-reads legacy locations.
+ */
+export function assertDocsNativeMigrationComplete(
+  home: PlanDocsNativeMigrationParams['home'],
+  overrides?: Partial<DocsNativeMigrationFileSystem>,
+): void {
+  const fs = fileSystem(overrides);
+  if (home.kind === 'project') {
+    const legacyControl = join(home.root, LEGACY_PROJECT_CONTROL_DIR);
+    const configNeedsRename = [
+      join(home.controlDir, 'config.json'),
+      join(home.controlDir, 'config.local.json'),
+    ].some(function hasLegacyContextName(path) {
+      return configHasLegacyScope(path, fs);
+    });
+    if (!fs.exists(legacyControl) && !configNeedsRename) return;
+    throw new DocsNativeMigrationRequiredError(
+      'project',
+      `backlog migrate docs-native --home project --project-root "${home.root}"`,
+    );
+  }
+
+  const legacyPaths = [
+    'tasks',
+    'resources',
+    'identity.md',
+    '.internal',
+    'memory-usage.jsonl',
+    'logs',
+    '.cache',
+    LEGACY_PROJECT_CONTROL_DIR,
+    'config.local.json',
+  ];
+  const hasLegacyPath = legacyPaths.some(function legacyPathExists(path) {
+    return fs.exists(join(home.root, path));
+  });
+  const configNeedsRename = configHasLegacyScope(
+    join(home.root, 'config.json'),
+    fs,
+  );
+  if (!hasLegacyPath && !configNeedsRename) return;
+  throw new DocsNativeMigrationRequiredError(
+    'global',
+    'backlog migrate docs-native --home global',
+  );
 }
 
 function rootRelativePath(root: string, path: string): string {
