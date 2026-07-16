@@ -22,6 +22,10 @@ describe('toConstraintStub (ADR 0113.1 R-1)', () => {
 
     const malformed = toConstraintStub(req('REQ-0002', { checked_at: 'not-a-date' }), NOW);
     expect(malformed.checked_days_ago).toBeUndefined();  // never epoch-old
+
+    // A far-future checked_at is bad data, not a maximally fresh assessment.
+    const future = toConstraintStub(req('REQ-0003', { checked_at: new Date(NOW + 30 * DAY).toISOString() }), NOW);
+    expect(future.checked_days_ago).toBeUndefined();
   });
 
   it('caps violation ids at 3 while the count stays complete', () => {

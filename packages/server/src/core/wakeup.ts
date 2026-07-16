@@ -261,7 +261,10 @@ export async function wakeup(
   let constraints: ConstraintStub[] = [];
   let constraintsOmitted = 0;
   if (maxConstraints > 0) {
-    const requirements = await service.list({ type: REQUIREMENT_TYPE, limit: 500 });
+    // Exhaustive read (no paging in ListFilter): the omitted count must be
+    // the whole truth, and worst-first ordering must see every live REQ —
+    // a storage-side cap would cut oldest-first BEFORE the band sort.
+    const requirements = await service.list({ type: REQUIREMENT_TYPE, limit: 100_000 });
     const now = Date.now();
     const live = requirements
       .map(r => ({

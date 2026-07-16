@@ -18,7 +18,8 @@
  * it by scanning the declaring documents at query time.
  */
 
-import type { AnyEntity } from '@backlog-mcp/shared';
+import type { AnyEntity, RuntimeEntity } from '@backlog-mcp/shared';
+import { requirementCompliance } from '../requirements/index.js';
 import type { ContextStub } from './types.js';
 
 /** One declared relation edge: `type.field` points at other entities. */
@@ -68,9 +69,10 @@ function toRelationStub(entity: AnyEntity): ContextStub {
     type: typeof entity.type === 'string' ? entity.type : 'task',
   };
   if (typeof entity.status === 'string') stub.status = entity.status;
-  const compliance = (entity as Record<string, unknown>)['compliance'];
   if (entity.type === 'requirement') {
-    stub.compliance = typeof compliance === 'string' ? compliance : 'unchecked';
+    // Through the constraint mint (0113.1 R-1) — one requirement read
+    // boundary, one defaulting/normalization policy.
+    stub.compliance = requirementCompliance(entity as RuntimeEntity);
   }
   return stub;
 }
@@ -110,8 +112,9 @@ export function traverseTypedRelations(
   }
 
   // Reverse — who declares a relation to the focal? Computed on read.
+  // Same-substrate scans included: a REQ superseded by another REQ must
+  // surface superseded_by (the per-declarer self skip below is sufficient).
   for (const declaringType of new Set(RELATION_EDGES.map(e => e.type))) {
-    if (declaringType === focal.type) continue;
     const declarers = deps.listByType(declaringType);
     for (const declarer of declarers) {
       if (declarer.id === focal.id) continue;

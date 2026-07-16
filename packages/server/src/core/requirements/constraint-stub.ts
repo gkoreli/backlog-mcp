@@ -54,13 +54,21 @@ function idArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
 }
 
+/**
+ * Read-side compliance defaulting (0113.1 §defaults seam) — the one
+ * normalization every surface shares, exported for relation stubs.
+ */
+export function requirementCompliance(entity: RuntimeEntity): string {
+  return stringField(entity['compliance']) ?? 'unchecked';
+}
+
 /** Mint a constraint stub from a claimed requirement document. */
 export function toConstraintStub(entity: RuntimeEntity, now: number): ConstraintStub {
   const stub: ConstraintStub = {
     id: entity.id,
     title: entity.title,
     status: stringField(entity.status) ?? 'intake',
-    compliance: stringField(entity['compliance']) ?? 'unchecked',
+    compliance: requirementCompliance(entity),
   };
 
   const domain = entity['domain'];
@@ -72,7 +80,10 @@ export function toConstraintStub(entity: RuntimeEntity, now: number): Constraint
   const checkedAt = stringField(entity['checked_at']);
   if (checkedAt !== undefined) {
     const ts = Date.parse(checkedAt);
-    if (!Number.isNaN(ts)) {
+    // A checked_at more than a day in the future is bad data, not a fresh
+    // assessment — it must read "never assessed", not max authority.
+    // (≤1 day tolerates clock skew and date-only timestamps.)
+    if (!Number.isNaN(ts) && ts - now <= MS_PER_DAY) {
       stub.checked_days_ago = Math.max(0, Math.floor((now - ts) / MS_PER_DAY));
     }
   }

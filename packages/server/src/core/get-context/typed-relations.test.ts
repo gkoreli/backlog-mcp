@@ -73,6 +73,15 @@ describe('traverseTypedRelations (ADR 0113.1 R-3)', () => {
     expect(relations.spawned?.some(s => s.id === 'REQ-0001')).toBe(false);  // no self
   });
 
+  it('same-substrate reverse relations surface: a REQ superseded by another REQ shows superseded_by', () => {
+    const corpus = [
+      doc('REQ-0001', 'requirement', {}),
+      doc('REQ-0002', 'requirement', { supersedes: ['REQ-0001'] }),
+    ];
+    const relations = traverseTypedRelations(corpus[0] as AnyEntity, makeDeps(corpus));
+    expect(relations.superseded_by?.map(s => s.id)).toEqual(['REQ-0002']);
+  });
+
   it('returns an empty record when nothing relates', () => {
     const focal = doc('TASK-0001', 'task');
     expect(traverseTypedRelations(focal, makeDeps([focal]))).toEqual({});

@@ -43,7 +43,9 @@ function contextDeps(service: IBacklogService): GetContextDeps | null {
     },
     typed: {
       getEntity: (id) => getSync(id),
-      listByType: (type) => listSync({ type, limit: 500 }),
+      // Exhaustive like wakeup's constraint read: reverse relations must
+      // see every declaring document (ListFilter has no paging).
+      listByType: (type) => listSync({ type, limit: 100_000 }),
     },
   };
 }
