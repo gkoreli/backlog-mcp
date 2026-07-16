@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import { recall } from '../../core/recall.js';
 import { resolveScope } from '../../core/config.js';
 import type { RecallResult } from '../../core/types.js';
-import { run } from '../runner.js';
+import { cliRuntimeDependencies, run } from '../runner.js';
 
 function format(result: RecallResult): string {
   if (result.items.length === 0) {
@@ -65,5 +65,6 @@ export function registerRecall(program: Command): void {
       },
       format,
       program.opts().json,
+      cliRuntimeDependencies(program),
     ));
 }

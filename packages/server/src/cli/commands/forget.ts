@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { forget } from '../../core/forget.js';
 import type { ForgetResult } from '../../core/types.js';
-import { run } from '../runner.js';
+import { cliRuntimeDependencies, run } from '../runner.js';
 
 function format(result: ForgetResult): string {
   return result.forgotten === 0
@@ -31,5 +31,6 @@ export function registerForget(program: Command): void {
       ),
       format,
       program.opts().json,
+      cliRuntimeDependencies(program),
     ));
 }

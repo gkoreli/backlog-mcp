@@ -1,7 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { Command } from 'commander';
 import type { BacklogEventType } from '../events/event-bus.js';
-import { resolveBacklogHome } from '../core/backlog-home.js';
+import {
+  BacklogHomeResolutionError,
+  resolveBacklogHome,
+} from '../core/backlog-home.js';
 import { NotFoundError, ValidationError } from '../core/types.js';
 import { operationLogger, envActor } from '../operations/logger.js';
 import {
@@ -76,6 +80,8 @@ async function createDocsNativeCliRuntime(
 ): Promise<CliRuntime> {
   const env = deps.env ?? process.env;
   const home = resolveBacklogHome({
+    home: deps.home,
+    projectRoot: deps.projectRoot,
     cwd: deps.cwd ?? process.cwd(),
     env,
   });
@@ -138,10 +144,45 @@ export async function createCliRuntime(
 ): Promise<CliRuntime> {
   const env = deps.env ?? process.env;
   if (env[BACKLOG_DOCS_NATIVE_ENV_VAR] !== '1') {
+    if (deps.home !== undefined || deps.projectRoot !== undefined) {
+      throw new BacklogHomeResolutionError(
+        'CLI home selection requires BACKLOG_DOCS_NATIVE=1 until the Phase E cutover',
+      );
+    }
     return deps.createLegacyRuntime?.()
       ?? createLegacyCliRuntime(deps.actor?.() ?? envActor());
   }
   return createDocsNativeCliRuntime(deps);
+}
+
+/**
+ * Read explicit home selection from the root CLI command.
+ *
+ * The temporary docs-native flag remains the Phase C activation gate; these
+ * options are the caller-facing selection surface that survives Phase E.
+ */
+export function cliRuntimeDependencies(
+  program: Pick<Command, 'opts'>,
+): CliRunnerDependencies {
+  const options = program.opts<{
+    home?: string;
+    projectRoot?: string;
+  }>();
+  let home: 'global' | 'project' | undefined;
+  if (options.home === 'global' || options.home === 'project') {
+    home = options.home;
+  } else if (options.home !== undefined) {
+    throw new BacklogHomeResolutionError(
+      `Invalid backlog home "${options.home}"; expected "global" or "project"`,
+    );
+  }
+
+  return {
+    ...(home === undefined ? {} : { home }),
+    ...(options.projectRoot === undefined
+      ? {}
+      : { projectRoot: options.projectRoot }),
+  };
 }
 
 export async function run<R>(

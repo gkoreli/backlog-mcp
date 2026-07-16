@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { listItems } from '../../core/list.js';
 import type { ListResult } from '../../core/types.js';
-import { run } from '../runner.js';
+import { cliRuntimeDependencies, run } from '../runner.js';
 
 function format(result: ListResult): string {
   if (result.tasks.length === 0) return 'No items found.';
@@ -37,5 +37,6 @@ export function registerList(program: Command): void {
       }),
       format,
       program.opts().json,
+      cliRuntimeDependencies(program),
     ));
 }

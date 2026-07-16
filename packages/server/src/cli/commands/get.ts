@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { getItems } from '../../core/get.js';
 import type { GetResult } from '../../core/types.js';
-import { run } from '../runner.js';
+import { cliRuntimeDependencies, run } from '../runner.js';
 
 function format(result: GetResult): string {
   return result.items.map(i =>
@@ -28,5 +28,6 @@ export function registerGet(program: Command): void {
       },
       format,
       program.opts().json,
+      cliRuntimeDependencies(program),
     ));
 }

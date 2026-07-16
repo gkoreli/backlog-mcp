@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { searchItems } from '../../core/search.js';
 import type { SearchResult } from '../../core/types.js';
-import { run } from '../runner.js';
+import { cliRuntimeDependencies, run } from '../runner.js';
 
 function format(result: SearchResult): string {
   if (result.results.length === 0) return `No results for "${result.query}"`;
@@ -36,5 +36,6 @@ export function registerSearch(program: Command): void {
       }),
       format,
       program.opts().json,
+      cliRuntimeDependencies(program),
     ));
 }

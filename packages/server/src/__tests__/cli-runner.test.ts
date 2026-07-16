@@ -126,6 +126,16 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
     expect(createLocal).not.toHaveBeenCalled();
   });
 
+  it('rejects explicit home selection while docs-native remains disabled', async function rejectsDormantSelection() {
+    await expect(createCliRuntime({
+      env: {},
+      home: 'project',
+      projectRoot: '/workspace/repo',
+    })).rejects.toThrow(
+      'CLI home selection requires BACKLOG_DOCS_NATIVE=1',
+    );
+  });
+
   it('selects a project runtime from caller cwd and env', async function selectsProject() {
     mkdirSync('/workspace/repo/.git', { recursive: true });
     mkdirSync('/workspace/repo/packages/server', { recursive: true });
@@ -137,8 +147,10 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
     const selected = await createCliRuntime({
       env: {
         BACKLOG_DOCS_NATIVE: '1',
-        BACKLOG_HOME: 'project',
+        BACKLOG_HOME: 'global',
       },
+      home: 'project',
+      projectRoot: '/workspace/repo',
       cwd: '/workspace/repo/packages/server',
       actor: function actor() {
         return { type: 'agent', name: 'selected-agent' };

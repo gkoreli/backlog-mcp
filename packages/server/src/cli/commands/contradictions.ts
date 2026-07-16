@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { detectContradictions } from '../../core/contradictions.js';
 import type { ContradictionsResult } from '../../core/types.js';
-import { run } from '../runner.js';
+import { cliRuntimeDependencies, run } from '../runner.js';
 
 function format(result: ContradictionsResult): string {
   if (result.groups.length === 0) {
@@ -31,5 +31,6 @@ export function registerContradictions(program: Command): void {
       (runtime) => detectContradictions(runtime.service),
       format,
       program.opts().json,
+      cliRuntimeDependencies(program),
     ));
 }

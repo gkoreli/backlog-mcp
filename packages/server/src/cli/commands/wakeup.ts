@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import { wakeup } from '../../core/wakeup.js';
 import { resolveScope } from '../../core/config.js';
 import type { WakeupResult } from '../../core/types.js';
-import { run } from '../runner.js';
+import { cliRuntimeDependencies, run } from '../runner.js';
 
 function section(title: string, body: string[]): string[] {
   if (body.length === 0) return [];
@@ -78,5 +78,6 @@ export function registerWakeup(program: Command): void {
       },
       format,
       program.opts().json,
+      cliRuntimeDependencies(program),
     ));
 }

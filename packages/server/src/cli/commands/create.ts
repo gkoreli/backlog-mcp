@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { createItem } from '../../core/create.js';
-import { run } from '../runner.js';
+import { cliRuntimeDependencies, run } from '../runner.js';
 
 export function registerCreate(program: Command): void {
   program
@@ -26,5 +26,6 @@ export function registerCreate(program: Command): void {
       },
       (r) => `Created ${r.id}`,
       program.opts().json,
+      cliRuntimeDependencies(program),
     ));
 }

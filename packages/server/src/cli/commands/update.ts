@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { updateItem } from '../../core/update.js';
-import { run } from '../runner.js';
+import { cliRuntimeDependencies, run } from '../runner.js';
 
 export function registerUpdate(program: Command): void {
   program
@@ -26,5 +26,6 @@ export function registerUpdate(program: Command): void {
       }, runtime.writeContext),
       (r) => `Updated ${r.id}`,
       program.opts().json,
+      cliRuntimeDependencies(program),
     ));
 }

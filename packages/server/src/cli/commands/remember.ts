@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import { remember } from '../../core/remember.js';
 import { resolveScope } from '../../core/config.js';
 import type { RememberResult } from '../../core/types.js';
-import { run } from '../runner.js';
+import { cliRuntimeDependencies, run } from '../runner.js';
 
 function format(result: RememberResult): string {
   const lines = [`remembered ${result.id} [${result.layer}] at ${result.created_at}`];
@@ -65,5 +65,6 @@ export function registerRemember(program: Command): void {
       },
       format,
       program.opts().json,
+      cliRuntimeDependencies(program),
     ));
 }

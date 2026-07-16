@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { consolidationCandidates } from '../../core/consolidation.js';
 import type { ConsolidationCandidatesResult } from '../../core/types.js';
-import { run } from '../runner.js';
+import { cliRuntimeDependencies, run } from '../runner.js';
 
 function format(result: ConsolidationCandidatesResult): string {
   if (result.bundles.length === 0) {
@@ -45,5 +45,6 @@ export function registerConsolidation(program: Command): void {
       }),
       format,
       program.opts().json,
+      cliRuntimeDependencies(program),
     ));
 }

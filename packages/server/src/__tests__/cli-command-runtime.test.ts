@@ -13,7 +13,21 @@ const mocks = vi.hoisted(function createMocks() {
 });
 
 vi.mock('../cli/runner.js', function mockRunner() {
-  return { run: mocks.run };
+  return {
+    run: mocks.run,
+    cliRuntimeDependencies(program: Command) {
+      const options = program.opts<{
+        home?: 'global' | 'project';
+        projectRoot?: string;
+      }>();
+      return {
+        ...(options.home === undefined ? {} : { home: options.home }),
+        ...(options.projectRoot === undefined
+          ? {}
+          : { projectRoot: options.projectRoot }),
+      };
+    },
+  };
 });
 
 vi.mock('../core/create.js', function mockCreate() {
@@ -62,7 +76,10 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
     ) {
       await handler(runtime);
     });
-    const program = new Command().option('--json');
+    const program = new Command()
+      .option('--json')
+      .option('--home <home>')
+      .option('--project-root <path>');
     registerCreate(program);
 
     await program.parseAsync([
@@ -72,6 +89,10 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
       'Selected task',
       '--source',
       'input.md',
+      '--home',
+      'project',
+      '--project-root',
+      '/workspace/repo',
     ]);
 
     expect(runtime.resolveSourcePath).toHaveBeenCalledWith('input.md');
@@ -83,5 +104,9 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
       }),
       runtime.writeContext,
     );
+    expect(mocks.run.mock.calls[0]?.[3]).toEqual({
+      home: 'project',
+      projectRoot: '/workspace/repo',
+    });
   });
 });
