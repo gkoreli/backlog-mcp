@@ -6,7 +6,9 @@ docs-native project through the production substrate registry, indexes the
 same registry-projected entities and non-entity resources as the local
 runtime, uses the real `BacklogMemoryStore.recall` path for recall queries, and
 writes one atomic JSON report. It does not use the deterministic test fixture
-or mocked embeddings.
+or mocked embeddings. The selected output file is excluded from resource
+discovery so rerunning a checked-in report cannot make the benchmark consume
+its own derived evidence as corpus input.
 
 The input judgments must already have independent human review. The runner
 rejects a query or qrel whose `assessor` does not contain `reviewed:`.

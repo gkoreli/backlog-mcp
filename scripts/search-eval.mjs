@@ -793,9 +793,11 @@ function loadProductCorpus(args, runtime) {
   const entitySourcePaths = new Set(storedDocuments.map(function sourcePath(stored) {
     return stored.sourcePath;
   }));
+  const outputPath = resolve(args.output);
   const resourceManager = new runtime.ResourceManager(home.documentsDir);
-  const resources = resourceManager.list().filter(function excludeEntityMarkdown(resource) {
-    return !entitySourcePaths.has(resource.path);
+  const resources = resourceManager.list().filter(function excludeDerivedInputs(resource) {
+    const absolutePath = resolve(home.documentsDir, resource.path);
+    return !entitySourcePaths.has(resource.path) && absolutePath !== outputPath;
   });
   const ids = new Set();
   const documentIds = [
