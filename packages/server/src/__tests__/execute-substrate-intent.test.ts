@@ -139,6 +139,32 @@ function customCreateIntent(): CompiledSubstrateIntent {
   };
 }
 
+function memoryCreateIntent(): CompiledSubstrateIntent {
+  return {
+    sourcePath: 'builtin:memory@compiled',
+    substrateType: 'memory',
+    verb: 'remember_internal',
+    toolName: 'backlog_remember_internal',
+    description: 'Persist one memory through the converged create funnel.',
+    intentInputSchema: z.object({
+      title: z.string(),
+      content: z.string(),
+    }).strict(),
+    operation: {
+      kind: 'create',
+      fields: [
+        { input: 'title', field: 'title' },
+        { input: 'content', field: 'content' },
+      ],
+      fixedFields: {
+        layer: 'semantic',
+        source: 'human',
+        usage_count: 0,
+      },
+    },
+  };
+}
+
 function transitionIntent(): CompiledSubstrateIntent {
   return {
     sourcePath: 'builtin:task@compiled',
@@ -283,6 +309,35 @@ describe('executeSubstrateIntent', () => {
       command: 42,
       enabled: 'manual',
     });
+  });
+
+  it('never recursively captures a memory created through the converged funnel', async () => {
+    const { service, store } = serviceHarness();
+    const { context, entries } = contextHarness();
+    const capture = vi.fn();
+    context.memoryComposer = {
+      store: capture,
+    } as unknown as NonNullable<WriteContext['memoryComposer']>;
+    const { validator } = validatorHarness();
+
+    await executeSubstrateIntent({
+      intent: memoryCreateIntent(),
+      input: {
+        title: 'No recursive capture',
+        content: 'Memory writes do not create memories about themselves.',
+      },
+      service,
+      validator,
+      context,
+    });
+
+    expect([...store.values()]).toHaveLength(1);
+    expect(store.get('memory-generated')).toMatchObject({
+      type: 'memory',
+      layer: 'semantic',
+    });
+    expect(capture).not.toHaveBeenCalled();
+    expect(entries).toHaveLength(1);
   });
 
   it('applies transition fields and semantic attribution', async () => {
