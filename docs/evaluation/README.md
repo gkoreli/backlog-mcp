@@ -1,7 +1,9 @@
 # ADR 0116 recorded search baseline
 
 `scripts/search-eval.mjs` records the real BM25-only and MiniLM fp32 hybrid
-behavior of the production Orama search service. It imports the built server
+behavior of the production Orama search service. It loads the selected
+docs-native project through the production substrate registry, indexes the
+same registry-projected entities and non-entity resources as the local
 runtime, uses the real `BacklogMemoryStore.recall` path for recall queries, and
 writes one atomic JSON report. It does not use the deterministic test fixture
 or mocked embeddings.
@@ -17,7 +19,7 @@ Node 24 is required.
 pnpm install --frozen-lockfile
 pnpm build
 pnpm search:eval -- \
-  --corpus /absolute/path/entities.jsonl \
+  --project-root /absolute/path/to/project \
   --queries /absolute/path/queries.jsonl \
   --qrels /absolute/path/qrels.jsonl \
   --output /absolute/path/reports/minilm-fp32-baseline.json
@@ -27,7 +29,7 @@ Optional controls:
 
 ```bash
 pnpm search:eval -- \
-  --corpus entities.jsonl \
+  --project-root /absolute/path/to/project \
   --queries queries.jsonl \
   --qrels qrels.jsonl \
   --output report.json \
@@ -44,15 +46,18 @@ The first hybrid run may download `Xenova/all-MiniLM-L6-v2`. If the model
 cannot initialize, the runner fails instead of recording the service's BM25
 fallback as hybrid evidence.
 
-## Corpus JSONL
+## Product corpus
 
-One built-in `Entity` JSON object per line. The built shared `EntitySchema`
-validates every record. IDs must be unique.
+`--project-root` resolves one production project home. The runner fails on
+substrate diagnostics, claims Markdown through the active registry, projects
+each entity with its declared search fields, and includes generic resources
+without double-indexing claimed entity files. The report freezes a
+deterministic content hash plus entity/resource counts and per-substrate
+counts; no duplicate corpus copy is checked in.
 
-```json
-{"id":"TASK-0001","type":"task","title":"Retry embeddings","content":"Make initialization retryable.","status":"open","created_at":"2026-07-01T00:00:00.000Z","updated_at":"2026-07-01T00:00:00.000Z"}
-{"id":"MEMO-0001","type":"memory","title":"Fusion law","content":"Fusion changes require judged evidence.","layer":"semantic","source":"human","usage_count":0,"created_at":"2026-07-01T00:00:00.000Z","updated_at":"2026-07-01T00:00:00.000Z"}
-```
+This boundary was corrected after ADR 0113 Phase C expanded the product corpus
+to packaged ADR, requirement, and prompt substrates. A baseline that accepts
+only the old closed `EntitySchema` is invalid because it omits those documents.
 
 ## Query JSONL
 
@@ -71,13 +76,14 @@ Each line has this schema:
 }
 ```
 
-Search options are strict:
+Search options are strict by shape. Substrate type and status values remain
+open strings because the active project registry, not the benchmark runner,
+owns those vocabularies:
 
 ```text
 {
-  types?: ("task" | "epic" | "folder" | "artifact" | "milestone" |
-           "cron" | "memory" | "resource")[],
-  status?: ("open" | "in_progress" | "blocked" | "done" | "cancelled")[],
+  types?: string[],
+  status?: string[],
   parent_id?: string,
   limit?: positive integer
 }
@@ -131,11 +137,14 @@ must have at least one qrel.
 
 ## Report
 
-The report records input hashes and counts, environment and package versions,
+The report records the Git commit and runner hash, corpus/query/qrel hashes and
+counts, explicit evaluated surfaces and limitations, environment and package versions,
 fixed MiniLM correctness metadata, BM25 and hybrid index duration/cache bytes,
 separate lexical-ready and semantic-ready timings, whether the model came from
 the existing Transformers.js cache or was downloaded during the run (including
-downloaded bytes), an explicit cold-run flag, phase-boundary RSS samples, raw
+downloaded bytes), hashes for the required cached model files, cold-start to
+first-result and first-result-after-ready probes, an explicit cold-run flag,
+phase-boundary RSS samples, raw
 ranked IDs and timings for every query,
 repeat-determinism checks, first measured query latency, warm p50/p95 latency,
 and overall/per-class nDCG@10, MRR@10, success@1, Recall@20, and unjudged@10.
@@ -149,3 +158,11 @@ Reports are durable evidence. The output parent directory is created when
 needed, and the report is written to a temporary sibling before an atomic
 rename. Do not check in a report until its corpus, queries, and qrels are the
 reviewed product-corpus baseline authorized by ADR 0116.
+
+Baseline v1 is deliberately search-only because the post-Phase-C project
+corpus contains no real memories. It must state that recall evidence is absent.
+Candidate search comparisons may proceed, but no shared-fusion winner or other
+recall-affecting ranking change may ship until baseline v2 adds at least four
+reviewed memory-recall queries against Goga's real global memory corpus after
+Phase E migration places it under `~/.backlog/docs`. Synthetic memories may
+never be used to manufacture that evidence.

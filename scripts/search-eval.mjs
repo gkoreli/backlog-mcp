@@ -16,10 +16,11 @@ import os from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
 
 const HELP = `Usage:
   pnpm search:eval -- \\
-    --corpus <entities.jsonl> \\
+    --project-root <project> \\
     --queries <queries.jsonl> \\
     --qrels <qrels.jsonl> \\
     --output <report.json> \\
@@ -27,7 +28,7 @@ const HELP = `Usage:
     [--repetitions N]
 
 Required:
-  --corpus       One Entity JSON object per line
+  --project-root Docs-native project whose production search corpus is measured
   --queries      One judged search/recall query per line
   --qrels        One graded relevance judgment per line
   --output       Durable JSON report destination
@@ -40,23 +41,12 @@ Optional:
 Run "pnpm build" before executing a benchmark.
 `;
 
-const REQUIRED_ARGUMENTS = ['corpus', 'queries', 'qrels', 'output'];
+const REQUIRED_ARGUMENTS = ['project-root', 'queries', 'qrels', 'output'];
 const VALUE_ARGUMENTS = new Set([...REQUIRED_ARGUMENTS, 'warmups', 'repetitions']);
-const SEARCHABLE_TYPES = new Set([
-  'task',
-  'epic',
-  'folder',
-  'artifact',
-  'milestone',
-  'cron',
-  'memory',
-  'resource',
-]);
-const STATUSES = new Set(['open', 'in_progress', 'blocked', 'done', 'cancelled']);
 const MEMORY_LAYERS = new Set(['episodic', 'semantic', 'procedural']);
 const MODEL_METADATA = {
   id: 'Xenova/all-MiniLM-L6-v2',
-  revision: 'unfixed',
+  revision: 'default-main-unpinned',
   dimensions: 384,
   dtype: 'fp32',
   max_tokens: 512,
@@ -153,7 +143,7 @@ function parseArguments(argv) {
   }
   return {
     help: false,
-    corpus: resolve(values.corpus),
+    projectRoot: resolve(values['project-root']),
     queries: resolve(values.queries),
     qrels: resolve(values.qrels),
     output: resolve(values.output),
@@ -184,14 +174,6 @@ function readJsonLines(path, label) {
   return { raw, records };
 }
 
-function validateStringEnumArray(value, allowed, location) {
-  const values = requireStringArray(value, location);
-  for (const item of values) {
-    if (!allowed.has(item)) fail(`${location} contains unsupported value "${item}"`);
-  }
-  return values;
-}
-
 function validateLimit(value, location) {
   if (!Number.isSafeInteger(value) || value < 1) fail(`${location} must be a positive integer`);
   return value;
@@ -201,10 +183,10 @@ function validateSearchOptions(value, location) {
   const options = requireRecord(value, location);
   const validated = {};
   if (options.types !== undefined) {
-    validated.types = validateStringEnumArray(options.types, SEARCHABLE_TYPES, `${location}.types`);
+    validated.types = requireStringArray(options.types, `${location}.types`);
   }
   if (options.status !== undefined) {
-    validated.status = validateStringEnumArray(options.status, STATUSES, `${location}.status`);
+    validated.status = requireStringArray(options.status, `${location}.status`);
   }
   if (options.parent_id !== undefined) {
     validated.parent_id = requireString(options.parent_id, `${location}.parent_id`);
@@ -221,7 +203,13 @@ function validateRecallOptions(value, location) {
   const options = requireRecord(value, location);
   const validated = {};
   if (options.layers !== undefined) {
-    validated.layers = validateStringEnumArray(options.layers, MEMORY_LAYERS, `${location}.layers`);
+    const layers = requireStringArray(options.layers, `${location}.layers`);
+    for (const layer of layers) {
+      if (!MEMORY_LAYERS.has(layer)) {
+        fail(`${location}.layers contains unsupported value "${layer}"`);
+      }
+    }
+    validated.layers = layers;
   }
   if (options.context !== undefined) {
     validated.context = requireString(options.context, `${location}.context`);
@@ -300,26 +288,50 @@ function validateQrels(records, queryIds, documentIds) {
   return qrels;
 }
 
-async function validateCorpus(records, entitySchema) {
-  const entities = [];
-  const ids = new Set();
-  records.forEach((raw, index) => {
-    const location = `corpus line ${index + 1}`;
-    let entity;
-    try {
-      entity = entitySchema.parse(raw);
-    } catch (error) {
-      fail(`${location} is not a valid Entity: ${error instanceof Error ? error.message : String(error)}`);
-    }
-    if (ids.has(entity.id)) fail(`Duplicate corpus document ID: ${entity.id}`);
-    ids.add(entity.id);
-    entities.push(entity);
-  });
-  return { entities, ids };
-}
-
 function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
+}
+
+function stableJsonLine(value) {
+  return `${JSON.stringify(value)}\n`;
+}
+
+function corpusSnapshot(entityDocuments, resources) {
+  const records = [
+    ...entityDocuments.map(function entityRecord(document) {
+      return { kind: 'entity', document };
+    }),
+    ...resources.map(function resourceRecord(resource) {
+      return { kind: 'resource', resource };
+    }),
+  ].sort(function compareCorpusRecords(left, right) {
+    const leftId = left.kind === 'entity' ? left.document.entity.id : left.resource.id;
+    const rightId = right.kind === 'entity' ? right.document.entity.id : right.resource.id;
+    return String(leftId).localeCompare(String(rightId));
+  });
+  return Buffer.from(records.map(stableJsonLine).join(''));
+}
+
+function countEntityTypes(entityDocuments) {
+  const counts = {};
+  for (const document of entityDocuments) {
+    const type = String(document.entity.type);
+    counts[type] = (counts[type] ?? 0) + 1;
+  }
+  return Object.fromEntries(Object.entries(counts).sort(function compareTypes(left, right) {
+    return left[0].localeCompare(right[0]);
+  }));
+}
+
+function gitCommit(repoRoot) {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    }).trim();
+  } catch {
+    return 'unknown';
+  }
 }
 
 function percentile(values, fraction) {
@@ -393,12 +405,17 @@ function directoryBytes(path) {
 
 function modelCacheSnapshot(cacheDir) {
   const path = join(cacheDir, ...MODEL_METADATA.id.split('/'));
+  const requiredFiles = Object.fromEntries(REQUIRED_MODEL_CACHE_FILES.map(
+    function modelFile(relativePath) {
+      const absolutePath = join(path, ...relativePath.split('/'));
+      return [relativePath, existsSync(absolutePath) ? sha256(readFileSync(absolutePath)) : null];
+    },
+  ));
   return {
     path,
     bytes: directoryBytes(path),
-    complete: REQUIRED_MODEL_CACHE_FILES.every(function modelFileExists(relativePath) {
-      return existsSync(join(path, ...relativePath.split('/')));
-    }),
+    complete: Object.values(requiredFiles).every(hash => hash !== null),
+    required_file_sha256: requiredFiles,
   };
 }
 
@@ -596,7 +613,8 @@ function summarizeMode(queries, measuredRuns, judgmentsByQuery, metrics) {
 async function benchmarkMode({
   mode,
   hybridSearch,
-  entities,
+  entityDocuments,
+  resources,
   queries,
   qrels,
   warmups,
@@ -607,12 +625,14 @@ async function benchmarkMode({
   metrics,
 }) {
   const rssSamples = [];
+  const coldStart = process.hrtime.bigint();
   recordRss(rssSamples, 'before_index');
   const searchService = new OramaSearchService({ cachePath, hybridSearch });
   const adapter = new BenchmarkServiceAdapter(searchService);
   const memoryStore = new BacklogMemoryStore(() => adapter);
   const indexStart = process.hrtime.bigint();
-  await searchService.index(entities);
+  await searchService.index(entityDocuments);
+  await searchService.reconcileResources(resources);
   const indexDuration = roundMilliseconds(durationMilliseconds(indexStart));
   searchService.flush();
   recordRss(rssSamples, 'after_index');
@@ -621,6 +641,13 @@ async function benchmarkMode({
   if (hybridSearch && !hybridActive) {
     fail('MiniLM hybrid initialization failed; refusing to record a BM25 fallback as a hybrid baseline');
   }
+
+  const firstQuery = queries[0];
+  if (firstQuery === undefined) fail('At least one query is required');
+  const firstResultStart = process.hrtime.bigint();
+  await retrieve(firstQuery, adapter, memoryStore);
+  const firstResultAfterReady = roundMilliseconds(durationMilliseconds(firstResultStart));
+  const coldStartToFirstResult = roundMilliseconds(durationMilliseconds(coldStart));
 
   for (let index = 0; index < warmups; index += 1) {
     await runQuerySet(queries, adapter, memoryStore);
@@ -639,6 +666,11 @@ async function benchmarkMode({
     mode,
     hybrid_active: hybridActive,
     build_duration_ms: indexDuration,
+    startup_ms: {
+      cold_start_to_first_result: coldStartToFirstResult,
+      first_result_after_ready: firstResultAfterReady,
+      probe_query_id: firstQuery.id,
+    },
     cache_bytes: fileBytes(cachePath),
     rss: {
       before_bytes: rssSamples[0]?.bytes ?? process.memoryUsage().rss,
@@ -670,7 +702,12 @@ async function loadRuntime(repoRoot) {
   const paths = {
     orama: join(repoRoot, 'packages/server/dist/memory/src/search/orama-search-service.mjs'),
     memoryStore: join(repoRoot, 'packages/server/dist/memory/backlog-memory-store.mjs'),
-    entitySchema: join(repoRoot, 'packages/server/dist/shared/src/substrates/registry.mjs'),
+    backlogHome: join(repoRoot, 'packages/server/dist/core/backlog-home.mjs'),
+    homeRegistry: join(repoRoot, 'packages/server/dist/storage/local/home-substrate-registry.mjs'),
+    storageCatalog: join(repoRoot, 'packages/server/dist/storage/local/builtin-substrate-storage-catalog.mjs'),
+    storage: join(repoRoot, 'packages/server/dist/storage/local/docs-native-filesystem-storage.mjs'),
+    searchDocument: join(repoRoot, 'packages/server/dist/core/substrates/create-search-entity-document.mjs'),
+    resourceManager: join(repoRoot, 'packages/server/dist/resources/manager.mjs'),
     metrics: join(repoRoot, 'packages/memory/src/search/evaluation.ts'),
     transformers: requireFromServer.resolve('@huggingface/transformers'),
   };
@@ -682,25 +719,83 @@ async function loadRuntime(repoRoot) {
   const [
     oramaModule,
     memoryModule,
-    schemaModule,
+    backlogHomeModule,
+    homeRegistryModule,
+    storageCatalogModule,
+    storageModule,
+    searchDocumentModule,
+    resourceManagerModule,
     metrics,
     transformersModule,
   ] = await Promise.all([
     import(pathToFileURL(paths.orama).href),
     import(pathToFileURL(paths.memoryStore).href),
-    import(pathToFileURL(paths.entitySchema).href),
+    import(pathToFileURL(paths.backlogHome).href),
+    import(pathToFileURL(paths.homeRegistry).href),
+    import(pathToFileURL(paths.storageCatalog).href),
+    import(pathToFileURL(paths.storage).href),
+    import(pathToFileURL(paths.searchDocument).href),
+    import(pathToFileURL(paths.resourceManager).href),
     import(pathToFileURL(paths.metrics).href),
     import(pathToFileURL(paths.transformers).href),
   ]);
   return {
     OramaSearchService: oramaModule.OramaSearchService,
     BacklogMemoryStore: memoryModule.BacklogMemoryStore,
-    EntitySchema: schemaModule.EntitySchema,
+    resolveBacklogHome: backlogHomeModule.resolveBacklogHome,
+    loadHomeSubstrateRegistry: homeRegistryModule.loadHomeSubstrateRegistry,
+    BuiltinSubstrateStorageCatalog: storageCatalogModule.BuiltinSubstrateStorageCatalog,
+    DocsNativeFilesystemStorage: storageModule.DocsNativeFilesystemStorage,
+    createSearchEntityDocument: searchDocumentModule.createSearchEntityDocument,
+    ResourceManager: resourceManagerModule.ResourceManager,
     metrics,
     transformersCacheDir:
       transformersModule.env?.cacheDir
       ?? transformersModule.default?.env?.cacheDir,
   };
+}
+
+function loadProductCorpus(args, runtime) {
+  const home = runtime.resolveBacklogHome({
+    home: 'project',
+    projectRoot: args.projectRoot,
+  });
+  const definitions = runtime.loadHomeSubstrateRegistry(
+    home,
+    new runtime.BuiltinSubstrateStorageCatalog(),
+  );
+  if (definitions.diagnostics.length > 0) {
+    fail(`Project substrate diagnostics prevent a baseline: ${JSON.stringify(definitions.diagnostics)}`);
+  }
+  const storage = new runtime.DocsNativeFilesystemStorage(home, definitions.registry);
+  const storedDocuments = Array.from(storage.iterateDocuments());
+  const getSearchFields = definitions.registry.getSearchFields.bind(definitions.registry);
+  const entityDocuments = storedDocuments.flatMap(function projectStoredEntity(stored) {
+    const document = runtime.createSearchEntityDocument(stored.entity, getSearchFields);
+    return document === undefined ? [] : [document];
+  });
+  const entitySourcePaths = new Set(storedDocuments.map(function sourcePath(stored) {
+    return stored.sourcePath;
+  }));
+  const resourceManager = new runtime.ResourceManager(home.documentsDir);
+  const resources = resourceManager.list().filter(function excludeEntityMarkdown(resource) {
+    return !entitySourcePaths.has(resource.path);
+  });
+  const ids = new Set();
+  const documentIds = [
+    ...entityDocuments.map(function entityId(document) {
+      return document.entity.id;
+    }),
+    ...resources.map(function resourceId(resource) {
+      return resource.id;
+    }),
+  ];
+  for (const id of documentIds) {
+    if (ids.has(id)) fail(`Duplicate corpus document ID: ${id}`);
+    ids.add(id);
+  }
+  if (ids.size === 0) fail(`Project corpus is empty: ${home.documentsDir}`);
+  return { home, entityDocuments, resources, ids };
 }
 
 async function main() {
@@ -716,15 +811,16 @@ async function main() {
   if (typeof runtime.transformersCacheDir !== 'string') {
     fail('Cannot resolve the active Transformers.js filesystem cache');
   }
-  const corpusInput = readJsonLines(args.corpus, 'corpus');
   const queryInput = readJsonLines(args.queries, 'queries');
   const qrelInput = readJsonLines(args.qrels, 'qrels');
-  const { entities, ids: documentIds } = await validateCorpus(
-    corpusInput.records,
-    runtime.EntitySchema,
-  );
+  const corpus = loadProductCorpus(args, runtime);
+  const corpusInput = corpusSnapshot(corpus.entityDocuments, corpus.resources);
   const queries = validateQueries(queryInput.records);
-  const qrels = validateQrels(qrelInput.records, new Set(queries.map(query => query.id)), documentIds);
+  const qrels = validateQrels(
+    qrelInput.records,
+    new Set(queries.map(query => query.id)),
+    corpus.ids,
+  );
 
   const benchmarkDirectory = join(
     tmpdir(),
@@ -734,7 +830,8 @@ async function main() {
   try {
     const modelCacheBefore = modelCacheSnapshot(runtime.transformersCacheDir);
     const common = {
-      entities,
+      entityDocuments: corpus.entityDocuments,
+      resources: corpus.resources,
       queries,
       qrels,
       warmups: args.warmups,
@@ -772,12 +869,33 @@ async function main() {
       : 'downloaded';
     const report = {
       schema_version: 1,
+      baseline_version: 1,
       generated_at: new Date().toISOString(),
       runner: 'scripts/search-eval.mjs',
       inputs: {
-        corpus: { path: args.corpus, sha256: sha256(corpusInput.raw), count: entities.length },
+        corpus: {
+          project_root: corpus.home.root,
+          documents_dir: corpus.home.documentsDir,
+          home_id: corpus.home.id,
+          sha256: sha256(corpusInput),
+          count: corpus.ids.size,
+          entity_count: corpus.entityDocuments.length,
+          resource_count: corpus.resources.length,
+          entity_types: countEntityTypes(corpus.entityDocuments),
+        },
         queries: { path: args.queries, sha256: sha256(queryInput.raw), count: queries.length },
         qrels: { path: args.qrels, sha256: sha256(qrelInput.raw), count: qrels.length },
+      },
+      scope: {
+        surfaces: [...new Set(queries.map(query => query.surface))].sort(),
+        recall_classes: [...new Set(queries.filter(
+          query => query.surface === 'recall',
+        ).map(query => query.class))].sort(),
+        ...(queries.some(query => query.surface === 'recall')
+          ? {}
+          : {
+              recall_limitation: 'Absent — blocked pending a real memory corpus after global Phase E migration into ~/.backlog/docs; this report is not recall evidence.',
+            }),
       },
       settings: {
         warmups: args.warmups,
@@ -785,6 +903,16 @@ async function main() {
         cold_run: args.warmups === 0,
       },
       environment: buildEnvironment(repoRoot),
+      provenance: {
+        git_commit: gitCommit(repoRoot),
+        runner_sha256: sha256(readFileSync(fileURLToPath(import.meta.url))),
+        corpus_membership_ruling: 'Beryl domain ruling, 2026-07-16: record after ADR 0113 Phase C so packaged substrate documents are members of the measured corpus.',
+        query_assessors: [...new Set(queries.map(query => query.assessor))].sort(),
+        qrel_assessors: [...new Set(qrels.map(qrel => qrel.assessor))].sort(),
+        query_sources: Object.fromEntries(queries.map(function querySource(query) {
+          return [query.id, query.provenance];
+        })),
+      },
       model: {
         ...MODEL_METADATA,
         model_source: modelSource,
@@ -793,6 +921,7 @@ async function main() {
         cache_complete_after: modelCacheAfter.complete,
         cache_bytes_before: modelCacheBefore.bytes,
         cache_bytes_after: modelCacheAfter.bytes,
+        required_file_sha256: modelCacheAfter.required_file_sha256,
         ...(modelSource === 'downloaded'
           ? { downloaded_bytes: modelDownloadedBytes }
           : {}),
