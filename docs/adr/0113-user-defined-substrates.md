@@ -1085,6 +1085,9 @@ ADR 0113.1 specializes the Requirement flagship: recall remains the memory corpu
 while Requirements use wakeup, search, and get. The definition contract retains a
 bounded recall projection for a future substrate whose declared semantics genuinely
 belong in recall; no current packaged document is injected into `MemoryComposer`.
+Phase C compiles the registry wakeup descriptor but does not consume it. ADR 0113.1
+owns the later wakeup consumer, including Requirement constraint ordering, caps, and
+truncation counts, so those semantics are not duplicated in the generic compiler.
 
 Requirement defaults intentionally appear in two roles, not two write authorities:
 JSON Schema `default` values document the lenient read expectation, while the capture
@@ -1185,8 +1188,9 @@ The important consequences are:
   strings while preserving `resource` as a document-kind sentinel.
 - Index declared searchable fields without rebuilding the Orama schema per substrate;
   flatten them into existing searchable text plus generic type/status facets.
-- Extend wakeup through registry-declared sections. Implement Requirement constraint
-  ordering and truncation counts in transport-free core.
+- Compile registry-declared wakeup sections. Defer the runtime wakeup consumer and
+  Requirement ordering/truncation behavior to ADR 0113.1, which owns that disclosure
+  surface.
 - Expose runtime substrate documents to recall/search and role-grouped
   `get(context: true)` stubs per ADR 0114; do not create a Requirement-only retrieval
   stack.
@@ -1243,7 +1247,8 @@ dependencies:
 - thread identity normalization;
 - substrate-specific workflow transitions;
 - relation target/cardinality validation;
-- Requirement wakeup ordering and truncation disclosure;
+- compiled Requirement wakeup descriptor validation; consumer ordering and truncation
+  tests remain with ADR 0113.1;
 - generated intent names/descriptions and safe operation mapping;
 - viewer fallback for unknown runtime types without Task misclassification.
 
