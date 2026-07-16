@@ -37,6 +37,11 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export interface ConsolidationDeps {
   /** Raw lines of memory-usage.jsonl (ADR 0092.9 R-16). Absent → demand 0. */
   readUsageLines?: () => string[];
+  /**
+   * Clock (epoch ms). Absent → Date.now(). Injected so age/demand-window
+   * math is testable against frozen fixtures (ADR 0115 R-3).
+   */
+  now?: number;
 }
 
 /**
@@ -171,7 +176,7 @@ export async function consolidationCandidates(
   if (minCount < 1) throw new ValidationError('min_count must be ≥ 1');
   if (minAgeDays < 0) throw new ValidationError('min_age_days must be ≥ 0');
 
-  const now = Date.now();
+  const now = deps.now ?? Date.now();
   const demand = demandCounts(deps.readUsageLines?.() ?? [], { now });
   const all = await service.list({ type: EntityType.Memory });
   const episodics = all

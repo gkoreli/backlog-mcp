@@ -118,7 +118,7 @@ describe('consolidationCandidates (service-backed)', () => {
       { id: 'TASK-0001', type: 'task', title: 't', status: 'open', created_at: old, updated_at: old } as Entity,
     ]);
 
-    const result = await consolidationCandidates(svc, { min_count: 1, min_age_days: 0 });
+    const result = await consolidationCandidates(svc, { min_count: 1, min_age_days: 0 }, { now: NOW });
     expect(result.total_episodic).toBe(1);
     expect(result.bundles[0]?.member_ids).toEqual(['MEMO-0001']);
   });
@@ -130,7 +130,7 @@ describe('consolidationCandidates (service-backed)', () => {
       mem('MEMO-0002', { parent_id: 'FLDR-0002', created_at: old }),
     ]);
 
-    const scoped = await consolidationCandidates(svc, { context: 'FLDR-0001', min_count: 1, min_age_days: 0 });
+    const scoped = await consolidationCandidates(svc, { context: 'FLDR-0001', min_count: 1, min_age_days: 0 }, { now: NOW });
     expect(scoped.bundles).toHaveLength(1);
     expect(scoped.bundles[0]?.context).toBe('FLDR-0001');
 
@@ -152,7 +152,7 @@ describe('consolidationCandidates (service-backed)', () => {
     ];
 
     const result = await consolidationCandidates(
-      svc, { min_age_days: 7, min_demand: 3 }, { readUsageLines: () => lines },
+      svc, { min_age_days: 7, min_demand: 3 }, { readUsageLines: () => lines, now: NOW },
     );
     // Young bundle, but recalled 3× within the window → ripe via the demand gate.
     expect(result.bundles[0]?.demand).toBe(3);
