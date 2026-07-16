@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import {
   EntityType,
   STATUSES,
@@ -8,7 +7,6 @@ import {
   type Status,
   type SubstrateType,
 } from '@backlog-mcp/shared';
-import { FilesystemStorage } from './filesystem-storage.js';
 import type {
   DocumentStorageAdapter,
   StorageAdapter,
@@ -18,8 +16,6 @@ import {
   type SearchableType,
   type UnifiedSearchResult,
 } from '@backlog-mcp/memory/search';
-import { resourceManager } from '../../resources/manager.js';
-import { paths } from '../../utils/paths.js';
 import { logger } from '../../utils/logger.js';
 import {
   asBuiltinEntity,
@@ -92,7 +88,6 @@ function hasChanges(stats: SearchReconciliationStats): boolean {
  * local path mirrors the D1 path's dependency inversion (ADR 0106.3 §A).
  */
 export class BacklogService implements IBacklogService {
-  private static instance: BacklogService | undefined;
   private readonly storage: StorageAdapter;
   private readonly search: OramaSearchService;
   private readonly resourceManager: BacklogServiceDependencies['resourceManager'];
@@ -105,25 +100,6 @@ export class BacklogService implements IBacklogService {
     this.search = dependencies.search;
     this.resourceManager = dependencies.resourceManager;
     this.allocateEntityId = dependencies.allocateId;
-  }
-
-  static getInstance(): BacklogService {
-    if (!BacklogService.instance) {
-      BacklogService.instance = new BacklogService({
-        storage: new FilesystemStorage(),
-        search: new OramaSearchService({
-          cachePath: join(
-            paths.backlogDataDir,
-            '.cache',
-            'search-index.json',
-          ),
-          // ADR-0092.1 Phase 1 — recent work ranks above old work.
-          halfLifeDays: 30,
-        }),
-        resourceManager,
-      });
-    }
-    return BacklogService.instance;
   }
 
   private async ensureSearchReady(): Promise<void> {
@@ -368,5 +344,3 @@ export class BacklogService implements IBacklogService {
     if (this.searchReady) this.search.flush();
   }
 }
-
-export const storage: BacklogService = BacklogService.getInstance();

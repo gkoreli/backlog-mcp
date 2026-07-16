@@ -4,12 +4,9 @@ import { join, sep } from 'node:path';
 import { paths } from '../utils/paths.js';
 
 describe('PathResolver tilde & path resolution', () => {
-  const originalDataDir = process.env.BACKLOG_DATA_DIR;
   const originalNodeEnv = process.env.NODE_ENV;
 
   afterEach(() => {
-    if (originalDataDir === undefined) delete process.env.BACKLOG_DATA_DIR;
-    else process.env.BACKLOG_DATA_DIR = originalDataDir;
     if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = originalNodeEnv;
     vi.resetModules();
@@ -52,31 +49,6 @@ describe('PathResolver tilde & path resolution', () => {
       }
     });
 
-    it('backlogDataDir expands ~ instead of leaking it into the path', () => {
-      process.env.BACKLOG_DATA_DIR = '~/Documents/goga/.backlog';
-      const dir = paths.backlogDataDir;
-      expect(dir).toBe(`${homedir()}/Documents/goga/.backlog`);
-      expect(containsTildeSegment(dir)).toBe(false);
-    });
-
-    it('backlogDataDir defaults to ~/.backlog (user-global) when unset', () => {
-      delete process.env.BACKLOG_DATA_DIR;
-      const dir = paths.backlogDataDir;
-      expect(dir).toBe(`${homedir()}/.backlog`);
-      expect(containsTildeSegment(dir)).toBe(false);
-    });
-
-    it('backlogDataDir keeps absolute paths as-is', () => {
-      process.env.BACKLOG_DATA_DIR = '/Users/gkoreli/Documents/goga/.backlog';
-      expect(paths.backlogDataDir).toBe('/Users/gkoreli/Documents/goga/.backlog');
-    });
-
-    it('backlogDataDir resolves relative paths against project root', () => {
-      process.env.BACKLOG_DATA_DIR = 'data';
-      const dir = paths.backlogDataDir;
-      expect(dir.endsWith(`${sep}data`)).toBe(true);
-      expect(dir.startsWith(sep)).toBe(true);
-    });
   });
 
   describe('viewer assets', () => {

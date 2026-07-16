@@ -25,16 +25,9 @@
     "url": "https://github.com/gkoreli/backlog-mcp.git"
   },
   "type": "module",
-  "main": "dist/index.mjs",
-  "types": "dist/index.d.ts",
   "bin": {
-    "backlog-mcp": "./dist/cli/index.mjs"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.mjs"
-    }
+    "backlog-mcp": "./dist/cli/index.mjs",
+    "backlog": "./dist/cli/index.mjs"
   },
   "files": [
     "dist",

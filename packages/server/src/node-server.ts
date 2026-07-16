@@ -14,15 +14,14 @@ async function shutdown(): Promise<void> {
   shuttingDown = true;
   logger.info('Server shutting down');
   console.log('Shutting down gracefully...');
+  server.close();
+  setTimeout(() => process.exit(0), 500);
   try {
     await composition.registry.closeAll();
   } catch (error) {
     logger.error('Runtime shutdown failed', {
       message: error instanceof Error ? error.message : String(error),
     });
-  } finally {
-    server.close();
-    setTimeout(() => process.exit(0), 500);
   }
 }
 

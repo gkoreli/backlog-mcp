@@ -24,10 +24,7 @@ export interface AsyncListFilter {
 }
 
 /**
- * Synchronous storage adapter interface.
- * Implemented by FilesystemStorage for local/filesystem mode. The "Adapter"
- * pattern term lives here on the interface; concrete classes name the thing
- * (FilesystemStorage), not the pattern (ADR 0106.3 §A).
+ * Synchronous local storage adapter composed by one docs-native home runtime.
  */
 export interface StorageAdapter {
   get(id: string): AnyEntity | undefined;

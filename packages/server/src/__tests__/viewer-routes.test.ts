@@ -7,7 +7,6 @@ import type { Entity, EntityType } from '@backlog-mcp/shared';
 vi.mock('../utils/paths.js', () => ({
   paths: {
     viewerDist: '/tmp/viewer-dist',
-    backlogDataDir: '/tmp/backlog-data',
     getVersion: () => '1.0.0',
     packageJson: { name: 'backlog-mcp', version: '1.0.0' },
   },

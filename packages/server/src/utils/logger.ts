@@ -1,6 +1,6 @@
 import { appendFile, appendFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { paths } from './paths.js';
+import { globalStatePath } from './global-home-paths.js';
 
 const LEVELS = ['debug', 'info', 'warn', 'error'] as const;
 type Level = (typeof LEVELS)[number];
@@ -14,11 +14,11 @@ function getLogLevel(): Level {
 
 function getLogFile(): string {
   const date = new Date().toISOString().split('T')[0];
-  return join(paths.backlogDataDir, 'logs', `backlog-${date}.log`);
+  return join(globalStatePath('logs'), `backlog-${date}.log`);
 }
 
 function ensureLogDir(): void {
-  const logDir = join(paths.backlogDataDir, 'logs');
+  const logDir = globalStatePath('logs');
   if (!existsSync(logDir)) {
     mkdirSync(logDir, { recursive: true });
   }

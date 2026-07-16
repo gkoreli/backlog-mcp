@@ -1,3 +1,4 @@
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { Entity } from '@backlog-mcp/shared';
@@ -54,18 +55,27 @@ describe('Vite dev entry docs-native runtime', function describeDevEntry() {
         },
       });
       runtime.storage.createDocument(
-        projectTask,
+        {
+          ...projectTask,
+          title: home.kind === 'project'
+            ? 'Project runtime task'
+            : 'Global runtime task',
+        },
         'tasks/TASK-0001-project-runtime-task.md',
       );
       selectedRuntime = runtime;
       return runtime;
     });
-    const app = await createDevApp({
-      BACKLOG_PROJECT_ROOT: '/workspace/project',
-    }, registry);
+    mkdirSync('/workspace/project/.git', { recursive: true });
+    mkdirSync('/workspace/project/docs', { recursive: true });
+    const composition = await createDevApp(
+      {},
+      registry,
+      '/workspace/project',
+    );
 
     try {
-      const response = await app.request(`/tasks/${projectTask.id}`);
+      const response = await composition.app.request(`/tasks/${projectTask.id}`);
 
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({
@@ -79,8 +89,20 @@ describe('Vite dev entry docs-native runtime', function describeDevEntry() {
         kind: 'project',
         root: '/workspace/project',
       });
+
+      const globalResponse = await composition.app.request(
+        `/tasks/${projectTask.id}`,
+        { headers: { 'X-Backlog-Home': 'global' } },
+      );
+      expect(await globalResponse.json()).toMatchObject({
+        title: 'Global runtime task',
+        home: 'global',
+      });
+      expect(await composition.app.request('/shutdown', {
+        method: 'POST',
+      })).toMatchObject({ status: 404 });
     } finally {
-      await registry.closeAll();
+      await composition.close();
     }
   });
 });

@@ -7,5 +7,13 @@
 import { getRequestListener } from '@hono/node-server';
 import { createDevApp } from './server/dev-app.js';
 
-const app = await createDevApp();
-export const handler = getRequestListener(app.fetch);
+const composition = await createDevApp();
+const hot = (
+  import.meta as ImportMeta & {
+    hot?: { dispose(callback: () => void): void };
+  }
+).hot;
+hot?.dispose(function closeDevRuntimes() {
+  void composition.close();
+});
+export const handler = getRequestListener(composition.app.fetch);

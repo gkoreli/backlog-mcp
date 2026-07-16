@@ -9,7 +9,6 @@ import {
   sep,
 } from 'node:path';
 import matter from 'gray-matter';
-import { paths } from '@server/utils/paths.js';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Resource } from '@backlog-mcp/memory/search';
 import { discoverDocuments } from '../core/document-discovery.js';
@@ -256,14 +255,3 @@ export class ResourceManager {
     return mimeMap[ext] || 'text/plain';
   }
 }
-
-/**
- * Singleton instance for dependency injection.
- * Preserves the legacy resources-only search scan while URI operations remain
- * rooted at the configured backlog data directory.
- */
-const legacyRootDir = paths.backlogDataDir;
-export const resourceManager: ResourceManager = new ResourceManager(
-  legacyRootDir,
-  join(legacyRootDir, 'resources'),
-);

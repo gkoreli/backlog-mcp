@@ -2,6 +2,7 @@ import { request } from 'node:http';
 import { spawn } from 'node:child_process';
 import { openSync, closeSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { globalStatePath } from '@server/utils/global-home-paths.js';
 import { paths } from '@server/utils/paths.js';
 import { isOlderVersion, parseVersionResponse } from '@server/utils/version.js';
 
@@ -51,7 +52,7 @@ async function spawnServer(port: number): Promise<void> {
   // (stdio:'ignore'). Native crash dumps and console.error bypass the
   // structured logger; without a real fd they vanish and the bridge only
   // reports a lost connection. Append so restarts accumulate history.
-  const logDir = join(paths.backlogDataDir, 'logs');
+  const logDir = globalStatePath('logs');
   mkdirSync(logDir, { recursive: true });
   const out = openSync(join(logDir, 'server.log'), 'a');
   const child = spawn(process.execPath, [serverPath], {
@@ -117,4 +118,3 @@ export async function ensureServer(port: number): Promise<void> {
 }
 
 export { isServerRunning, getServerVersion, shutdownServer };
-

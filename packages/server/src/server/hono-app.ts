@@ -727,19 +727,15 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   }
 
   // Shutdown remains app-scoped and retains its existing Node registration.
-  if (deps?.staticMiddleware || deps?.resourceManager) {
+  if (deps?.requestShutdown !== undefined) {
     app.post('/shutdown', (c) => {
-      if (deps.requestShutdown === undefined) {
-        setTimeout(() => process.exit(0), 500);
-      } else {
-        void Promise.resolve(deps.requestShutdown()).catch(function logFailure(
-          error,
-        ) {
-          deps.logError?.('Shutdown failed', {
-            message: errorMessage(error),
-          });
+      void Promise.resolve(deps.requestShutdown?.()).catch(function logFailure(
+        error,
+      ) {
+        deps.logError?.('Shutdown failed', {
+          message: errorMessage(error),
         });
-      }
+      });
       return c.text('Shutting down...');
     });
   }

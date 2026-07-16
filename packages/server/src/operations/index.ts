@@ -1,7 +1,6 @@
 export {
   OperationLogger,
   createOperationLogger,
-  operationLogger,
   envActor,
   type OperationEntry,
   type Actor,

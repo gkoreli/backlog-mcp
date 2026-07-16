@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ResourceManager } from '../resources/manager.js';
-import { paths } from '../utils/paths.js';
 
 describe('URI Resolver - Pure Catch-All', () => {
   let testDir: string;
@@ -15,17 +14,12 @@ describe('URI Resolver - Pure Catch-All', () => {
     
     manager = new ResourceManager(testDir);
     
-    // Mock paths.backlogDataDir getter
-    manager = new ResourceManager(testDir);
-    
-    vi.spyOn(paths, 'backlogDataDir', 'get').mockReturnValue(testDir);
   });
 
   afterEach(() => {
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
-    vi.restoreAllMocks();
   });
 
   it('should resolve nested resource paths', () => {
@@ -76,17 +70,13 @@ describe('Resource Reader', () => {
     testDir = join(tmpdir(), `backlog-test-${Date.now()}`);
     mkdirSync(testDir, { recursive: true });
     
-    // Mock paths.backlogDataDir getter
     manager = new ResourceManager(testDir);
-    
-    vi.spyOn(paths, 'backlogDataDir', 'get').mockReturnValue(testDir);
   });
 
   afterEach(() => {
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
-    vi.restoreAllMocks();
   });
 
   it('should read markdown resource', async () => {
@@ -196,62 +186,13 @@ describe('Lifecycle Management', () => {
     testDir = join(tmpdir(), `backlog-test-${Date.now()}`);
     mkdirSync(testDir, { recursive: true });
     
-    // Mock paths.backlogDataDir getter
     manager = new ResourceManager(testDir);
-    
-    vi.spyOn(paths, 'backlogDataDir', 'get').mockReturnValue(testDir);
   });
 
   afterEach(() => {
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
-    vi.restoreAllMocks();
-  });
-
-  it('should delete resources when task is deleted', async () => {
-    const { storage } = await import('../storage/local/backlog-service.js');
-    
-    // Create task
-    const task = {
-      id: 'TASK-9999',
-      type: 'task' as const,
-      title: 'Test Task',
-      status: 'open' as const,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    await storage.add(task);
-    
-    // Create resource
-    const resourceDir = join(testDir, 'resources', 'TASK-9999');
-    mkdirSync(resourceDir, { recursive: true });
-    writeFileSync(join(resourceDir, 'test.md'), '# Test', 'utf-8');
-    
-    expect(existsSync(resourceDir)).toBe(true);
-    
-    // Delete task
-    await storage.delete('TASK-9999');
-    
-    // Resources should be deleted too
-    expect(existsSync(resourceDir)).toBe(false);
-  });
-
-  it('should handle task deletion when no resources exist', async () => {
-    const { storage } = await import('../storage/local/backlog-service.js');
-    
-    const task = {
-      id: 'TASK-9998',
-      type: 'task' as const,
-      title: 'Test Task',
-      status: 'open' as const,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    await storage.add(task);
-    
-    // Delete task (no resources)
-    await expect(storage.delete('TASK-9998')).resolves.toBe(true);
   });
 
   it('should resolve resource file paths for task-attached resources', async () => {

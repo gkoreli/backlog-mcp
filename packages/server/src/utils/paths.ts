@@ -65,28 +65,6 @@ export class PathResolver {
   }
   
   /**
-   * Get backlog data directory path.
-   *
-   * Reads from BACKLOG_DATA_DIR environment variable, defaults to '~/.backlog'
-   * — a user-global store so memory and tasks persist across projects and
-   * sessions (the cross-session-continuity posture), not trapped in one repo.
-   * Relative paths are resolved against project root; absolute paths (and a
-   * leading `~`, which expands to home) are returned as-is.
-   *
-   * @example
-   * // BACKLOG_DATA_DIR not set → '/home/user/.backlog'
-   * // BACKLOG_DATA_DIR='./my-data' → '/path/to/project/my-data'
-   * // BACKLOG_DATA_DIR='/absolute/path' → '/absolute/path'
-   * // BACKLOG_DATA_DIR='~/Documents/data' → '/home/user/Documents/data'
-   */
-  public get backlogDataDir(): string {
-    const dataDir = this.expandTilde(process.env.BACKLOG_DATA_DIR ?? '~/.backlog');
-
-    const isAbsolutePath = dataDir.startsWith('/');
-    return isAbsolutePath ? dataDir : join(this.projectRoot, dataDir);
-  }
-
-  /**
    * Expand a leading `~` to the user's home directory.
    *
    * `~` is a shell convention — the OS treats it as a literal path segment, so an

@@ -6,6 +6,7 @@ import type { AppRequestRuntimeSelection } from './app-request-runtime.types.js'
 import { createLocalAppRequestRuntime } from './local-app-request-runtime.js';
 import { LocalRuntimeRequestResolver } from './local-runtime-request-resolver.js';
 import { createNodeApp } from './node-app.js';
+import type { DevAppComposition } from './dev-app.types.js';
 
 /** Construct the Vite dev app with one process-owned per-home registry. */
 export async function createDevApp(
@@ -18,7 +19,7 @@ export async function createDevApp(
     });
   }),
   cwd = process.cwd(),
-): Promise<ReturnType<typeof createNodeApp>> {
+): Promise<DevAppComposition> {
   const defaultHome = resolveBacklogHome({ cwd, env });
   const defaultSelection: AppRequestRuntimeSelection = defaultHome.kind === 'global'
     ? { home: 'global' }
@@ -36,9 +37,15 @@ export async function createDevApp(
   const runtime = createLocalAppRequestRuntime(
     await registry.get(defaultHome),
   );
-  return createNodeApp({
-    runtime,
-    skipStatic: true,
-    resolveRuntime,
-  });
+  return {
+    app: createNodeApp({
+      runtime,
+      skipStatic: true,
+      resolveRuntime,
+    }),
+    registry,
+    close: function close(): Promise<void> {
+      return registry.closeAll();
+    },
+  };
 }
