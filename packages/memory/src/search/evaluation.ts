@@ -24,6 +24,8 @@ export interface EvaluationSummary extends QueryEvaluation {
   queryCount: number;
 }
 
+export const DEFAULT_MAXIMUM_REGRESSION = 0.02;
+
 const RELEVANT_GRADE = 2;
 
 function gain(grade: RelevanceGrade): number {
@@ -40,6 +42,10 @@ function judgmentMap(judgments: readonly RelevanceJudgment[]): Map<string, Relev
   return new Map(judgments.map(judgment => [judgment.id, judgment.grade]));
 }
 
+function uniqueRankedIds(rankedIds: readonly string[], cutoff: number): string[] {
+  return [...new Set(rankedIds)].slice(0, cutoff);
+}
+
 /** Compute nDCG at a cutoff, retaining the fixture's graded signal. */
 export function ndcgAt(
   rankedIds: readonly string[],
@@ -47,8 +53,7 @@ export function ndcgAt(
   cutoff: number,
 ): number {
   const byId = judgmentMap(judgments);
-  const observed = rankedIds
-    .slice(0, cutoff)
+  const observed = uniqueRankedIds(rankedIds, cutoff)
     .map(id => byId.get(id) ?? 0);
   const ideal = judgments
     .map(judgment => judgment.grade)
@@ -63,9 +68,11 @@ export function ndcgAt(
 export function reciprocalRank(
   rankedIds: readonly string[],
   judgments: readonly RelevanceJudgment[],
+  cutoff: number = rankedIds.length,
 ): number {
   const byId = judgmentMap(judgments);
-  const firstRelevant = rankedIds.findIndex(id => (byId.get(id) ?? 0) >= RELEVANT_GRADE);
+  const firstRelevant = uniqueRankedIds(rankedIds, cutoff)
+    .findIndex(id => (byId.get(id) ?? 0) >= RELEVANT_GRADE);
   return firstRelevant === -1 ? 0 : 1 / (firstRelevant + 1);
 }
 
@@ -95,6 +102,32 @@ export function recallAt(
   return retrieved.size / relevant.size;
 }
 
+/**
+ * Report what fraction of a result window has no human judgment.
+ *
+ * Explicit grade 0 remains judged and is therefore distinct from an unknown
+ * document that is absent from the qrels.
+ */
+export function unjudgedRateAt(
+  rankedIds: readonly string[],
+  judgments: readonly RelevanceJudgment[],
+  cutoff: number,
+): number {
+  const judgedIds = new Set(judgments.map(judgment => judgment.id));
+  const window = uniqueRankedIds(rankedIds, cutoff);
+  if (window.length === 0) return 0;
+  return window.filter(id => !judgedIds.has(id)).length / window.length;
+}
+
+/** Return whether a metric remains within the frozen absolute regression budget. */
+export function isWithinRegressionBudget(
+  current: number,
+  baseline: number,
+  maximumRegression: number = DEFAULT_MAXIMUM_REGRESSION,
+): boolean {
+  return current >= baseline - maximumRegression;
+}
+
 /** Evaluate one ranked result list using the ADR 0116 Phase 0 metrics. */
 export function evaluateQuery(
   rankedIds: readonly string[],
@@ -102,7 +135,7 @@ export function evaluateQuery(
 ): QueryEvaluation {
   return {
     ndcgAt10: ndcgAt(rankedIds, judgments, 10),
-    reciprocalRank: reciprocalRank(rankedIds, judgments),
+    reciprocalRank: reciprocalRank(rankedIds, judgments, 10),
     successAt1: successAt1(rankedIds, judgments),
     recallAt20: recallAt(rankedIds, judgments, 20),
   };

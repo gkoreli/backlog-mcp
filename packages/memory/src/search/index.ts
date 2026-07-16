@@ -19,11 +19,14 @@ export { minmaxNormalize, rankNormalize, linearFusion, applyCoordinationBonus, a
 // Judged-relevance evaluation (ADR 0116)
 export {
   evaluateQuery,
+  isWithinRegressionBudget,
   ndcgAt,
   recallAt,
   reciprocalRank,
   successAt1,
   summarizeEvaluations,
+  unjudgedRateAt,
+  DEFAULT_MAXIMUM_REGRESSION,
   type EvaluationSummary,
   type QueryEvaluation,
   type RelevanceGrade,

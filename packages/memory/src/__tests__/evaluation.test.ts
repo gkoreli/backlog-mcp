@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   evaluateQuery,
+  isWithinRegressionBudget,
   ndcgAt,
   recallAt,
   reciprocalRank,
   successAt1,
   summarizeEvaluations,
+  unjudgedRateAt,
   type RelevanceJudgment,
 } from '../search/evaluation.js';
 
@@ -32,8 +34,19 @@ describe('ranked retrieval evaluation', () => {
     expect(recallAt(ranked, JUDGMENTS, 3)).toBe(0.5);
   });
 
+  it('cuts MRR off at rank 10', () => {
+    const ranked = Array.from({ length: 10 }, (_, index) => `N${index}`);
+    ranked.push('A');
+    expect(reciprocalRank(ranked, JUDGMENTS, 10)).toBe(0);
+    expect(evaluateQuery(ranked, JUDGMENTS).reciprocalRank).toBe(0);
+  });
+
   it('deduplicates retrieved ids when computing recall', () => {
     expect(recallAt(['A', 'A', 'B'], JUDGMENTS, 20)).toBe(1);
+  });
+
+  it('deduplicates ranked ids before computing nDCG', () => {
+    expect(ndcgAt(['A', 'A'], [{ id: 'A', grade: 3 }], 10)).toBe(1);
   });
 
   it('returns zero for empty or non-relevant judgment sets', () => {
@@ -42,6 +55,17 @@ describe('ranked retrieval evaluation', () => {
     expect(reciprocalRank([], JUDGMENTS)).toBe(0);
     expect(successAt1([], JUDGMENTS)).toBe(0);
     expect(recallAt(['X'], nonRelevant, 20)).toBe(0);
+  });
+
+  it('keeps unjudged documents distinct from explicit grade zero', () => {
+    expect(unjudgedRateAt(['D', 'UNKNOWN'], JUDGMENTS, 10)).toBe(0.5);
+    expect(unjudgedRateAt(['D'], JUDGMENTS, 10)).toBe(0);
+  });
+
+  it('applies the frozen absolute regression budget', () => {
+    expect(isWithinRegressionBudget(0.88, 0.9)).toBe(true);
+    expect(isWithinRegressionBudget(0.879, 0.9)).toBe(false);
+    expect(isWithinRegressionBudget(0.85, 0.9, 0.05)).toBe(true);
   });
 
   it('evaluates and macro-averages queries deterministically', () => {

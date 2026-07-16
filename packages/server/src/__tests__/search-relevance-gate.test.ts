@@ -5,6 +5,7 @@ import { EntityType, parseEntityNum, type Entity } from '@backlog-mcp/shared';
 import {
   OramaSearchService,
   evaluateQuery,
+  isWithinRegressionBudget,
   summarizeEvaluations,
   type EvaluationSummary,
   type QueryEvaluation,
@@ -14,6 +15,7 @@ import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import {
   SEARCH_RELEVANCE_ENTITIES,
   SEARCH_RELEVANCE_FIXTURE_NOW,
+  SEARCH_RELEVANCE_FIXTURE_PROVENANCE,
   SEARCH_RELEVANCE_FIXTURE_VERSION,
   SEARCH_RELEVANCE_QUERIES,
   type JudgedRecallQuery,
@@ -83,32 +85,27 @@ const EXPECTED_CLASSES: RelevanceQueryClass[] = [
   'memory-recall',
 ];
 
-const QUALITY_FLOORS = {
+/**
+ * First checked-in deterministic control. Policy compares against these
+ * observed scores with ADR 0116's 0.02 absolute regression budget; they are
+ * not rounded hand-authored aspirations.
+ */
+const BASELINE = {
   overall: {
-    ndcgAt10: 0.93,
-    reciprocalRank: 0.96,
-    successAt1: 0.95,
-    recallAt20: 0.96,
+    ndcgAt10: 0.9549957783713297,
+    reciprocalRank: 0.9833333333333332,
+    successAt1: 0.975,
+    recallAt20: 0.9875,
   },
-  ndcgAt10ByClass: {
-    navigation: 0.97,
-    'exact-title': 0.93,
-    lexical: 0.95,
-    compound: 0.88,
-    filtered: 0.78,
-    aboutness: 0.97,
-    tail: 0.98,
-    'memory-recall': 0.98,
-  },
-  recallAt20ByClass: {
-    navigation: 0.98,
-    'exact-title': 0.98,
-    lexical: 0.98,
-    compound: 0.98,
-    filtered: 0.88,
-    aboutness: 0.98,
-    tail: 0.98,
-    'memory-recall': 0.98,
+  byClass: {
+    navigation: { ndcgAt10: 0.9917319412712956, reciprocalRank: 1, recallAt20: 1 },
+    'exact-title': { ndcgAt10: 0.9596797813454561, reciprocalRank: 1, recallAt20: 1 },
+    lexical: { ndcgAt10: 0.9799150609510381, reciprocalRank: 1, recallAt20: 1 },
+    compound: { ndcgAt10: 0.9091071852180448, reciprocalRank: 0.8666666666666666, recallAt20: 1 },
+    filtered: { ndcgAt10: 0.8029638126034537, reciprocalRank: 1, recallAt20: 0.9 },
+    aboutness: { ndcgAt10: 0.9965684455813479, reciprocalRank: 1, recallAt20: 1 },
+    tail: { ndcgAt10: 1, reciprocalRank: 1, recallAt20: 1 },
+    'memory-recall': { ndcgAt10: 1, reciprocalRank: 1, recallAt20: 1 },
   },
 } as const;
 
@@ -297,6 +294,7 @@ describe('ADR 0116 judged relevance gate', () => {
 
   it('keeps the versioned fixture complete and reviewable', () => {
     expect(SEARCH_RELEVANCE_FIXTURE_VERSION).toBe(1);
+    expect(SEARCH_RELEVANCE_FIXTURE_PROVENANCE.length).toBeGreaterThanOrEqual(5);
     expect(SEARCH_RELEVANCE_QUERIES).toHaveLength(40);
     expect(new Set(SEARCH_RELEVANCE_QUERIES.map(query => query.id)).size).toBe(40);
 
@@ -308,6 +306,8 @@ describe('ADR 0116 judged relevance gate', () => {
       ).toHaveLength(5);
     }
     for (const fixture of SEARCH_RELEVANCE_QUERIES) {
+      expect(fixture.assessor).toBeTruthy();
+      expect(fixture.rationale.length, `${fixture.id} rationale`).toBeGreaterThan(40);
       expect(fixture.judgments.some(judgment => judgment.grade >= 2), fixture.id).toBe(true);
       for (const judgment of fixture.judgments) {
         expect(entityIds.has(judgment.id), `${fixture.id} judgment ${judgment.id}`).toBe(true);
@@ -353,16 +353,17 @@ describe('ADR 0116 judged relevance gate', () => {
     const byClass = summarizeByClass(evaluated);
 
     expect(overall.queryCount).toBe(40);
-    expect(overall.ndcgAt10).toBeGreaterThanOrEqual(QUALITY_FLOORS.overall.ndcgAt10);
-    expect(overall.reciprocalRank).toBeGreaterThanOrEqual(QUALITY_FLOORS.overall.reciprocalRank);
-    expect(overall.successAt1).toBeGreaterThanOrEqual(QUALITY_FLOORS.overall.successAt1);
-    expect(overall.recallAt20).toBeGreaterThanOrEqual(QUALITY_FLOORS.overall.recallAt20);
+    expect(isWithinRegressionBudget(overall.ndcgAt10, BASELINE.overall.ndcgAt10), 'overall nDCG@10').toBe(true);
+    expect(isWithinRegressionBudget(overall.reciprocalRank, BASELINE.overall.reciprocalRank), 'overall MRR@10').toBe(true);
+    expect(isWithinRegressionBudget(overall.successAt1, BASELINE.overall.successAt1), 'overall success@1').toBe(true);
+    expect(isWithinRegressionBudget(overall.recallAt20, BASELINE.overall.recallAt20), 'overall Recall@20').toBe(true);
 
     for (const queryClass of EXPECTED_CLASSES) {
-      expect(byClass[queryClass].ndcgAt10, `${queryClass} nDCG@10`)
-        .toBeGreaterThanOrEqual(QUALITY_FLOORS.ndcgAt10ByClass[queryClass]);
-      expect(byClass[queryClass].recallAt20, `${queryClass} Recall@20`)
-        .toBeGreaterThanOrEqual(QUALITY_FLOORS.recallAt20ByClass[queryClass]);
+      const current = byClass[queryClass];
+      const baseline = BASELINE.byClass[queryClass];
+      expect(isWithinRegressionBudget(current.ndcgAt10, baseline.ndcgAt10), `${queryClass} nDCG@10`).toBe(true);
+      expect(isWithinRegressionBudget(current.reciprocalRank, baseline.reciprocalRank), `${queryClass} MRR@10`).toBe(true);
+      expect(isWithinRegressionBudget(current.recallAt20, baseline.recallAt20), `${queryClass} Recall@20`).toBe(true);
     }
   });
 });

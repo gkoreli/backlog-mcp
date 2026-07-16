@@ -33,6 +33,8 @@ interface JudgedQueryBase {
   class: RelevanceQueryClass;
   query: string;
   judgments: RelevanceJudgment[];
+  assessor: string;
+  rationale: string;
 }
 
 export interface JudgedSearchQuery extends JudgedQueryBase {
@@ -46,6 +48,20 @@ export interface JudgedRecallQuery extends JudgedQueryBase {
 }
 
 export type JudgedRelevanceQuery = JudgedSearchQuery | JudgedRecallQuery;
+type DraftJudgedRelevanceQuery =
+  | Omit<JudgedSearchQuery, 'assessor' | 'rationale'>
+  | Omit<JudgedRecallQuery, 'assessor' | 'rationale'>;
+
+export const SEARCH_RELEVANCE_FIXTURE_PROVENANCE = [
+  'docs/adr/0038-comprehensive-search-capability.md',
+  'docs/adr/0083-search-service-review-and-next-generation.md',
+  'docs/adr/0092.3-memory-experience-and-substrate.md',
+  'docs/adr/0092.9-phase-e-usage-feedback-research-and-plan.md',
+  'docs/adr/0112-docs-native-project-scoped-backlog.md',
+  'docs/adr/0116-search-and-rag-uplift.md',
+  'packages/server/src/__tests__/search-golden.test.ts',
+  'packages/server/src/__tests__/memory-store-contract.test.ts',
+] as const;
 
 const CREATED_AT = '2026-06-01T12:00:00.000Z';
 const UPDATED_AT = '2026-07-15T12:00:00.000Z';
@@ -417,7 +433,7 @@ function judgments(...values: Array<[string, 0 | 1 | 2 | 3]>): RelevanceJudgment
  * explicit grade 0 in the source fixture, while metrics conservatively assign
  * no gain to either until a human judgment expands the pool.
  */
-export const SEARCH_RELEVANCE_QUERIES: JudgedRelevanceQuery[] = [
+const RAW_SEARCH_RELEVANCE_QUERIES: DraftJudgedRelevanceQuery[] = [
   { id: 'nav-01', class: 'navigation', surface: 'search', query: 'TASK-0002', judgments: judgments(['TASK-0002', 3]) },
   { id: 'nav-02', class: 'navigation', surface: 'search', query: 'task 3', judgments: judgments(['TASK-0003', 3]) },
   { id: 'nav-03', class: 'navigation', surface: 'search', query: 'EPIC-0001', judgments: judgments(['EPIC-0001', 3]) },
@@ -466,3 +482,26 @@ export const SEARCH_RELEVANCE_QUERIES: JudgedRelevanceQuery[] = [
   { id: 'recall-04', class: 'memory-recall', surface: 'recall', query: 'docs home watcher reconciliation', options: { context: 'FLDR-0001', tags: ['watcher'], limit: 20 }, judgments: judgments(['MEMO-0005', 3], ['MEMO-0009', 0]) },
   { id: 'recall-05', class: 'memory-recall', surface: 'recall', query: 'how does recall usage ranking work', options: { tags: ['ranking'], limit: 20 }, judgments: judgments(['MEMO-0003', 3], ['MEMO-0010', 2]) },
 ];
+
+const CLASS_RATIONALE: Record<RelevanceQueryClass, string> = {
+  navigation: 'The grade-3 entity is the uniquely named ID or exact-title destination; lower grades are supporting context only.',
+  'exact-title': 'The grade-3 entity owns the queried title; lower grades discuss the same subsystem without being the named destination.',
+  lexical: 'Grades reflect direct term coverage of the stated engineering need, with grade 3 assigned to the primary implementation record.',
+  compound: 'Grades reflect the expected entity after camel-case or hyphen-aware token expansion, plus directly supporting records.',
+  filtered: 'Grades are assigned within the explicit type, status, or parent scope; out-of-scope matches are non-relevant.',
+  aboutness: 'The grade-3 entity directly answers the paraphrased need even when the query and document use different surface terms.',
+  tail: 'The unique marker appears only in the relevant long document tail and therefore identifies the expected parent record.',
+  'memory-recall': 'Grades reflect the live, in-scope memory answer after expiry, lineage, layer, tag, context, and usage rules.',
+};
+
+/**
+ * Initial judgments are deliberately attributable. Beryl's domain review is
+ * required before changing the assessor string or treating these qrels as a
+ * production MiniLM benchmark rather than the deterministic CI control.
+ */
+export const SEARCH_RELEVANCE_QUERIES: JudgedRelevanceQuery[] =
+  RAW_SEARCH_RELEVANCE_QUERIES.map(query => ({
+    ...query,
+    assessor: 'chert-initial-pending-beryl-review',
+    rationale: CLASS_RATIONALE[query.class],
+  }));
