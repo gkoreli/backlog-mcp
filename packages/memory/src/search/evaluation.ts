@@ -122,10 +122,10 @@ export function unjudgedRateAt(
 /** Return whether a metric remains within the frozen absolute regression budget. */
 export function isWithinRegressionBudget(
   current: number,
-  baseline: number,
+  reference: number,
   maximumRegression: number = DEFAULT_MAXIMUM_REGRESSION,
 ): boolean {
-  return current >= baseline - maximumRegression;
+  return current >= reference - maximumRegression;
 }
 
 /** Evaluate one ranked result list using the ADR 0116 Phase 0 metrics. */

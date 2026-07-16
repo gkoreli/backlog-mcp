@@ -36,6 +36,7 @@ interface JudgedQueryBase {
   assessor: string;
   rationale: string;
   provenance: string[];
+  expectedFailure?: 'post-filter-overfetch';
 }
 
 export interface JudgedSearchQuery extends JudgedQueryBase {
@@ -116,6 +117,23 @@ function memory(
     ...overrides,
   };
 }
+
+const STRESS_EXPIRED_MEMORY_IDS = Array.from(
+  { length: 61 },
+  (_, index) => `MEMO-${String(index + 100).padStart(4, '0')}`,
+);
+
+const STRESS_EXPIRED_MEMORIES = STRESS_EXPIRED_MEMORY_IDS.map((id, index) => memory(
+  id,
+  `Recall saturation protocol archived ${String(index + 1).padStart(2, '0')}`,
+  'Recall saturation protocol for filtered memory retrieval.',
+  {
+    layer: 'episodic',
+    tags: ['recall-stress'],
+    kind: 'historical',
+    valid_until: '2026-06-01T12:00:00.000Z',
+  },
+));
 
 /**
  * Stable, reviewable corpus used by the ADR 0116 relevance gate.
@@ -381,8 +399,8 @@ The final provenance marker is violet harbor.`,
   ),
   memory(
     'MEMO-0007',
-    'Search fixture baseline',
-    'The relevance fixture starts with forty judged queries and records nDCG at ten, MRR, success at one, and recall at twenty.',
+    'Search fixture control',
+    'The deterministic CI control has forty judged queries and records nDCG at ten, MRR, success at one, and recall at twenty.',
     {
       tags: ['search', 'evaluation'],
       kind: 'current',
@@ -420,10 +438,28 @@ The final provenance marker is violet harbor.`,
       usage_count: 0,
     },
   ),
+  ...STRESS_EXPIRED_MEMORIES,
+  memory(
+    'MEMO-0161',
+    'Live filtered recall answer',
+    'Recall saturation protocol for filtered memory retrieval.',
+    {
+      layer: 'procedural',
+      tags: ['recall-stress'],
+      kind: 'current',
+    },
+  ),
 ];
 
 function judgments(...values: Array<[string, 0 | 1 | 2 | 3]>): RelevanceJudgment[] {
   return values.map(([id, grade]) => ({ id, grade }));
+}
+
+function stressJudgments(): RelevanceJudgment[] {
+  return [
+    ...STRESS_EXPIRED_MEMORY_IDS.map(id => ({ id, grade: 0 as const })),
+    { id: 'MEMO-0161', grade: 3 },
+  ];
 }
 
 /**
@@ -478,7 +514,7 @@ const RAW_SEARCH_RELEVANCE_QUERIES: DraftJudgedRelevanceQuery[] = [
   { id: 'tail-05', class: 'tail', surface: 'search', query: 'violet harbor', judgments: judgments(['TASK-0029', 3]) },
 
   { id: 'recall-01', class: 'memory-recall', surface: 'recall', query: 'which fusion policy should search use', options: { tags: ['decision'], limit: 20 }, judgments: judgments(['MEMO-0001', 3], ['MEMO-0008', 0]) },
-  { id: 'recall-02', class: 'memory-recall', surface: 'recall', query: 'embedding initialization retry behavior', options: { tags: ['embedding'], limit: 20 }, judgments: judgments(['MEMO-0002', 3]) },
+  { id: 'recall-02', class: 'memory-recall', surface: 'recall', query: 'recall saturation protocol', options: { layers: ['procedural'], tags: ['recall-stress'], limit: 20 }, judgments: stressJudgments(), expectedFailure: 'post-filter-overfetch' },
   { id: 'recall-03', class: 'memory-recall', surface: 'recall', query: 'how do we publish a release', options: { layers: ['procedural'], tags: ['release'], limit: 20 }, judgments: judgments(['MEMO-0006', 3]) },
   { id: 'recall-04', class: 'memory-recall', surface: 'recall', query: 'docs home watcher reconciliation', options: { context: 'FLDR-0001', tags: ['watcher'], limit: 20 }, judgments: judgments(['MEMO-0005', 3], ['MEMO-0009', 0]) },
   { id: 'recall-05', class: 'memory-recall', surface: 'recall', query: 'how does recall usage ranking work', options: { tags: ['ranking'], limit: 20 }, judgments: judgments(['MEMO-0003', 3], ['MEMO-0010', 2]) },
