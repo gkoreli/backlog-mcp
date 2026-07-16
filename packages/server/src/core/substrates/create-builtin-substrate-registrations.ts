@@ -1,9 +1,16 @@
 import {
   EntityType,
+  RuntimeSubstrateDefinitionSchema,
   SUBSTRATES,
   type AnyEntity,
+  type CompiledSubstrateIntent,
 } from '@backlog-mcp/shared';
+import { z } from 'zod';
+import {
+  BUILTIN_SUBSTRATE_INTENT_DEFINITIONS,
+} from '../../substrate-definitions/builtin-substrate-intent-definitions.js';
 import type { SubstrateStorageCatalog } from '../../storage/substrate-storage-catalog.contract.js';
+import { compileSubstrateIntents } from './compile-substrate-intents.js';
 import type {
   CompiledBuiltinSubstrate,
   SubstrateDefinitionIssue,
@@ -41,6 +48,36 @@ function validateBuiltin(
   return { ok: false, issues };
 }
 
+function compileBuiltinIntents(
+  type: EntityType,
+  storageClaim: CompiledBuiltinSubstrate['storageClaim'],
+): readonly CompiledSubstrateIntent[] {
+  const declaration = BUILTIN_SUBSTRATE_INTENT_DEFINITIONS[type];
+  if (!declaration) return [];
+
+  const sourcePath = `builtin:${type}@compiled`;
+  const definition = RuntimeSubstrateDefinitionSchema.parse({
+    definitionVersion: 1,
+    type,
+    label: {
+      singular: SUBSTRATES[type].label,
+      plural: `${SUBSTRATES[type].label}s`,
+    },
+    folder: storageClaim.folder,
+    identity: storageClaim.identity,
+    schema: z.toJSONSchema(SUBSTRATES[type].schema),
+    workflow: declaration.workflow,
+    intents: declaration.intents,
+  });
+  const result = compileSubstrateIntents(sourcePath, definition);
+  if (result.issues.length > 0) {
+    throw new Error(
+      `Invalid built-in intent declaration for ${type}: ${JSON.stringify(result.issues)}`,
+    );
+  }
+  return result.intents;
+}
+
 /**
  * Wrap the compiled Zod substrates behind the runtime registry contract.
  *
@@ -61,7 +98,7 @@ export function createBuiltinSubstrateRegistrations(
       type,
       disclosure: {},
       disclosureRelations: [],
-      intents: [],
+      intents: compileBuiltinIntents(type, storageClaim),
       storageClaim,
       validateWrite: function validateWrite(candidate) {
         return validateBuiltin(type, candidate);

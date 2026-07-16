@@ -173,10 +173,21 @@ describe('ProjectSubstrateRegistry', function describeRegistry() {
       return intent.toolName;
     })).toEqual([
       'backlog_accept_adr',
+      'backlog_attach_artifact',
+      'backlog_block_task',
       'backlog_capture_prompt',
       'backlog_capture_requirement',
+      'backlog_complete_task',
+      'backlog_create_work',
+      'backlog_organize_folder',
+      'backlog_pause_cron',
+      'backlog_plan_epic',
       'backlog_propose_adr',
+      'backlog_resume_cron',
+      'backlog_schedule_cron',
+      'backlog_start_task',
       'backlog_supersede_adr',
+      'backlog_target_milestone',
     ]);
   });
 
