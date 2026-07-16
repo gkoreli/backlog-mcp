@@ -80,7 +80,10 @@ export function claimSubstrateDocuments(
     left,
     right,
   ) {
-    return right.storageClaim.folder.length - left.storageClaim.folder.length;
+    const specificity = right.storageClaim.folder.length - left.storageClaim.folder.length;
+    if (specificity !== 0) return specificity;
+    // The registry rejects overlaps; source path makes this local iteration stable too.
+    return left.sourcePath.localeCompare(right.sourcePath);
   });
   const candidates = params.documents.flatMap(function claimOne(document) {
     const result = claimDocument(substrates, document);
