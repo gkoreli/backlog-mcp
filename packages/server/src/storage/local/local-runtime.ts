@@ -205,7 +205,9 @@ export function createLocalRuntime(
   deps: LocalRuntimeDependencies = {},
 ): LocalRuntime {
   const catalog = deps.catalog ?? new BuiltinSubstrateStorageCatalog();
-  assertDocsNativeMigrationComplete(home);
+  assertDocsNativeMigrationComplete(home, {
+    legacyRoot: deps.legacyRoot,
+  });
   ensureRuntimeDirectories(home);
   const definitions = loadHomeSubstrateRegistry(home, catalog);
   const substrateRegistry = definitions.registry;

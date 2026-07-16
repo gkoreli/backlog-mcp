@@ -71,6 +71,8 @@ export interface DocsNativeMigrationPlan {
   homeRoot: string;
   actions: readonly DocsNativeMigrationAction[];
   issues: readonly DocsNativeMigrationIssue[];
+  /** Planning-time hashes used to reject source changes before deletion. */
+  sourceDigests: Readonly<Record<string, string>>;
 }
 
 export interface DocsNativeMigrationReport {
@@ -91,6 +93,8 @@ export interface DocsNativeMigrationDirectoryEntry {
 /** Injectable file operations used by memfs tests and rollback verification. */
 export interface DocsNativeMigrationFileSystem {
   exists(path: string): boolean;
+  isSymbolicLink(path: string): boolean;
+  realpath(path: string): string;
   readDirectory(path: string): DocsNativeMigrationDirectoryEntry[];
   readFile(path: string): Buffer;
   makeDirectory(path: string): void;
@@ -99,6 +103,12 @@ export interface DocsNativeMigrationFileSystem {
   unlink(path: string): void;
   removeTree(path: string): void;
   removeEmptyDirectory(path: string): void;
+}
+
+export interface AssertDocsNativeMigrationCompleteOptions {
+  /** Retired custom global root checked only for unmigrated source data. */
+  legacyRoot?: string;
+  fileSystem?: Partial<DocsNativeMigrationFileSystem>;
 }
 
 export interface PlanDocsNativeMigrationParams {

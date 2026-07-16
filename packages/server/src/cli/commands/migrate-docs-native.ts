@@ -1,4 +1,3 @@
-import { isAbsolute, resolve } from 'node:path';
 import type { Command } from 'commander';
 import {
   BacklogHomeResolutionError,
@@ -10,6 +9,7 @@ import {
 } from '../../core/index.js';
 import { loadHomeSubstrateRegistry } from '../../storage/local/home-substrate-registry.js';
 import { paths } from '../../utils/paths.js';
+import { resolveLegacyDataRoot } from '../../utils/legacy-data-root.js';
 import { resolveViewerPort } from '../../utils/ports.js';
 import { isServerRunning } from '../server-manager.js';
 
@@ -19,17 +19,6 @@ interface MigrateDocsNativeCommandDependencies {
   migrate?: typeof migrateDocsNative;
   serverRunning?: (port: number) => Promise<boolean>;
   log?: (message: string) => void;
-}
-
-function legacyGlobalRoot(
-  env: Readonly<Record<string, string | undefined>>,
-): string | undefined {
-  const configured = env.BACKLOG_DATA_DIR?.trim();
-  if (!configured) return undefined;
-  const expanded = paths.expandTilde(configured);
-  return isAbsolute(expanded)
-    ? resolve(expanded)
-    : resolve(paths.projectRoot, expanded);
 }
 
 /** Format one deterministic migration report for direct CLI use. */
@@ -120,7 +109,7 @@ export function registerMigrateDocsNative(
 
       const definitions = loadHomeSubstrateRegistry(home);
       const selectedLegacyRoot = home.kind === 'global'
-        ? legacyGlobalRoot(env)
+        ? resolveLegacyDataRoot(env)
         : undefined;
       const report = (dependencies.migrate ?? migrateDocsNative)({
         home,

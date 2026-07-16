@@ -3,6 +3,7 @@ import {
   mkdirSync,
   readFileSync,
   symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -209,6 +210,18 @@ describe('docs-native global migration', function describeGlobalMigration() {
       id: 'TASK-0001',
       title: 'task TASK-0001',
     });
+    const cacheDir = join(home.controlDir, 'cache');
+    mkdirSync(cacheDir, { recursive: true });
+    writeFileSync(join(cacheDir, 'search-index.json'), 'rebuilt');
+    expect(migrateDocsNative({
+      home,
+      registry: registry(),
+    })).toMatchObject({
+      moved: 0,
+      rewritten: 0,
+      discarded: 1,
+    });
+    expect(existsSync(cacheDir)).toBe(false);
     expect(migrateDocsNative({
       home,
       registry: registry(),
@@ -375,6 +388,96 @@ describe('docs-native global migration', function describeGlobalMigration() {
     expect(existsSync(join(home.documentsDir, 'resources', 'b.txt'))).toBe(false);
   });
 
+  it('restores deleted sources when a later unlink fails', function rollsBackDeletion() {
+    const home = globalHome('rollback-unlink');
+    mkdirSync(join(home.root, 'resources'), { recursive: true });
+    writeFileSync(join(home.root, 'resources', 'a.txt'), 'a');
+    writeFileSync(join(home.root, 'resources', 'b.txt'), 'b');
+    let sourceUnlinks = 0;
+
+    expect(function failSecondSourceDeletion() {
+      migrateDocsNative({
+        home,
+        registry: registry(),
+        fileSystem: {
+          unlink(path) {
+            if (path.startsWith(join(home.root, 'resources'))) {
+              sourceUnlinks += 1;
+              if (sourceUnlinks === 2) {
+                throw new Error('injected unlink failure');
+              }
+            }
+            unlinkSync(path);
+          },
+        },
+      });
+    }).toThrow('injected unlink failure');
+
+    expect(readFileSync(join(home.root, 'resources', 'a.txt'), 'utf-8')).toBe('a');
+    expect(readFileSync(join(home.root, 'resources', 'b.txt'), 'utf-8')).toBe('b');
+    expect(existsSync(join(home.documentsDir, 'resources', 'a.txt'))).toBe(false);
+    expect(existsSync(join(home.documentsDir, 'resources', 'b.txt'))).toBe(false);
+  });
+
+  it('never deletes a source created after preflight', function preservesLateSource() {
+    const home = globalHome('late-source');
+    mkdirSync(join(home.root, 'resources'), { recursive: true });
+    writeFileSync(join(home.root, 'resources', 'planned.txt'), 'planned');
+    let injected = false;
+
+    migrateDocsNative({
+      home,
+      registry: registry(),
+      fileSystem: {
+        unlink(path) {
+          if (!injected && path.endsWith('planned.txt')) {
+            injected = true;
+            writeFileSync(join(home.root, 'resources', 'late.txt'), 'late');
+          }
+          unlinkSync(path);
+        },
+      },
+    });
+
+    expect(readFileSync(join(home.root, 'resources', 'late.txt'), 'utf-8'))
+      .toBe('late');
+    expect(readFileSync(
+      join(home.documentsDir, 'resources', 'planned.txt'),
+      'utf-8',
+    )).toBe('planned');
+  });
+
+  it('rejects an entity changed after planning before any write', function rejectsChangedSource() {
+    const home = globalHome('changed-source');
+    const source = writeLegacyEntity(
+      home.root,
+      entity('TASK-0001', 'task'),
+    );
+    let reads = 0;
+
+    expect(function mutateBetweenPlanAndExecution() {
+      migrateDocsNative({
+        home,
+        registry: registry(),
+        fileSystem: {
+          readFile(path) {
+            if (path === source) {
+              reads += 1;
+              if (reads === 2) {
+                writeFileSync(path, 'changed after routing');
+              }
+            }
+            return readFileSync(path);
+          },
+        },
+      });
+    }).toThrow('source changed after planning');
+
+    expect(readFileSync(source, 'utf-8')).toBe('changed after routing');
+    expect(existsSync(join(home.documentsDir, 'tasks', 'TASK-0001.md')))
+      .toBe(false);
+  });
+
   it('fails closed on malformed entities and source symlinks', function rejectsUnsafeSources() {
     const malformedHome = globalHome('malformed');
     mkdirSync(join(malformedHome.root, 'tasks'), { recursive: true });
@@ -404,6 +507,43 @@ describe('docs-native global migration', function describeGlobalMigration() {
         sourcePaths: ['resources/outside.txt'],
       }),
     ]);
+
+    const rootSymlinkHome = globalHome('root-symlink');
+    const outsideDirectory = join(tmpdir(), 'migrate-docs-native-outside');
+    mkdirSync(outsideDirectory, { recursive: true });
+    writeFileSync(join(outsideDirectory, 'external.txt'), 'external');
+    mkdirSync(rootSymlinkHome.root, { recursive: true });
+    symlinkSync(outsideDirectory, join(rootSymlinkHome.root, 'resources'));
+    expect(planDocsNativeMigration({
+      home: rootSymlinkHome,
+      registry: registry(),
+    }).issues).toEqual([
+      expect.objectContaining({
+        code: 'unsupported-source',
+        sourcePaths: ['resources'],
+      }),
+    ]);
+  });
+
+  it('rejects a destination ancestor that escapes through a symlink', function rejectsUnsafeDestination() {
+    const home = globalHome('destination-symlink');
+    mkdirSync(join(home.root, 'resources'), { recursive: true });
+    writeFileSync(join(home.root, 'resources', 'guide.txt'), 'guide');
+    mkdirSync(home.documentsDir, { recursive: true });
+    const outside = join(tmpdir(), 'migrate-docs-native-target');
+    mkdirSync(outside, { recursive: true });
+    symlinkSync(outside, join(home.documentsDir, 'resources'));
+
+    expect(planDocsNativeMigration({
+      home,
+      registry: registry(),
+    }).issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'unsupported-source',
+        targetPath: 'docs/resources/guide.txt',
+      }),
+    ]));
+    expect(existsSync(join(outside, 'guide.txt'))).toBe(false);
   });
 
   it('blocks global runtime construction until the explicit migration runs', function guardsGlobalRuntime() {
@@ -415,9 +555,43 @@ describe('docs-native global migration', function describeGlobalMigration() {
     }).toThrow('backlog migrate docs-native --home global');
 
     migrateDocsNative({ home, registry: registry() });
+    expect([
+      'tasks',
+      'resources',
+      'identity.md',
+      '.internal',
+      'memory-usage.jsonl',
+      'logs',
+      '.cache',
+      '.backlog-mcp',
+      'config.local.json',
+    ].filter(function existsAfterMigration(path) {
+      return existsSync(join(home.root, path));
+    })).toEqual([]);
     expect(function verifyAfterMigration() {
       assertDocsNativeMigrationComplete(home);
     }).not.toThrow();
+  });
+
+  it('guards a retired custom global root until it is migrated', function guardsCustomGlobalRoot() {
+    const home = globalHome('custom-root-target');
+    const legacyRoot = join(tmpdir(), 'migrate-docs-native', 'custom-root');
+    writeLegacyEntity(legacyRoot, entity('TASK-0001', 'task'));
+
+    expect(function constructBeforeCustomMigration() {
+      createLocalRuntime(home, { legacyRoot });
+    }).toThrow('backlog migrate docs-native --home global');
+
+    migrateDocsNative({
+      home,
+      legacyRoot,
+      registry: registry(),
+    });
+    expect(function verifyCustomMigration() {
+      assertDocsNativeMigrationComplete(home, { legacyRoot });
+    }).not.toThrow();
+    expect(existsSync(join(home.documentsDir, 'tasks', 'TASK-0001.md')))
+      .toBe(true);
   });
 });
 

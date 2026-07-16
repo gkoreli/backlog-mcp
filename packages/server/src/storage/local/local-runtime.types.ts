@@ -12,4 +12,6 @@ export interface LocalRuntimeDependencies {
   watcher?: DocsTreeWatcher;
   createSearch?: (home: BacklogHome) => OramaSearchService;
   onWatcherError?: DocsTreeWatcherErrorCallback;
+  /** Retired custom global root, used only by the fail-closed migration guard. */
+  legacyRoot?: string;
 }
