@@ -20,12 +20,17 @@ import { z } from 'zod';
 import { recall } from '../core/recall.js';
 import { ValidationError } from '../core/types.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
-import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
+import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
+import {
+  BACKLOG_READ_HOME_INPUT_FIELDS,
+  requireHomeReadCoordinator,
+} from './home-input.js';
 
 export interface BacklogRecallDeps {
   memoryComposer?: MemoryComposer;
   /** Logs recall demand to the usage JSONL (ADR 0092.9 R-16). */
   usageTracker?: MemoryUsageTracker;
+  homeReadCoordinator?: HomeReadCoordinator;
 }
 
 export function registerBacklogRecallTool(
@@ -38,7 +43,7 @@ export function registerBacklogRecallTool(
       description:
         'Recall memories — knowledge and episodes captured across sessions. Returns STUBS (title + one-line digest + provenance) by default; expand interesting ones with backlog_get(MEMO-id), or pass full:true for bodies. Weigh a stub\'s trust BEFORE hydrating: age_days (on the knowledge\'s own timeline), uses/idle_days (recall demand), supersedes (this is a correction), derived (consolidator inference), kind (current/historical/plan/preference/timeless). Old + never-used = treat as hypothesis, not truth. Distinct from backlog_search (live entities). Use to answer "how do we deploy?", "have I hit this before?", "what did I finish about X?". Memories point back to source entities via entity_id.',
       inputSchema: z.object({
-        ...BACKLOG_HOME_INPUT_FIELDS,
+        ...BACKLOG_READ_HOME_INPUT_FIELDS,
         query: z.string().describe('Free-text query (keyword or phrase).'),
         context: z.string().optional().describe(
           'Optional scope — usually a parent_id like "FLDR-0001". Filters to memories captured with that entity as their context.',
@@ -54,23 +59,40 @@ export function registerBacklogRecallTool(
         token_budget: z.number().min(50).optional().describe('Approximate token budget — results are greedily packed to fit.'),
       }),
     },
-    async (params) => {
+    async ({ home, project_root, ...params }) => {
       try {
-        const result = await recall(
-          {
-            query: params.query,
-            ...(params.context !== undefined ? { context: params.context } : {}),
-            ...(params.tags !== undefined ? { tags: params.tags } : {}),
-            ...(params.layers !== undefined ? { layers: params.layers } : {}),
-            ...(params.limit !== undefined ? { limit: params.limit } : {}),
-            ...(params.full !== undefined ? { full: params.full } : {}),
-            ...(params.token_budget !== undefined ? { token_budget: params.token_budget } : {}),
-          },
-          { ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}) },
-        );
-        // Recall demand log (R-16) — weak signal, JSONL only; recall stays
-        // a pure read of the memory entities themselves.
-        deps?.usageTracker?.recordRecall(params.query, result.items.map(i => i.id));
+        const recallParams = {
+          query: params.query,
+          ...(params.context !== undefined ? { context: params.context } : {}),
+          ...(params.tags !== undefined ? { tags: params.tags } : {}),
+          ...(params.layers !== undefined ? { layers: params.layers } : {}),
+          ...(params.limit !== undefined ? { limit: params.limit } : {}),
+          ...(params.full !== undefined ? { full: params.full } : {}),
+          ...(params.token_budget !== undefined ? { token_budget: params.token_budget } : {}),
+        };
+        const result = home === 'all'
+          ? await requireHomeReadCoordinator(
+              deps?.homeReadCoordinator,
+            ).recall(
+              recallParams,
+              project_root === undefined
+                ? undefined
+                : { projectRoot: project_root },
+            )
+          : await recall(
+              recallParams,
+              { ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}) },
+            );
+        if (home !== 'all') {
+          // Recall demand log (R-16) — weak signal, JSONL only; recall stays
+          // a pure read of the memory entities themselves.
+          deps?.usageTracker?.recordRecall(
+            params.query,
+            result.items.map(function itemId(item) {
+              return item.id;
+            }),
+          );
+        }
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       } catch (e) {
         if (e instanceof ValidationError) {

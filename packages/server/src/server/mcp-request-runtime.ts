@@ -10,8 +10,12 @@ function toolCallArguments(value: unknown): Record<string, unknown> | undefined 
   return value.params.arguments;
 }
 
-function explicitHome(value: unknown): 'global' | 'project' | undefined {
-  return value === 'global' || value === 'project' ? value : undefined;
+function explicitHome(
+  value: unknown,
+): 'global' | 'project' | 'all' | undefined {
+  return value === 'global' || value === 'project' || value === 'all'
+    ? value
+    : undefined;
 }
 
 function explicitProjectRoot(value: unknown): string | undefined {
@@ -41,6 +45,16 @@ export async function selectMcpRequestRuntime(
 
   const home = explicitHome(argumentsValue.home);
   const projectRoot = explicitProjectRoot(argumentsValue.project_root);
+
+  // `home: all` is handled by the read coordinator inside the selected tool.
+  // The request itself still needs one anchor runtime for MCP registration:
+  // prefer the explicit/inherited project when present, otherwise global.
+  if (home === 'all') {
+    const selectedProjectRoot = projectRoot ?? fallback.projectRoot;
+    return selectedProjectRoot === undefined
+      ? { home: 'global' }
+      : { home: 'project', projectRoot: selectedProjectRoot };
+  }
 
   // Global must clear an inherited bridge project root rather than forming an
   // invalid pair. A simultaneously explicit project_root remains visible so

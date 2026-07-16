@@ -5,7 +5,11 @@ import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { wakeup } from '../core/wakeup.js';
 import { ValidationError } from '../core/types.js';
-import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
+import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
+import {
+  BACKLOG_READ_HOME_INPUT_FIELDS,
+  requireHomeReadCoordinator,
+} from './home-input.js';
 
 export interface BacklogWakeupDeps {
   operationLogger?: {
@@ -20,6 +24,7 @@ export interface BacklogWakeupDeps {
   readLocalFile?: (filePath: string) => string | null;
   identityPath?: string;
   mintMemoryEntry?: (memory: Memory) => MemoryEntry;
+  homeReadCoordinator?: HomeReadCoordinator;
 }
 
 /**
@@ -44,7 +49,7 @@ export function registerBacklogWakeupTool(
       description:
         'Dense session-start briefing: active tasks, current epics, recent completions (with evidence snippets), and recent activity. No focal entity required — use this at the start of every session to understand what you were working on. Optional `scope` narrows to a folder (for project-scoped briefing), milestone, or epic.',
       inputSchema: z.object({
-        ...BACKLOG_HOME_INPUT_FIELDS,
+        ...BACKLOG_READ_HOME_INPUT_FIELDS,
         scope: z.string().optional().describe(
           'Optional entity ID to scope the briefing to a subtree. Must be a container (folder/milestone/epic). Use a folder ID for project-scoped wake-up (e.g. "FLDR-0001"). Omit to get everything across the whole backlog.',
         ),
@@ -59,8 +64,38 @@ export function registerBacklogWakeupTool(
         ),
       }),
     },
-    async ({ scope, max_completions, max_activity, evidence_snippet_chars }) => {
+    async ({
+      home,
+      project_root,
+      scope,
+      max_completions,
+      max_activity,
+      evidence_snippet_chars,
+    }) => {
       try {
+        const wakeupParams = {
+          ...(scope !== undefined ? { scope } : {}),
+          ...(max_completions !== undefined ? { maxCompletions: max_completions } : {}),
+          ...(max_activity !== undefined ? { maxActivity: max_activity } : {}),
+          ...(evidence_snippet_chars !== undefined ? { evidenceSnippetChars: evidence_snippet_chars } : {}),
+        };
+        if (home === 'all') {
+          const result = await requireHomeReadCoordinator(
+            deps?.homeReadCoordinator,
+          ).wakeup(
+            wakeupParams,
+            project_root === undefined
+              ? undefined
+              : { projectRoot: project_root },
+          );
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            }],
+          };
+        }
+
         const operationLogger = deps?.operationLogger;
         const readIdentity = (): string | undefined => {
           if (!deps?.readLocalFile || !deps?.identityPath) return undefined;
@@ -69,10 +104,7 @@ export function registerBacklogWakeupTool(
         };
 
         const result = await wakeup(service, {
-          ...(scope !== undefined ? { scope } : {}),
-          ...(max_completions !== undefined ? { maxCompletions: max_completions } : {}),
-          ...(max_activity !== undefined ? { maxActivity: max_activity } : {}),
-          ...(evidence_snippet_chars !== undefined ? { evidenceSnippetChars: evidence_snippet_chars } : {}),
+          ...wakeupParams,
           readIdentity,
           ...(operationLogger
             ? { readOperations: (options) => operationLogger.read(options) }

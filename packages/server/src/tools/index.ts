@@ -17,6 +17,7 @@ import { registerBacklogConsolidationTool } from './backlog-consolidation.js';
 import { registerBacklogContradictionsTool } from './backlog-contradictions.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import { registerWriteResourceTool } from './backlog-write-resource.js';
+import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
 
 /**
  * Per-request tool dependencies.
@@ -56,6 +57,8 @@ export interface ToolDeps {
    * ripeness degrades to age-only).
    */
   readUsageLines?: () => string[];
+  /** Request-scoped coordinator for global plus one explicit project read. */
+  homeReadCoordinator?: HomeReadCoordinator;
 }
 
 export function registerTools(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
@@ -64,7 +67,9 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
   registerBacklogCreateTool(server, service, deps);
   registerBacklogUpdateTool(server, service, deps);
   registerBacklogDeleteTool(server, service, deps);
-  registerBacklogSearchTool(server, service);
+  registerBacklogSearchTool(server, service, deps?.homeReadCoordinator
+    ? { homeReadCoordinator: deps.homeReadCoordinator }
+    : undefined);
   registerWriteResourceTool(server, service, deps);
   registerBacklogWakeupTool(server, service, {
     ...(deps?.operationLogger ? { operationLogger: deps.operationLogger } : {}),
@@ -73,10 +78,16 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
     ...(deps?.mintMemoryEntry
       ? { mintMemoryEntry: deps.mintMemoryEntry }
       : {}),
+    ...(deps?.homeReadCoordinator
+      ? { homeReadCoordinator: deps.homeReadCoordinator }
+      : {}),
   });
   registerBacklogRecallTool(server, {
     ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
     ...(deps?.usageTracker ? { usageTracker: deps.usageTracker } : {}),
+    ...(deps?.homeReadCoordinator
+      ? { homeReadCoordinator: deps.homeReadCoordinator }
+      : {}),
   });
   registerBacklogRememberTool(server, {
     ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),

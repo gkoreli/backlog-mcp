@@ -65,6 +65,29 @@ describe('selectMcpRequestRuntime', function describeMcpSelection() {
     });
   });
 
+  it('anchors home:all to the explicit or inherited project root', async function anchorsAll() {
+    await expect(selectMcpRequestRuntime(
+      toolsCall({ home: 'all', project_root: '/call/project' }),
+      { home: 'global', projectRoot: '/bridge/project' },
+    )).resolves.toEqual({
+      home: 'project',
+      projectRoot: '/call/project',
+    });
+
+    await expect(selectMcpRequestRuntime(
+      toolsCall({ home: 'all' }),
+      { home: 'project', projectRoot: '/bridge/project' },
+    )).resolves.toEqual({
+      home: 'project',
+      projectRoot: '/bridge/project',
+    });
+
+    await expect(selectMcpRequestRuntime(
+      toolsCall({ home: 'all' }),
+      { home: 'global' },
+    )).resolves.toEqual({ home: 'global' });
+  });
+
   it('falls back for non-tool JSON, GET requests, and malformed JSON', async function fallsBack() {
     const inherited = {
       home: 'project',

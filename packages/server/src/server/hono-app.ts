@@ -35,6 +35,12 @@ import {
 } from './home-provenance.js';
 import { selectMcpRequestRuntime } from './mcp-request-runtime.js';
 import { asBuiltinEntity } from '../core/substrates/index.js';
+import { createHomeReadCoordinator } from '../core/home-read-coordinator.js';
+import type {
+  HomeReadCoordinator,
+  HomeReadRuntime,
+  HomeReadRuntimeSelection,
+} from '../core/home-read-coordinator.types.js';
 // Note: paths.ts and operations/index.ts are NOT imported here — they pull in
 // Node.js modules (import.meta.url, fs, path) that break the Workers bundle.
 // name/version and the MCP server wrapper are injected via AppDeps.
@@ -126,6 +132,7 @@ function createStaticRequestRuntime(
 function createRequestToolDeps(
   runtime: AppRequestRuntime,
   deps: AppDeps | undefined,
+  homeReadCoordinator?: HomeReadCoordinator,
 ): ToolDeps {
   return {
     actor: deps?.actor,
@@ -140,11 +147,78 @@ function createRequestToolDeps(
     resolveSourcePath: runtime.resolveSourcePath,
     readUsageLines: runtime.readUsageLines,
     identityPath: runtime.identityPath,
+    homeReadCoordinator,
   };
 }
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function toHomeReadRuntime(runtime: AppRequestRuntime): HomeReadRuntime {
+  const home = runtime.home;
+  if (home === undefined) {
+    throw new Error('Cross-home reads require a docs-native local runtime');
+  }
+
+  const readLocalFile = runtime.readLocalFile;
+  const identityPath = runtime.identityPath;
+  const readIdentity = readLocalFile === undefined
+    || identityPath === undefined
+    ? undefined
+    : function readRuntimeIdentity(): string | undefined {
+      const raw = readLocalFile(identityPath);
+      return raw?.trim() || undefined;
+    };
+  const operationLogger = runtime.operationLogger;
+  const readOperations = operationLogger === undefined
+    ? undefined
+    : function readRuntimeOperations(options: { limit?: number }) {
+      return operationLogger.read(options);
+    };
+
+  return {
+    home,
+    service: runtime.service,
+    memoryComposer: runtime.memoryComposer,
+    usageTracker: runtime.usageTracker,
+    getSourcePath: runtime.getSourcePath,
+    readIdentity,
+    readOperations,
+    mintMemoryEntry: runtime.mintMemoryEntry,
+  };
+}
+
+function createRequestHomeReadCoordinator(
+  resolveRuntime: (
+    selection: AppRequestRuntimeSelection,
+  ) => Promise<AppRequestRuntime>,
+  projectRoot?: string,
+): HomeReadCoordinator {
+  async function resolveHomeReadRuntime(
+    selection: HomeReadRuntimeSelection,
+  ): Promise<HomeReadRuntime> {
+    return toHomeReadRuntime(await resolveRuntime(selection));
+  }
+
+  const coordinator = createHomeReadCoordinator({
+    resolveRuntime: resolveHomeReadRuntime,
+  });
+  const inheritedSelection = projectRoot === undefined
+    ? undefined
+    : { projectRoot };
+
+  return {
+    search: function searchAcrossRequestHomes(params, selection) {
+      return coordinator.search(params, selection ?? inheritedSelection);
+    },
+    recall: function recallAcrossRequestHomes(params, selection) {
+      return coordinator.recall(params, selection ?? inheritedSelection);
+    },
+    wakeup: function wakeupAcrossRequestHomes(params, selection) {
+      return coordinator.wakeup(params, selection ?? inheritedSelection);
+    },
+  };
 }
 
 function withMintedMemoryUsage(
@@ -227,7 +301,17 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     const server = new McpServer({ name: deps?.name ?? 'backlog-mcp', version: deps?.version ?? '0.0.0' });
     // ToolDeps carries write-boundary wiring; core builds WriteContext
     // per-write using these pieces. See ADR 0094.
-    const toolDeps = createRequestToolDeps(runtime, deps);
+    const homeReadCoordinator = deps?.resolveRuntime === undefined
+      ? undefined
+      : createRequestHomeReadCoordinator(
+          resolveSelectedRuntime,
+          selection.projectRoot,
+        );
+    const toolDeps = createRequestToolDeps(
+      runtime,
+      deps,
+      homeReadCoordinator,
+    );
     registerTools(server, runtime.service, toolDeps);
     if (runtime.resourceManager) {
       runtime.resourceManager.registerResource(server);
