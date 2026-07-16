@@ -5,35 +5,43 @@
  * eliminating all HTML-entity escaping issues. Link behaviour is
  * handled inside marked renderers (see markdown/renderer.ts).
  *
- * marked.parse() is async (shiki highlighting). We use effect() + signal
- * to bridge async rendering into Nisli's reactive system.
+ * marked.parse() is async (shiki highlighting). Nisli's resource() owns the
+ * derivation lifecycle so stale parses cannot overwrite newer content.
  *
  * file:// / mcp:// links → click event delegation on host
  */
 
 import { marked } from '../markdown/index.js';
-import { signal, effect, component, html, useHostEvent, ref } from '@nisli/core';
+import { resource, effect, component, html, useHostEvent, ref } from '@nisli/core';
 
 export type MdBlockProps = {
   content: string;
 };
 
 export const MdBlock = component<MdBlockProps>('md-block', (props, host) => {
-  const rendered = signal('');
   const bodyRef = ref<HTMLDivElement>();
+  let mermaidGeneration = 0;
 
-  // Async render: when content changes, parse and update signal
+  const rendered = resource(
+    () => props.content.value || undefined,
+    (markdown) => Promise.resolve(marked.parse(markdown)),
+  );
+
+  // resource() retains prior data while a replacement parses. Invalidate any
+  // DOM post-processing as soon as the source changes, not only on data commit.
   effect(() => {
-    const md = props.content.value;
-    if (!md) { rendered.value = ''; return; }
-    (marked.parse(md) as Promise<string>).then(html => { rendered.value = html; });
+    props.content.value;
+    mermaidGeneration++;
   });
 
   // Mermaid rendering after HTML updates
   effect(() => {
-    rendered.value; // track
-    const el = bodyRef.current;
-    if (el) renderMermaid(el);
+    if (rendered.data.value === undefined) return;
+    const generation = mermaidGeneration;
+    queueMicrotask(() => {
+      const el = bodyRef.current;
+      if (el?.isConnected) void renderMermaid(el, generation);
+    });
   });
 
   // Bubble anchor clicks as a typed custom event — parent decides routing
@@ -51,12 +59,14 @@ export const MdBlock = component<MdBlockProps>('md-block', (props, host) => {
     }
   });
 
-  return html`<div class="markdown-body" ref=${bodyRef} html:inner=${rendered}></div>`;
+  return html`<div class="markdown-body" ref=${bodyRef} html:inner=${rendered.data}></div>`;
 
-  async function renderMermaid(container: HTMLElement) {
+  async function renderMermaid(container: HTMLElement, generation: number) {
+    if (!container.querySelector('pre.mermaid')) return;
+    const { default: mermaid } = await import('mermaid');
+    if (!container.isConnected || generation !== mermaidGeneration) return;
     const nodes = container.querySelectorAll<HTMLPreElement>('pre.mermaid');
     if (!nodes.length) return;
-    const { default: mermaid } = await import('mermaid');
     mermaid.initialize({ startOnLoad: false, theme: 'dark' });
     await mermaid.run({ nodes });
   }

@@ -142,7 +142,7 @@ packages/viewer/markdown/
 **Key decisions (ADR 0111):**
 - **Shiki** for syntax highlighting (not highlight.js) — TextMate grammars, VS Code-quality, dual-theme via CSS variables
 - **`marked-shiki`** as the bridge — makes `marked.parse()` async
-- **Async is a side effect** — consumers use `effect()` + `signal`, never `computed()`, for markdown rendering
+- **Async markdown is a resource** — consumers use `resource(source, loader)` for parsing; imperative DOM post-processing remains an effect
 - **One render, both themes** — shiki outputs `--shiki-light`/`--shiki-dark` per token; CSS picks the active one
 
 **Shiki bundle rules (critical for dist size):**
