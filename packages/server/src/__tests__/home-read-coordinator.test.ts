@@ -451,6 +451,34 @@ describe('home read coordinator', function describeHomeReadCoordinator() {
     ]);
   });
 
+  it('reports canonical home identity after a resolved pipeline degrades', async function canonicalizesDegradedHome() {
+    const globalRuntime = createRuntime('global', 'global', {
+      searchResults: [searchResult('G-1', 1)],
+    });
+    const projectRuntime = createRuntime(
+      'project',
+      '/canonical/project',
+      {
+        searchError: new Error('project search failed'),
+      },
+    );
+    const coordinator = createHomeReadCoordinator({
+      resolveRuntime: resolverFor(globalRuntime, projectRuntime),
+    });
+
+    const result = await coordinator.search(
+      { query: 'canonical' },
+      { projectRoot: '/alias/../project' },
+    );
+
+    expect(result.homes).toContainEqual({
+      home: 'project',
+      home_id: '/canonical/project',
+      available: false,
+      reason: 'project search failed',
+    });
+  });
+
   it('orders provenance and statuses bytewise regardless of resolver completion order', async function stabilizesOrder() {
     const globalRuntime = createRuntime('global', 'global', {
       searchResults: [searchResult('G-1', 1)],

@@ -127,18 +127,27 @@ async function settleHomes<T>(
 ): Promise<HomeExecution<T>[]> {
   const homes = selectedHomes(selection);
 
-  async function execute(selected: SelectedHome): Promise<AvailableHomeExecution<T>> {
+  async function execute(selected: SelectedHome): Promise<HomeExecution<T>> {
     const runtime = await deps.resolveRuntime(selected.selection);
     if (runtime.home.kind !== selected.home) {
       throw new Error(
         `Resolved ${runtime.home.kind} runtime for ${selected.home} home selection`,
       );
     }
-    return {
-      available: true,
-      runtime,
-      value: await run(runtime),
-    };
+    try {
+      return {
+        available: true,
+        runtime,
+        value: await run(runtime),
+      };
+    } catch (error) {
+      return {
+        available: false,
+        home: runtime.home.kind,
+        homeId: runtime.home.id,
+        reason: errorReason(error),
+      };
+    }
   }
 
   const settled = await Promise.allSettled(homes.map(execute));

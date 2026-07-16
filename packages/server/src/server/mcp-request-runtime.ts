@@ -46,14 +46,17 @@ export async function selectMcpRequestRuntime(
   const home = explicitHome(argumentsValue.home);
   const projectRoot = explicitProjectRoot(argumentsValue.project_root);
 
-  // `home: all` is handled by the read coordinator inside the selected tool.
-  // The request itself still needs one anchor runtime for MCP registration:
-  // prefer the explicit/inherited project when present, otherwise global.
+  // `home: all` is handled entirely by the read coordinator inside the tool.
+  // Preserve the bounded project context without eagerly resolving either
+  // home before the coordinator can apply its allSettled degradation law.
   if (home === 'all') {
     const selectedProjectRoot = projectRoot ?? fallback.projectRoot;
-    return selectedProjectRoot === undefined
-      ? { home: 'global' }
-      : { home: 'project', projectRoot: selectedProjectRoot };
+    return {
+      home: 'all',
+      ...(selectedProjectRoot === undefined
+        ? {}
+        : { projectRoot: selectedProjectRoot }),
+    };
   }
 
   // Global must clear an inherited bridge project root rather than forming an

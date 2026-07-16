@@ -297,7 +297,12 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       c.req.raw,
       selectAppRequestRuntime(c.req),
     );
-    const runtime = await resolveSelectedRuntime(selection);
+    // Cross-home tools resolve both homes inside the allSettled coordinator.
+    // The static shell is sufficient for tool registration and prevents an
+    // unhealthy project or global runtime from aborting the request early.
+    const runtime = selection.home === 'all'
+      ? staticRuntime
+      : await resolveSelectedRuntime(selection);
     const server = new McpServer({ name: deps?.name ?? 'backlog-mcp', version: deps?.version ?? '0.0.0' });
     // ToolDeps carries write-boundary wiring; core builds WriteContext
     // per-write using these pieces. See ADR 0094.

@@ -219,9 +219,92 @@ describe('/mcp explicit tool home selection', function describeMcpRouting() {
     expect(resolver.mock.calls.map(function selection(call) {
       return call[0];
     })).toEqual([
-      { home: 'project', projectRoot: '/workspace/project' },
       { home: 'global' },
       { home: 'project', projectRoot: '/workspace/project' },
     ]);
+  });
+
+  it('keeps global results when the project runtime is unavailable', async function degradesProject() {
+    const globalService = {
+      searchUnified: vi.fn(async function searchUnified() {
+        return [{
+          item: {
+            id: 'TASK-GLOBAL',
+            title: 'Global result',
+            type: 'task',
+            status: 'open',
+            created_at: '2026-07-16T00:00:00.000Z',
+            updated_at: '2026-07-16T00:00:00.000Z',
+          },
+          score: 1,
+          type: 'task',
+        }];
+      }),
+      isHybridSearchActive: function isHybridSearchActive() {
+        return false;
+      },
+    } as IBacklogService;
+    const resolver = vi.fn(async function resolveRuntime(
+      selection: AppRequestRuntimeSelection,
+    ) {
+      if (selection.home === 'project') {
+        throw new Error('project runtime unavailable');
+      }
+      return {
+        home: {
+          kind: 'global' as const,
+          id: 'global',
+          root: '/global',
+          documentsDir: '/global/docs',
+          controlDir: '/global/.backlog-mcp',
+        },
+        service: globalService,
+      };
+    });
+    const app = createApp(EMPTY_SERVICE, { resolveRuntime: resolver });
+    const response = await app.request('/mcp', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        [BACKLOG_HOME_HEADER]: 'project',
+        [BACKLOG_PROJECT_ROOT_HEADER]: '/workspace/project',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: {
+          name: 'backlog_search',
+          arguments: {
+            home: 'all',
+            query: 'global',
+          },
+        },
+      }),
+    });
+
+    const toolResult = await response.json() as {
+      content: Array<{ text: string }>;
+    };
+    const result = JSON.parse(toolResult.content[0]?.text ?? '{}') as {
+      results: Array<{ id: string; home_id: string }>;
+      homes: Array<{
+        home_id: string;
+        available: boolean;
+        reason?: string;
+      }>;
+    };
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        id: 'TASK-GLOBAL',
+        home_id: 'global',
+      }),
+    ]);
+    expect(result.homes).toContainEqual({
+      home: 'project',
+      home_id: '/workspace/project',
+      available: false,
+      reason: 'project runtime unavailable',
+    });
   });
 });
