@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Version numbers refer to the published `backlog-mcp` server package; the viewer is
 bumped in lockstep. This changelog begins at 0.57.0 — earlier history lives in git.
 
-## [Unreleased]
+## [0.60.0] — 2026-07-16
 
 ### Added
+- **Semantic write attribution (ADR 0106.5 Phase A).** Every create/update flows
+  through one core funnel that records *which tool meant what*: the operations
+  journal now carries semantic mutation attribution, and the viewer's activity
+  panel can tell an intent apart from a raw edit.
 - **Docs-native per-home runtimes (ADR 0112 Phase B).** The server resolves a
   separate local runtime per backlog *home*, selected per MCP tool call and per HTTP
   request, with isolated storage and event streams. The CLI can target a home
