@@ -37,6 +37,18 @@ function format(result: WakeupResult): string {
       `  ${k.id.padEnd(12)} [${k.layer}]${k.kind ? ` (${k.kind})` : ''} ${k.title}` +
       ` · ${k.age_days}d${k.uses > 0 ? ` · used ${k.uses}×` : ' · never used'}${k.source_ref ? ` ← ${k.source_ref}` : ''}`,
     )),
+    ...section('constraints', [
+      ...result.constraints.map(c => {
+        // Worst-first authority line (ADR 0113.1 R-2): compliance leads,
+        // assessment staleness qualifies it, violations name the offenders.
+        const checked = c.checked_days_ago !== undefined ? `checked ${c.checked_days_ago}d ago` : 'never assessed';
+        const violations = c.violations ? ` ⚠ violated by ${c.violations.ids.join(', ')}${c.violations.count > c.violations.ids.length ? ` +${c.violations.count - c.violations.ids.length}` : ''}` : '';
+        return `  ${c.id.padEnd(12)} [${c.compliance}] (${c.status} · ${checked}) ${c.title}${violations}`;
+      }),
+      ...(result.metadata.constraints_omitted > 0
+        ? [`  … ${result.metadata.constraints_omitted} more live constraint(s) omitted — raise --max-constraints`]
+        : []),
+    ]),
     ...section('recent completions', result.recent.completions.map(c =>
       c.evidence_snippet
         ? `  ${c.id.padEnd(12)} ${c.title}\n      ↪ ${c.evidence_snippet}`
@@ -52,7 +64,7 @@ function format(result: WakeupResult): string {
     `── meta ──`,
     `  generated_at: ${result.metadata.generated_at}`,
     `  identity: ${result.metadata.identity_present ? 'present' : 'absent'}`,
-    `  counts: active=${result.metadata.active_task_count} epics=${result.metadata.epic_count} knowledge=${result.metadata.knowledge_count} completions=${result.metadata.completion_count} activity=${result.metadata.activity_count}`,
+    `  counts: active=${result.metadata.active_task_count} epics=${result.metadata.epic_count} knowledge=${result.metadata.knowledge_count} constraints=${result.constraints.length}${result.metadata.constraints_omitted > 0 ? `(+${result.metadata.constraints_omitted} omitted)` : ''} completions=${result.metadata.completion_count} activity=${result.metadata.activity_count}`,
   );
 
   return lines.join('\n');
@@ -81,6 +93,7 @@ export function registerWakeup(program: Command): void {
     .option('--max-completions <n>', 'Max recent completions', parseInt)
     .option('--max-activity <n>', 'Max recent activity entries', parseInt)
     .option('--max-knowledge <n>', 'Max knowledge items (semantic/procedural memories)', parseInt)
+    .option('--max-constraints <n>', 'Max requirement constraint stubs (0 disables)', parseInt)
     .option('--evidence-chars <n>', 'Max chars of evidence per completion', parseInt)
     .action((opts) => {
       const deps = cliRuntimeDependencies(program);
@@ -91,6 +104,7 @@ export function registerWakeup(program: Command): void {
         ...(opts.maxCompletions !== undefined ? { maxCompletions: opts.maxCompletions } : {}),
         ...(opts.maxActivity !== undefined ? { maxActivity: opts.maxActivity } : {}),
         ...(opts.maxKnowledge !== undefined ? { maxKnowledge: opts.maxKnowledge } : {}),
+        ...(opts.maxConstraints !== undefined ? { maxConstraints: opts.maxConstraints } : {}),
         ...(opts.evidenceChars !== undefined ? { evidenceSnippetChars: opts.evidenceChars } : {}),
       };
       return deps.home === 'all'

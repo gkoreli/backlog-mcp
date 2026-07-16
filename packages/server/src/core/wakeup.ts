@@ -16,12 +16,19 @@
  * ``WakeupParams``. Transports wrap the real IO; tests pass stubs.
  */
 
-import type { Entity, Memory } from '@backlog-mcp/shared';
+import type { Entity, Memory, RuntimeEntity } from '@backlog-mcp/shared';
 import type { MemoryEntry } from '@backlog-mcp/memory';
 import { EntityType, getSubstrate, isValidEntityId, parseEntityId } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import { asBuiltinEntity } from './substrates/index.js';
+import {
+  REQUIREMENT_TYPE,
+  compareConstraints,
+  isActiveConstraint,
+  toConstraintStub,
+  type ConstraintStub,
+} from './requirements/constraint-stub.js';
 import {
   ValidationError,
   type WakeupParams,
@@ -223,8 +230,9 @@ export async function wakeup(
       .slice(0, maxKnowledge)
       .map(e => {
         // Provenance (ADR 0115 R-4): same age/usage grammar as recall stubs,
-        // anchored on the knowledge's own timeline (occurred_at ?? created_at;
-        // malformed dates already normalized at the mint).
+        // anchored on the knowledge's own timeline (occurred_at ?? created_at).
+        // created_at is normalized at the mint; a malformed occurred_at falls
+        // back to that normalized createdAt here.
         const meta = e.metadata ?? {};
         const occurred = typeof meta.occurred_at === 'string' ? Date.parse(meta.occurred_at) : NaN;
         const anchor = Number.isNaN(occurred) ? e.createdAt : occurred;
@@ -240,6 +248,35 @@ export async function wakeup(
         if (typeof refs[0] === 'string') item.source_ref = refs[0];
         return item;
       });
+  }
+
+  // L1.5 Constraints (ADR 0113.1 R-2) — live requirements as stubs,
+  // worst-first. Pure list fold through the constraint mint (R-5 boundary):
+  // everything surfaced comes off toConstraintStub; only ordering reads the
+  // raw entity (updated_at — ordering, not provenance). Scope: requirements
+  // with a parent_id follow the scope filter like knowledge; requirements
+  // without one are home-wide constraints and always appear — a violated
+  // REQ must not vanish because the briefing was folder-scoped.
+  const maxConstraints = params.maxConstraints ?? 5;
+  let constraints: ConstraintStub[] = [];
+  let constraintsOmitted = 0;
+  if (maxConstraints > 0) {
+    const requirements = await service.list({ type: REQUIREMENT_TYPE, limit: 500 });
+    const now = Date.now();
+    const live = requirements
+      .map(r => ({
+        stub: toConstraintStub(r as RuntimeEntity, now),
+        updated_at: typeof r.updated_at === 'string' ? r.updated_at : '',
+        parent_id: typeof r.parent_id === 'string' ? r.parent_id : undefined,
+      }))
+      .filter(({ stub }) => isActiveConstraint(stub))
+      .filter(({ parent_id }) =>
+        !scopeFilter || parent_id === undefined ||
+        scopeFilter(parent_id) || parent_id === params.scope,
+      )
+      .sort(compareConstraints);
+    constraints = live.slice(0, maxConstraints).map(({ stub }) => stub);
+    constraintsOmitted = live.length - constraints.length;
   }
 
   // L2 Recent — last N done tasks by updated_at, + last N ops from the log.
@@ -286,6 +323,7 @@ export async function wakeup(
       current_epics: currentEpics,
     },
     knowledge,
+    constraints,
     recent: {
       completions,
       activity,
@@ -296,6 +334,7 @@ export async function wakeup(
       active_task_count: activeTasks.length,
       epic_count: currentEpics.length,
       knowledge_count: knowledge.length,
+      constraints_omitted: constraintsOmitted,
       completion_count: completions.length,
       activity_count: activity.length,
     },

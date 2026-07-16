@@ -47,7 +47,7 @@ export function registerBacklogWakeupTool(
     'backlog_wakeup',
     {
       description:
-        'Dense session-start briefing: active tasks, current epics, recent completions (with evidence snippets), and recent activity. No focal entity required — use this at the start of every session to understand what you were working on. Optional `scope` narrows to a folder (for project-scoped briefing), milestone, or epic.',
+        'Dense session-start briefing: active tasks, current epics, project constraints (requirements as stubs, violated/at-risk first — treat these as standing product intent), recent completions (with evidence snippets), and recent activity. No focal entity required — use this at the start of every session to understand what you were working on. Optional `scope` narrows to a folder (for project-scoped briefing), milestone, or epic.',
       inputSchema: z.object({
         ...BACKLOG_READ_HOME_INPUT_FIELDS,
         scope: z.string().optional().describe(
@@ -58,6 +58,9 @@ export function registerBacklogWakeupTool(
         ),
         max_activity: z.number().min(0).max(50).optional().describe(
           'Max recent activity-log entries. Default: 5.',
+        ),
+        max_constraints: z.number().min(0).max(50).optional().describe(
+          'Max requirement constraint stubs. Default: 5; 0 disables. Truncation is reported via metadata.constraints_omitted.',
         ),
         evidence_snippet_chars: z.number().min(40).max(1000).optional().describe(
           'Max chars of evidence to include per completion. Default: 160.',
@@ -70,6 +73,7 @@ export function registerBacklogWakeupTool(
       scope,
       max_completions,
       max_activity,
+      max_constraints,
       evidence_snippet_chars,
     }) => {
       try {
@@ -77,6 +81,7 @@ export function registerBacklogWakeupTool(
           ...(scope !== undefined ? { scope } : {}),
           ...(max_completions !== undefined ? { maxCompletions: max_completions } : {}),
           ...(max_activity !== undefined ? { maxActivity: max_activity } : {}),
+          ...(max_constraints !== undefined ? { maxConstraints: max_constraints } : {}),
           ...(evidence_snippet_chars !== undefined ? { evidenceSnippetChars: evidence_snippet_chars } : {}),
         };
         if (home === 'all') {

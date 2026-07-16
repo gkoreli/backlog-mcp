@@ -28,6 +28,7 @@ import type {
   MutationAttribution,
 } from '../operations/types.js';
 import type { ContextStubs } from './get-context/types.js';
+import type { ConstraintStub } from './requirements/constraint-stub.js';
 
 export type {
   Actor,
@@ -284,6 +285,11 @@ export interface WakeupParams {
    * section (ADR-0092.5 R-6). Default: 5. Set 0 to omit the section.
    */
   maxKnowledge?: number;
+  /**
+   * Max requirement constraint stubs (ADR 0113.1 R-2). Default: 5. Set 0 to
+   * omit the section. Truncation is reported via metadata.constraints_omitted.
+   */
+  maxConstraints?: number;
   /** Evidence snippet max chars on completion summaries. Default: 160. */
   evidenceSnippetChars?: number;
   /**
@@ -358,6 +364,13 @@ export interface WakeupResult {
   };
   /** L2.5 — what the agent KNOWS here (semantic/procedural memories). */
   knowledge: WakeupKnowledgeItem[];
+  /**
+   * Project constraints (ADR 0113.1 R-2) — live requirements as stubs,
+   * worst-first (violated > at_risk > unchecked > satisfied). Empty for
+   * projects with no requirements; truncation reported via
+   * metadata.constraints_omitted, never implied complete.
+   */
+  constraints: ConstraintStub[];
   recent: {
     completions: WakeupCompletion[];
     activity: WakeupActivity[];
@@ -368,6 +381,8 @@ export interface WakeupResult {
     active_task_count: number;
     epic_count: number;
     knowledge_count: number;
+    /** Live constraints beyond the maxConstraints bound (0 = complete). */
+    constraints_omitted: number;
     completion_count: number;
     activity_count: number;
   };

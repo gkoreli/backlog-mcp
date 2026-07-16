@@ -2,6 +2,8 @@ export { listItems } from './list.js';
 export { getItems } from './get.js';
 export { composeContextStubs } from './get-context/index.js';
 export type { ComposeContextDeps, ContextStub, ContextStubs } from './get-context/index.js';
+export { REQUIREMENT_TYPE, toConstraintStub, isActiveConstraint, compareConstraints } from './requirements/index.js';
+export type { ConstraintStub, ConstraintViolations } from './requirements/index.js';
 export { createEntity } from './create.js';
 export { updateEntity } from './update.js';
 export { deleteItem } from './delete.js';

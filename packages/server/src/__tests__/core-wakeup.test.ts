@@ -31,6 +31,7 @@ function mockService(entities: Entity[] = []): IBacklogService {
       let result = [...store.values()];
       if (filter?.status) result = result.filter(e => filter.status.includes(e.status));
       if (filter?.type) result = result.filter(e => (e.type ?? 'task') === filter.type);
+      if (filter?.parent_id) result = result.filter(e => e.parent_id === filter.parent_id);
       return result;
     }),
     add: vi.fn(async () => {}),
@@ -398,6 +399,57 @@ describe('core/wakeup', () => {
       const result = await wakeup(svc, { maxKnowledge: 0 });
       expect(result.knowledge).toEqual([]);
       expect(result.metadata.knowledge_count).toBe(0);
+    });
+  });
+
+  describe('constraints section (ADR 0113.1 R-2)', () => {
+    const req = (id: string, fields: Record<string, unknown> = {}) => makeEntity({
+      id, title: `need ${id}`, type: 'requirement', status: 'ruled',
+      ...fields,
+    } as never);
+
+    it('surfaces live requirements worst-first with the stable total order', async () => {
+      const svc = mockService([
+        req('REQ-0004', { compliance: 'satisfied', checked_at: '2026-07-01T00:00:00.000Z', checked_by: 'goga' }),
+        req('REQ-0003', { compliance: 'unchecked' }),
+        req('REQ-0001', { compliance: 'violated', checked_at: '2026-07-10T00:00:00.000Z', checked_by: 'goga', violated_by: ['ADR-0117'] }),
+        req('REQ-0002', { compliance: 'at_risk', checked_at: '2026-07-10T00:00:00.000Z', checked_by: 'goga' }),
+      ]);
+      const result = await wakeup(svc);
+      expect(result.constraints.map(c => c.id)).toEqual(['REQ-0001', 'REQ-0002', 'REQ-0003', 'REQ-0004']);
+      expect(result.constraints[0]?.violations).toEqual({ count: 1, ids: ['ADR-0117'] });
+      expect(result.metadata.constraints_omitted).toBe(0);
+    });
+
+    it('excludes dropped/not_applicable, reports omitted count on truncation, 0 disables', async () => {
+      const reqs = [
+        req('REQ-0009', { status: 'dropped' }),
+        ...Array.from({ length: 7 }, (_, i) => req(`REQ-000${i + 1}`)),
+      ];
+      const svc = mockService(reqs);
+      const result = await wakeup(svc);
+      expect(result.constraints).toHaveLength(5);              // default bound
+      expect(result.metadata.constraints_omitted).toBe(2);     // 7 live − 5 shown; dropped never counts
+      const disabled = await wakeup(svc, { maxConstraints: 0 });
+      expect(disabled.constraints).toEqual([]);
+      expect(disabled.metadata.constraints_omitted).toBe(0);
+    });
+
+    it('is absent-cheap: no requirements → empty section, zero omitted', async () => {
+      const result = await wakeup(mockService([]));
+      expect(result.constraints).toEqual([]);
+      expect(result.metadata.constraints_omitted).toBe(0);
+    });
+
+    it('home-wide constraints (no parent_id) survive a scoped wakeup; parented ones follow scope', async () => {
+      const svc = mockService([
+        makeEntity({ id: 'FLDR-0001', title: 'proj', type: 'folder', status: undefined }),
+        makeEntity({ id: 'FLDR-0002', title: 'other', type: 'folder', status: undefined }),
+        req('REQ-0001', {}),                                   // home-wide
+        req('REQ-0002', { parent_id: 'FLDR-0002' }),           // other scope
+      ]);
+      const result = await wakeup(svc, { scope: 'FLDR-0001' });
+      expect(result.constraints.map(c => c.id)).toEqual(['REQ-0001']);
     });
   });
 });
