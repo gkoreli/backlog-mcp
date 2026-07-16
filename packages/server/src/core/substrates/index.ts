@@ -7,6 +7,8 @@ export { SubstrateWriteError } from './substrate-write-error.js';
 export { compileSubstrateDefinition } from './compile-substrate-definition.js';
 export { compileSubstrateDisclosure } from './compile-substrate-disclosure.js';
 export { compileSubstrateIntents } from './compile-substrate-intents.js';
+export { executeSubstrateIntent } from './execute-substrate-intent.js';
+export { SubstrateIntentExecutionError } from './execute-substrate-intent.types.js';
 export {
   createBuiltinSubstrateRegistrations,
 } from './create-builtin-substrate-registrations.js';
@@ -21,6 +23,15 @@ export {
   createProjectSubstrateRegistry,
   ProjectSubstrateRegistry,
 } from './project-substrate-registry.js';
+export type {
+  ExecuteSubstrateIntentParams,
+  ExecuteSubstrateIntentResult,
+  SubstrateIntentFailureCode,
+} from './execute-substrate-intent.types.js';
+export type {
+  IntentRegistryPort,
+  IntentWriteValidatorPort,
+} from './intent-registry.contract.js';
 export type {
   ClaimedSubstrateDocument,
   ClaimSubstrateDocumentsParams,
