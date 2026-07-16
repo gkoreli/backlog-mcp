@@ -17,7 +17,7 @@ function createStorageClaim(
       strategy: 'prefixed-number',
       prefix,
       minimumDigits: 4,
-      displayTemplate: `${prefix}-{number}`,
+      displayTemplate: `${prefix}-{key}`,
     },
   };
 }

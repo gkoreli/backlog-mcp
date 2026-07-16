@@ -10,3 +10,4 @@ export * from './milestone.js';
 export * from './cron.js';
 export * from './memory.js';
 export * from './registry.js';
+export * from './substrate-definition.schema.js';

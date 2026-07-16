@@ -114,7 +114,7 @@ contains:
 | Section | Purpose |
 |---|---|
 | `definitionVersion` | Version of the backlog-mcp substrate meta-schema. |
-| `type` and `label` | Stable machine key plus singular/plural human labels. |
+| `type`, `label`, and `folder` | Stable machine key, singular/plural human labels, and the validated docs-relative storage claim. |
 | `replaces` / `extendsDefinition` | Explicit relationship to a packaged declarative definition. |
 | `identity` | Type-local identity requirements consumed by ADR 0112's identity service. |
 | `schema` | Draft 2020-12 JSON Schema for the normalized entity projection. |
@@ -128,9 +128,13 @@ contains:
 | `hint` and `ui` | Agent discovery text and allowlisted presentation metadata. |
 
 The meta-schema accepts a deliberately bounded JSON Schema subset: JSON primitives,
-objects, arrays, enums/const, required properties, numeric/string bounds, safe-gated
-patterns paired with `maxLength`, formats from a fixed allowlist,
+objects, arrays, enums/const, required properties, numeric/string bounds, formats
+from a fixed allowlist,
 `oneOf`/`anyOf`/`allOf`, and local `#/$defs` references.
+
+Project-authored `pattern` is excluded from v1. JavaScript's native regex engine has
+no reliable compile-time safety proof, and heuristic checkers leave ReDoS bypasses.
+A future measured need may add patterns behind an isolated or linear-time engine.
 
 The following are rejected:
 
@@ -151,9 +155,9 @@ invalid. No definition may point at a local module.
 The intended validator is Ajv's Draft 2020-12 build in strict mode, behind the
 meta-schema gate—not direct compilation of arbitrary project JSON. Ajv explicitly
 warns that untrusted schemas can cause excessive compile/validation work and ReDoS,
-so size/depth limits, safe-regex checks, bounded arrays/strings, local refs only, and
-production validation without `allErrors` are part of the contract, not optional
-hardening. See Ajv's official
+so size/depth limits, rejection of project-authored patterns, bounded arrays/strings,
+local refs only, and production validation without `allErrors` are part of the
+contract, not optional hardening. See Ajv's official
 [Draft 2020-12 support](https://ajv.js.org/json-schema.html) and
 [security guidance](https://ajv.js.org/security.html). Date/date-time formats use
 small backlog-mcp-owned validators rather than loading an open format plugin set.
@@ -242,11 +246,11 @@ definition may require the `numbered-threaded` strategy; a Requirement may requi
 substrate meaning/display, and maps thread keys to relations. It does not rebuild a
 universal regex or allocate the number.
 
-Duplicate type keys, identity namespaces, generated intent names, or incompatible
-identity strategies are deterministic load errors. No filesystem-order winner is
-chosen: every conflicting project definition is quarantined and the diagnostic cites
-all source paths. An unaffected packaged/built-in definition remains active unless an
-explicit, valid replacement compiled successfully.
+Duplicate type keys, overlapping folder claims, identity prefixes, generated intent
+names, or incompatible identity strategies are deterministic load errors. No
+filesystem-order winner is chosen: every conflicting project definition is
+quarantined and the diagnostic cites all source paths. An unaffected packaged/built-in
+definition remains active unless an explicit, valid replacement compiled successfully.
 
 ### R4. Reads are lenient and lossless; writes are strict and canonical
 
@@ -424,12 +428,11 @@ is the runtime compatibility gate.
     "singular": "ADR",
     "plural": "ADRs"
   },
+  "folder": "adr",
   "identity": {
     "strategy": "numbered-threaded",
-    "namespace": "ADR",
     "minimumDigits": 4,
-    "slug": "required",
-    "displayTemplate": "ADR {number}{threadPart}"
+    "displayTemplate": "ADR {key}"
   },
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1100,10 +1103,10 @@ The important consequences are:
   composed compiled/runtime registry with validation and collision diagnostics.
 - Add `packages/server/src/core/substrates/load-substrate-definitions.ts`:
   injected-read loader for the opaque definition paths discovered by ADR 0112.
-- Add packaged definitions under
-  `packages/server/src/substrate-definitions/{adr,requirement,prompt}.json`;
-  import/bundle them so npm consumers receive them without a runtime node_modules
-  path assumption.
+- Add packaged ADR, Requirement, and Prompt definition data under
+  `packages/server/src/substrate-definitions/`; embed it through a TypeScript data
+  module so npm consumers receive it without runtime asset-path or filesystem
+  assumptions. Project-authored definitions remain JSON.
 
 ### Phase B — open the core and storage contracts
 
