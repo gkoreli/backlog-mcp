@@ -33,7 +33,7 @@ type ValueOfUnion<T, K extends PropertyKey> =
 type AllEntityInputKeys = KeysOfUnion<EntityInput>;
 
 /**
- * Input to {@link createEntity}.
+ * Input to {@link buildEntity}.
  *
  * MECHANICALLY DERIVED from the discriminated union's *input* shape — the keys
  * and their value types are projected from `z.input<typeof EntitySchema>`, so
@@ -45,7 +45,7 @@ type AllEntityInputKeys = KeysOfUnion<EntityInput>;
  * Server-stamped fields (`created_at`/`updated_at`) are excluded — the factory
  * applies them. `type` is optional and defaults to Task.
  */
-export type CreateEntityInput = {
+export type BuildEntityInput = {
   [K in Exclude<AllEntityInputKeys, 'created_at' | 'updated_at' | 'id' | 'title' | 'type'>]?:
     ValueOfUnion<EntityInput, K>;
 } & {
@@ -65,7 +65,7 @@ export type CreateEntityInput = {
  * per-type-shaped object reaches the strict schema cleanly — this replaces the
  * old hand-maintained `if (x !== undefined)` ladder. (ADR 0106.2 §3, Step-0 F1)
  */
-export function createEntity(input: CreateEntityInput): Entity {
+export function buildEntity(input: BuildEntityInput): Entity {
   const now = new Date().toISOString();
   const type = input.type ?? EntityType.Task;
 

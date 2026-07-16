@@ -6,9 +6,7 @@
 import { join } from 'node:path';
 import { paths } from '@server/utils/paths.js';
 import { OperationStorage } from './storage.js';
-import { extractResourceId } from './resource-id.js';
 import type { Actor, OperationEntry, OperationFilter, IOperationLog } from './types.js';
-import { WRITE_TOOLS } from './types.js';
 
 /**
  * Build an Actor from the current process environment.
@@ -33,23 +31,6 @@ export class OperationLogger implements IOperationLog {
   /** IOperationLog: append a pre-built entry directly. */
   append(entry: OperationEntry): void {
     this.storage.append(entry);
-  }
-
-  /**
-   * Convenience helper: build and append an entry from raw tool call data.
-   * Only logs write operations. @deprecated — core.recordMutation is the
-   * new write path; this exists for legacy callers and a couple of tests.
-   */
-  log(tool: string, params: Record<string, unknown>, result: unknown): void {
-    if (!WRITE_TOOLS.includes(tool as any)) return;
-    this.storage.append({
-      ts: new Date().toISOString(),
-      tool,
-      params,
-      result,
-      resourceId: extractResourceId(tool, params, result),
-      actor: envActor(),
-    });
   }
 
   /** IOperationLog: async query (wraps synchronous storage). */

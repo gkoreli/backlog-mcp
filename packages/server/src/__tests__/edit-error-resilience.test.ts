@@ -1,9 +1,27 @@
 import { describe, it, expect, vi } from 'vitest';
 import { applyOperation } from '../resources/operations.js';
-import { editItem } from '../core/edit.js';
-import { NotFoundError, type WriteContext } from '../core/types.js';
+import { editItem as editItemCore } from '../core/edit.js';
+import {
+  NotFoundError,
+  type EditParams,
+  type MutationAttribution,
+  type WriteContext,
+} from '../core/types.js';
 import type { Entity } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
+
+const RESOURCE_EDIT_ATTRIBUTION = {
+  tool: 'write_resource',
+  mutation: 'resource-edit',
+} as const satisfies MutationAttribution;
+
+function editItem(
+  service: IBacklogService,
+  params: EditParams,
+  ctx: WriteContext,
+) {
+  return editItemCore(service, params, ctx, RESOURCE_EDIT_ATTRIBUTION);
+}
 
 function testCtx(): WriteContext {
   return {

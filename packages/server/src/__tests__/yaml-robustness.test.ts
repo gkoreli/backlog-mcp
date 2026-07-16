@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { storage } from '../storage/local/backlog-service.js';
-import { createEntity } from '../storage/entity-factory.js';
+import { buildEntity } from '../storage/entity-factory.js';
 import { paths } from '../utils/paths.js';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -15,7 +15,7 @@ describe('YAML Robustness', () => {
 
   describe('reading tasks with special characters', () => {
     it('should handle titles with colons', async () => {
-      const task = createEntity({
+      const task = buildEntity({
         id: 'TASK-0001',
         title: 'Design: My Feature'
       });
@@ -26,7 +26,7 @@ describe('YAML Robustness', () => {
     });
 
     it('should not break list() when one file has malformed YAML', async () => {
-      const task = createEntity({ id: 'TASK-0001', title: 'Valid Task' });
+      const task = buildEntity({ id: 'TASK-0001', title: 'Valid Task' });
       await storage.add(task);
 
       writeFileSync(
@@ -40,7 +40,7 @@ describe('YAML Robustness', () => {
     });
 
     it('should not break counts() when one file has malformed YAML', async () => {
-      const task = createEntity({ id: 'TASK-0001', title: 'Valid Task' });
+      const task = buildEntity({ id: 'TASK-0001', title: 'Valid Task' });
       await storage.add(task);
 
       writeFileSync(
@@ -55,7 +55,7 @@ describe('YAML Robustness', () => {
 
   describe('writing tasks with special characters', () => {
     it('should properly escape titles with colons when writing', async () => {
-      const task = createEntity({
+      const task = buildEntity({
         id: 'TASK-0001',
         title: 'Design: Architecture: Overview'
       });
@@ -66,7 +66,7 @@ describe('YAML Robustness', () => {
     });
 
     it('should properly escape titles with quotes when writing', async () => {
-      const task = createEntity({
+      const task = buildEntity({
         id: 'TASK-0001',
         title: "Task with 'single' and \"double\" quotes"
       });

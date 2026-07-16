@@ -11,7 +11,7 @@ import {
   formatEntityId,
   nextEntityId,
 } from '@backlog-mcp/shared';
-import { createEntity } from '../storage/entity-factory.js';
+import { buildEntity } from '../storage/entity-factory.js';
 import { paths } from '../utils/paths.js';
 
 // Mock SearchService
@@ -109,7 +109,7 @@ describe('Substrates Backend', () => {
     it('should create and retrieve a folder', async () => {
       const id = nextEntityId(await storage.getMaxId('folder'), 'folder');
       expect(id).toBe('FLDR-0001');
-      const task = createEntity({ id, title: 'My Folder', type: 'folder' });
+      const task = buildEntity({ id, title: 'My Folder', type: 'folder' });
       await storage.add(task);
       const retrieved = await storage.get('FLDR-0001');
       expect(retrieved?.title).toBe('My Folder');
@@ -119,7 +119,7 @@ describe('Substrates Backend', () => {
     it('should create and retrieve an artifact', async () => {
       const id = nextEntityId(await storage.getMaxId('artifact'), 'artifact');
       expect(id).toBe('ARTF-0001');
-      const task = createEntity({ id, title: 'Design Doc', type: 'artifact', content_type: 'text/markdown', path: '/docs/design.md' });
+      const task = buildEntity({ id, title: 'Design Doc', type: 'artifact', content_type: 'text/markdown', path: '/docs/design.md' });
       await storage.add(task);
       const retrieved = await storage.get('ARTF-0001');
       expect(retrieved?.content_type).toBe('text/markdown');
@@ -129,16 +129,16 @@ describe('Substrates Backend', () => {
     it('should create and retrieve a milestone', async () => {
       const id = nextEntityId(await storage.getMaxId('milestone'), 'milestone');
       expect(id).toBe('MLST-0001');
-      const task = createEntity({ id, title: 'Q1 Release', type: 'milestone', due_date: '2026-03-31T00:00:00Z' });
+      const task = buildEntity({ id, title: 'Q1 Release', type: 'milestone', due_date: '2026-03-31T00:00:00Z' });
       await storage.add(task);
       const retrieved = await storage.get('MLST-0001');
       expect(retrieved?.due_date).toBe('2026-03-31T00:00:00Z');
     });
 
     it('should generate independent IDs per type', async () => {
-      await storage.add(createEntity({ id: 'TASK-0001', title: 'Task 1' }));
-      await storage.add(createEntity({ id: 'FLDR-0001', title: 'Folder 1', type: 'folder' }));
-      await storage.add(createEntity({ id: 'ARTF-0001', title: 'Artifact 1', type: 'artifact' }));
+      await storage.add(buildEntity({ id: 'TASK-0001', title: 'Task 1' }));
+      await storage.add(buildEntity({ id: 'FLDR-0001', title: 'Folder 1', type: 'folder' }));
+      await storage.add(buildEntity({ id: 'ARTF-0001', title: 'Artifact 1', type: 'artifact' }));
 
       expect(await storage.getMaxId('task')).toBe(1);
       expect(await storage.getMaxId('folder')).toBe(1);
@@ -157,10 +157,10 @@ describe('Substrates Backend', () => {
 
   describe('storage - parent_id', () => {
     it('should filter by parent_id', async () => {
-      await storage.add(createEntity({ id: 'FLDR-0001', title: 'Folder', type: 'folder' }));
-      await storage.add(createEntity({ id: 'TASK-0001', title: 'Child 1', parent_id: 'FLDR-0001' }));
-      await storage.add(createEntity({ id: 'TASK-0002', title: 'Child 2', parent_id: 'FLDR-0001' }));
-      await storage.add(createEntity({ id: 'TASK-0003', title: 'Orphan' }));
+      await storage.add(buildEntity({ id: 'FLDR-0001', title: 'Folder', type: 'folder' }));
+      await storage.add(buildEntity({ id: 'TASK-0001', title: 'Child 1', parent_id: 'FLDR-0001' }));
+      await storage.add(buildEntity({ id: 'TASK-0002', title: 'Child 2', parent_id: 'FLDR-0001' }));
+      await storage.add(buildEntity({ id: 'TASK-0003', title: 'Orphan' }));
 
       const children = await storage.list({ parent_id: 'FLDR-0001' });
       expect(children).toHaveLength(2);
@@ -168,9 +168,9 @@ describe('Substrates Backend', () => {
     });
 
     it('should support subtasks (task parented to task)', async () => {
-      await storage.add(createEntity({ id: 'TASK-0001', title: 'Parent task' }));
-      await storage.add(createEntity({ id: 'TASK-0002', title: 'Subtask 1', parent_id: 'TASK-0001' }));
-      await storage.add(createEntity({ id: 'TASK-0003', title: 'Subtask 2', parent_id: 'TASK-0001' }));
+      await storage.add(buildEntity({ id: 'TASK-0001', title: 'Parent task' }));
+      await storage.add(buildEntity({ id: 'TASK-0002', title: 'Subtask 1', parent_id: 'TASK-0001' }));
+      await storage.add(buildEntity({ id: 'TASK-0003', title: 'Subtask 2', parent_id: 'TASK-0001' }));
 
       const subtasks = await storage.list({ parent_id: 'TASK-0001' });
       expect(subtasks).toHaveLength(2);
@@ -184,7 +184,7 @@ describe('Substrates Backend', () => {
   describe('retired epic_id alias', () => {
     it('rejects epic_id on canonical creation', () => {
       expect(function createWithLegacyRelationship() {
-        createEntity({
+        buildEntity({
           id: 'TASK-0001',
           title: 'Test',
           epic_id: 'EPIC-0001',
@@ -193,7 +193,7 @@ describe('Substrates Backend', () => {
     });
 
     it('should still generate epic IDs correctly', async () => {
-      await storage.add(createEntity({ id: 'EPIC-0001', title: 'Epic 1', type: 'epic' }));
+      await storage.add(buildEntity({ id: 'EPIC-0001', title: 'Epic 1', type: 'epic' }));
       const nextId = nextEntityId(await storage.getMaxId('epic'), 'epic');
       expect(nextId).toBe('EPIC-0002');
     });
@@ -205,11 +205,11 @@ describe('Substrates Backend', () => {
 
   describe('counts - by_type', () => {
     it('should count all entity types', async () => {
-      await storage.add(createEntity({ id: 'TASK-0001', title: 'Task' }));
-      await storage.add(createEntity({ id: 'EPIC-0001', title: 'Epic', type: 'epic' }));
-      await storage.add(createEntity({ id: 'FLDR-0001', title: 'Folder', type: 'folder' }));
-      await storage.add(createEntity({ id: 'ARTF-0001', title: 'Artifact', type: 'artifact' }));
-      await storage.add(createEntity({ id: 'MLST-0001', title: 'Milestone', type: 'milestone' }));
+      await storage.add(buildEntity({ id: 'TASK-0001', title: 'Task' }));
+      await storage.add(buildEntity({ id: 'EPIC-0001', title: 'Epic', type: 'epic' }));
+      await storage.add(buildEntity({ id: 'FLDR-0001', title: 'Folder', type: 'folder' }));
+      await storage.add(buildEntity({ id: 'ARTF-0001', title: 'Artifact', type: 'artifact' }));
+      await storage.add(buildEntity({ id: 'MLST-0001', title: 'Milestone', type: 'milestone' }));
 
       const counts = await storage.counts();
       expect(counts.by_type).toEqual({
@@ -232,7 +232,7 @@ describe('Substrates Backend', () => {
     it('creates and retrieves a cron with all fields', async () => {
       const id = nextEntityId(await storage.getMaxId('cron'), 'cron');
       expect(id).toBe('CRON-0001');
-      const cron = createEntity({
+      const cron = buildEntity({
         id,
         title: 'Review queue poll',
         type: 'cron',
@@ -249,9 +249,9 @@ describe('Substrates Backend', () => {
     });
 
     it('generates CRON IDs independently from other types', async () => {
-      await storage.add(createEntity({ id: 'TASK-0001', title: 'T' }));
-      await storage.add(createEntity({ id: 'CRON-0001', title: 'C1', type: 'cron', schedule: '* * * * *', command: 'echo' }));
-      await storage.add(createEntity({ id: 'CRON-0002', title: 'C2', type: 'cron', schedule: '* * * * *', command: 'echo' }));
+      await storage.add(buildEntity({ id: 'TASK-0001', title: 'T' }));
+      await storage.add(buildEntity({ id: 'CRON-0001', title: 'C1', type: 'cron', schedule: '* * * * *', command: 'echo' }));
+      await storage.add(buildEntity({ id: 'CRON-0002', title: 'C2', type: 'cron', schedule: '* * * * *', command: 'echo' }));
 
       expect(await storage.getMaxId('cron')).toBe(2);
       expect(await storage.getMaxId('task')).toBe(1);
@@ -259,7 +259,7 @@ describe('Substrates Backend', () => {
     });
 
     it('persists scheduler-owned fields (last_run, next_run) across save/get', async () => {
-      const cron = createEntity({
+      const cron = buildEntity({
         id: 'CRON-0001',
         title: 'Timed',
         type: 'cron',
@@ -276,9 +276,9 @@ describe('Substrates Backend', () => {
     });
 
     it('filters cron entities via list({ type: cron })', async () => {
-      await storage.add(createEntity({ id: 'TASK-0001', title: 'T' }));
-      await storage.add(createEntity({ id: 'CRON-0001', title: 'C1', type: 'cron', schedule: '* * * * *', command: 'a' }));
-      await storage.add(createEntity({ id: 'CRON-0002', title: 'C2', type: 'cron', schedule: '* * * * *', command: 'b' }));
+      await storage.add(buildEntity({ id: 'TASK-0001', title: 'T' }));
+      await storage.add(buildEntity({ id: 'CRON-0001', title: 'C1', type: 'cron', schedule: '* * * * *', command: 'a' }));
+      await storage.add(buildEntity({ id: 'CRON-0002', title: 'C2', type: 'cron', schedule: '* * * * *', command: 'b' }));
 
       const crons = await storage.list({ type: 'cron' });
       expect(crons).toHaveLength(2);
@@ -286,8 +286,8 @@ describe('Substrates Backend', () => {
     });
 
     it('supports cron parented under an epic (co-review use case)', async () => {
-      await storage.add(createEntity({ id: 'EPIC-0043', title: 'Code Reviews', type: 'epic' }));
-      await storage.add(createEntity({
+      await storage.add(buildEntity({ id: 'EPIC-0043', title: 'Code Reviews', type: 'epic' }));
+      await storage.add(buildEntity({
         id: 'CRON-0001',
         title: 'Review queue',
         type: 'cron',

@@ -1,5 +1,10 @@
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
-import type { DeleteParams, DeleteResult, WriteContext } from './types.js';
+import type {
+  DeleteParams,
+  DeleteResult,
+  MutationAttribution,
+  WriteContext,
+} from './types.js';
 import { recordMutation } from './operation-log.js';
 
 /**
@@ -14,11 +19,18 @@ export async function deleteItem(
   service: IBacklogService,
   params: DeleteParams,
   ctx: WriteContext,
+  attribution: MutationAttribution,
 ): Promise<DeleteResult> {
   const deleted = await service.delete(params.id);
   const result: DeleteResult = { id: params.id, deleted };
   if (deleted) {
-    recordMutation(ctx, 'backlog_delete', params as unknown as Record<string, unknown>, result);
+    recordMutation(
+      ctx,
+      attribution,
+      params.id,
+      params as unknown as Record<string, unknown>,
+      result,
+    );
   }
   return result;
 }

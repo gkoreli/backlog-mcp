@@ -6,6 +6,11 @@ import { deleteItem } from '../core/delete.js';
 import { buildWriteContext } from './build-write-context.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
+const DELETE_ATTRIBUTION = {
+  tool: 'backlog_delete',
+  mutation: 'delete',
+} as const;
+
 export function registerBacklogDeleteTool(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   server.registerTool(
     'backlog_delete',
@@ -17,7 +22,12 @@ export function registerBacklogDeleteTool(server: McpServer, service: IBacklogSe
       }),
     },
     async ({ id }) => {
-      const result = await deleteItem(service, { id }, buildWriteContext(deps));
+      const result = await deleteItem(
+        service,
+        { id },
+        buildWriteContext(deps),
+        DELETE_ATTRIBUTION,
+      );
       return { content: [{ type: 'text', text: `Deleted ${result.id}` }] };
     }
   );

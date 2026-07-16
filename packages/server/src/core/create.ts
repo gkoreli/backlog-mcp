@@ -1,4 +1,4 @@
-import { EntityType, nextEntityId } from '@backlog-mcp/shared';
+import { nextEntityId } from '@backlog-mcp/shared';
 import { ZodError } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { shouldCaptureArtifact } from '../memory/capture-rules.js';
@@ -9,7 +9,12 @@ import {
   SubstrateWriteError,
 } from './substrates/index.js';
 import { ValidationError } from './types.js';
-import type { CreateParams, CreateResult, WriteContext } from './types.js';
+import type {
+  CreateEntityParams,
+  CreateResult,
+  MutationAttribution,
+  WriteContext,
+} from './types.js';
 import { formatZodError } from './zod-errors.js';
 import { recordMutation } from './operation-log.js';
 
@@ -39,10 +44,11 @@ function normalizeWriteError(error: unknown): never {
  * Canonical parsing happens once at storage; compiled built-ins retain their
  * Zod defaults while declarative substrates retain their own strict schema.
  */
-export async function createItem(
+export async function createEntity(
   service: IBacklogService,
-  params: CreateParams,
+  params: CreateEntityParams,
   ctx: WriteContext,
+  attribution: MutationAttribution,
 ): Promise<CreateResult> {
   const {
     title,
@@ -55,8 +61,7 @@ export async function createItem(
     command,
     enabled,
   } = params;
-  const resolvedType = type ?? EntityType.Task;
-  const id = await allocateEntityId(service, resolvedType);
+  const id = await allocateEntityId(service, type);
   const candidate: Record<string, unknown> = { ...(fields ?? {}) };
   assignDefined(candidate, {
     content,
@@ -67,10 +72,10 @@ export async function createItem(
     enabled,
   });
   candidate.id = id;
-  candidate.type = resolvedType;
+  candidate.type = type;
   candidate.title = title;
 
-  if (isBuiltinSubstrateType(resolvedType)) {
+  if (isBuiltinSubstrateType(type)) {
     const now = new Date().toISOString();
     candidate.created_at = now;
     candidate.updated_at = now;
@@ -94,7 +99,13 @@ export async function createItem(
   }
 
   const result: CreateResult = { id: stored.id };
-  recordMutation(ctx, 'backlog_create', params as unknown as Record<string, unknown>, result);
+  recordMutation(
+    ctx,
+    attribution,
+    stored.id,
+    params as unknown as Record<string, unknown>,
+    result,
+  );
   return result;
 }
 

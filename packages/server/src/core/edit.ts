@@ -1,7 +1,13 @@
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { Operation } from '@backlog-mcp/shared';
 import { applyOperation } from '../resources/operations.js';
-import { NotFoundError, type EditParams, type EditResult, type WriteContext } from './types.js';
+import {
+  NotFoundError,
+  type EditParams,
+  type EditResult,
+  type MutationAttribution,
+  type WriteContext,
+} from './types.js';
 import { recordMutation } from './operation-log.js';
 
 /**
@@ -15,6 +21,7 @@ export async function editItem(
   service: IBacklogService,
   params: EditParams,
   ctx: WriteContext,
+  attribution: MutationAttribution,
 ): Promise<EditResult> {
   const { id, operation } = params;
   const task = await service.get(id);
@@ -24,7 +31,13 @@ export async function editItem(
     const newBody = applyOperation(task.content ?? '', operation as Operation);
     await service.save({ ...task, content: newBody, updated_at: new Date().toISOString() });
     const result: EditResult = { success: true, message: `Successfully applied ${operation.type} to ${id}` };
-    recordMutation(ctx, 'write_resource', params as unknown as Record<string, unknown>, result);
+    recordMutation(
+      ctx,
+      attribution,
+      id,
+      params as unknown as Record<string, unknown>,
+      result,
+    );
     return result;
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };

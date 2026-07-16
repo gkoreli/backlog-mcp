@@ -5,6 +5,7 @@
  */
 
 import type { OperationEntry, OperationFilter, IOperationLog } from './types.js';
+import { normalizeOperationEntry } from './mutation.js';
 
 // Minimal D1 API surface typed here to enable generic calls without
 // requiring @cloudflare/workers-types at Node.js compile time.
@@ -40,14 +41,14 @@ interface OperationRow {
 }
 
 function rowToEntry(row: OperationRow): OperationEntry {
-  return {
+  return normalizeOperationEntry({
     ts: row.ts,
     tool: row.tool,
     actor: row.actor ? JSON.parse(row.actor) : { type: 'user', name: 'unknown' },
     resourceId: row.resource_id ?? undefined,
     params: row.params ? JSON.parse(row.params) : {},
     result: row.result ? JSON.parse(row.result) : null,
-  };
+  });
 }
 
 export class D1OperationLog implements IOperationLog {
@@ -60,10 +61,7 @@ export class D1OperationLog implements IOperationLog {
    * Append an operation entry to D1. Fire-and-forget via waitUntil.
    */
   append(entry: OperationEntry): void {
-    const taskId: string | null =
-      typeof (entry.params as any)?.id === 'string'
-        ? (entry.params as any).id
-        : null;
+    const taskId = entry.resourceId ?? null;
 
     this.ctx.waitUntil(
       this.db

@@ -5,7 +5,7 @@
  * live-event if the context carries an event bus. No module state, no
  * singletons, no wrappers.
  *
- * Called by core write functions (createItem, updateItem, deleteItem,
+ * Called by core write functions (createEntity, updateEntity, deleteItem,
  * editItem) after their mutation completes successfully. The write and
  * its journal entry are a single operation — you cannot perform the
  * mutation without recording it, because both live inside the same core
@@ -15,15 +15,14 @@
  */
 
 import type { WriteContext } from './types.js';
-import type { ToolName, OperationEntry } from '../operations/types.js';
-import { extractResourceId } from '../operations/resource-id.js';
+import type { Mutation, MutationAttribution, OperationEntry } from '../operations/types.js';
 
-/** Tool → SSE event-type mapping. Only write tools emit events. */
-const TOOL_EVENT_MAP: Record<ToolName, string> = {
-  backlog_create: 'task_created',
-  backlog_update: 'task_changed',
-  backlog_delete: 'task_deleted',
-  write_resource: 'resource_changed',
+/** Mutation class → SSE event type. Semantic tool names remain payload data. */
+const MUTATION_EVENT_MAP: Record<Mutation, string> = {
+  create: 'task_created',
+  update: 'task_changed',
+  delete: 'task_deleted',
+  'resource-edit': 'resource_changed',
 };
 
 /**
@@ -33,7 +32,8 @@ const TOOL_EVENT_MAP: Record<ToolName, string> = {
  */
 export function recordMutation(
   ctx: WriteContext,
-  tool: ToolName,
+  attribution: MutationAttribution,
+  resourceId: string,
   params: Record<string, unknown>,
   result: unknown,
 ): void {
@@ -41,19 +41,20 @@ export function recordMutation(
 
   const entry: OperationEntry = {
     ts,
-    tool,
+    tool: attribution.tool,
+    mutation: attribution.mutation,
     params,
     result,
-    resourceId: extractResourceId(tool, params, result),
+    resourceId,
     actor: ctx.actor,
   };
 
   ctx.operationLog.append(entry);
 
   ctx.eventBus?.emit({
-    type: TOOL_EVENT_MAP[tool],
-    id: entry.resourceId ?? '',
-    tool,
+    type: MUTATION_EVENT_MAP[attribution.mutation],
+    id: resourceId,
+    tool: attribution.tool,
     actor: ctx.actor.name,
     ts,
   });

@@ -2,9 +2,15 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { ToolDeps } from './index.js';
-import { createItem } from '../core/create.js';
+import { EntityType } from '@backlog-mcp/shared';
+import { createEntity } from '../core/create.js';
 import { buildWriteContext } from './build-write-context.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
+
+const CREATE_ATTRIBUTION = {
+  tool: 'backlog_create',
+  mutation: 'create',
+} as const;
 
 export function registerBacklogCreateTool(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   server.registerTool(
@@ -40,7 +46,12 @@ export function registerBacklogCreateTool(server: McpServer, service: IBacklogSe
           }
           content = deps.resolveSourcePath(source_path);
         }
-        const result = await createItem(service, { ...params, content }, buildWriteContext(deps));
+        const result = await createEntity(
+          service,
+          { ...params, type: params.type ?? EntityType.Task, content },
+          buildWriteContext(deps),
+          CREATE_ATTRIBUTION,
+        );
         return { content: [{ type: 'text', text: `Created ${result.id}` }] };
       } catch (error) {
         return { content: [{ type: 'text' as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }] };

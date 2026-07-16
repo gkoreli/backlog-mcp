@@ -17,10 +17,18 @@ import type {
 } from '@backlog-mcp/shared';
 import type { MemoryComposer, MemoryLayer } from '@backlog-mcp/memory';
 import type { ResourceContent } from '../resources/manager.js';
-import type { Actor, IOperationLog } from '../operations/types.js';
+import type {
+  Actor,
+  IOperationLog,
+  MutationAttribution,
+} from '../operations/types.js';
 import type { ContextStubs } from './get-context/types.js';
 
-export type { Actor, IOperationLog } from '../operations/types.js';
+export type {
+  Actor,
+  IOperationLog,
+  MutationAttribution,
+} from '../operations/types.js';
 export type { MemoryEntry, MemoryResult, RecallQuery, MemoryLayer } from '@backlog-mcp/memory';
 
 // ── Write boundary ──
@@ -134,10 +142,10 @@ export interface GetResult {
 
 // ── Create ──
 
-export interface CreateParams {
+export interface CreateEntityParams {
   title: string;
   content?: string;
-  type?: SubstrateType;
+  type: SubstrateType;
   parent_id?: string;
   references?: Reference[];
   fields?: Record<string, unknown>;
@@ -153,7 +161,7 @@ export interface CreateResult {
 
 // ── Update ──
 
-export interface UpdateParams {
+export interface UpdateEntityParams {
   id: string;
   title?: string;
   status?: string;

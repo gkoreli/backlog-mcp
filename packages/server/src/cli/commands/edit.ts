@@ -3,6 +3,11 @@ import { editItem } from '../../core/edit.js';
 import type { EditOperation } from '@backlog-mcp/shared';
 import { cliRuntimeDependencies, run } from '../runner.js';
 
+const CLI_EDIT_ATTRIBUTION = {
+  tool: 'backlog edit',
+  mutation: 'resource-edit',
+} as const;
+
 function formatResult(r: { success: boolean; message?: string; error?: string }) {
   if (!r.success) {
     console.error(r.error ?? 'Edit failed');
@@ -22,6 +27,7 @@ function editAction(
       runtime.service,
       { id, operation },
       runtime.writeContext,
+      CLI_EDIT_ATTRIBUTION,
     ),
     formatResult,
     json,

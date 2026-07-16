@@ -15,18 +15,88 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import {
+  EntityType,
   EntitySchema,
   type AnyEntity,
   type Entity,
 } from '@backlog-mcp/shared';
 import { listItems } from '../core/list.js';
 import { getItems } from '../core/get.js';
-import { createItem } from '../core/create.js';
-import { updateItem } from '../core/update.js';
-import { deleteItem } from '../core/delete.js';
+import { createEntity as createEntityCore } from '../core/create.js';
+import { updateEntity as updateEntityCore } from '../core/update.js';
+import { deleteItem as deleteItemCore } from '../core/delete.js';
 import { searchItems } from '../core/search.js';
-import { editItem } from '../core/edit.js';
-import { NotFoundError, ValidationError, type WriteContext } from '../core/types.js';
+import { editItem as editItemCore } from '../core/edit.js';
+import {
+  NotFoundError,
+  ValidationError,
+  type CreateEntityParams,
+  type DeleteParams,
+  type EditParams,
+  type MutationAttribution,
+  type UpdateEntityParams,
+  type WriteContext,
+} from '../core/types.js';
+
+const CREATE_ATTRIBUTION = {
+  tool: 'backlog_create_work',
+  mutation: 'create',
+} as const satisfies MutationAttribution;
+
+const UPDATE_ATTRIBUTION = {
+  tool: 'backlog_complete_task',
+  mutation: 'update',
+} as const satisfies MutationAttribution;
+
+const DELETE_ATTRIBUTION = {
+  tool: 'backlog_delete',
+  mutation: 'delete',
+} as const satisfies MutationAttribution;
+
+const RESOURCE_EDIT_ATTRIBUTION = {
+  tool: 'write_resource',
+  mutation: 'resource-edit',
+} as const satisfies MutationAttribution;
+
+type CreateParamsWithDefaultType =
+  Omit<CreateEntityParams, 'type'> & { type?: CreateEntityParams['type'] };
+
+function createEntity(
+  service: IBacklogService,
+  params: CreateParamsWithDefaultType,
+  ctx: WriteContext,
+) {
+  return createEntityCore(
+    service,
+    { type: EntityType.Task, ...params },
+    ctx,
+    CREATE_ATTRIBUTION,
+  );
+}
+
+function updateEntity(
+  service: IBacklogService,
+  params: UpdateEntityParams,
+  ctx: WriteContext,
+) {
+  return updateEntityCore(service, params, ctx, UPDATE_ATTRIBUTION);
+}
+
+function deleteItem(
+  service: IBacklogService,
+  params: DeleteParams,
+  ctx: WriteContext,
+) {
+  return deleteItemCore(service, params, ctx, DELETE_ATTRIBUTION);
+}
+
+function editItem(
+  service: IBacklogService,
+  params: EditParams,
+  ctx: WriteContext,
+) {
+  return editItemCore(service, params, ctx, RESOURCE_EDIT_ATTRIBUTION);
+}
 
 // ── WriteContext for core tests ──
 // Minimal ctx with a no-op operationLog and no event bus. Tests that
@@ -213,13 +283,13 @@ describe('core/getItems', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// createItem — no filesystem I/O, transport resolves source_path
+// createEntity — no filesystem I/O, transport resolves source_path
 // ═══════════════════════════════════════════════════════════════════
 
-describe('core/createItem', () => {
+describe('core/createEntity', () => {
   it('generates sequential ID and adds to service', async () => {
     const svc = mockService();
-    const result = await createItem(svc, { title: 'New task' }, testCtx());
+    const result = await createEntity(svc, { title: 'New task' }, testCtx());
     expect(result.id).toBe('TASK-0001');
     expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({
       id: 'TASK-0001', title: 'New task',
@@ -229,83 +299,83 @@ describe('core/createItem', () => {
 
   it('generates type-specific ID prefix', async () => {
     const svc = mockService();
-    expect((await createItem(svc, { title: 'E', type: 'epic' as any }, testCtx())).id).toBe('EPIC-0001');
+    expect((await createEntity(svc, { title: 'E', type: 'epic' as any }, testCtx())).id).toBe('EPIC-0001');
   });
 
   it('uses a service-owned allocator when available', async () => {
     const svc = mockService();
     svc.allocateId = vi.fn(async () => 'TASK-00009');
 
-    expect((await createItem(svc, { title: 'Claim-shaped' }, testCtx())).id).toBe('TASK-00009');
+    expect((await createEntity(svc, { title: 'Claim-shaped' }, testCtx())).id).toBe('TASK-00009');
     expect(svc.getMaxId).not.toHaveBeenCalled();
   });
 
   it('sets parent_id when provided', async () => {
     const svc = mockService();
-    await createItem(svc, { title: 'Child', parent_id: 'EPIC-0001' }, testCtx());
+    await createEntity(svc, { title: 'Child', parent_id: 'EPIC-0001' }, testCtx());
     expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({ parent_id: 'EPIC-0001' }));
   });
 
   it('accepts pre-resolved content (no source_path in core)', async () => {
     const svc = mockService();
-    await createItem(svc, { title: 'T', content: 'Content from file' }, testCtx());
+    await createEntity(svc, { title: 'T', content: 'Content from file' }, testCtx());
     expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({ content: 'Content from file' }));
   });
 
   it('includes references when provided', async () => {
     const svc = mockService();
     const refs = [{ url: 'https://example.com', title: 'Example' }];
-    await createItem(svc, { title: 'T', references: refs }, testCtx());
+    await createEntity(svc, { title: 'T', references: refs }, testCtx());
     expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({ references: refs }));
   });
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// updateItem — consistent params object with id inside
+// updateEntity — consistent params object with id inside
 // ═══════════════════════════════════════════════════════════════════
 
-describe('core/updateItem', () => {
+describe('core/updateEntity', () => {
   it('updates status', async () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
-    const result = await updateItem(svc, { id: 'TASK-0001', status: 'done' }, testCtx());
+    const result = await updateEntity(svc, { id: 'TASK-0001', status: 'done' }, testCtx());
     expect(result.id).toBe('TASK-0001');
     expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ status: 'done' }));
   });
 
   it('throws NotFoundError for missing task', async () => {
     const svc = mockService();
-    await expect(updateItem(svc, { id: 'TASK-9999', status: 'done' }, testCtx())).rejects.toThrow(NotFoundError);
-    await expect(updateItem(svc, { id: 'TASK-9999' }, testCtx())).rejects.toThrow(NotFoundError);
+    await expect(updateEntity(svc, { id: 'TASK-9999', status: 'done' }, testCtx())).rejects.toThrow(NotFoundError);
+    await expect(updateEntity(svc, { id: 'TASK-9999' }, testCtx())).rejects.toThrow(NotFoundError);
   });
 
   it('null parent_id clears the canonical relationship field', async () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', parent_id: 'EPIC-0001' })]);
-    await updateItem(svc, { id: 'TASK-0001', parent_id: null }, testCtx());
+    await updateEntity(svc, { id: 'TASK-0001', parent_id: null }, testCtx());
     const saved = (svc.save as any).mock.calls[0][0];
     expect(saved.parent_id).toBeUndefined();
   });
 
   it('null due_date clears the field', async () => {
     const svc = mockService([makeEntity({ id: 'MLST-0001', title: 'M', type: 'milestone' as any, due_date: '2026-03-01' } as any)]);
-    await updateItem(svc, { id: 'MLST-0001', due_date: null }, testCtx());
+    await updateEntity(svc, { id: 'MLST-0001', due_date: null }, testCtx());
     expect((svc.save as any).mock.calls[0][0].due_date).toBeUndefined();
   });
 
   it('sets due_date when string provided', async () => {
     const svc = mockService([makeEntity({ id: 'MLST-0001', title: 'M', type: 'milestone' as any })]);
-    await updateItem(svc, { id: 'MLST-0001', due_date: '2026-06-01' }, testCtx());
+    await updateEntity(svc, { id: 'MLST-0001', due_date: '2026-06-01' }, testCtx());
     expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ due_date: '2026-06-01' }));
   });
 
   it('updates evidence array', async () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
-    await updateItem(svc, { id: 'TASK-0001', evidence: ['Fixed in PR #1'] }, testCtx());
+    await updateEntity(svc, { id: 'TASK-0001', evidence: ['Fixed in PR #1'] }, testCtx());
     expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ evidence: ['Fixed in PR #1'] }));
   });
 
   it('always sets updated_at timestamp', async () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
-    await updateItem(svc, { id: 'TASK-0001', title: 'New' }, testCtx());
+    await updateEntity(svc, { id: 'TASK-0001', title: 'New' }, testCtx());
     expect((svc.save as any).mock.calls[0][0].updated_at).not.toBe('2026-01-01T00:00:00.000Z');
   });
 });
@@ -453,13 +523,13 @@ describe('core/editItem', () => {
 
 
 // ═══════════════════════════════════════════════════════════════════
-// createItem — cron entity
+// createEntity — cron entity
 // ═══════════════════════════════════════════════════════════════════
 
-describe('core/createItem — cron entity', () => {
+describe('core/createEntity — cron entity', () => {
   it('creates CRON-0001 with schedule, command, and default enabled=true', async () => {
     const svc = mockService();
-    const result = await createItem(svc, {
+    const result = await createEntity(svc, {
       title: 'Review queue poll',
       type: 'cron' as any,
       schedule: '*/30 * * * *',
@@ -478,7 +548,7 @@ describe('core/createItem — cron entity', () => {
 
   it('respects explicit enabled=false on creation', async () => {
     const svc = mockService();
-    await createItem(svc, {
+    await createEntity(svc, {
       title: 'Staged cron',
       type: 'cron' as any,
       schedule: '*/15 * * * *',
@@ -490,27 +560,27 @@ describe('core/createItem — cron entity', () => {
 
   it('rejects type=cron without schedule', async () => {
     const svc = mockService();
-    await expect(createItem(svc, {
+    await expect(createEntity(svc, {
       title: 'Bad', type: 'cron' as any, command: 'echo',
     }, testCtx())).rejects.toThrow(ValidationError);
-    await expect(createItem(svc, {
+    await expect(createEntity(svc, {
       title: 'Bad', type: 'cron' as any, command: 'echo',
     }, testCtx())).rejects.toThrow(/schedule/);
   });
 
   it('rejects type=cron without command', async () => {
     const svc = mockService();
-    await expect(createItem(svc, {
+    await expect(createEntity(svc, {
       title: 'Bad', type: 'cron' as any, schedule: '* * * * *',
     }, testCtx())).rejects.toThrow(ValidationError);
-    await expect(createItem(svc, {
+    await expect(createEntity(svc, {
       title: 'Bad', type: 'cron' as any, schedule: '* * * * *',
     }, testCtx())).rejects.toThrow(/command/);
   });
 
   it('rejects invalid cron expression', async () => {
     const svc = mockService();
-    await expect(createItem(svc, {
+    await expect(createEntity(svc, {
       title: 'Bad', type: 'cron' as any,
       schedule: 'garbage', command: 'echo',
     }, testCtx())).rejects.toThrow(/Invalid cron expression/);
@@ -519,20 +589,20 @@ describe('core/createItem — cron entity', () => {
   it('rejects schedule/command/enabled on non-cron types', async () => {
     const svc = mockService();
     // Zod's discriminated-union + .strict() rejects unknown keys on the task branch.
-    await expect(createItem(svc, {
+    await expect(createEntity(svc, {
       title: 'Bad Task', schedule: '* * * * *',
     }, testCtx())).rejects.toThrow(/schedule/);
-    await expect(createItem(svc, {
+    await expect(createEntity(svc, {
       title: 'Bad Task', command: 'echo',
     }, testCtx())).rejects.toThrow(/command/);
-    await expect(createItem(svc, {
+    await expect(createEntity(svc, {
       title: 'Bad Task', enabled: true,
     }, testCtx())).rejects.toThrow(/enabled/);
   });
 
   it('allows cron parented under an epic', async () => {
     const svc = mockService();
-    await createItem(svc, {
+    await createEntity(svc, {
       title: 'Review queue',
       type: 'cron' as any,
       schedule: '*/30 * * * *',
@@ -546,10 +616,10 @@ describe('core/createItem — cron entity', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// updateItem — cron entity
+// updateEntity — cron entity
 // ═══════════════════════════════════════════════════════════════════
 
-describe('core/updateItem — cron entity', () => {
+describe('core/updateEntity — cron entity', () => {
   function makeCron(overrides: Partial<Entity> = {}) {
     return makeEntity({
       id: 'CRON-0001',
@@ -564,26 +634,26 @@ describe('core/updateItem — cron entity', () => {
 
   it('updates schedule with valid expression', async () => {
     const svc = mockService([makeCron()]);
-    await updateItem(svc, { id: 'CRON-0001', schedule: '*/15 * * * *' } as any, testCtx());
+    await updateEntity(svc, { id: 'CRON-0001', schedule: '*/15 * * * *' } as any, testCtx());
     expect((svc.save as any).mock.calls[0][0].schedule).toBe('*/15 * * * *');
   });
 
   it('rejects invalid cron expression on update', async () => {
     const svc = mockService([makeCron()]);
-    await expect(updateItem(svc, {
+    await expect(updateEntity(svc, {
       id: 'CRON-0001', schedule: 'garbage',
     } as any, testCtx())).rejects.toThrow(/Invalid cron expression/);
   });
 
   it('toggles enabled field', async () => {
     const svc = mockService([makeCron()]);
-    await updateItem(svc, { id: 'CRON-0001', enabled: false } as any, testCtx());
+    await updateEntity(svc, { id: 'CRON-0001', enabled: false } as any, testCtx());
     expect((svc.save as any).mock.calls[0][0].enabled).toBe(false);
   });
 
   it('scheduler writes last_run and next_run', async () => {
     const svc = mockService([makeCron()]);
-    await updateItem(svc, {
+    await updateEntity(svc, {
       id: 'CRON-0001',
       last_run: '2026-04-28T22:00:00.000Z',
       next_run: '2026-04-28T22:30:00.000Z',
@@ -595,42 +665,42 @@ describe('core/updateItem — cron entity', () => {
 
   it('null last_run clears the field', async () => {
     const svc = mockService([makeCron({ last_run: '2026-04-28T22:00:00.000Z' })]);
-    await updateItem(svc, { id: 'CRON-0001', last_run: null } as any, testCtx());
+    await updateEntity(svc, { id: 'CRON-0001', last_run: null } as any, testCtx());
     expect((svc.save as any).mock.calls[0][0].last_run).toBeUndefined();
   });
 
   it('null next_run clears the field', async () => {
     const svc = mockService([makeCron({ next_run: '2026-04-28T22:30:00.000Z' })]);
-    await updateItem(svc, { id: 'CRON-0001', next_run: null } as any, testCtx());
+    await updateEntity(svc, { id: 'CRON-0001', next_run: null } as any, testCtx());
     expect((svc.save as any).mock.calls[0][0].next_run).toBeUndefined();
   });
 
   it('updates command', async () => {
     const svc = mockService([makeCron()]);
-    await updateItem(svc, { id: 'CRON-0001', command: 'new-command --arg' } as any, testCtx());
+    await updateEntity(svc, { id: 'CRON-0001', command: 'new-command --arg' } as any, testCtx());
     expect((svc.save as any).mock.calls[0][0].command).toBe('new-command --arg');
   });
 
   it('rejects cron fields on a non-cron entity', async () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
     // Zod's TaskSchema.strict() rejects unknown keys (schedule, command, enabled, last_run).
-    await expect(updateItem(svc, {
+    await expect(updateEntity(svc, {
       id: 'TASK-0001', schedule: '* * * * *',
     } as any, testCtx())).rejects.toThrow(/schedule/);
-    await expect(updateItem(svc, {
+    await expect(updateEntity(svc, {
       id: 'TASK-0001', command: 'echo',
     } as any, testCtx())).rejects.toThrow(/command/);
-    await expect(updateItem(svc, {
+    await expect(updateEntity(svc, {
       id: 'TASK-0001', enabled: true,
     } as any, testCtx())).rejects.toThrow(/enabled/);
-    await expect(updateItem(svc, {
+    await expect(updateEntity(svc, {
       id: 'TASK-0001', last_run: '2026-04-28T22:00:00.000Z',
     } as any, testCtx())).rejects.toThrow(/last_run/);
   });
 
   it('allows title/status updates on a cron without touching cron fields', async () => {
     const svc = mockService([makeCron()]);
-    await updateItem(svc, { id: 'CRON-0001', title: 'Renamed', status: 'blocked' }, testCtx());
+    await updateEntity(svc, { id: 'CRON-0001', title: 'Renamed', status: 'blocked' }, testCtx());
     const saved = (svc.save as any).mock.calls[0][0];
     expect(saved.title).toBe('Renamed');
     expect(saved.status).toBe('blocked');

@@ -29,12 +29,17 @@ import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import { createDefaultComposer } from '../memory/bootstrap.js';
-import { createItem } from '../core/create.js';
+import { createEntity } from '../core/create.js';
 import { recall as coreRecall } from '../core/recall.js';
 import { remember as coreRemember } from '../core/remember.js';
 import { forget as coreForget } from '../core/forget.js';
 import { consolidationCandidates } from '../core/consolidation.js';
-import type { WriteContext } from '../core/types.js';
+import type { MutationAttribution, WriteContext } from '../core/types.js';
+
+const CREATE_ATTRIBUTION = {
+  tool: 'backlog_attach_artifact',
+  mutation: 'create',
+} as const satisfies MutationAttribution;
 
 /** Map-backed IBacklogService with real Orama-backed searchUnified. */
 function fakeService(): IBacklogService {
@@ -400,11 +405,11 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
       memoryComposer: composer,
     };
 
-    await createItem(service, {
+    await createEntity(service, {
       title: 'ADR 0092.3 memory experience design',
       type: 'artifact',
       content: 'Four verbs: wakeup, recall, remember, forget',
-    }, ctx);
+    }, ctx, CREATE_ATTRIBUTION);
 
     const result = await coreRecall({ query: 'memory experience four verbs' }, { memoryComposer: composer });
     expect(result.items.length).toBeGreaterThan(0);

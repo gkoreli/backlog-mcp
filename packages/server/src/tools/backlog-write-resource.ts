@@ -6,6 +6,11 @@ import { editItem, NotFoundError } from '../core/index.js';
 import { buildWriteContext } from './build-write-context.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
+const EDIT_ATTRIBUTION = {
+  tool: 'write_resource',
+  mutation: 'resource-edit',
+} as const;
+
 export function registerWriteResourceTool(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   server.registerTool(
     'write_resource',
@@ -29,7 +34,12 @@ export function registerWriteResourceTool(server: McpServer, service: IBacklogSe
     },
     async ({ id, operation }) => {
       try {
-        const result = await editItem(service, { id, operation }, buildWriteContext(deps));
+        const result = await editItem(
+          service,
+          { id, operation },
+          buildWriteContext(deps),
+          EDIT_ATTRIBUTION,
+        );
         if (!result.success) {
           return {
             content: [{ type: 'text' as const, text: result.error ?? 'Resource edit failed' }],

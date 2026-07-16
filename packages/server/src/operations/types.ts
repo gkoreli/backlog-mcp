@@ -9,11 +9,18 @@ export interface Actor {
   taskContext?: string;
 }
 
-export type ToolName = 'backlog_create' | 'backlog_update' | 'backlog_delete' | 'write_resource';
+export type Mutation = 'create' | 'update' | 'delete' | 'resource-edit';
+
+export interface MutationAttribution {
+  tool: string;
+  mutation: Mutation;
+}
 
 export interface OperationEntry {
   ts: string;
   tool: string;
+  /** Optional only for operation entries written before ADR 0106.5. */
+  mutation?: Mutation;
   params: Record<string, unknown>;
   result: unknown;
   resourceId?: string;
@@ -28,8 +35,6 @@ export interface OperationFilter {
   tzOffset?: number; // Client timezone offset in minutes (e.g. -480 for PST)
   limit?: number;
 }
-
-export const WRITE_TOOLS: ToolName[] = ['backlog_create', 'backlog_update', 'backlog_delete', 'write_resource'];
 
 /**
  * Shared interface for operation logging — implemented by both

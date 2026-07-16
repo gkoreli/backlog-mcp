@@ -1,22 +1,62 @@
 /**
  * Integration tests for memory capture (ADR 0092.2 Phase 3a).
  *
- * Verifies that `updateItem` and `createItem` emit `layer: 'episodic'`
+ * Verifies that `updateEntity` and `createEntity` emit `layer: 'episodic'`
  * memories into the composer on the expected transitions, carry the
  * right actor attribution, and silently drop on failures.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
+  EntityType,
   EntitySchema,
   type AnyEntity,
   type Entity,
 } from '@backlog-mcp/shared';
 import { MemoryComposer, InMemoryStore } from '@backlog-mcp/memory';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
-import { updateItem } from '../core/update.js';
-import { createItem } from '../core/create.js';
-import type { WriteContext } from '../core/types.js';
+import { updateEntity as updateEntityCore } from '../core/update.js';
+import { createEntity as createEntityCore } from '../core/create.js';
+import type {
+  CreateEntityParams,
+  MutationAttribution,
+  UpdateEntityParams,
+  WriteContext,
+} from '../core/types.js';
 import { buildCompletionEntry, buildArtifactEntry } from '../memory/capture.js';
+
+const CREATE_ATTRIBUTION = {
+  tool: 'backlog_attach_artifact',
+  mutation: 'create',
+} as const satisfies MutationAttribution;
+
+const UPDATE_ATTRIBUTION = {
+  tool: 'backlog_complete_task',
+  mutation: 'update',
+} as const satisfies MutationAttribution;
+
+type CreateParamsWithDefaultType =
+  Omit<CreateEntityParams, 'type'> & { type?: CreateEntityParams['type'] };
+
+function createEntity(
+  service: IBacklogService,
+  params: CreateParamsWithDefaultType,
+  ctx: WriteContext,
+) {
+  return createEntityCore(
+    service,
+    { type: EntityType.Task, ...params },
+    ctx,
+    CREATE_ATTRIBUTION,
+  );
+}
+
+function updateEntity(
+  service: IBacklogService,
+  params: UpdateEntityParams,
+  ctx: WriteContext,
+) {
+  return updateEntityCore(service, params, ctx, UPDATE_ATTRIBUTION);
+}
 
 function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): Entity {
   return {
@@ -81,7 +121,7 @@ describe('memory capture — update → done', () => {
       makeEntity({ id: 'TASK-0001', title: 'Fix auth', status: 'in_progress', evidence: ['Added JWT middleware'] }),
     ]);
 
-    await updateItem(svc, { id: 'TASK-0001', status: 'done' }, makeCtx(composer));
+    await updateEntity(svc, { id: 'TASK-0001', status: 'done' }, makeCtx(composer));
 
     expect(await store.size()).toBe(1);
     const [result] = await store.recall({ query: 'auth' });
@@ -100,7 +140,7 @@ describe('memory capture — update → done', () => {
     const svc = mockService([
       makeEntity({ id: 'TASK-0001', title: 't', status: 'open' }),
     ]);
-    await updateItem(svc, { id: 'TASK-0001', title: 'new title' }, makeCtx(composer));
+    await updateEntity(svc, { id: 'TASK-0001', title: 'new title' }, makeCtx(composer));
     expect(await store.size()).toBe(0);
   });
 
@@ -108,7 +148,7 @@ describe('memory capture — update → done', () => {
     const svc = mockService([
       makeEntity({ id: 'TASK-0001', title: 't', status: 'done' }),
     ]);
-    await updateItem(svc, { id: 'TASK-0001', status: 'done' }, makeCtx(composer));
+    await updateEntity(svc, { id: 'TASK-0001', status: 'done' }, makeCtx(composer));
     expect(await store.size()).toBe(0);
   });
 
@@ -116,7 +156,7 @@ describe('memory capture — update → done', () => {
     const svc = mockService([
       makeEntity({ id: 'TASK-0001', title: 't', status: 'done' }),
     ]);
-    await updateItem(svc, { id: 'TASK-0001', status: 'open' }, makeCtx(composer));
+    await updateEntity(svc, { id: 'TASK-0001', status: 'open' }, makeCtx(composer));
     expect(await store.size()).toBe(0);
   });
 
@@ -125,7 +165,7 @@ describe('memory capture — update → done', () => {
       makeEntity({ id: 'TASK-0001', title: 't', status: 'open' }),
     ]);
     await expect(
-      updateItem(svc, { id: 'TASK-0001', status: 'done' }, makeCtx()),
+      updateEntity(svc, { id: 'TASK-0001', status: 'done' }, makeCtx()),
     ).resolves.toBeDefined();
   });
 
@@ -133,7 +173,7 @@ describe('memory capture — update → done', () => {
     const svc = mockService([
       makeEntity({ id: 'TASK-0001', title: 't', status: 'open', parent_id: 'FLDR-0001' }),
     ]);
-    await updateItem(svc, { id: 'TASK-0001', status: 'done' }, makeCtx(composer));
+    await updateEntity(svc, { id: 'TASK-0001', status: 'done' }, makeCtx(composer));
     const [result] = await store.recall({ query: 't' });
     expect(result!.entry.context).toBe('FLDR-0001');
   });
@@ -142,7 +182,7 @@ describe('memory capture — update → done', () => {
     const svc = mockService([
       makeEntity({ id: 'TASK-0001', title: 'Plain task', status: 'open' }),
     ]);
-    await updateItem(svc, { id: 'TASK-0001', status: 'done' }, makeCtx(composer));
+    await updateEntity(svc, { id: 'TASK-0001', status: 'done' }, makeCtx(composer));
     const [result] = await store.recall({ query: 'plain' });
     expect(result!.entry.content).toBe('Plain task');
   });
@@ -152,7 +192,7 @@ describe('memory capture — update → done', () => {
     const svc = mockService([
       makeEntity({ id: 'TASK-0001', title: 't', status: 'open' }),
     ]);
-    const result = await updateItem(
+    const result = await updateEntity(
       svc,
       { id: 'TASK-0001', status: 'done' },
       makeCtx(brokenComposer),
@@ -173,7 +213,7 @@ describe('memory capture — create artifact', () => {
 
   it('captures on artifact creation', async () => {
     const svc = mockService();
-    await createItem(
+    await createEntity(
       svc,
       { title: 'Review Notes', content: 'Detailed review of the PR', type: 'artifact' as any, parent_id: 'TASK-0629' },
       makeCtx(composer),
@@ -192,7 +232,7 @@ describe('memory capture — create artifact', () => {
 
   it('does not capture on task creation', async () => {
     const svc = mockService();
-    await createItem(
+    await createEntity(
       svc,
       { title: 'A task', content: 'some desc' },
       makeCtx(composer),
@@ -202,7 +242,7 @@ describe('memory capture — create artifact', () => {
 
   it('does not capture on epic creation', async () => {
     const svc = mockService();
-    await createItem(
+    await createEntity(
       svc,
       { title: 'An epic', type: 'epic' as any },
       makeCtx(composer),

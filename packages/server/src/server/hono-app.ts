@@ -6,6 +6,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { IOperationLog, Actor } from '../operations/types.js';
 import { extractTargetFilename } from '../operations/resource-id.js';
+import { normalizeOperationEntry } from '../operations/mutation.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';
 import { detectContradictions, contradictsFor } from '../core/contradictions.js';
 import { usageSeries, hasUsage } from '../core/usage-series.js';
@@ -382,10 +383,11 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     const taskCache = new Map<string, { title?: string; epicId?: string }>();
     const epicCache = new Map<string, string | undefined>();
 
-    const enriched = await Promise.all(operations.map(async (op) => {
+    const enriched = await Promise.all(operations.map(async (rawOperation) => {
+      const op = normalizeOperationEntry(rawOperation);
       const id = op.resourceId;
       if (!id) {
-        const targetFilename = extractTargetFilename(op.tool, op.params);
+        const targetFilename = extractTargetFilename(op.mutation, op.params);
         return {
           ...op,
           ...(targetFilename ? { targetFilename } : {}),
@@ -424,7 +426,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
         resourceTitle: cached.title,
         epicId: cached.epicId,
         epicTitle,
-        targetFilename: extractTargetFilename(op.tool, op.params),
+        targetFilename: extractTargetFilename(op.mutation, op.params),
         ...getHomeProvenance(runtime, runtime.getSourcePath?.(id)),
       };
     }));

@@ -11,7 +11,8 @@ import {
 import {
   NotFoundError,
   ValidationError,
-  type UpdateParams,
+  type MutationAttribution,
+  type UpdateEntityParams,
   type UpdateResult,
   type WriteContext,
 } from './types.js';
@@ -21,9 +22,11 @@ import { recordMutation } from './operation-log.js';
 function applyChanges(
   target: Record<string, unknown>,
   changes: Record<string, unknown>,
+  effectiveChanges: Record<string, unknown>,
 ): void {
   for (const [key, value] of Object.entries(changes)) {
     if (value === undefined) continue;
+    effectiveChanges[key] = value;
     if (value === null) delete target[key];
     else target[key] = value;
   }
@@ -40,22 +43,36 @@ function normalizeWriteError(error: unknown): never {
 }
 
 /** Merge an update and let the active registry perform the canonical write. */
-export async function updateItem(
+export async function updateEntity(
   service: IBacklogService,
-  params: UpdateParams,
+  params: UpdateEntityParams,
   ctx: WriteContext,
+  attribution: MutationAttribution,
 ): Promise<UpdateResult> {
   const { id, fields, ...updates } = params;
   const current = await service.get(id);
   if (!current) throw new NotFoundError(id);
 
   const merged: Record<string, unknown> = { ...current };
-  applyChanges(merged, fields ?? {});
-  applyChanges(merged, updates);
+  const effectiveChanges: Record<string, unknown> = {};
+  applyChanges(merged, fields ?? {}, effectiveChanges);
+  applyChanges(merged, updates, effectiveChanges);
+
+  delete effectiveChanges.id;
+  delete effectiveChanges.type;
+  delete effectiveChanges.created_at;
+  delete effectiveChanges.updated_at;
+
   merged.id = current.id;
   merged.type = current.type;
+  if ('created_at' in current) merged.created_at = current.created_at;
+  else delete merged.created_at;
   if (isBuiltinSubstrateType(current.type)) {
     merged.updated_at = new Date().toISOString();
+  } else if ('updated_at' in current) {
+    merged.updated_at = current.updated_at;
+  } else {
+    delete merged.updated_at;
   }
 
   let stored: AnyEntity;
@@ -77,6 +94,12 @@ export async function updateItem(
   }
 
   const result: UpdateResult = { id: stored.id };
-  recordMutation(ctx, 'backlog_update', params as unknown as Record<string, unknown>, result);
+  recordMutation(
+    ctx,
+    attribution,
+    stored.id,
+    { id, ...effectiveChanges },
+    result,
+  );
   return result;
 }

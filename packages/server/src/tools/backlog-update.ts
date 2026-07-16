@@ -2,9 +2,14 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { ToolDeps } from './index.js';
-import { updateItem, NotFoundError } from '../core/index.js';
+import { updateEntity, NotFoundError } from '../core/index.js';
 import { buildWriteContext } from './build-write-context.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
+
+const UPDATE_ATTRIBUTION = {
+  tool: 'backlog_update',
+  mutation: 'update',
+} as const;
 
 export function registerBacklogUpdateTool(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   server.registerTool(
@@ -33,7 +38,12 @@ export function registerBacklogUpdateTool(server: McpServer, service: IBacklogSe
     },
     async ({ home: _home, project_root: _projectRoot, ...params }) => {
       try {
-        const result = await updateItem(service, params, buildWriteContext(deps));
+        const result = await updateEntity(
+          service,
+          params,
+          buildWriteContext(deps),
+          UPDATE_ATTRIBUTION,
+        );
         return { content: [{ type: 'text', text: `Updated ${result.id}` }] };
       } catch (error) {
         if (error instanceof NotFoundError) {

@@ -7,6 +7,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { utcToLocalDateKey } from '@server/utils/date.js';
 import type { OperationEntry, OperationFilter } from './types.js';
+import { normalizeOperationEntry } from './mutation.js';
 
 export class OperationStorage {
   constructor(private readonly logPath: string) {}
@@ -39,7 +40,7 @@ export class OperationStorage {
       return lines
         .map(line => {
           try {
-            return JSON.parse(line) as OperationEntry;
+            return normalizeOperationEntry(JSON.parse(line) as OperationEntry);
           } catch {
             return null;
           }

@@ -9,5 +9,6 @@ export {
 } from './logger.js';
 export { OperationStorage } from './storage.js';
 export { D1OperationLog } from './d1-operation-log.js';
-export { extractResourceId, extractTargetFilename } from './resource-id.js';
-export { WRITE_TOOLS, type ToolName, type IOperationLog } from './types.js';
+export { extractTargetFilename } from './resource-id.js';
+export { inferLegacyMutation, normalizeOperationEntry } from './mutation.js';
+export type { Mutation, MutationAttribution, IOperationLog } from './types.js';

@@ -1,6 +1,13 @@
 import type { Command } from 'commander';
-import { createItem } from '../../core/create.js';
+import { EntityType } from '@backlog-mcp/shared';
+import { createEntity } from '../../core/create.js';
 import { cliRuntimeDependencies, run } from '../runner.js';
+import { parseFields } from '../parse-fields.js';
+
+const CLI_CREATE_ATTRIBUTION = {
+  tool: 'backlog create',
+  mutation: 'create',
+} as const;
 
 export function registerCreate(program: Command): void {
   program
@@ -10,17 +17,24 @@ export function registerCreate(program: Command): void {
     .option('--source <path>', 'Read content from file')
     .option('--type <type>', 'Substrate type')
     .option('--parent <id>', 'Parent ID')
+    .option('--fields <json-object>', 'Low-level substrate-specific fields as a JSON object')
     .action((title, opts) => run(
       (runtime) => {
         const content = opts.source
           ? runtime.resolveSourcePath(opts.source)
           : opts.content;
-        return createItem(runtime.service, {
-          title,
-          content,
-          type: opts.type,
-          parent_id: opts.parent,
-        }, runtime.writeContext);
+        return createEntity(
+          runtime.service,
+          {
+            title,
+            content,
+            type: opts.type ?? EntityType.Task,
+            parent_id: opts.parent,
+            fields: parseFields(opts.fields),
+          },
+          runtime.writeContext,
+          CLI_CREATE_ATTRIBUTION,
+        );
       },
       (r) => `Created ${r.id}`,
       program.opts().json,
