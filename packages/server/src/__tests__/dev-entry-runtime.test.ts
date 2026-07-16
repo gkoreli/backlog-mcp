@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { Entity } from '@backlog-mcp/shared';
 import { describe, expect, it } from 'vitest';
-import { createDevApp } from '../dev-entry.js';
+import { createDevApp } from '../server/dev-app.js';
 import type {
   DocsTreeReconcileCallback,
   DocsTreeWatcher,
@@ -60,8 +60,7 @@ describe('Vite dev entry docs-native runtime', function describeDevEntry() {
       selectedRuntime = runtime;
       return runtime;
     });
-    const app = createDevApp({
-      BACKLOG_DOCS_NATIVE: '1',
+    const app = await createDevApp({
       BACKLOG_PROJECT_ROOT: '/workspace/project',
     }, registry);
 

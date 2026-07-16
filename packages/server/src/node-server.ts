@@ -1,25 +1,46 @@
 #!/usr/bin/env node
 import { serve } from '@hono/node-server';
-import { createNodeApp } from './server/node-app.js';
-import { BacklogService } from './storage/local/backlog-service.js';
 import { paths } from './utils/paths.js';
 import { getServerVersion, shutdownServer } from './cli/server-manager.js';
 import { createPortCollisionResolver, killPortHolder, sleep } from './server/port-collision.js';
 import { resolveViewerPort } from './utils/ports.js';
 import { logger } from './utils/logger.js';
+import { createLocalNodeApp } from './server/local-node-app.js';
 
-const service = BacklogService.getInstance();
 const port = resolveViewerPort(paths.environment);
-// Single source of truth for the wired app graph — shared with the Vite dev
-// entry (ADR 0110). This server adds the listener + port collision + lifecycle.
-const app = createNodeApp();
+let shuttingDown = false;
+async function shutdown(): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info('Server shutting down');
+  console.log('Shutting down gracefully...');
+  try {
+    await composition.registry.closeAll();
+  } catch (error) {
+    logger.error('Runtime shutdown failed', {
+      message: error instanceof Error ? error.message : String(error),
+    });
+  } finally {
+    server.close();
+    setTimeout(() => process.exit(0), 500);
+  }
+}
+
+const composition = await createLocalNodeApp({
+  requestShutdown: shutdown,
+});
+const app = composition.app;
 
 const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, (info) => {
-  logger.info('Server started', { port: info.port, dataDir: paths.backlogDataDir, version: paths.getVersion() });
+  logger.info('Server started', {
+    port: info.port,
+    dataDir: composition.home.documentsDir,
+    version: paths.getVersion(),
+  });
   console.log(`Backlog MCP server running on http://localhost:${info.port}`);
   console.log(`- Viewer: http://localhost:${info.port}/`);
   console.log(`- MCP endpoint: http://localhost:${info.port}/mcp`);
-  console.log(`- Data directory: ${paths.backlogDataDir}`);
+  console.log(`- Data directory: ${composition.home.documentsDir}`);
 });
 
 // Port-collision handling lives in ./server/port-collision (pure decision +
@@ -50,16 +71,12 @@ server.on('error', (err: NodeJS.ErrnoException) => {
   process.exit(1);
 });
 
-const shutdown = async () => {
-  logger.info('Server shutting down');
-  console.log('Shutting down gracefully...');
-  service.flush();
-  server.close();
-  setTimeout(() => process.exit(0), 500);
-};
-
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
+process.on('SIGTERM', function onSigterm() {
+  void shutdown();
+});
+process.on('SIGINT', function onSigint() {
+  void shutdown();
+});
 
 // Last-resort crash visibility. Without these, an unhandled throw in a tool
 // or transport handler kills the detached server silently — the bridge only
@@ -69,7 +86,7 @@ process.on('uncaughtException', (err: Error) => {
   logger.fatalSync('Uncaught exception', { message: err.message, stack: err.stack });
   console.error('Uncaught exception:', err);
   // Process state is undefined after an uncaught exception — flush and exit.
-  try { service.flush(); } catch { /* best effort */ }
+  try { composition.runtime.service.flush(); } catch { /* best effort */ }
   process.exit(1);
 });
 

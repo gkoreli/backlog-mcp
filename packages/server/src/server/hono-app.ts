@@ -82,6 +82,7 @@ export interface AppDeps extends ToolDeps {
   readUsageLines?: () => string[];  // memory-usage.jsonl reader (ADR 0092.14); Node-only, absent in Worker
   db?: any;                // cloud: D1 database — used for mode detection only
   resolveRuntime?: AppRequestRuntimeResolver;
+  requestShutdown?: () => void | Promise<void>;
 }
 
 interface RequestSelectionSource {
@@ -728,7 +729,17 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   // Shutdown remains app-scoped and retains its existing Node registration.
   if (deps?.staticMiddleware || deps?.resourceManager) {
     app.post('/shutdown', (c) => {
-      setTimeout(() => process.exit(0), 500);
+      if (deps.requestShutdown === undefined) {
+        setTimeout(() => process.exit(0), 500);
+      } else {
+        void Promise.resolve(deps.requestShutdown()).catch(function logFailure(
+          error,
+        ) {
+          deps.logError?.('Shutdown failed', {
+            message: errorMessage(error),
+          });
+        });
+      }
       return c.text('Shutting down...');
     });
   }
