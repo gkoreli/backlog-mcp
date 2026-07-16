@@ -30,9 +30,12 @@ assessor is a draft, not a gate input.
   satisfy it alone; a reasonable "see also".
 - **0 — not relevant.** Includes query-term mentions without aboutness.
   Grade on topical centrality, never on term frequency.
-- **unjudged** — absent from the qrels entirely. Never conflate with 0:
-  unjudged documents are excluded from gain and ideal calculations, not
-  scored as failures (TREC practice; ADR 0116 Finding 8).
+- **unjudged** — absent from the qrels entirely. Never conflate with 0 in
+  the qrels: unjudged documents contribute no gain and are excluded from
+  the ideal ranking, but they still occupy rank slots in the observed list
+  (the conservative full-list convention), and the unjudged@10 rate is
+  reported alongside every metric so pool coverage stays visible (TREC
+  practice; ADR 0116 Finding 8).
 
 Every judgment carries a one-line `rationale`. A grade without a rationale
 is invalid.
