@@ -1,5 +1,5 @@
 ---
-title: "0112. Proactive Recall — Hook-Driven Memory Injection at the Client Boundary"
+title: "0118. Proactive Recall — Hook-Driven Memory Injection at the Client Boundary"
 date: 2026-06-20
 status: PARKED, ONLY EXPLORATION DO NOT IMPLEMENT ANY TIME SOON
 backlog_item: TASK-0694
@@ -8,7 +8,7 @@ continues: 0092.5-agentic-memory-landscape-2026.md
 informs: 0092.3-memory-experience-and-substrate.md
 ---
 
-# 0112. Proactive Recall — Hook-Driven Memory Injection at the Client Boundary
+# 0118. Proactive Recall — Hook-Driven Memory Injection at the Client Boundary
 
 **Status**: PARKED, ONLY EXPLORATION DO NOT IMPLEMENT ANY TIME SOON — design-first; implementation owned by the operator
 **Problem class**: recall is in the LLM's decision space (a voluntary tool call) when it
