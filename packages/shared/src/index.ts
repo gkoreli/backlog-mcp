@@ -28,6 +28,10 @@ export {
   MilestoneSchema,
   CronSchema,
   MemorySchema,
+  RuntimeSubstrateDefinitionJsonSchema,
+  RuntimeSubstrateDefinitionSchema,
+  SUBSTRATE_DEFINITION_SCHEMA_URI,
+  SubstrateIdentityDefinitionSchema,
   MEMORY_LAYERS,
   MEMORY_KINDS,
   TaskSubstrate,
@@ -57,6 +61,8 @@ export {
   type MemoryEntity,
   type MemoryLayerName,
   type MemoryKind,
+  type RuntimeSubstrateDefinition,
+  type SubstrateIdentityDefinition,
 } from './substrates/index.js';
 
 export { isValidCronExpression } from './cron-expression.js';
