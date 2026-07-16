@@ -5,6 +5,7 @@ import type {
 } from './document-identity.types.js';
 
 const MARKDOWN_EXTENSION = /\.(?:md|markdown)$/iu;
+const DATE_PREFIXED_FILENAME = /^\d{4}-\d{2}-\d{2}(?:-|$)/u;
 const NUMBERED_FILENAME = /^(\d+(?:\.\d+)*)(?:-(.*))?$/u;
 const PREFIXED_NUMBER_FILENAME = /^([A-Za-z][A-Za-z0-9]*)-(\d+(?:\.\d+)*)(?:-(.*))?$/u;
 
@@ -50,6 +51,8 @@ function parseFilename(sourcePath: string): ParsedPathIdentity | undefined {
   if (!MARKDOWN_EXTENSION.test(filename)) return undefined;
 
   const stem = filename.replace(MARKDOWN_EXTENSION, '');
+  if (DATE_PREFIXED_FILENAME.test(stem)) return undefined;
+
   const prefixedMatch = PREFIXED_NUMBER_FILENAME.exec(stem);
   const prefix = prefixedMatch?.[1];
   const prefixedNumber = prefixedMatch?.[2];

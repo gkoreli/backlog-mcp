@@ -119,6 +119,22 @@ describe('parseDocumentIdentity', () => {
     });
   });
 
+  it('keeps date-prefixed Markdown notes generic', () => {
+    expect(parseDocumentIdentity({
+      sourcePath: 'notes/2026-07-16-daily-notes.md',
+    })).toEqual({
+      sourcePath: 'notes/2026-07-16-daily-notes.md',
+    });
+  });
+
+  it('keeps a bare date Markdown filename generic', () => {
+    expect(parseDocumentIdentity({
+      sourcePath: 'journal/2026-07-16.markdown',
+    })).toEqual({
+      sourcePath: 'journal/2026-07-16.markdown',
+    });
+  });
+
   it('retains only nonblank string frontmatter ids', () => {
     expect(parseDocumentIdentity({
       sourcePath: 'adr/0001-decision.md',
