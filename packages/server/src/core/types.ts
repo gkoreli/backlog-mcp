@@ -319,6 +319,10 @@ export interface WakeupKnowledgeItem {
   title: string;          // digest line, char-bounded
   kind?: string;          // memory kind, when set
   source_ref?: string;    // first entity_ref — the evidence pointer
+  /** Age in whole days: occurred_at ?? created_at (ADR 0115 R-4 — same grammar as recall stubs). */
+  age_days: number;
+  /** Durable usage count. 0 = never earned a recall. */
+  uses: number;
 }
 
 export interface WakeupResult {
