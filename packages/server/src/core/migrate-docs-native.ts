@@ -1024,7 +1024,7 @@ export function planDocsNativeMigration(
     issues,
     legacyRoot,
     'logs',
-    posix.join(controlRootPath, 'state', 'logs'),
+    posix.join(controlRootPath, 'state', 'logs', 'legacy'),
     'log',
     fs,
   );

@@ -14,11 +14,11 @@ function getLogLevel(): Level {
 
 function getLogFile(): string {
   const date = new Date().toISOString().split('T')[0];
-  return join(globalStatePath('logs'), `backlog-${date}.log`);
+  return join(globalStatePath('logs', 'runtime'), `backlog-${date}.log`);
 }
 
 function ensureLogDir(): void {
-  const logDir = globalStatePath('logs');
+  const logDir = globalStatePath('logs', 'runtime');
   if (!existsSync(logDir)) {
     mkdirSync(logDir, { recursive: true });
   }

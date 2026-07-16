@@ -148,7 +148,7 @@ export class D1Storage implements AsyncStorageAdapter {
       params.push(type);
     }
 
-    // parent_id takes precedence over epic_id (mirrors FilesystemStorage behaviour)
+    // parent_id takes precedence over the retired epic_id relationship alias.
     if (parent_id) {
       conditions.push('(parent_id = ? OR epic_id = ?)');
       params.push(parent_id, parent_id);

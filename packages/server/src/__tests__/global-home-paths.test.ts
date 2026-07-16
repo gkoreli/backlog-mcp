@@ -8,8 +8,8 @@ describe('global home operational paths', function describeGlobalPaths() {
     const previous = process.env.BACKLOG_DATA_DIR;
     process.env.BACKLOG_DATA_DIR = '/retired/custom-root';
     try {
-      expect(globalStatePath('logs')).toBe(
-        join(homedir(), '.backlog', 'state', 'logs'),
+      expect(globalStatePath('logs', 'runtime')).toBe(
+        join(homedir(), '.backlog', 'state', 'logs', 'runtime'),
       );
     } finally {
       if (previous === undefined) delete process.env.BACKLOG_DATA_DIR;

@@ -139,7 +139,7 @@ describe('docs-native global migration', function describeGlobalMigration() {
       '.internal/operations.jsonl -> state/operations.jsonl',
       'EPIC-0001.md -> docs/epics/EPIC-0001.md',
       'identity.md -> docs/identity.md',
-      'logs/server.log -> state/logs/server.log',
+      'logs/server.log -> state/logs/legacy/server.log',
       'memory-usage.jsonl -> state/memory-usage.jsonl',
       'MEMO-0001.md -> docs/memories/MEMO-0001.md',
       'resources/nested/guide.txt -> docs/resources/nested/guide.txt',

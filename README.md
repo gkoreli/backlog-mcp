@@ -213,7 +213,12 @@ Running `npx -y backlog-mcp` (the default MCP config) does the following:
 3. **Auto-updates**: `npx -y` always pulls the latest published version. If the running server is an older version, it's automatically shut down and restarted with the new one
 4. **Resilient recovery**: If the bridge loses connection, a supervisor restarts it with exponential backoff (up to 10 retries). Connection errors like `ECONNREFUSED` are detected and handled automatically
 
-The HTTP server persists across agent sessions — multiple MCP clients can share it. The web viewer is always available at `http://localhost:3030`.
+The HTTP server persists across agent sessions — multiple MCP clients can share
+it. Each request selects its own backlog home, so one daemon can serve the
+global `~/.backlog/docs/` and several projects without mixing their state. From
+a repository, the bridge selects that project's `docs/`; outside one, it
+selects global. The web viewer is always available at
+`http://localhost:3030`.
 
 ## CLI
 
@@ -225,6 +230,7 @@ npx backlog-mcp status         # Check server status
 npx backlog-mcp stop           # Stop the server
 npx backlog-mcp version        # Show version
 npx backlog-mcp serve          # Run HTTP server in foreground (optional, see below)
+npx backlog-mcp --home global migrate docs-native --dry-run
 ```
 
 Sample outputs:
@@ -233,7 +239,7 @@ Sample outputs:
 $ npx backlog-mcp status
 Server is running on port 3030
 Version: 0.59.0
-Data directory: /Users/you/.backlog
+Data directory: /Users/you/.backlog/docs
 Task count: 451
 Uptime: 3515s
 Viewer: http://localhost:3030/
@@ -251,11 +257,43 @@ The CLI exists for humans to inspect and manage the background server that agent
 
 `serve` runs the HTTP server in the foreground instead of detached — useful for debugging, Docker containers, or running without an MCP client. In normal usage you never need it; the default command handles everything.
 
+### One-shot migration
+
+Stop the detached server before migrating an existing global backlog:
+
+```bash
+npx backlog-mcp stop
+npx backlog-mcp --home global migrate docs-native --dry-run
+npx backlog-mcp --home global migrate docs-native
+```
+
+This routes the old flat `~/.backlog/tasks/` Markdown into
+`~/.backlog/docs/`, moves tool-owned state, and rebuilds derived caches. A
+retired custom root can be supplied for this command only:
+
+```bash
+BACKLOG_DATA_DIR=/path/to/old/backlog \
+  npx backlog-mcp --home global migrate docs-native
+```
+
+For a project that already has the old control directory, migrate only its
+tool-owned state; committed `docs/` is never touched:
+
+```bash
+npx backlog-mcp --home project --project-root /path/to/repo \
+  migrate docs-native
+```
+
+Both commands are idempotent and fail closed when old and new control layouts
+are both present.
+
 ## Configuration
 
 ```bash
-BACKLOG_DATA_DIR=~/.backlog    # Where to store tasks (default: data/tasks/)
 BACKLOG_VIEWER_PORT=3030       # HTTP server port
+BACKLOG_HOME=project           # Optional caller default: project or global
+BACKLOG_PROJECT_ROOT=/path     # Optional explicit project root
+BACKLOG_CONTEXT=FLDR-0001      # Optional entity context inside the home
 ```
 
 Create a `.env` file for local development — see `.env.example`.

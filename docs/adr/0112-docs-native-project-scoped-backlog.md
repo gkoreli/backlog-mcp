@@ -467,10 +467,11 @@ committed file competing for authority.
 The current global store remains a first-class capability, but its flat
 `~/.backlog/tasks/` layout is not carried forever.
 
-Ship one core-first migration:
+Ship one core-first migration command for either home kind:
 
 ```bash
 backlog migrate docs-native --home global [--dry-run]
+backlog migrate docs-native --home project --project-root <root> [--dry-run]
 ```
 
 It:
@@ -484,6 +485,12 @@ It:
 4. Discards and rebuilds search caches.
 5. Emits a deterministic plan/report before mutation and refuses identity
    collisions.
+
+For project homes, the command moves only tool-owned control state from
+`.backlog-mcp/` to `.backlog/` (`cache/`, `state/`, `config.json`, and
+`config.local.json`). It never moves or rewrites `docs/`. Re-running an already
+migrated home succeeds as a no-op; finding both control directories fails closed
+and asks the human to resolve the ambiguity.
 
 After cutover, runtime code reads only the docs-native layout. We do not keep a
 dual reader, dual writer, deprecation alias matrix, or D1 parity implementation.
@@ -569,10 +576,9 @@ Replace ambient paths with constructor-injected home descriptors:
   coalesces large change bursts such as Git checkouts, and can query changes
   since a saved snapshot.
 
-Until the Phase E migration and default cutover ship atomically, the Vite dev
-entry may select this runtime only through temporary
-`BACKLOG_DOCS_NATIVE=1` scaffolding. This flag is not a supported configuration
-surface and is deleted in Phase E.
+Phase B/C validation used temporary `BACKLOG_DOCS_NATIVE=1` Vite scaffolding.
+Phase E deletes that flag in the same checkpoint that ships the migration and
+makes docs-native homes the production default.
 
 Generic documents share the search/read graph but remain distinct from typed
 entity writes. Watch notifications only trigger reconciliation; startup/full

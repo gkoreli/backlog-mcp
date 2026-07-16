@@ -6,10 +6,7 @@
     "backlog": {
       "command": "node",
       "args": ["dist/server.js"],
-      "cwd": "/Users/gkoreli/Documents/goga/backlog-mcp",
-      "env": {
-        "BACKLOG_DATA_DIR": "/Users/gkoreli/Documents/goga/.backlog"
-      }
+      "cwd": "/Users/gkoreli/Documents/goga/backlog-mcp"
     }
   },
   "tools": ["@backlog/*", "@builtin"]

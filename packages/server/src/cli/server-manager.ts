@@ -52,7 +52,7 @@ async function spawnServer(port: number): Promise<void> {
   // (stdio:'ignore'). Native crash dumps and console.error bypass the
   // structured logger; without a real fd they vanish and the bridge only
   // reports a lost connection. Append so restarts accumulate history.
-  const logDir = globalStatePath('logs');
+  const logDir = globalStatePath('logs', 'runtime');
   mkdirSync(logDir, { recursive: true });
   const out = openSync(join(logDir, 'server.log'), 'a');
   const child = spawn(process.execPath, [serverPath], {

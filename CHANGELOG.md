@@ -18,6 +18,13 @@ agent must not derail — the line of the Cold-Open briefing that protects the v
 itself, and one of the founding asks of the vision prompt.*
 
 ### Added
+- **Repository docs are now the production backlog (ADR 0112 Phase E).** The
+  CLI, detached server, and Vite dev app all use per-home docs-native runtimes
+  by default: a request from a project reads and writes that repository's
+  `docs/`, while global work stays in `~/.backlog/docs/`. The explicit
+  `migrate docs-native` command moves the old global layout and project control
+  state once, with deterministic dry-run output, collision refusal, and
+  rollback-safe writes; no dual-format runtime remains.
 - **Ask once, get answers from every backlog (ADR 0112 Phase D).** A read can now
   fan out across backlog homes — your global `~/.backlog` and the project's docs —
   with results fused deterministically (reciprocal-rank fusion over each home's own
@@ -46,8 +53,8 @@ itself, and one of the founding asks of the vision prompt.*
   surface (ADR 0106.5) builds on.
 
 ### Changed
-- **Layout and config rulings accepted, landing via Phase E** *(in progress via
-  ADR 0112.2/0112.3)*: the control folder is renamed `.backlog-mcp` → `.backlog`
+- **One backlog name and one context vocabulary (ADR 0112.2/0112.3).** The
+  control folder is renamed `.backlog-mcp` → `.backlog`
   (name the thing, not the wire protocol); the global home flattens — no nested
   control dir and one flat `config.json`, with the base-plus-local-override split
   kept for project homes only; and `BACKLOG_SCOPE` becomes `BACKLOG_CONTEXT`,
