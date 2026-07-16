@@ -3,7 +3,10 @@ import { serve } from '@hono/node-server';
 import { paths } from './utils/paths.js';
 import { getServerVersion, shutdownServer } from './cli/server-manager.js';
 import { createPortCollisionResolver, killPortHolder, sleep } from './server/port-collision.js';
-import { resolveViewerPort } from './utils/ports.js';
+import {
+  LOCAL_SERVER_HOSTNAME,
+  resolveViewerPort,
+} from './utils/ports.js';
 import { logger } from './utils/logger.js';
 import { createLocalNodeApp } from './server/local-node-app.js';
 
@@ -30,7 +33,11 @@ const composition = await createLocalNodeApp({
 });
 const app = composition.app;
 
-const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, (info) => {
+const server = serve({
+  fetch: app.fetch,
+  port,
+  hostname: LOCAL_SERVER_HOSTNAME,
+}, (info) => {
   logger.info('Server started', {
     port: info.port,
     dataDir: composition.home.documentsDir,
@@ -52,7 +59,7 @@ const resolvePortCollision = createPortCollisionResolver(
     getIncumbentVersion: getServerVersion,
     shutdownIncumbent: shutdownServer,
     killPortHolder,
-    rebind: () => server.listen({ port, hostname: '0.0.0.0' }),
+    rebind: () => server.listen({ port, hostname: LOCAL_SERVER_HOSTNAME }),
     exit: (code) => process.exit(code),
     log: (message) => console.log(message),
     errorLog: (message) => console.error(message),

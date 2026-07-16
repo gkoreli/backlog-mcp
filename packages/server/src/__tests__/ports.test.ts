@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { RuntimeEnvironment } from '../utils/paths.js';
-import { resolveViewerPort } from '../utils/ports.js';
+import {
+  LOCAL_SERVER_HOSTNAME,
+  resolveViewerPort,
+} from '../utils/ports.js';
 
 describe('resolveViewerPort', () => {
   const originalPort = process.env.BACKLOG_VIEWER_PORT;
@@ -27,5 +30,11 @@ describe('resolveViewerPort', () => {
 
     expect(resolveViewerPort(RuntimeEnvironment.Development)).toBe(3050);
     expect(resolveViewerPort(RuntimeEnvironment.Production)).toBe(3050);
+  });
+});
+
+describe('local server listener', function describeLocalListener() {
+  it('binds only to loopback while project-root selection is trusted', function bindsLoopback() {
+    expect(LOCAL_SERVER_HOSTNAME).toBe('127.0.0.1');
   });
 });
