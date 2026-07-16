@@ -4,8 +4,10 @@ import {
   groupByTask,
   aggregateForJournal,
   groupByEpic,
+  getOperationMutation,
   getToolLabel,
   getToolIcon,
+  isClickableResourceId,
   mergeConsecutiveEdits,
   operationToDiff,
   type OperationEntry,
@@ -136,6 +138,32 @@ describe('activity-utils', () => {
   });
 
   describe('aggregateForJournal', () => {
+    it('uses explicit mutation for semantic create and update tools', () => {
+      const operations: OperationEntry[] = [
+        {
+          ts: '2026-02-05T11:00:00Z',
+          tool: 'backlog_complete_task',
+          mutation: 'update',
+          params: { status: 'done' },
+          result: {},
+          resourceId: 'TASK-0001',
+        },
+        {
+          ts: '2026-02-05T10:00:00Z',
+          tool: 'backlog_create_decision',
+          mutation: 'create',
+          params: { title: 'Decision' },
+          result: {},
+          resourceId: 'DCSN-0001',
+        },
+      ];
+
+      const journal = aggregateForJournal(operations);
+
+      expect(journal.completed.map(entry => entry.resourceId)).toEqual(['TASK-0001']);
+      expect(journal.created.map(entry => entry.resourceId)).toEqual(['DCSN-0001']);
+    });
+
     it('categorizes completed tasks', () => {
       const operations: OperationEntry[] = [
         { ts: '2026-02-05T10:00:00Z', tool: 'backlog_update', params: { status: 'done' }, result: {}, resourceId: 'TASK-0001', resourceTitle: 'Done Task' },
@@ -302,29 +330,59 @@ describe('activity-utils', () => {
     });
   });
 
-  describe('getToolLabel', () => {
-    it('returns human-readable labels', () => {
-      expect(getToolLabel('backlog_create')).toBe('Created');
-      expect(getToolLabel('backlog_update')).toBe('Updated');
-      expect(getToolLabel('backlog_delete')).toBe('Deleted');
-      expect(getToolLabel('write_resource')).toBe('Wrote');
+  describe('getOperationMutation', () => {
+    it('prefers explicit mutation classifications', () => {
+      expect(getOperationMutation({ tool: 'backlog_create', mutation: 'update' })).toBe('update');
+      expect(getOperationMutation({ tool: 'backlog_complete_task', mutation: 'update' })).toBe('update');
     });
 
-    it('returns tool name for unknown tools', () => {
-      expect(getToolLabel('unknown_tool')).toBe('unknown_tool');
+    it('infers mutation for the four legacy tool names', () => {
+      expect(getOperationMutation({ tool: 'backlog_create' })).toBe('create');
+      expect(getOperationMutation({ tool: 'backlog_update' })).toBe('update');
+      expect(getOperationMutation({ tool: 'backlog_delete' })).toBe('delete');
+      expect(getOperationMutation({ tool: 'write_resource' })).toBe('resource-edit');
+      expect(getOperationMutation({ tool: 'unknown_tool' })).toBeUndefined();
+    });
+  });
+
+  describe('getToolLabel', () => {
+    it('returns human-readable labels', () => {
+      expect(getToolLabel({ tool: 'backlog_create' })).toBe('Created');
+      expect(getToolLabel({ tool: 'backlog_update' })).toBe('Updated');
+      expect(getToolLabel({ tool: 'backlog_delete' })).toBe('Deleted');
+      expect(getToolLabel({ tool: 'write_resource' })).toBe('Wrote');
+    });
+
+    it('preserves semantic tool names', () => {
+      expect(getToolLabel({ tool: 'backlog_complete_task' })).toBe('backlog_complete_task');
     });
   });
 
   describe('getToolIcon', () => {
-    it('returns emoji icons', () => {
-      expect(getToolIcon('backlog_create')).toBe('➕');
-      expect(getToolIcon('backlog_update')).toBe('✏️');
-      expect(getToolIcon('backlog_delete')).toBe('🗑️');
-      expect(getToolIcon('write_resource')).toBe('📝');
+    it('returns mutation icons for legacy entries', () => {
+      expect(getToolIcon({ tool: 'backlog_create' })).toBe('➕');
+      expect(getToolIcon({ tool: 'backlog_update' })).toBe('✏️');
+      expect(getToolIcon({ tool: 'backlog_delete' })).toBe('🗑️');
+      expect(getToolIcon({ tool: 'write_resource' })).toBe('📝');
+    });
+
+    it('returns mutation icons for semantic tools', () => {
+      expect(getToolIcon({ tool: 'backlog_complete_task', mutation: 'update' })).toBe('✏️');
     });
 
     it('returns default icon for unknown tools', () => {
-      expect(getToolIcon('unknown_tool')).toBe('⚡');
+      expect(getToolIcon({ tool: 'unknown_tool' })).toBe('⚡');
+    });
+  });
+
+  describe('isClickableResourceId', () => {
+    it('accepts runtime substrate IDs without a closed prefix list', () => {
+      expect(isClickableResourceId('DCSN-0001')).toBe(true);
+      expect(isClickableResourceId('CUSTOM_RECORD-42')).toBe(true);
+    });
+
+    it('rejects the synthetic no-resource group', () => {
+      expect(isClickableResourceId('_no_task_')).toBe(false);
     });
   });
 
@@ -407,6 +465,29 @@ describe('activity-utils', () => {
 
       expect(merged).toHaveLength(1);
       expect(merged[0].params._mergedCount).toBe(2);
+    });
+
+    it('merges semantic resource edits by mutation class', () => {
+      const operations: OperationEntry[] = [
+        {
+          ts: '2026-02-05T10:00:20.000Z',
+          tool: 'backlog_edit_decision',
+          mutation: 'resource-edit',
+          params: { operation: { type: 'str_replace', old_str: 'B', new_str: 'C' } },
+          result: {},
+          resourceId: 'DCSN-0001',
+        },
+        {
+          ts: '2026-02-05T10:00:10.000Z',
+          tool: 'backlog_edit_decision',
+          mutation: 'resource-edit',
+          params: { operation: { type: 'str_replace', old_str: 'A', new_str: 'B' } },
+          result: {},
+          resourceId: 'DCSN-0001',
+        },
+      ];
+
+      expect(mergeConsecutiveEdits(operations)).toHaveLength(1);
     });
 
     it('falls back to params-based grouping when resourceId is missing', () => {

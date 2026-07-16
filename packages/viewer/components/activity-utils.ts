@@ -42,9 +42,12 @@ export interface Actor {
   taskContext?: string;
 }
 
+export type OperationMutation = 'create' | 'update' | 'delete' | 'resource-edit';
+
 export interface OperationEntry {
   ts: string;
   tool: string;
+  mutation?: OperationMutation;
   params: Record<string, unknown>;
   result: unknown;
   resourceId?: string;
@@ -54,6 +57,28 @@ export interface OperationEntry {
   /** Display filename for write_resource ops, provided by the server enrichment layer. */
   targetFilename?: string;
   actor?: Actor;
+}
+
+const LEGACY_TOOL_MUTATIONS: Record<string, OperationMutation> = {
+  backlog_create: 'create',
+  backlog_update: 'update',
+  backlog_delete: 'delete',
+  write_resource: 'resource-edit',
+};
+
+/**
+ * Resolve stable mutation behavior while keeping legacy operation history
+ * readable. New semantic tool names must provide their mutation explicitly.
+ */
+export function getOperationMutation(
+  operation: Pick<OperationEntry, 'tool' | 'mutation'>,
+): OperationMutation | undefined {
+  return operation.mutation ?? LEGACY_TOOL_MUTATIONS[operation.tool];
+}
+
+/** Resource identities come from the runtime substrate registry, not a closed prefix list. */
+export function isClickableResourceId(resourceId: string): boolean {
+  return resourceId.length > 0 && resourceId !== '_no_task_';
 }
 
 export interface DayGroup {
@@ -186,7 +211,7 @@ function getWriteResourceTarget(params: Record<string, unknown>): { identifier: 
 }
 
 function isStrReplace(op: OperationEntry): boolean {
-  if (op.tool !== 'write_resource') return false;
+  if (getOperationMutation(op) !== 'resource-edit') return false;
   const operation = op.params.operation as { type?: string } | undefined;
   return operation?.type === 'str_replace';
 }
@@ -287,7 +312,9 @@ export function aggregateForJournal(operations: OperationEntry[]): JournalData {
     
     const existing = taskState.get(resourceId);
     
-    if (op.tool === 'backlog_update') {
+    const mutation = getOperationMutation(op);
+
+    if (mutation === 'update') {
       const status = op.params.status as string | undefined;
       if (status === 'done') {
         // Completed is highest priority - always set
@@ -303,7 +330,7 @@ export function aggregateForJournal(operations: OperationEntry[]): JournalData {
         // Generic update - lowest priority
         taskState.set(resourceId, { state: 'updated', ...entry });
       }
-    } else if (op.tool === 'backlog_create') {
+    } else if (mutation === 'create') {
       // Created beats updated only
       if (!existing || existing.state === 'updated') {
         taskState.set(resourceId, { state: 'created', ...entry });
@@ -358,27 +385,31 @@ export function groupByEpic(entries: JournalEntry[]): EpicGroup[] {
 }
 
 /**
- * Get human-readable label for a tool.
+ * Get a human-readable label without discarding semantic tool attribution.
+ *
+ * Historical generic tools retain their familiar labels. New semantic tool
+ * names remain visible verbatim instead of being collapsed to their mutation.
  */
-export function getToolLabel(tool: string): string {
+export function getToolLabel(operation: Pick<OperationEntry, 'tool'>): string {
   const labels: Record<string, string> = {
     backlog_create: 'Created',
     backlog_update: 'Updated',
     backlog_delete: 'Deleted',
     write_resource: 'Wrote',
   };
-  return labels[tool] || tool;
+  return labels[operation.tool] || operation.tool;
 }
 
 /**
- * Get emoji icon for a tool.
+ * Get the stable mutation icon for an operation.
  */
-export function getToolIcon(tool: string): string {
-  const icons: Record<string, string> = {
-    backlog_create: '➕',
-    backlog_update: '✏️',
-    backlog_delete: '🗑️',
-    write_resource: '📝',
+export function getToolIcon(operation: Pick<OperationEntry, 'tool' | 'mutation'>): string {
+  const icons: Record<OperationMutation, string> = {
+    create: '➕',
+    update: '✏️',
+    delete: '🗑️',
+    'resource-edit': '📝',
   };
-  return icons[tool] || '⚡';
+  const mutation = getOperationMutation(operation);
+  return mutation ? icons[mutation] : '⚡';
 }

@@ -26,8 +26,10 @@ import {
   groupByTask,
   aggregateForJournal,
   groupByEpic,
+  getOperationMutation,
   getToolLabel,
   getToolIcon,
+  isClickableResourceId,
   mergeConsecutiveEdits,
   type OperationEntry,
   type TaskGroup,
@@ -185,19 +187,21 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
 
   function renderExpandedContent(op: OperationEntry) {
     const parts: ReturnType<typeof html>[] = [];
+    const mutation = getOperationMutation(op);
 
     if (op.resourceId) {
+      const resourceId = op.resourceId;
       parts.push(html`
         <div class="activity-detail-row">
-          <span class="activity-detail-label">Task:</span>
-          <a href="#" class="activity-task-link" @click.prevent=${() => handleTaskClick(op.resourceId ?? '')}>
-            ${TaskBadge({ taskId: signal(op.resourceId) })}
+          <span class="activity-detail-label">Entity:</span>
+          <a href="#" class="activity-task-link" @click.prevent=${() => handleTaskClick(resourceId)}>
+            ${TaskBadge({ taskId: signal(resourceId) })}
           </a>
         </div>
       `);
     }
 
-    if (op.tool === 'backlog_create') {
+    if (mutation === 'create') {
       const title = op.params.title as string;
       const parentId = (op.params.parent_id || op.params.epic_id) as string | undefined;
       parts.push(html`
@@ -216,7 +220,7 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
           </div>
         `);
       }
-    } else if (op.tool === 'backlog_update') {
+    } else if (mutation === 'update') {
       const fields = Object.entries(op.params).filter(([k]) => k !== 'id');
       for (const [key, value] of fields) {
         let displayValue: string;
@@ -234,13 +238,13 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
           </div>
         `);
       }
-    } else if (op.tool === 'backlog_delete') {
+    } else if (mutation === 'delete') {
       parts.push(html`
         <div class="activity-detail-row">
-          <span class="activity-detail-value">Task permanently deleted</span>
+          <span class="activity-detail-value">Entity permanently deleted</span>
         </div>
       `);
-    } else if (op.tool === 'write_resource') {
+    } else if (mutation === 'resource-edit') {
       parts.push(html`<div class="activity-diff">${DiffBlock({ operation: signal(op) })}</div>`);
     }
 
@@ -265,10 +269,10 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
       <div class="activity-item" class:expanded=${isExpanded} data-op-id="${opId}">
         <div class="activity-item-header" @click=${() => toggleExpand(opId)}>
           <div class="activity-item-left">
-            <span class="activity-icon">${getToolIcon(op.tool)}</span>
+            <span class="activity-icon">${getToolIcon(op)}</span>
             <div class="activity-item-info">
               <span class="activity-label">
-                ${getToolLabel(op.tool)}
+                ${getToolLabel(op)}
                 ${mergedCount && mergedCount > 1
                   ? html`<span class="activity-merged-badge">${mergedCount} edits</span>`
                   : null}
@@ -297,7 +301,7 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
 
     const mostRecentDate = new Date(taskGroup.mostRecentTs);
     const mostRecentDateStr = formatDateTime(mostRecentDate);
-    const isTaskId = /^(TASK|EPIC|FLDR|ARTF|MLST|CRON)-\d+$/.test(taskGroup.resourceId);
+    const hasClickableId = isClickableResourceId(taskGroup.resourceId);
 
     const toggleText = computed(() =>
       isExpanded.value ? 'Show less' : `Show ${hiddenCount} more`
@@ -311,7 +315,7 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
               ${TaskBadge({ taskId: signal(taskGroup.epicId) })}
             </a>
           ` : null}
-          ${isTaskId ? html`
+          ${hasClickableId ? html`
             <a href="#" class="activity-task-link" @click.prevent=${() => handleTaskClick(taskGroup.resourceId)}>
               ${TaskBadge({ taskId: signal(taskGroup.resourceId) })}
             </a>
