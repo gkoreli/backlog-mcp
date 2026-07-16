@@ -629,6 +629,24 @@ Record:
 **Exit gate:** checked-in baseline and reviewed judgments. No algorithm ships
 from an unreviewed synthetic fixture.
 
+**2026-07-16 corpus-boundary amendment.** ADR 0113 Phase C expanded the
+production project corpus to registry-projected packaged ADR, requirement, and
+prompt documents plus generic resources. The recorded runner therefore loads
+the selected docs-native project through the production registry and hashes
+that derived corpus; the earlier closed-`EntitySchema` JSONL input is retired
+because it cannot represent the product corpus.
+
+Baseline v1 may exit Phase 0 with reviewed **search-only** evidence because the
+current project and global docs-native homes contain no real memory entities.
+Its report must say `surfaces: search` and that recall evidence is absent. This
+unlocks correctness and availability work, and permits candidate search
+comparisons, but a shared-fusion winner or any recall-affecting ranking change
+remains blocked. Baseline v2 is triggered when Phase E migrates Goga's real
+legacy global memories into `~/.backlog/docs`; it adds at least four reviewed
+memory-recall queries through `BacklogMemoryStore.recall`. Synthetic memories
+are not admissible evidence. This is Beryl's corpus-membership and evidence
+scope ruling of 2026-07-16.
+
 ### Phase 1A — Fix the proven correctness races
 
 Update:
