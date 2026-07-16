@@ -201,7 +201,9 @@ export class BacklogMemoryStore implements MemoryStore {
       source: m.source ?? 'unknown',
       ...(m.parent_id ? { context: m.parent_id } : {}),
       ...(m.tags ? { tags: [...m.tags] } : {}),
-      createdAt: Date.parse(m.created_at) || 0,
+      // Corrupt created_at reads as "now" (age 0), matching wakeup's guard —
+      // never epoch, which would grant a broken record ~56 years of "age".
+      createdAt: Number.isNaN(Date.parse(m.created_at)) ? Date.now() : Date.parse(m.created_at),
       ...(m.valid_until ? { expiresAt: Date.parse(m.valid_until) } : {}),
       metadata: {
         ...(m.entity_refs?.[0] ? { entity_id: m.entity_refs[0] } : {}),

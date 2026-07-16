@@ -47,6 +47,12 @@ export interface ToolDeps {
   usageTracker?: MemoryUsageTracker;
   /** Absolute path to identity.md. Node-only. */
   identityPath?: string;
+  /**
+   * memory-usage.jsonl reader (ADR 0092.9 R-16) — powers the consolidation
+   * demand gate. Node wires bootstrap's reader; Worker omits (demand 0,
+   * ripeness degrades to age-only).
+   */
+  readUsageLines?: () => string[];
 }
 
 export function registerTools(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
@@ -72,6 +78,7 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
     ...(deps?.usageTracker ? { usageTracker: deps.usageTracker } : {}),
   });
   registerBacklogForgetTool(server, deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : undefined);
-  registerBacklogConsolidationTool(server, service);
+  registerBacklogConsolidationTool(server, service,
+    deps?.readUsageLines ? { readUsageLines: deps.readUsageLines } : undefined);
   registerBacklogContradictionsTool(server, service);
 }

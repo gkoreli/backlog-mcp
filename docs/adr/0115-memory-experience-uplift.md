@@ -75,12 +75,13 @@ is invisible as evidence — the agent sees positions, not reasons. That is
 | `content?` | kept | `full: true` only |
 | `entity_id?`, `kind?` | kept | |
 | `title` | **new** | the first-class human label (≤100 chars as stored) |
-| `age_days` | **new** | `floor((now − (occurred_at ?? created_at)) / day)` — age on the *knowledge's* timeline, not the write's (0092.5 R-3 semantics) |
+| `age_days` | **new** | `floor((now − (occurred_at ?? created_at)) / day)` — age on the *knowledge's* timeline, not the write's (0092.5 R-3 semantics). Malformed dates fall back created_at-ward and finally to age 0; a future `occurred_at` clamps to 0 (acceptable: "0d old" is the least-authority reading) |
 | `uses` | **new** | `usage_count` — 0 is a signal ("never earned a recall"), so always present |
 | `idle_days` | **new** | days since `last_used_at`; only when `uses > 0` |
 | `supersedes?` | **new** | present ⇒ this stub is a correction; its predecessor is expired |
 | `derived?` | **new** | present ⇒ consolidator inference, cites sources via entity_refs |
 | `created_at` | **removed** | replaced by `age_days` — a full ISO timestamp is the most expensive field on the stub and the least decision-relevant form of the same fact |
+| `kind?` | **changed** | now prefers the temporal kind (current/historical/plan/preference/timeless — the trust-relevant one) over the capture kind (completion/artifact), which remains the fallback for implicit captures and stays visible via tags |
 
 No back-compat shim (single-user product, maintainer directive 2026-07-16):
 `created_at` goes away in the same change.
@@ -110,24 +111,27 @@ progressive disclosure is preserved, not diluted.
 
 Mirror of `search-golden.test.ts` (ADR 0083's pattern: document real
 behavior; failures prompt "regression or improvement?"): a new
-`__tests__/recall-golden.test.ts` with a fixed ~15-memory corpus indexed
+`__tests__/recall-golden.test.ts` with a fixed 9-memory corpus indexed
 through the real `OramaSearchService` (memory is a first-class searchable
 type — `packages/memory/src/search/types.ts:16`), recalled through the real
 `BacklogMemoryStore` + `MemoryComposer` + `core/recall` chain.
 
-Contracts asserted:
+Contracts asserted (8 tests as shipped):
 
 1. **Topical recall** — "how do we deploy" surfaces the deployment
-   procedural memory in the top results.
+   procedural memory in the top results (containment, not an exact rank
+   pin — exact ordering is allowed to churn under ranking work like 0116).
 2. **Layer filtering** — `layers: ['procedural']` excludes episodic hits.
 3. **Exclusions** — expired (`valid_until` past) and superseded-then-expired
    memories never appear; the superseding correction does, carrying
    `supersedes`.
 4. **Usage reordering** — past the 14-day grace period, a used memory
    outranks an equally-relevant unused one (`usageFactor` floor 0.3 vs
-   earned ~1.0+); within grace, usage is neutral.
-5. **Scoping** — `context` and `tags` filters behave as documented.
-6. **Stub provenance** — every stub carries `title`/`age_days`/`uses`; a
+   earned ~1.0+).
+5. **Grace exemption** — a young unused memory is not floor-penalized
+   against an aged unused twin (youth reads neutral, aged-unused sinks).
+6. **Scoping** — `context` and `tags` filters behave as documented.
+7. **Stub provenance** — every stub carries `title`/`age_days`/`uses`; a
    full-bodied item appears only under `full: true`.
 
 Fixture dates are computed **relative to the real clock at fixture-build
@@ -155,11 +159,27 @@ Transports keep passing nothing — production behavior unchanged.
 
 `WakeupKnowledgeItem` (`core/wakeup.ts` L2.5, ADR 0092.5 R-6) currently
 carries id/layer/title/kind/source_ref — the same missing-provenance shape.
-It gains `age_days` and `uses` with identical derivation. One stub grammar
+It gains `age_days` and `uses` with the same *semantics* (the derivation is
+a separate code path: wakeup reads raw entities off `service.list`, recall
+reads `MemoryEntry` — see R-5 for why that seam is marked). One stub grammar
 across wakeup and recall: an agent learns to read trust signals once.
 (Wakeup stubs stay leaner than recall stubs — no idle/lineage — because the
 briefing is a fixed ~600-token budget; age + uses are the two signals that
 change what an agent does at orientation time.)
+
+## R-5 — Store-boundary law for provenance/usage
+
+R-5 Store-boundary law for provenance/usage (cross-cutting, ratified by
+granite 2026-07-16). Provenance and usage signals (usage_count,
+last_used_at, occurred_at, supersedes, derived) reach read surfaces ONLY via
+BacklogMemoryStore.toMemoryEntry -> MemoryEntry; no read-side consumer
+parses memory frontmatter directly. Rationale: ADR 0112 R-3 moves
+project-home usage state to a local overlay — containment at the store
+means stub shapes and usageFactor survive the swap unchanged. Known
+exception: core/wakeup.ts knowledge section reads usage_count/occurred_at
+off raw service.list entities (pre-existing pattern, deepened by R-4).
+Fixing that seam is a precondition of 0112 Phase D — project-home wakeup
+would otherwise report uses:0.
 
 ## Non-goals
 
