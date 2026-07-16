@@ -309,6 +309,11 @@ export interface WakeupParams {
    */
   readIdentity?: () => string | undefined;
   /**
+   * Active-registry parent capability lookup. Declarative substrates count as
+   * unfiled work only when their runtime schema accepts ``parent_id``.
+   */
+  acceptsParent?: (type: string) => boolean;
+  /**
    * Recent operation reader — returns write-log entries newest-first.
    * Injected because the operation log is outside ``IBacklogService`` and
    * core must not import the concrete logger (keeps core transport-free).

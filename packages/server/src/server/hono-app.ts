@@ -188,6 +188,13 @@ function toHomeReadRuntime(runtime: AppRequestRuntime): HomeReadRuntime {
     usageTracker: runtime.usageTracker,
     getSourcePath: runtime.getSourcePath,
     readIdentity,
+    ...(runtime.substrateRegistry === undefined
+      ? {}
+      : {
+          acceptsParent: function acceptsParent(type: string): boolean {
+            return runtime.substrateRegistry?.acceptsParent(type) === true;
+          },
+        }),
     readOperations,
     mintMemoryEntry: runtime.mintMemoryEntry,
   };

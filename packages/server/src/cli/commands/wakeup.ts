@@ -129,6 +129,9 @@ export function registerWakeup(program: Command): void {
               ...baseParams,
               ...(scope === undefined ? {} : { scope }),
               readIdentity: runtime.readIdentity,
+              acceptsParent: function acceptsParent(type) {
+                return runtime.writeContext.substrateRegistry?.acceptsParent(type) === true;
+              },
               readOperations: (options) => runtime.operationLogger.read(options),
               ...(runtime.mintMemoryEntry === undefined
                 ? {}

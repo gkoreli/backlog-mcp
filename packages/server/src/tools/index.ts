@@ -84,6 +84,9 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
     ...(deps?.mintMemoryEntry
       ? { mintMemoryEntry: deps.mintMemoryEntry }
       : {}),
+    ...(deps?.substrateRegistry
+      ? { substrateRegistry: deps.substrateRegistry }
+      : {}),
     ...(deps?.homeReadCoordinator
       ? { homeReadCoordinator: deps.homeReadCoordinator }
       : {}),

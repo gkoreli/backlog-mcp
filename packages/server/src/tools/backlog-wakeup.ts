@@ -6,6 +6,7 @@ import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { wakeup } from '../core/wakeup.js';
 import { ValidationError } from '../core/types.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
+import type { ProjectSubstrateRegistry } from '../core/substrates/project-substrate-registry.js';
 import {
   BACKLOG_READ_HOME_INPUT_FIELDS,
   requireHomeReadCoordinator,
@@ -24,6 +25,7 @@ export interface BacklogWakeupDeps {
   readLocalFile?: (filePath: string) => string | null;
   identityPath?: string;
   mintMemoryEntry?: (memory: Memory) => MemoryEntry;
+  substrateRegistry?: Pick<ProjectSubstrateRegistry, 'acceptsParent'>;
   homeReadCoordinator?: HomeReadCoordinator;
 }
 
@@ -116,6 +118,13 @@ export function registerBacklogWakeupTool(
         const result = await wakeup(service, {
           ...wakeupParams,
           readIdentity,
+          ...(deps?.substrateRegistry === undefined
+            ? {}
+            : {
+                acceptsParent: function acceptsParent(type: string): boolean {
+                  return deps.substrateRegistry?.acceptsParent(type) === true;
+                },
+              }),
           ...(operationLogger
             ? { readOperations: (options) => operationLogger.read(options) }
             : {}),

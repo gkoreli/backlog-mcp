@@ -191,6 +191,9 @@ function toHomeReadRuntime(runtime: CliRuntime): HomeReadRuntime {
     usageTracker: runtime.usageTracker,
     getSourcePath: runtime.getSourcePath,
     readIdentity: runtime.readIdentity,
+    acceptsParent: function acceptsParent(type) {
+      return runtime.writeContext.substrateRegistry?.acceptsParent(type) === true;
+    },
     readOperations: function readOperations(options) {
       return runtime.operationLogger.read(options);
     },

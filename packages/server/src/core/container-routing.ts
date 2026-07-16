@@ -72,6 +72,7 @@ function stickyContainer(input: ContainerRoutingInput): string | undefined {
   if (!Number.isFinite(now)) return undefined;
 
   for (const operation of (input.operations ?? []).slice(0, STICKY_OPERATION_LIMIT)) {
+    if (operation.mutation === 'delete') continue;
     if (!sameAgent(operation, input.actor)) continue;
     const operationTime = Date.parse(operation.ts);
     if (

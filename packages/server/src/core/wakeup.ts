@@ -68,13 +68,20 @@ function byUpdatedAtDesc(a: Entity, b: Entity): number {
   return (b.updated_at ?? '').localeCompare(a.updated_at ?? '');
 }
 
-function isUnfiledWorkEntity(entity: RuntimeEntity): boolean {
+function isUnfiledWorkEntity(
+  entity: RuntimeEntity,
+  acceptsParent?: WakeupParams['acceptsParent'],
+): boolean {
   const builtin = asBuiltinEntity(entity);
-  if (builtin === undefined || builtin.type === EntityType.Memory) return false;
-  const identity = parseEntityId(builtin.id);
-  if (identity === null) return false;
-  return !getSubstrate(identity.type).structure.isContainer
-    && builtin.parent_id === undefined;
+  if (builtin !== undefined) {
+    if (builtin.type === EntityType.Memory) return false;
+    const identity = parseEntityId(builtin.id);
+    if (identity === null) return false;
+    return !getSubstrate(identity.type).structure.isContainer
+      && builtin.parent_id === undefined;
+  }
+  return acceptsParent?.(entity.type) === true
+    && entity.parent_id === undefined;
 }
 
 /**
@@ -166,7 +173,9 @@ export async function wakeup(
   // Home-wide by necessity: an unattached entity has no subtree ancestry by
   // which to assign it to a narrower wakeup scope.
   const unfiledCount = (await service.list({ limit: 100_000 }))
-    .filter(isUnfiledWorkEntity)
+    .filter(function isUnfiled(entity) {
+      return isUnfiledWorkEntity(entity, params.acceptsParent);
+    })
     .length;
 
   // Scope validation + descendant set.

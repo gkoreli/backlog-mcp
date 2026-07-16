@@ -56,7 +56,7 @@ describe('core/wakeup', () => {
     expect(result.metadata.unfiled_count).toBe(0);
   });
 
-  it('reports parentless work while exempting parents, containers, memories, and declarative documents', async () => {
+  it('reports parentless work while exempting parents, containers, memories, and non-parentable documents', async () => {
     const svc = mockService([
       makeEntity({ id: 'TASK-0001', title: 'Unfiled open task' }),
       makeEntity({ id: 'TASK-0002', title: 'Unfiled done task', status: 'done' }),
@@ -74,11 +74,15 @@ describe('core/wakeup', () => {
       makeEntity({ id: 'FLDR-0001', title: 'Container', type: 'folder', status: undefined }),
       makeEntity({ id: 'MEMO-0001', title: 'Unscoped memory', type: 'memory', status: undefined } as Entity),
       makeEntity({ id: 'ADR 0119', title: 'Project document', type: 'adr', status: 'proposed' } as Entity),
+      makeEntity({ id: 'NOTE-0001', title: 'Unfiled project note', type: 'note' } as Entity),
+      makeEntity({ id: 'NOTE-0002', title: 'Filed project note', type: 'note', parent_id: 'EPIC-0001' } as Entity),
     ]);
 
-    const result = await wakeup(svc);
+    const result = await wakeup(svc, {
+      acceptsParent: type => type === 'note',
+    });
 
-    expect(result.metadata.unfiled_count).toBe(4);
+    expect(result.metadata.unfiled_count).toBe(5);
     expect(svc.list).toHaveBeenCalledWith({ limit: 100_000 });
   });
 

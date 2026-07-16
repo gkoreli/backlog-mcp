@@ -94,6 +94,18 @@ describe('routeContainer', function describeContainerRouting() {
     }))).toEqual({ parentId: 'EPIC-0004', routedBy: 'session' });
   });
 
+  it('does not make a deleted container sticky', () => {
+    expect(routeContainer(input({
+      operations: [
+        operation({
+          mutation: 'delete',
+          resourceId: 'EPIC-0004',
+        }),
+        operation({ params: { parent_id: 'EPIC-0003' } }),
+      ],
+    }))).toEqual({ parentId: 'EPIC-0003', routedBy: 'session' });
+  });
+
   it('bounds stickiness by 20 writes, 30 minutes, actor, and task context', () => {
     const irrelevant = Array.from({ length: 20 }, function makeIrrelevant() {
       return operation();
