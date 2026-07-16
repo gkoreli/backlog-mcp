@@ -22,7 +22,7 @@ for your agents" framings) · **Owner:** gkoreli · **Written:** 2026-07-16
 
 ---
 
-## The Cold-Open Test (the one scenario that defines success)
+## The Cold-Open Test (the first scenario that defines success)
 
 An agent — or a human — **cold-opens a repository it has never seen.** Nothing was set
 up. No briefing was pasted. There is just a `docs/` folder, committed to the repo like any
@@ -49,6 +49,37 @@ markdown: `docs/adr/0098-unified-substrate-architecture.md`,
 **When both are true at once — agent oriented in a minute, human reading everything with
 zero install, from the same committed folder — the product has done its job.** Adoption
 cost was zero. Nothing moved. Nobody was locked in.
+
+---
+
+## The Amnesia Test (its twin — the same scenario, pointed at time)
+
+Cold-open orients an agent that has *never seen* this repo. Its twin orients an agent
+that has *forgotten* it. During the 2026-07-16 vision-uplift operation, **six of nine
+fleet agents were compacted or context-cleared in a single working day** — the
+orchestrator twice, one engineer mid-turn at its most critical gate. Every recovery was
+the same motion: *read a durable document, be oriented, continue.*
+
+That is the Cold-Open Test **pointed at time instead of space.** An agent recovering from
+compaction and an agent cold-opening an unseen repo are **the same agent: one with no
+context and a docs folder.** Amnesia recovery is not a new capability to build — it is the
+capability we already claim, aimed at the moment an agent's own working memory is erased.
+And that moment is a *law of the environment*, not an edge case: the harness guarantees it
+(Codex auto-compacts, Claude compacts within its window) — the only variables are when and
+how much is lost.
+
+So the memory engine owes a **second executable gate**, twin to the Cold-Open E2E: seed a
+store with a live **operation document** mid-flight, hand a fresh agent nothing but
+`wakeup(operation=…)`, and assert it can state its goal, its next action, and its
+constraints without reading anything else. The briefing that orients a stranger and the
+briefing that restores an amnesiac differ by exactly one section — the live operation
+state (an *operation substrate* declared as data, dogfooding ADR 0113; `wakeup` gaining an
+operation argument that rides ADR 0119's identity substrate).
+
+**When both tests pass — a stranger oriented in a minute, an amnesiac restored to its own
+goal in a minute, from the same committed docs folder — the memory engine has done its
+whole job: continuity across space *and* time.** (Proposal + operational evidence:
+`docs/proposals/amnesia-test-continuity-engine-2026-07.md`.)
 
 ---
 
