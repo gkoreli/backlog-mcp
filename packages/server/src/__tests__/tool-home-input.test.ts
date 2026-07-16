@@ -16,6 +16,7 @@ import {
 } from '../tools/home-input.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
+import { STATIC_TOOL_NAMES } from '../server/tool-name-reservations.js';
 
 type ToolHandler = (
   params: Record<string, unknown>,
@@ -111,21 +112,7 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
 
     registerTools(server, {} as IBacklogService);
 
-    expect([...metadata.keys()].sort()).toEqual([
-      'backlog_consolidation_candidates',
-      'backlog_contradictions',
-      'backlog_create',
-      'backlog_delete',
-      'backlog_forget',
-      'backlog_get',
-      'backlog_list',
-      'backlog_recall',
-      'backlog_remember',
-      'backlog_search',
-      'backlog_update',
-      'backlog_wakeup',
-      'write_resource',
-    ]);
+    expect([...metadata.keys()].sort()).toEqual(STATIC_TOOL_NAMES);
     expect(metadata.get('write_resource')).toMatchObject({
       _meta: {
         'anthropic/alwaysLoad': false,

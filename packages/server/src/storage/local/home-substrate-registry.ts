@@ -12,10 +12,12 @@ import { BuiltinSubstrateStorageCatalog } from './builtin-substrate-storage-cata
 export function loadHomeSubstrateRegistry(
   home: BacklogHome,
   catalog: SubstrateStorageCatalog = new BuiltinSubstrateStorageCatalog(),
+  reservedToolNames: readonly string[] = [],
 ): LoadSubstrateDefinitionsResult {
   const discovery = discoverDocuments({ documentsDir: home.documentsDir });
   return loadProjectSubstrateDefinitions(
     discovery.declarations,
     createBuiltinSubstrateRegistrations(catalog),
+    reservedToolNames,
   );
 }

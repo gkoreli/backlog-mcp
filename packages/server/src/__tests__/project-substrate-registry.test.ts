@@ -14,6 +14,7 @@ import type {
 } from '../core/substrates/types.js';
 import type { DiscoveredDocument } from '../core/document-discovery.types.js';
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
+import { RESERVED_TOOL_NAMES } from '../server/tool-name-reservations.js';
 
 function canonicalSchema(type: string): Record<string, unknown> {
   return {
@@ -449,11 +450,11 @@ describe('ProjectSubstrateRegistry', function describeRegistry() {
       folder: 'decisions',
       strategy: 'numbered-threaded',
       replaces: 'builtin:adr@1',
-    }, 'backlog_delete');
+    }, 'backlog_recall');
     const result = createProjectSubstrateRegistry({
       packaged: [PACKAGED_ADR, PACKAGED_REQUIREMENT, PACKAGED_PROMPT],
       project: [collidingProject, collidingReplacement],
-      reservedToolNames: ['backlog_delete'],
+      reservedToolNames: RESERVED_TOOL_NAMES,
     });
 
     expect(result.registry.getStorageClaim('decision')).toBeUndefined();

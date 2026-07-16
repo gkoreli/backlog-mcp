@@ -13,6 +13,7 @@ import {
   type ProjectSubstrateRegistry,
   type SubstrateDefinitionDiagnostic,
 } from '../../core/substrates/index.js';
+import { RESERVED_TOOL_NAMES } from '../../server/tool-name-reservations.js';
 import { LocalEventBus } from '../../events/local-event-bus.js';
 import { BacklogMemoryStore } from '../../memory/backlog-memory-store.js';
 import { createComposerForStore } from '../../memory/bootstrap.js';
@@ -209,7 +210,11 @@ export function createLocalRuntime(
     legacyRoot: deps.legacyRoot,
   });
   ensureRuntimeDirectories(home);
-  const definitions = loadHomeSubstrateRegistry(home, catalog);
+  const definitions = loadHomeSubstrateRegistry(
+    home,
+    catalog,
+    RESERVED_TOOL_NAMES,
+  );
   const substrateRegistry = definitions.registry;
   const storage = new DocsNativeFilesystemStorage(home, substrateRegistry);
   const search = deps.createSearch?.(home) ?? createSearch(home);
