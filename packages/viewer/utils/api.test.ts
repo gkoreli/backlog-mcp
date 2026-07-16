@@ -35,6 +35,11 @@ describe('viewer home API helpers', () => {
   it('uses one stable identity for URLs, query keys, and provenance', () => {
     expect(getHomeId(undefined)).toBe('legacy');
     expect(getHomeId({ home: 'global' })).toBe('global');
+    expect(getHomeRequestId({ home: 'global' })).toBe('global');
+    expect(getHomeRequestId({
+      home: 'project',
+      projectRoot: '/repo',
+    })).toBe('/repo');
     expect(getHomeSelection(null, '/repo')).toEqual({
       home: 'project',
       projectRoot: '/repo',

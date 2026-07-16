@@ -47,6 +47,15 @@ export function getHomeRequestId(
   selection: HomeRequestSelection | undefined,
 ): string {
   if (selection === undefined) return 'legacy';
+  if (selection.home === 'global' && selection.projectRoot === undefined) {
+    return 'global';
+  }
+  if (
+    (selection.home === 'project' || selection.home === undefined)
+    && selection.projectRoot !== undefined
+  ) {
+    return selection.projectRoot;
+  }
   return JSON.stringify([
     selection.home ?? null,
     selection.projectRoot ?? null,
