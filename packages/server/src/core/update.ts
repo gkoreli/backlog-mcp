@@ -42,21 +42,25 @@ function normalizeWriteError(error: unknown): never {
   throw error;
 }
 
-/** Merge an update and let the active registry perform the canonical write. */
-export async function updateEntity(
+/**
+ * Persist one already-constructed update postimage through the shared capture,
+ * journal, event, identity, and timestamp funnel.
+ *
+ * Compiled semantic intents use this path because literal `null` is a valid
+ * substrate value, while the low-level `updateEntity` contract retains its
+ * historical `null`-means-delete behavior.
+ */
+export async function updateEntityPostimage(
   service: IBacklogService,
-  params: UpdateEntityParams,
+  current: AnyEntity,
+  postimage: AnyEntity,
+  effectiveChanges: Record<string, unknown>,
   ctx: WriteContext,
   attribution: MutationAttribution,
 ): Promise<UpdateResult> {
-  const { id, fields, ...updates } = params;
-  const current = await service.get(id);
-  if (!current) throw new NotFoundError(id);
-
-  const merged: Record<string, unknown> = { ...current };
-  const effectiveChanges: Record<string, unknown> = {};
-  applyChanges(merged, fields ?? {}, effectiveChanges);
-  applyChanges(merged, updates, effectiveChanges);
+  const merged = {
+    ...(postimage as unknown as Record<string, unknown>),
+  };
 
   delete effectiveChanges.id;
   delete effectiveChanges.type;
@@ -98,8 +102,34 @@ export async function updateEntity(
     ctx,
     attribution,
     stored.id,
-    { id, ...effectiveChanges },
+    { id: stored.id, ...effectiveChanges },
     result,
   );
   return result;
+}
+
+/** Merge an update and let the active registry perform the canonical write. */
+export async function updateEntity(
+  service: IBacklogService,
+  params: UpdateEntityParams,
+  ctx: WriteContext,
+  attribution: MutationAttribution,
+): Promise<UpdateResult> {
+  const { id, fields, ...updates } = params;
+  const current = await service.get(id);
+  if (!current) throw new NotFoundError(id);
+
+  const merged: Record<string, unknown> = { ...current };
+  const effectiveChanges: Record<string, unknown> = {};
+  applyChanges(merged, fields ?? {}, effectiveChanges);
+  applyChanges(merged, updates, effectiveChanges);
+
+  return updateEntityPostimage(
+    service,
+    current,
+    merged as AnyEntity,
+    effectiveChanges,
+    ctx,
+    attribution,
+  );
 }

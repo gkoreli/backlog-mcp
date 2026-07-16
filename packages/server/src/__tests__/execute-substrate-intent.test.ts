@@ -115,6 +115,30 @@ function createIntent(): CompiledSubstrateIntent {
   };
 }
 
+function customCreateIntent(): CompiledSubstrateIntent {
+  return {
+    sourcePath: '.backlog/substrates/automation.yaml',
+    substrateType: 'automation',
+    verb: 'define',
+    toolName: 'backlog_define_automation',
+    description: 'Define one automation.',
+    intentInputSchema: z.object({
+      title: z.string(),
+      command: z.number(),
+      enabled: z.string(),
+    }).strict(),
+    operation: {
+      kind: 'create',
+      fields: [
+        { input: 'title', field: 'title' },
+        { input: 'command', field: 'command' },
+        { input: 'enabled', field: 'enabled' },
+      ],
+      fixedFields: {},
+    },
+  };
+}
+
 function transitionIntent(): CompiledSubstrateIntent {
   return {
     sourcePath: 'builtin:task@compiled',
@@ -152,6 +176,23 @@ function setFieldIntent(): CompiledSubstrateIntent {
       subjectInput: 'id',
       field: 'enabled',
       value: false,
+    },
+  };
+}
+
+function clearFieldIntent(): CompiledSubstrateIntent {
+  return {
+    sourcePath: '.backlog/substrates/decision.yaml',
+    substrateType: 'decision',
+    verb: 'clear_review',
+    toolName: 'backlog_clear_review_decision',
+    description: 'Clear a decision review marker.',
+    intentInputSchema: z.object({ id: z.string() }).strict(),
+    operation: {
+      kind: 'set-field',
+      subjectInput: 'id',
+      field: 'reviewed_by',
+      value: null,
     },
   };
 }
@@ -218,6 +259,30 @@ describe('executeSubstrateIntent', () => {
         resourceId: 'requirement-generated',
       }),
     ]);
+  });
+
+  it('preserves custom fields whose names overlap legacy built-in parameters', async () => {
+    const { service, store } = serviceHarness();
+    const { context } = contextHarness();
+    const { validator } = validatorHarness();
+
+    await executeSubstrateIntent({
+      intent: customCreateIntent(),
+      input: {
+        title: 'Nightly automation',
+        command: 42,
+        enabled: 'manual',
+      },
+      service,
+      validator,
+      context,
+    });
+
+    expect(store.get('automation-generated')).toMatchObject({
+      type: 'automation',
+      command: 42,
+      enabled: 'manual',
+    });
   });
 
   it('applies transition fields and semantic attribution', async () => {
@@ -309,6 +374,34 @@ describe('executeSubstrateIntent', () => {
     expect(entries).toHaveLength(1);
   });
 
+  it('persists a compiler-owned null as a literal value', async () => {
+    const decision = entity('decision-001-root', 'decision', {
+      reviewed_by: 'goga',
+    });
+    const { service, store } = serviceHarness([decision]);
+    const { context, entries } = contextHarness();
+    const { validator } = validatorHarness();
+
+    await executeSubstrateIntent({
+      intent: clearFieldIntent(),
+      input: { id: decision.id },
+      service,
+      validator,
+      context,
+    });
+
+    expect(store.get(decision.id)).toHaveProperty('reviewed_by', null);
+    expect(entries).toEqual([
+      expect.objectContaining({
+        tool: 'backlog_clear_review_decision',
+        params: {
+          id: decision.id,
+          reviewed_by: null,
+        },
+      }),
+    ]);
+  });
+
   it('validates both supersede postimages before writing and journals once', async () => {
     const replacement = entity('ADR 0002', 'adr', {
       status: 'proposed',
@@ -352,7 +445,7 @@ describe('executeSubstrateIntent', () => {
       supersedes: [],
     });
     const superseded = entity('ADR 0001', 'adr', { status: 'accepted' });
-    const { service } = serviceHarness([replacement, superseded]);
+    const { service, store } = serviceHarness([replacement, superseded]);
     const { context, entries } = contextHarness();
     const validateWrite = vi.fn()
       .mockReturnValueOnce({ ok: true, entity: replacement })
@@ -381,36 +474,7 @@ describe('executeSubstrateIntent', () => {
     expect(entries).toEqual([]);
   });
 
-  it('reports a failed first supersede write without compensation or journaling', async () => {
-    const replacement = entity('ADR 0002', 'adr', {
-      status: 'proposed',
-      supersedes: [],
-    });
-    const superseded = entity('ADR 0001', 'adr', { status: 'accepted' });
-    const { service } = serviceHarness([replacement, superseded]);
-    const { context, entries } = contextHarness();
-    const { validator } = validatorHarness();
-    vi.mocked(service.save).mockRejectedValueOnce(new Error('source write failed'));
-
-    await expect(executeSubstrateIntent({
-      intent: supersedeIntent(),
-      input: {
-        replacement_id: replacement.id,
-        superseded_id: superseded.id,
-      },
-      service,
-      validator,
-      context,
-    })).rejects.toMatchObject({
-      code: 'mutation-failed',
-      ids: [replacement.id, superseded.id],
-    });
-
-    expect(service.save).toHaveBeenCalledTimes(1);
-    expect(entries).toEqual([]);
-  });
-
-  it('compensates the source when the second supersede write fails', async () => {
+  it('restores a source whose first save persists and then rejects', async () => {
     const replacement = entity('ADR 0002', 'adr', {
       status: 'proposed',
       supersedes: [],
@@ -422,8 +486,45 @@ describe('executeSubstrateIntent', () => {
     let saveCount = 0;
     vi.mocked(service.save).mockImplementation(async candidate => {
       saveCount += 1;
-      if (saveCount === 2) throw new Error('target write failed');
       store.set(candidate.id, candidate);
+      if (saveCount === 1) throw new Error('source post-write failure');
+      return candidate;
+    });
+
+    await expect(executeSubstrateIntent({
+      intent: supersedeIntent(),
+      input: {
+        replacement_id: replacement.id,
+        superseded_id: superseded.id,
+      },
+      service,
+      validator,
+      context,
+    })).rejects.toMatchObject({
+      code: 'compensated-failure',
+      ids: [replacement.id, superseded.id],
+      compensationSucceeded: true,
+    });
+
+    expect(service.save).toHaveBeenCalledTimes(2);
+    expect(store.get(replacement.id)).toEqual(replacement);
+    expect(entries).toEqual([]);
+  });
+
+  it('restores both entities when the second save persists and then rejects', async () => {
+    const replacement = entity('ADR 0002', 'adr', {
+      status: 'proposed',
+      supersedes: [],
+    });
+    const superseded = entity('ADR 0001', 'adr', { status: 'accepted' });
+    const { service, store } = serviceHarness([replacement, superseded]);
+    const { context, entries } = contextHarness();
+    const { validator } = validatorHarness();
+    let saveCount = 0;
+    vi.mocked(service.save).mockImplementation(async candidate => {
+      saveCount += 1;
+      store.set(candidate.id, candidate);
+      if (saveCount === 2) throw new Error('target post-write failure');
       return candidate;
     });
 
@@ -441,6 +542,8 @@ describe('executeSubstrateIntent', () => {
       compensationSucceeded: true,
     });
     expect(store.get(replacement.id)).toEqual(replacement);
+    expect(store.get(superseded.id)).toEqual(superseded);
+    expect(service.save).toHaveBeenCalledTimes(4);
     expect(entries).toEqual([]);
   });
 

@@ -14,7 +14,7 @@ import {
   ValidationError,
   type MutationAttribution,
 } from '../types.js';
-import { updateEntity } from '../update.js';
+import { updateEntityPostimage } from '../update.js';
 import type { IntentWriteValidatorPort } from './intent-registry.contract.js';
 import {
   SubstrateIntentExecutionError,
@@ -155,33 +155,10 @@ function createParams(
   }
   delete fields.title;
 
-  const content = typeof fields.content === 'string' ? fields.content : undefined;
-  delete fields.content;
-  const parentId = typeof fields.parent_id === 'string'
-    ? fields.parent_id
-    : undefined;
-  delete fields.parent_id;
-  const references = Array.isArray(fields.references)
-    ? fields.references as Parameters<typeof createEntity>[1]['references']
-    : undefined;
-  delete fields.references;
-  const schedule = typeof fields.schedule === 'string' ? fields.schedule : undefined;
-  delete fields.schedule;
-  const command = typeof fields.command === 'string' ? fields.command : undefined;
-  delete fields.command;
-  const enabled = typeof fields.enabled === 'boolean' ? fields.enabled : undefined;
-  delete fields.enabled;
-
   return {
     title,
     type: intent.substrateType,
     fields,
-    ...(content === undefined ? {} : { content }),
-    ...(parentId === undefined ? {} : { parent_id: parentId }),
-    ...(references === undefined ? {} : { references }),
-    ...(schedule === undefined ? {} : { schedule }),
-    ...(command === undefined ? {} : { command }),
-    ...(enabled === undefined ? {} : { enabled }),
   };
 }
 
@@ -216,10 +193,15 @@ async function executeTransition(
   if (!transition.changed && !hasFieldChange) {
     return { ids: [id], changed: false };
   }
-  validatedPostimage(params.validator, { ...entity, ...fields });
-  await updateEntity(
+  const postimage = validatedPostimage(params.validator, {
+    ...entity,
+    ...fields,
+  });
+  await updateEntityPostimage(
     params.service,
-    { id, fields },
+    entity,
+    postimage,
+    fields,
     params.context,
     attribution(params.intent, 'update'),
   );
@@ -239,13 +221,15 @@ async function executeSetField(
   if (entityField(entity, operation.field) === operation.value) {
     return { ids: [id], changed: false };
   }
-  validatedPostimage(params.validator, {
+  const postimage = validatedPostimage(params.validator, {
     ...entity,
     [operation.field]: operation.value,
   });
-  await updateEntity(
+  await updateEntityPostimage(
     params.service,
-    { id, fields: { [operation.field]: operation.value } },
+    entity,
+    postimage,
+    { [operation.field]: operation.value },
     params.context,
     attribution(params.intent, 'update'),
   );
@@ -291,32 +275,35 @@ async function executeRelateAndTransition(
     return { ids: [sourceId, targetId], changed: false };
   }
 
-  let sourceWritten = false;
+  let sourceAttempted = false;
+  let targetAttempted = false;
   try {
     if (relation.changed) {
+      sourceAttempted = true;
       await params.service.save(sourcePostimage);
-      sourceWritten = true;
     }
     if (transition.changed) {
+      targetAttempted = true;
       await params.service.save(targetPostimage);
     }
   } catch (error) {
-    if (!sourceWritten) {
-      throw new SubstrateIntentExecutionError(
-        `Intent ${params.intent.toolName} failed before completing its write plan`,
-        'mutation-failed',
-        [sourceId, targetId],
-        error,
-      );
+    const compensationErrors: unknown[] = [];
+    try {
+      if (targetAttempted) await params.service.save(target);
+    } catch (targetCompensationError) {
+      compensationErrors.push(targetCompensationError);
     }
     try {
-      await params.service.save(source);
-    } catch (compensationError) {
+      if (sourceAttempted) await params.service.save(source);
+    } catch (sourceCompensationError) {
+      compensationErrors.push(sourceCompensationError);
+    }
+    if (compensationErrors.length > 0) {
       throw new SubstrateIntentExecutionError(
-        `Intent ${params.intent.toolName} partially failed and compensation failed for ${sourceId}`,
+        `Intent ${params.intent.toolName} partially failed and compensation failed`,
         'partial_failure',
         [sourceId, targetId],
-        { mutationError: error, compensationError },
+        { mutationError: error, compensationErrors },
         false,
       );
     }
