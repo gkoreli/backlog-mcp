@@ -23,7 +23,7 @@ const program = new Command()
   .description('Task management MCP server')
   .version(paths.getVersion())
   .option('--json', 'Output as JSON')
-  .option('--home <home>', 'Backlog home: global or project')
+  .option('--home <home>', 'Backlog home: global, project, or all (read-only)')
   .option('--project-root <path>', 'Explicit project root for project home');
 
 // --- Server management commands (existing behavior preserved) ---

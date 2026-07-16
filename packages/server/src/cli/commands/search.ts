@@ -1,16 +1,41 @@
 import type { Command } from 'commander';
 import { searchItems } from '../../core/search.js';
-import type { SearchResult } from '../../core/types.js';
-import { cliRuntimeDependencies, run } from '../runner.js';
+import type { SearchParams, SearchResult } from '../../core/types.js';
+import type { CrossHomeSearchResult } from '../../core/home-read-coordinator.types.js';
+import {
+  cliRuntimeDependencies,
+  run,
+  runAcrossHomes,
+} from '../runner.js';
 
-function format(result: SearchResult): string {
-  if (result.results.length === 0) return `No results for "${result.query}"`;
+type SearchCommandResult = SearchResult | CrossHomeSearchResult;
+
+function format(result: SearchCommandResult): string {
+  if (result.results.length === 0) {
+    const lines = [`No results for "${result.query}"`];
+    if ('homes' in result) {
+      for (const home of result.homes) {
+        if (!home.available) {
+          lines.push(`unavailable: ${home.home_id} — ${home.reason}`);
+        }
+      }
+    }
+    return lines.join('\n');
+  }
   const lines = result.results.map(r => {
-    let line = `${(r.id ?? r.path ?? '').padEnd(12)} ${r.type.padEnd(8)} ${r.title}`;
+    const home = 'home_id' in r ? `[${r.home_id}] ` : '';
+    let line = `${home}${(r.id ?? r.path ?? '').padEnd(12)} ${r.type.padEnd(8)} ${r.title}`;
     if (r.snippet) line += `\n  ${r.snippet}`;
     return line;
   });
   lines.push('', `${result.total} results (${result.search_mode})`);
+  if ('homes' in result) {
+    for (const home of result.homes) {
+      if (!home.available) {
+        lines.push(`unavailable: ${home.home_id} — ${home.reason}`);
+      }
+    }
+  }
   return lines.join('\n');
 }
 
@@ -24,8 +49,9 @@ export function registerSearch(program: Command): void {
     .option('--limit <n>', 'Max results', parseInt)
     .option('--content', 'Include full content')
     .option('--scores', 'Include relevance scores')
-    .action((query, opts) => run(
-      (runtime) => searchItems(runtime.service, {
+    .action((query, opts) => {
+      const deps = cliRuntimeDependencies(program);
+      const params: SearchParams = {
         query,
         types: opts.types,
         status: opts.status,
@@ -33,9 +59,22 @@ export function registerSearch(program: Command): void {
         limit: opts.limit,
         include_content: opts.content,
         include_scores: opts.scores,
-      }),
-      format,
-      program.opts().json,
-      cliRuntimeDependencies(program),
-    ));
+      };
+      return deps.home === 'all'
+        ? runAcrossHomes(
+            (coordinator, selection) => coordinator.search(
+              params,
+              selection,
+            ),
+            format,
+            program.opts().json,
+            deps,
+          )
+        : run(
+            (runtime) => searchItems(runtime.service, params),
+            format,
+            program.opts().json,
+            deps,
+          );
+    });
 }

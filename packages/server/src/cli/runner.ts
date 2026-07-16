@@ -7,6 +7,13 @@ import {
   resolveBacklogHome,
 } from '../core/backlog-home.js';
 import { NotFoundError, ValidationError } from '../core/types.js';
+import { createHomeReadCoordinator } from '../core/home-read-coordinator.js';
+import type {
+  HomeReadCoordinator,
+  HomeReadRuntime,
+  HomeReadRuntimeSelection,
+  HomeReadSelection,
+} from '../core/home-read-coordinator.types.js';
 import { operationLogger, envActor } from '../operations/logger.js';
 import {
   defaultMemoryComposer,
@@ -83,6 +90,11 @@ export function createLegacyCliRuntime(
 async function createDocsNativeCliRuntime(
   deps: CliRunnerDependencies,
 ): Promise<CliRuntime> {
+  if (deps.home === 'all') {
+    throw new BacklogHomeResolutionError(
+      'CLI home "all" is read-only; use search, recall, or wakeup',
+    );
+  }
   const env = deps.env ?? process.env;
   const explicitSelection = deps.home === undefined
     && deps.projectRoot === undefined
@@ -119,6 +131,7 @@ async function createDocsNativeCliRuntime(
   const actor = deps.actor?.() ?? envActor();
 
   return {
+    home,
     service: appRuntime.service,
     writeContext: {
       actor,
@@ -146,6 +159,7 @@ async function createDocsNativeCliRuntime(
         ? undefined
         : readIdentityFile(identityPath);
     },
+    getSourcePath: appRuntime.getSourcePath,
     resolveSourcePath: sourceResolver,
     close: async function closeDocsNativeRuntime(): Promise<void> {
       await localRuntime.stop();
@@ -157,6 +171,11 @@ async function createDocsNativeCliRuntime(
 export async function createCliRuntime(
   deps: CliRunnerDependencies = {},
 ): Promise<CliRuntime> {
+  if (deps.home === 'all') {
+    throw new BacklogHomeResolutionError(
+      'CLI home "all" is read-only; use search, recall, or wakeup',
+    );
+  }
   const env = deps.env ?? process.env;
   if (env[BACKLOG_DOCS_NATIVE_ENV_VAR] !== '1') {
     if (deps.home !== undefined || deps.projectRoot !== undefined) {
@@ -183,12 +202,16 @@ export function cliRuntimeDependencies(
     home?: string;
     projectRoot?: string;
   }>();
-  let home: 'global' | 'project' | undefined;
-  if (options.home === 'global' || options.home === 'project') {
+  let home: 'global' | 'project' | 'all' | undefined;
+  if (
+    options.home === 'global'
+    || options.home === 'project'
+    || options.home === 'all'
+  ) {
     home = options.home;
   } else if (options.home !== undefined) {
     throw new BacklogHomeResolutionError(
-      `Invalid backlog home "${options.home}"; expected "global" or "project"`,
+      `Invalid backlog home "${options.home}"; expected "global", "project", or "all"`,
     );
   }
 
@@ -198,6 +221,131 @@ export function cliRuntimeDependencies(
       ? {}
       : { projectRoot: options.projectRoot }),
   };
+}
+
+function toHomeReadRuntime(runtime: CliRuntime): HomeReadRuntime {
+  const home = runtime.home;
+  if (home === undefined) {
+    throw new Error('Cross-home CLI reads require a docs-native runtime');
+  }
+  return {
+    home,
+    service: runtime.service,
+    memoryComposer: runtime.memoryComposer,
+    usageTracker: runtime.usageTracker,
+    getSourcePath: runtime.getSourcePath,
+    readIdentity: runtime.readIdentity,
+    readOperations: function readOperations(options) {
+      return runtime.operationLogger.read(options);
+    },
+    mintMemoryEntry: runtime.mintMemoryEntry,
+  };
+}
+
+function printResult<R>(
+  value: R,
+  format: (result: R) => string,
+  json: boolean,
+): void {
+  console.log(
+    json
+      ? JSON.stringify(value, null, 2)
+      : format(value),
+  );
+}
+
+function throwRunError(error: unknown): never {
+  if (error instanceof NotFoundError || error instanceof ValidationError) {
+    console.error(error.message);
+    process.exit(1);
+  }
+  throw error;
+}
+
+/**
+ * Run one bounded global-plus-project read and close every acquired runtime.
+ *
+ * The temporary docs-native flag remains load-bearing until Phase E removes
+ * the legacy graph. Missing projects are reported by the coordinator rather
+ * than preventing the global home from serving.
+ */
+export async function runAcrossHomes<R>(
+  handler: (
+    coordinator: HomeReadCoordinator,
+    selection: HomeReadSelection | undefined,
+  ) => Promise<R>,
+  format: (result: R) => string,
+  json: boolean,
+  deps: CliRunnerDependencies,
+): Promise<void> {
+  const env = deps.env ?? process.env;
+  if (env[BACKLOG_DOCS_NATIVE_ENV_VAR] !== '1') {
+    throw new BacklogHomeResolutionError(
+      'CLI home "all" requires BACKLOG_DOCS_NATIVE=1 until the Phase E cutover',
+    );
+  }
+
+  const {
+    home: _home,
+    projectRoot,
+    ...runtimeDeps
+  } = deps;
+  const acquired: CliRuntime[] = [];
+  async function resolveRuntime(
+    selection: HomeReadRuntimeSelection,
+  ): Promise<HomeReadRuntime> {
+    const runtime = await createCliRuntime({
+      ...runtimeDeps,
+      env,
+      home: selection.home,
+      ...(selection.home === 'project'
+        ? { projectRoot: selection.projectRoot }
+        : {}),
+    });
+    acquired.push(runtime);
+    return toHomeReadRuntime(runtime);
+  }
+  const coordinator = createHomeReadCoordinator({ resolveRuntime });
+  const selection = projectRoot === undefined
+    ? undefined
+    : { projectRoot };
+
+  let outcome:
+    | { ok: true; value: R }
+    | { ok: false; error: unknown };
+  try {
+    outcome = {
+      ok: true,
+      value: await handler(coordinator, selection),
+    };
+  } catch (error) {
+    outcome = { ok: false, error };
+  }
+
+  const closeResults = await Promise.allSettled(
+    acquired
+      .sort(function compareRuntimes(left, right) {
+        const leftId = left.home?.id ?? '';
+        const rightId = right.home?.id ?? '';
+        if (leftId < rightId) return -1;
+        if (leftId > rightId) return 1;
+        return 0;
+      })
+      .map(function closeRuntime(runtime) {
+        return runtime.close();
+      }),
+  );
+  if (outcome.ok) {
+    const closeFailure = closeResults.find(function isCloseFailure(result) {
+      return result.status === 'rejected';
+    });
+    if (closeFailure?.status === 'rejected') {
+      outcome = { ok: false, error: closeFailure.reason };
+    }
+  }
+
+  if (!outcome.ok) throwRunError(outcome.error);
+  printResult(outcome.value, format, json);
 }
 
 export async function run<R>(
@@ -236,17 +384,8 @@ export async function run<R>(
     throw new Error('CLI runtime completed without an outcome');
   }
   if (!outcome.ok) {
-    const error = outcome.error;
-    if (error instanceof NotFoundError || error instanceof ValidationError) {
-      console.error(error.message);
-      process.exit(1);
-    }
-    throw error;
+    throwRunError(outcome.error);
   }
 
-  console.log(
-    json
-      ? JSON.stringify(outcome.value, null, 2)
-      : format(outcome.value),
-  );
+  printResult(outcome.value, format, json);
 }

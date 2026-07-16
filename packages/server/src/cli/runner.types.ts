@@ -15,8 +15,12 @@ import type { AppRequestRuntime } from '../server/app-request-runtime.types.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
 
+/** CLI-only selector; `all` is accepted by the three bounded read commands. */
+export type CliHomeSelector = BacklogHomeSelector | 'all';
+
 /** Services owned by one direct CLI command invocation. */
 export interface CliRuntime {
+  home?: BacklogHome;
   service: IBacklogService;
   writeContext: WriteContext;
   memoryComposer: MemoryComposer;
@@ -25,6 +29,7 @@ export interface CliRuntime {
   operationLogger: OperationLogger;
   readUsageLines?: () => string[];
   readIdentity: () => string | undefined;
+  getSourcePath?: (id: string) => string | undefined;
   resolveSourcePath: (sourcePath: string) => string;
   close: () => Promise<void>;
 }
@@ -33,7 +38,7 @@ export interface CliRuntime {
 export interface CliRunnerDependencies {
   env?: Readonly<Record<string, string | undefined>>;
   cwd?: string;
-  home?: BacklogHomeSelector;
+  home?: CliHomeSelector;
   projectRoot?: string;
   actor?: () => Actor;
   createLegacyRuntime?: () => CliRuntime;

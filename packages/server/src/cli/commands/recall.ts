@@ -1,19 +1,35 @@
 import type { Command } from 'commander';
 import { recall } from '../../core/recall.js';
 import { resolveScope } from '../../core/config.js';
-import type { RecallResult } from '../../core/types.js';
-import { cliRuntimeDependencies, run } from '../runner.js';
+import type { RecallParams, RecallResult } from '../../core/types.js';
+import type { CrossHomeRecallResult } from '../../core/home-read-coordinator.types.js';
+import {
+  cliRuntimeDependencies,
+  run,
+  runAcrossHomes,
+} from '../runner.js';
 
-function format(result: RecallResult): string {
+type RecallCommandResult = RecallResult | CrossHomeRecallResult;
+
+function format(result: RecallCommandResult): string {
   if (result.items.length === 0) {
-    return `No memories found for "${result.query}".`;
+    const lines = [`No memories found for "${result.query}".`];
+    if ('homes' in result) {
+      for (const home of result.homes) {
+        if (!home.available) {
+          lines.push(`unavailable: ${home.home_id} — ${home.reason}`);
+        }
+      }
+    }
+    return lines.join('\n');
   }
   const lines: string[] = [`── recall: ${result.query} (${result.total}${result.truncated ? ', truncated to budget' : ''}) ──`, ''];
   for (const item of result.items) {
     const scoreStr = item.score.toFixed(3);
     const pointer = item.entity_id ? ` → ${item.entity_id}` : '';
     const kindStr = item.kind ? ` [${item.kind}]` : '';
-    lines.push(`  ${scoreStr}  ${item.id}  ${item.title}${pointer}${kindStr}`);
+    const home = 'home_id' in item ? `[${item.home_id}] ` : '';
+    lines.push(`  ${scoreStr}  ${home}${item.id}  ${item.title}${pointer}${kindStr}`);
     if (item.digest && item.digest !== item.title) lines.push(`         ${item.digest}`);
     if (item.content && item.content !== item.digest) {
       lines.push(...item.content.split('\n').map(l => `         ${l}`));
@@ -26,6 +42,13 @@ function format(result: RecallResult): string {
     if (item.derived) provenance.push('derived');
     lines.push(`         ${provenance.join(' · ')}  by ${item.source}`);
     lines.push('');
+  }
+  if ('homes' in result) {
+    for (const home of result.homes) {
+      if (!home.available) {
+        lines.push(`  unavailable: ${home.home_id} — ${home.reason}`);
+      }
+    }
   }
   return lines.join('\n');
 }
@@ -40,31 +63,47 @@ export function registerRecall(program: Command): void {
     .option('--limit <n>', 'Max results', parseInt)
     .option('--full', 'Return full memory bodies instead of stubs')
     .option('--budget <tokens>', 'Approximate token budget — results packed to fit', parseInt)
-    .action((queryParts: string[], opts) => run(
-      async (runtime) => {
-        // ADR 0105: explicit --context wins; else per-repo config / env default.
-        const context = resolveScope({ explicit: opts.context });
-        const result = await recall(
-        {
-          query: queryParts.join(' '),
-          ...(context !== undefined ? { context } : {}),
-          ...(opts.tags !== undefined ? { tags: opts.tags } : {}),
-          ...(opts.layers !== undefined ? { layers: opts.layers } : {}),
-          ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
-          ...(opts.full !== undefined ? { full: opts.full } : {}),
-          ...(opts.budget !== undefined ? { token_budget: opts.budget } : {}),
-        },
-        { memoryComposer: runtime.memoryComposer },
-        );
-        // Recall demand log (ADR 0092.9 R-16) — weak signal, JSONL only.
-        runtime.usageTracker?.recordRecall(
-          queryParts.join(' '),
-          result.items.map(i => i.id),
-        );
-        return result;
-      },
-      format,
-      program.opts().json,
-      cliRuntimeDependencies(program),
-    ));
+    .action((queryParts: string[], opts) => {
+      const deps = cliRuntimeDependencies(program);
+      // ADR 0105: explicit --context wins; else per-repo config / env default.
+      const context = resolveScope({ explicit: opts.context });
+      const params: RecallParams = {
+        query: queryParts.join(' '),
+        ...(context !== undefined ? { context } : {}),
+        ...(opts.tags !== undefined ? { tags: opts.tags } : {}),
+        ...(opts.layers !== undefined ? { layers: opts.layers } : {}),
+        ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
+        ...(opts.full !== undefined ? { full: opts.full } : {}),
+        ...(opts.budget !== undefined ? { token_budget: opts.budget } : {}),
+      };
+      return deps.home === 'all'
+        ? runAcrossHomes(
+            (coordinator, selection) => coordinator.recall(
+              params,
+              selection,
+            ),
+            format,
+            program.opts().json,
+            deps,
+          )
+        : run(
+            async (runtime) => {
+              const result = await recall(
+                params,
+                { memoryComposer: runtime.memoryComposer },
+              );
+              // Recall demand log (ADR 0092.9 R-16) — weak signal, JSONL only.
+              runtime.usageTracker?.recordRecall(
+                params.query,
+                result.items.map(function itemId(item) {
+                  return item.id;
+                }),
+              );
+              return result;
+            },
+            format,
+            program.opts().json,
+            deps,
+          );
+    });
 }

@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { MemoryComposer } from '@backlog-mcp/memory';
+import { Command } from 'commander';
 import { describe, expect, it, vi } from 'vitest';
 import { LocalEventBus } from '../events/local-event-bus.js';
 import { MemoryUsageTracker } from '../memory/usage-tracker.js';
@@ -8,14 +9,22 @@ import type { AppRequestRuntime } from '../server/app-request-runtime.types.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
 import {
+  cliRuntimeDependencies,
   createCliRuntime,
   run,
+  runAcrossHomes,
 } from '../cli/runner.js';
 import type { CliRuntime } from '../cli/runner.types.js';
 
 function createService(): IBacklogService {
   return {
     flush: vi.fn(),
+    searchUnified: vi.fn(async function searchUnified() {
+      return [];
+    }),
+    isHybridSearchActive: function isHybridSearchActive() {
+      return false;
+    },
   } as unknown as IBacklogService;
 }
 
@@ -118,6 +127,9 @@ function adaptFakeLocalRuntime(runtime: LocalRuntime): AppRequestRuntime {
     readUsageLines: function readProjectUsage() {
       return ['project usage'];
     },
+    getSourcePath: function getSourcePath(id) {
+      return `tasks/${id}.md`;
+    },
     resolveSourcePath: function resolveProjectSource(sourcePath) {
       return `project source: ${sourcePath}`;
     },
@@ -153,6 +165,32 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
       projectRoot: '/workspace/repo',
     })).rejects.toThrow(
       'CLI home selection requires BACKLOG_DOCS_NATIVE=1',
+    );
+  });
+
+  it('parses all but rejects it on ordinary single-home runtime construction', async function reservesAllForReads() {
+    const program = new Command()
+      .option('--home <home>')
+      .option('--project-root <path>');
+    program.parse([
+      'node',
+      'backlog-mcp',
+      '--home',
+      'all',
+      '--project-root',
+      '/workspace/repo',
+    ]);
+
+    expect(cliRuntimeDependencies(program)).toEqual({
+      home: 'all',
+      projectRoot: '/workspace/repo',
+    });
+    await expect(createCliRuntime({
+      env: { BACKLOG_DOCS_NATIVE: '1' },
+      home: 'all',
+      projectRoot: '/workspace/repo',
+    })).rejects.toThrow(
+      'CLI home "all" is read-only; use search, recall, or wakeup',
     );
   });
 
@@ -202,6 +240,13 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
     });
     expect(selected.memoryComposer).toBe(graph.memoryComposer);
     expect(selected.operationLogger).toBe(graph.operationLogger);
+    expect(selected.home).toMatchObject({
+      kind: 'project',
+      root: '/workspace/repo',
+    });
+    expect(selected.getSourcePath?.('TASK-0001')).toBe(
+      'tasks/TASK-0001.md',
+    );
     expect(selected.resolveSourcePath('input.md')).toBe(
       'project source: input.md',
     );
@@ -225,6 +270,81 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
 
     await selected.close();
     expect(graph.stop).toHaveBeenCalledOnce();
+  });
+
+  it('runs home:all against global only when no project root is supplied', async function runsGlobalAll() {
+    const created: Array<{
+      kind: string;
+      graph: FakeLocalGraph;
+    }> = [];
+    const log = vi.spyOn(console, 'log').mockImplementation(
+      function ignoreLog(): void {},
+    );
+
+    await runAcrossHomes(
+      (coordinator, selection) => coordinator.search(
+        { query: 'global only' },
+        selection,
+      ),
+      function format(result) {
+        return `${result.homes.length} homes`;
+      },
+      false,
+      {
+        env: { BACKLOG_DOCS_NATIVE: '1' },
+        home: 'all',
+        createLocalRuntime: function createLocal(home) {
+          const graph = createFakeLocalGraph(home.kind);
+          created.push({ kind: home.kind, graph });
+          return graph.runtime;
+        },
+        adaptLocalRuntime: adaptFakeLocalRuntime,
+      },
+    );
+
+    expect(created.map(function kind(item) {
+      return item.kind;
+    })).toEqual(['global']);
+    expect(created[0]?.graph.stop).toHaveBeenCalledOnce();
+    expect(log).toHaveBeenCalledWith('1 homes');
+    log.mockRestore();
+  });
+
+  it('runs home:all against global plus one project and closes both after failure', async function closesAllRuntimes() {
+    const created: Array<{
+      kind: string;
+      graph: FakeLocalGraph;
+    }> = [];
+    const failure = new Error('cross-home handler failed');
+
+    await expect(runAcrossHomes(
+      async function failAfterRead(coordinator, selection) {
+        await coordinator.search({ query: 'both homes' }, selection);
+        throw failure;
+      },
+      function format() {
+        return 'unused';
+      },
+      false,
+      {
+        env: { BACKLOG_DOCS_NATIVE: '1' },
+        home: 'all',
+        projectRoot: '/workspace/project',
+        createLocalRuntime: function createLocal(home) {
+          const graph = createFakeLocalGraph(home.kind);
+          created.push({ kind: home.kind, graph });
+          return graph.runtime;
+        },
+        adaptLocalRuntime: adaptFakeLocalRuntime,
+      },
+    )).rejects.toBe(failure);
+
+    expect(created.map(function kind(item) {
+      return item.kind;
+    })).toEqual(['global', 'project']);
+    for (const item of created) {
+      expect(item.graph.stop).toHaveBeenCalledOnce();
+    }
   });
 
   it('closes the selected runtime after a successful handler', async function closesOnSuccess() {

@@ -1,8 +1,13 @@
 import type { Command } from 'commander';
 import { wakeup } from '../../core/wakeup.js';
 import { resolveScope } from '../../core/config.js';
-import type { WakeupResult } from '../../core/types.js';
-import { cliRuntimeDependencies, run } from '../runner.js';
+import type { WakeupParams, WakeupResult } from '../../core/types.js';
+import type { CrossHomeWakeupResult } from '../../core/home-read-coordinator.types.js';
+import {
+  cliRuntimeDependencies,
+  run,
+  runAcrossHomes,
+} from '../runner.js';
 
 function section(title: string, body: string[]): string[] {
   if (body.length === 0) return [];
@@ -53,6 +58,21 @@ function format(result: WakeupResult): string {
   return lines.join('\n');
 }
 
+function formatAcrossHomes(result: CrossHomeWakeupResult): string {
+  const sections = result.groups.map(function formatHome(group) {
+    return [
+      `══ home: ${group.home_id} ══`,
+      format(group.briefing),
+    ].join('\n');
+  });
+  for (const home of result.homes) {
+    if (!home.available) {
+      sections.push(`══ unavailable: ${home.home_id} ══\n${home.reason}`);
+    }
+  }
+  return sections.join('\n\n');
+}
+
 export function registerWakeup(program: Command): void {
   program
     .command('wakeup')
@@ -62,25 +82,39 @@ export function registerWakeup(program: Command): void {
     .option('--max-activity <n>', 'Max recent activity entries', parseInt)
     .option('--max-knowledge <n>', 'Max knowledge items (semantic/procedural memories)', parseInt)
     .option('--evidence-chars <n>', 'Max chars of evidence per completion', parseInt)
-    .action((opts) => run(
-      (runtime) => {
-        // ADR 0105: flag wins; else fall back to per-repo config / env default.
-        const scope = resolveScope({ explicit: opts.scope });
-        return wakeup(runtime.service, {
+    .action((opts) => {
+      const deps = cliRuntimeDependencies(program);
+      // ADR 0105: flag wins; else fall back to per-repo config / env default.
+      const scope = resolveScope({ explicit: opts.scope });
+      const params: WakeupParams = {
         ...(scope !== undefined ? { scope } : {}),
         ...(opts.maxCompletions !== undefined ? { maxCompletions: opts.maxCompletions } : {}),
         ...(opts.maxActivity !== undefined ? { maxActivity: opts.maxActivity } : {}),
         ...(opts.maxKnowledge !== undefined ? { maxKnowledge: opts.maxKnowledge } : {}),
         ...(opts.evidenceChars !== undefined ? { evidenceSnippetChars: opts.evidenceChars } : {}),
-        readIdentity: runtime.readIdentity,
-        readOperations: (options) => runtime.operationLogger.read(options),
-        ...(runtime.mintMemoryEntry === undefined
-          ? {}
-          : { mintMemoryEntry: runtime.mintMemoryEntry }),
-        });
-      },
-      format,
-      program.opts().json,
-      cliRuntimeDependencies(program),
-    ));
+      };
+      return deps.home === 'all'
+        ? runAcrossHomes(
+            (coordinator, selection) => coordinator.wakeup(
+              params,
+              selection,
+            ),
+            formatAcrossHomes,
+            program.opts().json,
+            deps,
+          )
+        : run(
+            (runtime) => wakeup(runtime.service, {
+              ...params,
+              readIdentity: runtime.readIdentity,
+              readOperations: (options) => runtime.operationLogger.read(options),
+              ...(runtime.mintMemoryEntry === undefined
+                ? {}
+                : { mintMemoryEntry: runtime.mintMemoryEntry }),
+            }),
+            format,
+            program.opts().json,
+            deps,
+          );
+    });
 }
