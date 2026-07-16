@@ -472,6 +472,9 @@ export function createHomeReadCoordinator(
         ...(runtime.acceptsParent === undefined
           ? {}
           : { acceptsParent: runtime.acceptsParent }),
+        ...(runtime.readVision === undefined
+          ? {}
+          : { readVision: runtime.readVision }),
         ...(runtime.readOperations === undefined
           ? {}
           : { readOperations: runtime.readOperations }),

@@ -200,6 +200,7 @@ function toHomeReadRuntime(runtime: CliRuntime): HomeReadRuntime {
     acceptsParent: function acceptsParent(type) {
       return runtime.writeContext.substrateRegistry?.acceptsParent(type) === true;
     },
+    ...(runtime.readVision === undefined ? {} : { readVision: runtime.readVision }),
     readOperations: function readOperations(options) {
       return runtime.operationLogger.read(options);
     },

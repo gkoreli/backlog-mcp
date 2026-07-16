@@ -161,9 +161,18 @@ async function descendantSet(
   return set;
 }
 
-/** First markdown heading of the vision doc, stripped of `#` marks. */
+/**
+ * First markdown heading of the vision doc, stripped of `#` marks.
+ * Column-0 ATX headings only; a leading frontmatter block is skipped so a
+ * YAML comment never becomes the title.
+ */
 function visionTitle(text: string): string {
-  const heading = text.split('\n').find(line => line.trim().startsWith('#'));
+  let lines = text.split('\n');
+  if (lines[0]?.trim() === '---') {
+    const close = lines.findIndex((line, i) => i > 0 && line.trim() === '---');
+    if (close > 0) lines = lines.slice(close + 1);
+  }
+  const heading = lines.find(line => /^#{1,6}\s+\S/.test(line));
   return heading?.replace(/^#+\s*/, '').trim() || 'NORTH-STAR';
 }
 
@@ -324,13 +333,18 @@ export async function wakeup(
   const sectionsOmitted: Record<string, number> = {};
   const declaredSections = service.listWakeupDisclosures?.() ?? [];
   for (const declared of declaredSections) {
-    if (declared.wakeup.section === 'constraints') continue;
+    if (declared.type === REQUIREMENT_TYPE && declared.wakeup.section === 'constraints') continue;
     const entities = await service.list({ type: declared.type, limit: 100_000 });
     const included = entities
-      .filter(e =>
-        declared.wakeup.includeStatuses.length === 0 ||
-        (typeof e.status === 'string' && declared.wakeup.includeStatuses.includes(e.status)),
-      )
+      .filter(e => {
+        if (declared.wakeup.includeStatuses.length === 0) return true;
+        // Workflow states are JsonScalars (string | number | boolean) — read
+        // the raw value; the RuntimeEntity type narrows status to string but
+        // frontmatter parsing does not.
+        const status: unknown = (e as Record<string, unknown>)['status'];
+        return status !== undefined
+          && (declared.wakeup.includeStatuses as readonly unknown[]).includes(status);
+      })
       .filter(e => {
         const parentId = typeof e.parent_id === 'string' ? e.parent_id : undefined;
         return !scopeFilter || parentId === undefined ||

@@ -176,6 +176,14 @@ function toHomeReadRuntime(runtime: AppRequestRuntime): HomeReadRuntime {
       const raw = readLocalFile(identityPath);
       return raw?.trim() || undefined;
     };
+  const visionPath = runtime.visionPath;
+  const readVision = readLocalFile === undefined
+    || visionPath === undefined
+    ? undefined
+    : function readRuntimeVision(): string | undefined {
+      const raw = readLocalFile(visionPath);
+      return raw?.trim() || undefined;
+    };
   const operationLogger = runtime.operationLogger;
   const readOperations = operationLogger === undefined
     ? undefined
@@ -197,6 +205,7 @@ function toHomeReadRuntime(runtime: AppRequestRuntime): HomeReadRuntime {
             return runtime.substrateRegistry?.acceptsParent(type) === true;
           },
         }),
+    readVision,
     readOperations,
     mintMemoryEntry: runtime.mintMemoryEntry,
   };
