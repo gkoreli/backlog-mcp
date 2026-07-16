@@ -16,23 +16,6 @@ export { generateTaskSnippet, generateResourceSnippet } from './snippets.js';
 // Scoring
 export { minmaxNormalize, rankNormalize, linearFusion, applyCoordinationBonus, applyTemporalDecay, applyExactTitlePin, DEFAULT_WEIGHTS, DEFAULT_HALF_LIFE_DAYS, TITLE_PIN_BONUS, type ScoredHit } from './scoring.js';
 
-// Judged-relevance evaluation (ADR 0116)
-export {
-  evaluateQuery,
-  isWithinRegressionBudget,
-  ndcgAt,
-  recallAt,
-  reciprocalRank,
-  successAt1,
-  summarizeEvaluations,
-  unjudgedRateAt,
-  DEFAULT_MAXIMUM_REGRESSION,
-  type EvaluationSummary,
-  type QueryEvaluation,
-  type RelevanceGrade,
-  type RelevanceJudgment,
-} from './evaluation.js';
-
 // Tokenizer
 export { compoundWordTokenizer, splitCamelCase } from './tokenizer.js';
 // Query intent parser (ADR 0083 #4)

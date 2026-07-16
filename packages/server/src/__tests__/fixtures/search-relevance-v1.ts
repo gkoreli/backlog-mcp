@@ -1,5 +1,5 @@
 import type { Entity, Memory } from '@backlog-mcp/shared';
-import type { RelevanceJudgment } from '@backlog-mcp/memory/search';
+import type { RelevanceJudgment } from '../../../../memory/src/search/evaluation.js';
 
 export const SEARCH_RELEVANCE_FIXTURE_VERSION = 1;
 export const SEARCH_RELEVANCE_FIXTURE_NOW = '2026-07-16T12:00:00.000Z';
@@ -35,6 +35,7 @@ interface JudgedQueryBase {
   judgments: RelevanceJudgment[];
   assessor: string;
   rationale: string;
+  provenance: string[];
 }
 
 export interface JudgedSearchQuery extends JudgedQueryBase {
@@ -49,8 +50,8 @@ export interface JudgedRecallQuery extends JudgedQueryBase {
 
 export type JudgedRelevanceQuery = JudgedSearchQuery | JudgedRecallQuery;
 type DraftJudgedRelevanceQuery =
-  | Omit<JudgedSearchQuery, 'assessor' | 'rationale'>
-  | Omit<JudgedRecallQuery, 'assessor' | 'rationale'>;
+  | Omit<JudgedSearchQuery, 'assessor' | 'rationale' | 'provenance'>
+  | Omit<JudgedRecallQuery, 'assessor' | 'rationale' | 'provenance'>;
 
 export const SEARCH_RELEVANCE_FIXTURE_PROVENANCE = [
   'docs/adr/0038-comprehensive-search-capability.md',
@@ -494,6 +495,43 @@ const CLASS_RATIONALE: Record<RelevanceQueryClass, string> = {
   'memory-recall': 'Grades reflect the live, in-scope memory answer after expiry, lineage, layer, tag, context, and usage rules.',
 };
 
+const CLASS_PROVENANCE: Record<RelevanceQueryClass, string[]> = {
+  navigation: [
+    'docs/adr/0083-search-service-review-and-next-generation.md',
+    'packages/server/src/__tests__/query-intent.test.ts',
+    'packages/server/src/__tests__/search-golden.test.ts',
+  ],
+  'exact-title': [
+    'docs/adr/0083-search-service-review-and-next-generation.md',
+    'packages/server/src/__tests__/search-golden.test.ts',
+  ],
+  lexical: [
+    'docs/adr/0038-comprehensive-search-capability.md',
+    'packages/server/src/__tests__/search-golden.test.ts',
+  ],
+  compound: [
+    'docs/adr/0041-hyphen-aware-tokenizer.md',
+    'docs/adr/0083-search-service-review-and-next-generation.md',
+    'packages/server/src/__tests__/search-golden.test.ts',
+  ],
+  filtered: [
+    'docs/adr/0079-orama-native-filtering.md',
+    'packages/server/src/__tests__/query-intent.test.ts',
+  ],
+  aboutness: [
+    'docs/adr/0038-comprehensive-search-capability.md',
+    'docs/adr/0116-search-and-rag-uplift.md',
+  ],
+  tail: [
+    'docs/adr/0116-search-and-rag-uplift.md',
+  ],
+  'memory-recall': [
+    'docs/adr/0092.3-memory-experience-and-substrate.md',
+    'docs/adr/0092.9-phase-e-usage-feedback-research-and-plan.md',
+    'packages/server/src/__tests__/memory-store-contract.test.ts',
+  ],
+};
+
 /**
  * Initial judgments are deliberately attributable. Beryl's domain review is
  * required before changing the assessor string or treating these qrels as a
@@ -503,5 +541,6 @@ export const SEARCH_RELEVANCE_QUERIES: JudgedRelevanceQuery[] =
   RAW_SEARCH_RELEVANCE_QUERIES.map(query => ({
     ...query,
     assessor: 'chert-initial-pending-beryl-review',
-    rationale: CLASS_RATIONALE[query.class],
+    rationale: `${CLASS_RATIONALE[query.class]} Expected judgments: ${query.judgments.map(judgment => `${judgment.id}=grade${judgment.grade}`).join(', ')}.`,
+    provenance: CLASS_PROVENANCE[query.class],
   }));

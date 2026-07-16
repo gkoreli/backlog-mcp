@@ -4,12 +4,15 @@ import { tmpdir } from 'node:os';
 import { EntityType, parseEntityNum, type Entity } from '@backlog-mcp/shared';
 import {
   OramaSearchService,
+} from '@backlog-mcp/memory/search';
+import {
   evaluateQuery,
   isWithinRegressionBudget,
   summarizeEvaluations,
+  unjudgedRateAt,
   type EvaluationSummary,
   type QueryEvaluation,
-} from '@backlog-mcp/memory/search';
+} from '../../../memory/src/search/evaluation.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import {
@@ -96,6 +99,7 @@ const BASELINE = {
     reciprocalRank: 0.9833333333333332,
     successAt1: 0.975,
     recallAt20: 0.9875,
+    unjudgedRateAt10: 0.34273809523809523,
   },
   byClass: {
     navigation: { ndcgAt10: 0.9917319412712956, reciprocalRank: 1, recallAt20: 1 },
@@ -113,6 +117,7 @@ interface EvaluatedQuery {
   fixture: JudgedRelevanceQuery;
   rankedIds: string[];
   metrics: QueryEvaluation;
+  unjudgedRateAt10: number;
 }
 
 interface SearchRequest {
@@ -284,6 +289,7 @@ describe('ADR 0116 judged relevance gate', () => {
         fixture,
         rankedIds,
         metrics: evaluateQuery(rankedIds, fixture.judgments),
+        unjudgedRateAt10: unjudgedRateAt(rankedIds, fixture.judgments, 10),
       });
     }
   }, 30_000);
@@ -308,6 +314,7 @@ describe('ADR 0116 judged relevance gate', () => {
     for (const fixture of SEARCH_RELEVANCE_QUERIES) {
       expect(fixture.assessor).toBeTruthy();
       expect(fixture.rationale.length, `${fixture.id} rationale`).toBeGreaterThan(40);
+      expect(fixture.provenance.length, `${fixture.id} provenance`).toBeGreaterThan(0);
       expect(fixture.judgments.some(judgment => judgment.grade >= 2), fixture.id).toBe(true);
       for (const judgment of fixture.judgments) {
         expect(entityIds.has(judgment.id), `${fixture.id} judgment ${judgment.id}`).toBe(true);
@@ -351,12 +358,15 @@ describe('ADR 0116 judged relevance gate', () => {
   it('meets the frozen Phase 0 aggregate quality floors', () => {
     const overall = summarizeEvaluations(evaluated.map(result => result.metrics));
     const byClass = summarizeByClass(evaluated);
+    const unjudgedRateAt10 = evaluated.reduce((sum, result) => sum + result.unjudgedRateAt10, 0) / evaluated.length;
 
     expect(overall.queryCount).toBe(40);
     expect(isWithinRegressionBudget(overall.ndcgAt10, BASELINE.overall.ndcgAt10), 'overall nDCG@10').toBe(true);
     expect(isWithinRegressionBudget(overall.reciprocalRank, BASELINE.overall.reciprocalRank), 'overall MRR@10').toBe(true);
     expect(isWithinRegressionBudget(overall.successAt1, BASELINE.overall.successAt1), 'overall success@1').toBe(true);
     expect(isWithinRegressionBudget(overall.recallAt20, BASELINE.overall.recallAt20), 'overall Recall@20').toBe(true);
+    expect(unjudgedRateAt10, 'overall unjudged@10')
+      .toBeLessThanOrEqual(BASELINE.overall.unjudgedRateAt10 + 0.02);
 
     for (const queryClass of EXPECTED_CLASSES) {
       const current = byClass[queryClass];
