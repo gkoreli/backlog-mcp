@@ -2,6 +2,10 @@
 
 import { spawn, ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import {
+  buildMcpRemoteArgs,
+  resolveBridgeHomeContext,
+} from './bridge-context.js';
 import { ensureServer } from './server-manager.js';
 import { Supervisor, DEFAULT_CONFIG } from './supervisor.js';
 import { paths } from '@server/utils/paths.js';
@@ -10,6 +14,11 @@ import { logger } from '@server/utils/logger.js';
 
 async function runBridge(port: number): Promise<void> {
   await ensureServer(port);
+
+  const homeContext = resolveBridgeHomeContext({
+    cwd: process.cwd(),
+    env: process.env,
+  });
   
   const serverUrl = `http://localhost:${port}/mcp`;
   const mcpRemotePath = paths.getBinPath('mcp-remote');
@@ -24,9 +33,11 @@ async function runBridge(port: number): Promise<void> {
   const spawnBridge = () => {
     supervisor.onStart();
     
-    const bridge = spawn(mcpRemotePath, [serverUrl, '--allow-http', '--transport', 'http-only'], {
-      stdio: ['inherit', 'inherit', 'pipe']
-    });
+    const bridge = spawn(
+      mcpRemotePath,
+      buildMcpRemoteArgs(serverUrl, homeContext),
+      { stdio: ['inherit', 'inherit', 'pipe'] },
+    );
     
     let connectionLost = false;
     
