@@ -3,6 +3,8 @@
  * Coordinates storage, resource ID extraction, and actor info.
  */
 
+import { join } from 'node:path';
+import { paths } from '@server/utils/paths.js';
 import { OperationStorage } from './storage.js';
 import { extractResourceId } from './resource-id.js';
 import type { Actor, OperationEntry, OperationFilter, IOperationLog } from './types.js';
@@ -25,12 +27,8 @@ export function envActor(): Actor {
   };
 }
 
-class OperationLogger implements IOperationLog {
-  private storage: OperationStorage;
-
-  constructor() {
-    this.storage = new OperationStorage();
-  }
+export class OperationLogger implements IOperationLog {
+  constructor(private readonly storage: OperationStorage) {}
 
   /** IOperationLog: append a pre-built entry directly. */
   append(entry: OperationEntry): void {
@@ -70,7 +68,16 @@ class OperationLogger implements IOperationLog {
   }
 }
 
-export const operationLogger: OperationLogger = new OperationLogger();
+/**
+ * Create a local operation logger backed by the requested JSONL path.
+ */
+export function createOperationLogger(logPath: string): OperationLogger {
+  return new OperationLogger(new OperationStorage(logPath));
+}
+
+export const operationLogger: OperationLogger = createOperationLogger(
+  join(paths.backlogDataDir, '.internal', 'operations.jsonl'),
+);
 
 // Re-export types for convenience
 export type { Actor, OperationEntry, OperationFilter } from './types.js';
