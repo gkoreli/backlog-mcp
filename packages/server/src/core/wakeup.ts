@@ -16,9 +16,10 @@
  * ``WakeupParams``. Transports wrap the real IO; tests pass stubs.
  */
 
-import type { Entity } from '@backlog-mcp/shared';
+import type { Entity, Memory } from '@backlog-mcp/shared';
 import { EntityType, getSubstrate, isValidEntityId, parseEntityId } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import { toMemoryEntry } from '../memory/backlog-memory-store.js';
 import {
   ValidationError,
   type WakeupParams,
@@ -176,32 +177,37 @@ export async function wakeup(
   if (maxKnowledge > 0) {
     const memories = await service.list({ type: EntityType.Memory });
     const now = Date.now();
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
     knowledge = memories
-      .map(m => m as Entity & {
-        layer?: string; kind?: string; valid_until?: string | null;
-        entity_refs?: string[]; usage_count?: number; occurred_at?: string;
-      })
-      .filter(m =>
-        (m.layer === 'semantic' || m.layer === 'procedural') &&
-        (!m.valid_until || Date.parse(m.valid_until) > now) &&
-        (!scopeFilter || (m.parent_id !== undefined && scopeFilter(m.parent_id)) || (params.scope !== undefined && m.parent_id === params.scope)),
-      )
       .sort(byUpdatedAtDesc)
+      // R-5 store boundary (ADR 0115): provenance/usage signals reach read
+      // surfaces only via the store's MemoryEntry minting. Wakeup stays a
+      // pure list fold — sort is on the raw entity, everything the item
+      // surfaces comes off the minted entry.
+      .map(m => toMemoryEntry(m as Memory))
+      .filter(e =>
+        (e.layer === 'semantic' || e.layer === 'procedural') &&
+        (e.expiresAt === undefined || e.expiresAt > now) &&
+        (!scopeFilter || (e.context !== undefined && scopeFilter(e.context)) || (params.scope !== undefined && e.context === params.scope)),
+      )
       .slice(0, maxKnowledge)
-      .map(m => {
+      .map(e => {
         // Provenance (ADR 0115 R-4): same age/usage grammar as recall stubs,
-        // anchored on the knowledge's own timeline (occurred_at ?? created_at).
-        const occurred = m.occurred_at ? Date.parse(m.occurred_at) : NaN;
-        const anchor = Number.isNaN(occurred) ? Date.parse(m.created_at) : occurred;
+        // anchored on the knowledge's own timeline (occurred_at ?? created_at;
+        // malformed dates already normalized at the mint).
+        const meta = e.metadata ?? {};
+        const occurred = typeof meta.occurred_at === 'string' ? Date.parse(meta.occurred_at) : NaN;
+        const anchor = Number.isNaN(occurred) ? e.createdAt : occurred;
         const item: WakeupKnowledgeItem = {
-          id: m.id,
-          layer: m.layer ?? 'semantic',
-          title: m.title.length > 100 ? m.title.slice(0, 99) + '…' : m.title,
-          age_days: Number.isNaN(anchor) ? 0 : Math.max(0, Math.floor((now - anchor) / (24 * 60 * 60 * 1000))),
-          uses: m.usage_count ?? 0,
+          id: e.id,
+          layer: e.layer,
+          title: e.title.length > 100 ? e.title.slice(0, 99) + '…' : e.title,
+          age_days: Math.max(0, Math.floor((now - anchor) / MS_PER_DAY)),
+          uses: typeof meta.usageCount === 'number' ? meta.usageCount : 0,
         };
-        if (m.kind) item.kind = m.kind;
-        if (m.entity_refs?.[0]) item.source_ref = m.entity_refs[0];
+        if (typeof meta.memory_kind === 'string') item.kind = meta.memory_kind;
+        const refs = Array.isArray(meta.entity_refs) ? meta.entity_refs : [];
+        if (typeof refs[0] === 'string') item.source_ref = refs[0];
         return item;
       });
   }

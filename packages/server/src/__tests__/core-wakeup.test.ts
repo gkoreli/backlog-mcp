@@ -326,6 +326,17 @@ describe('core/wakeup', () => {
       expect(k1?.uses).toBe(0);
     });
 
+    it('reads provenance through the store mint — corrupt created_at reads age 0, not epoch (ADR 0115 R-5)', async () => {
+      const svc = mockService([
+        mem('MEMO-0001', { created_at: 'not-a-date', updated_at: 'not-a-date' }),
+      ]);
+      const result = await wakeup(svc);
+      const k = result.knowledge.find(x => x.id === 'MEMO-0001');
+      // The single malformed-date policy lives in toMemoryEntry: corrupt
+      // created_at normalizes to "now", so age_days is 0 — never ~56 years.
+      expect(k?.age_days).toBe(0);
+    });
+
     it('anchors age_days on occurred_at and surfaces usage_count as uses (ADR 0115 R-4)', async () => {
       const DAY = 24 * 60 * 60 * 1000;
       const svc = mockService([
