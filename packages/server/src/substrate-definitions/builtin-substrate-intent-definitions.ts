@@ -43,7 +43,7 @@ export const BUILTIN_SUBSTRATE_INTENT_DEFINITIONS: Readonly<
         verb: 'create_work',
         toolName: 'backlog_create_work',
         operation: 'create',
-        description: 'Use when creating a project work item.',
+        description: 'Use when creating a project work item. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
         requiredInputs: ['title'],
         optionalInputs: ['content', 'parent_id', 'references'],
         defaults: { status: 'open' },
@@ -76,7 +76,7 @@ export const BUILTIN_SUBSTRATE_INTENT_DEFINITIONS: Readonly<
     intents: [{
       verb: 'plan',
       operation: 'create',
-      description: 'Use when planning an epic that groups related work.',
+      description: 'Use when planning an epic that groups related work. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
       requiredInputs: ['title'],
       optionalInputs: ['content', 'parent_id', 'references'],
       defaults: { status: 'open' },
@@ -86,7 +86,7 @@ export const BUILTIN_SUBSTRATE_INTENT_DEFINITIONS: Readonly<
     intents: [{
       verb: 'organize',
       operation: 'create',
-      description: 'Use when creating a folder to organize project items.',
+      description: 'Use when creating a folder to organize project items. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
       requiredInputs: ['title'],
       optionalInputs: ['content', 'parent_id'],
     }],
@@ -95,7 +95,7 @@ export const BUILTIN_SUBSTRATE_INTENT_DEFINITIONS: Readonly<
     intents: [{
       verb: 'attach',
       operation: 'create',
-      description: 'Use when attaching an artifact to a project item.',
+      description: 'Use when attaching an artifact to a project item. parent_id is required.',
       requiredInputs: ['title', 'parent_id'],
       optionalInputs: [
         'content',
@@ -109,7 +109,7 @@ export const BUILTIN_SUBSTRATE_INTENT_DEFINITIONS: Readonly<
     intents: [{
       verb: 'target',
       operation: 'create',
-      description: 'Use when creating a milestone for a project target.',
+      description: 'Use when creating a milestone for a project target. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
       requiredInputs: ['title'],
       optionalInputs: [
         'content',
@@ -125,7 +125,7 @@ export const BUILTIN_SUBSTRATE_INTENT_DEFINITIONS: Readonly<
       {
         verb: 'schedule',
         operation: 'create',
-        description: 'Use when scheduling recurring project intake.',
+        description: 'Use when scheduling recurring project intake. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
         requiredInputs: ['title', 'schedule', 'command'],
         optionalInputs: ['content', 'parent_id', 'enabled'],
         defaults: {

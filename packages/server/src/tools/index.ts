@@ -18,6 +18,7 @@ import { registerBacklogContradictionsTool } from './backlog-contradictions.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import { registerWriteResourceTool } from './backlog-write-resource.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
+import type { ProjectSubstrateRegistry } from '../core/substrates/project-substrate-registry.js';
 
 /**
  * Per-request tool dependencies.
@@ -36,6 +37,11 @@ export interface ToolDeps {
   actor?: Actor;
   /** Append-only mutation journal. Local=JSONL, Cloud=D1. */
   operationLog?: IOperationLog;
+  substrateRegistry?: Pick<
+    ProjectSubstrateRegistry,
+    'acceptsParent' | 'getIntake'
+  >;
+  scopeRoot?: string;
   /** Live-event bus for SSE push. Node only; Worker is stateless. */
   eventBus?: { emit: (event: any) => void };
   /**

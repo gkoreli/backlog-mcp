@@ -22,6 +22,10 @@ export function buildWriteContext(deps: ToolDeps | undefined): WriteContext {
   return {
     actor: deps.actor,
     operationLog: deps.operationLog,
+    ...(deps.substrateRegistry
+      ? { substrateRegistry: deps.substrateRegistry }
+      : {}),
+    ...(deps.scopeRoot ? { scopeRoot: deps.scopeRoot } : {}),
     ...(deps.eventBus ? { eventBus: deps.eventBus } : {}),
     ...(deps.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
   };

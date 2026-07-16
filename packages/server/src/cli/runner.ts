@@ -22,6 +22,7 @@ import {
   type LocalRuntime,
 } from '../storage/local/local-runtime.js';
 import { resolveLegacyDataRoot } from '../utils/legacy-data-root.js';
+import { resolveContext } from '../core/config.js';
 import type {
   CliRunnerDependencies,
   CliRuntime,
@@ -92,6 +93,7 @@ async function createDocsNativeCliRuntime(
   }
   const identityPath = appRuntime.identityPath;
   const actor = deps.actor?.() ?? envActor();
+  const scopeRoot = resolveContext({ home, env });
 
   return {
     home,
@@ -99,6 +101,8 @@ async function createDocsNativeCliRuntime(
     writeContext: {
       actor,
       operationLog: localRuntime.operationLogger,
+      substrateRegistry: localRuntime.substrateRegistry,
+      ...(scopeRoot === undefined ? {} : { scopeRoot }),
       eventBus: {
         emit(event): void {
           if (!isBacklogEventType(event.type)) {

@@ -158,6 +158,22 @@ function validateCanonicalWriteSchema(
   return issues;
 }
 
+function acceptsParent(definition: RuntimeSubstrateDefinition): boolean {
+  const properties = definition.schema.properties;
+  return isRecord(properties) && properties.parent_id !== undefined;
+}
+
+function validateIntake(
+  definition: RuntimeSubstrateDefinition,
+): SubstrateDefinitionIssue[] {
+  if (definition.intake === undefined || acceptsParent(definition)) return [];
+  return [{
+    code: 'shape',
+    path: '/intake',
+    message: 'container intake requires schema.properties.parent_id',
+  }];
+}
+
 function prefixSchemaIssue(issue: SubstrateDefinitionIssue): SubstrateDefinitionIssue {
   return {
     ...issue,
@@ -287,6 +303,7 @@ export function compileSubstrateDefinition(
       : []),
     ...validateFolder(definition.folder),
     ...validateCanonicalWriteSchema(definition),
+    ...validateIntake(definition),
     ...validateRuntimeJsonSchema(definition.schema).map(prefixSchemaIssue),
   ];
   if (issues.length > 0) return failure(params, issues);
@@ -321,6 +338,7 @@ export function compileSubstrateDefinition(
       sourcePath: params.sourcePath,
       definition,
       ...(definition.intake === undefined ? {} : { intake: definition.intake }),
+      acceptsParent: acceptsParent(definition),
       disclosure: compiledDisclosure.disclosure,
       disclosureRelations: compiledDisclosure.relations,
       intents: compiledIntents.intents,

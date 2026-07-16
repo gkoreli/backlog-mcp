@@ -29,6 +29,8 @@ import type {
 } from '../operations/types.js';
 import type { ContextStubs } from './get-context/types.js';
 import type { ConstraintStub } from './requirements/constraint-stub.js';
+import type { ProjectSubstrateRegistry } from './substrates/project-substrate-registry.js';
+import type { ContainerRouteProvenance } from './container-routing.js';
 
 export type {
   Actor,
@@ -56,6 +58,13 @@ export type { MemoryEntry, MemoryResult, RecallQuery, MemoryLayer } from '@backl
 export interface WriteContext {
   actor: Actor;
   operationLog: IOperationLog;
+  /** Active project declarations used only to resolve bounded intake policy. */
+  substrateRegistry?: Pick<
+    ProjectSubstrateRegistry,
+    'acceptsParent' | 'getIntake'
+  >;
+  /** Selected home's configured default container. */
+  scopeRoot?: string;
   eventBus?: { emit: (event: {
     type: string;
     id: string;
@@ -163,6 +172,8 @@ export interface CreateEntityParams {
 
 export interface CreateResult {
   id: string;
+  parent_id?: string;
+  routed_by?: ContainerRouteProvenance;
 }
 
 // ── Update ──

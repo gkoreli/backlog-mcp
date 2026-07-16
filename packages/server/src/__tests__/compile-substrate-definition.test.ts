@@ -75,8 +75,15 @@ describe('compileSubstrateDefinition', function describeCompiler() {
   });
 
   it('compiles only the bounded container intake policies', () => {
+    const parentAwareSchema = {
+      ...BASE_SCHEMA,
+      properties: {
+        ...BASE_SCHEMA.properties,
+        parent_id: { type: 'string' },
+      },
+    };
     const result = compile({
-      ...(createDefinition() as Record<string, unknown>),
+      ...(createDefinition(parentAwareSchema) as Record<string, unknown>),
       intake: { container: 'scope-root' },
     });
 
@@ -85,9 +92,18 @@ describe('compileSubstrateDefinition', function describeCompiler() {
     expect(result.substrate.intake).toEqual({ container: 'scope-root' });
 
     expect(compile({
-      ...(createDefinition() as Record<string, unknown>),
+      ...(createDefinition(parentAwareSchema) as Record<string, unknown>),
       intake: { container: 'semantic-match' },
     }).ok).toBe(false);
+    expect(compile({
+      ...(createDefinition() as Record<string, unknown>),
+      intake: { container: 'required' },
+    })).toMatchObject({
+      ok: false,
+      diagnostic: {
+        issues: [{ path: '/intake' }],
+      },
+    });
   });
 
   it('rejects unknown definition fields and invalid identity variants', () => {

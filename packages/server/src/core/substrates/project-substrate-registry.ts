@@ -58,6 +58,10 @@ export class ProjectSubstrateRegistry implements SubstrateStorageCatalog {
     return this.#substrates.get(type)?.intake;
   }
 
+  acceptsParent(type: string): boolean {
+    return this.#substrates.get(type)?.acceptsParent ?? false;
+  }
+
   getDisclosure(type: string): CompiledSubstrateDisclosure | undefined {
     return this.#substrates.get(type)?.disclosure;
   }

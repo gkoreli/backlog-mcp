@@ -6,24 +6,35 @@ import { EntityType } from '@backlog-mcp/shared';
 import { createEntity } from '../core/create.js';
 import { buildWriteContext } from './build-write-context.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
+import type { CreateResult } from '../core/types.js';
 
 const CREATE_ATTRIBUTION = {
   tool: 'backlog_create',
   mutation: 'create',
 } as const;
 
+function formatCreateResult(result: CreateResult): string {
+  if (result.routed_by === undefined) {
+    return result.parent_id === undefined
+      ? `Created ${result.id}`
+      : `Created ${result.id} in ${result.parent_id}`;
+  }
+  const destination = result.parent_id ?? 'unfiled';
+  return `Created ${result.id} (${result.routed_by} → ${destination})`;
+}
+
 export function registerBacklogCreateTool(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   server.registerTool(
     'backlog_create',
     {
-      description: 'Create one entity through the active project substrate registry.',
+      description: 'Create one entity through the active project substrate registry. Pass parent_id when known; structural routing only fills its absence, and parentless work surfaces as unfiled at wakeup.',
       inputSchema: z.object({
         ...BACKLOG_HOME_INPUT_FIELDS,
         title: z.string().describe('Entity title'),
         content: z.string().optional().describe('Item body in markdown'),
         source_path: z.string().optional().describe('Local file path to read as content. Mutually exclusive with content — provide one or the other. Server reads the file directly.'),
         type: z.string().optional().describe('Substrate type. Defaults to task.'),
-        parent_id: z.string().optional().describe('Parent ID (any entity). Supports subtasks (task→task), epic membership, folder organization, milestone grouping.'),
+        parent_id: z.string().optional().describe('Explicit parent ID. Always wins over intake defaults, references, and session stickiness. Pass it when known; parentless work surfaces as unfiled at wakeup.'),
         references: z.array(z.object({ url: z.string(), title: z.string().optional() })).optional().describe('Reference links. Formats: external URLs (https://...), task refs (mcp://backlog/tasks/TASK-XXXX.md), resources (mcp://backlog/resources/{path}). Local files must include extension (file:///path/to/file.md)'),
         fields: z.record(z.string(), z.unknown()).optional().describe('Substrate-specific canonical fields. Identity fields id/type/title are server-owned.'),
         // Cron-only fields — enforced server-side in core/create.ts.
@@ -52,7 +63,7 @@ export function registerBacklogCreateTool(server: McpServer, service: IBacklogSe
           buildWriteContext(deps),
           CREATE_ATTRIBUTION,
         );
-        return { content: [{ type: 'text', text: `Created ${result.id}` }] };
+        return { content: [{ type: 'text', text: formatCreateResult(result) }] };
       } catch (error) {
         return { content: [{ type: 'text' as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }] };
       }

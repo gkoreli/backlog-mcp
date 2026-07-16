@@ -101,6 +101,7 @@ export function createBuiltinSubstrateRegistrations(
       ...(substrate.intake === undefined
         ? {}
         : { intake: substrate.intake }),
+      acceptsParent: true,
       disclosure: {},
       disclosureRelations: [],
       intents: compileBuiltinIntents(type, storageClaim),

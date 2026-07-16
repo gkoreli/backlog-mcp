@@ -1,4 +1,8 @@
-import { nextEntityId } from '@backlog-mcp/shared';
+import {
+  getSubstrate,
+  nextEntityId,
+  type SubstrateDefinition,
+} from '@backlog-mcp/shared';
 import { ZodError } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { shouldCaptureArtifact } from '../memory/capture-rules.js';
@@ -17,6 +21,8 @@ import type {
 } from './types.js';
 import { formatZodError } from './zod-errors.js';
 import { recordMutation } from './operation-log.js';
+import { routeContainer } from './container-routing.js';
+import { extractEntityIds } from './get-context/cross-reference-traversal.js';
 
 function assignDefined(
   target: Record<string, unknown>,
@@ -37,6 +43,47 @@ function normalizeWriteError(error: unknown): never {
   throw error;
 }
 
+function entityRefs(params: CreateEntityParams): string[] {
+  const referenceIds = (params.references ?? []).flatMap(function ids(reference) {
+    return extractEntityIds(reference.url);
+  });
+  const fieldRefs = params.fields?.entity_refs;
+  return [
+    ...referenceIds,
+    ...(Array.isArray(fieldRefs)
+      ? fieldRefs.filter(function stringRef(value): value is string {
+          return typeof value === 'string' && value.trim().length > 0;
+        })
+      : []),
+  ];
+}
+
+async function referencedContainer(
+  service: IBacklogService,
+  params: CreateEntityParams,
+): Promise<string | undefined> {
+  const referencedId = entityRefs(params)[0];
+  if (referencedId === undefined) return undefined;
+  const referenced = await service.get(referencedId);
+  if (referenced === undefined) return undefined;
+  if (isBuiltinSubstrateType(referenced.type)) {
+    const substrate = getSubstrate(referenced.type);
+    if (substrate.structure.isContainer) return referenced.id;
+  }
+  return typeof referenced.parent_id === 'string'
+    ? referenced.parent_id
+    : undefined;
+}
+
+async function recentOperations(ctx: WriteContext) {
+  try {
+    return await ctx.operationLog.query({ limit: 20 });
+  } catch {
+    // Routing is a defaulting aid; journal read failure must not block writes.
+    return [];
+  }
+}
+
 /**
  * Create one entity through the service's active substrate registry.
  *
@@ -54,18 +101,48 @@ export async function createEntity(
     title,
     content,
     type,
-    parent_id,
     references,
     fields,
     schedule,
     command,
     enabled,
   } = params;
+  const builtinSubstrate: SubstrateDefinition | undefined =
+    isBuiltinSubstrateType(type) ? getSubstrate(type) : undefined;
+  const intake = ctx.substrateRegistry?.getIntake(type)
+    ?? builtinSubstrate?.intake;
+  const acceptsParent = builtinSubstrate !== undefined
+    || ctx.substrateRegistry?.acceptsParent(type) === true;
+  const lowerRungsReachable = acceptsParent
+    && params.parent_id === undefined
+    && intake?.container !== 'required'
+    && !(intake?.container === 'scope-root' && ctx.scopeRoot !== undefined);
+  const [referenceParentId, operations] = lowerRungsReachable
+    ? await Promise.all([
+        referencedContainer(service, params),
+        recentOperations(ctx),
+      ])
+    : [undefined, []];
+  const route = routeContainer({
+    acceptsParent,
+    ...(params.parent_id === undefined
+      ? {}
+      : { explicitParentId: params.parent_id }),
+    ...(intake === undefined ? {} : { intake }),
+    ...(ctx.scopeRoot === undefined ? {} : { scopeRoot: ctx.scopeRoot }),
+    ...(referenceParentId === undefined ? {} : { referenceParentId }),
+    operations,
+    actor: ctx.actor,
+    now: new Date().toISOString(),
+  });
+  if (route.parentRequired) {
+    throw new ValidationError(`${type} requires an explicit parent_id`);
+  }
   const id = await allocateEntityId(service, type);
   const candidate: Record<string, unknown> = { ...(fields ?? {}) };
   assignDefined(candidate, {
     content,
-    parent_id,
+    parent_id: route.parentId,
     references,
     schedule,
     command,
@@ -98,12 +175,20 @@ export async function createEntity(
     await captureArtifact(ctx.memoryComposer, builtin, ctx.actor);
   }
 
-  const result: CreateResult = { id: stored.id };
+  const result: CreateResult = {
+    id: stored.id,
+    ...(route.parentId === undefined ? {} : { parent_id: route.parentId }),
+    ...(route.routedBy === undefined ? {} : { routed_by: route.routedBy }),
+  };
+  const effectiveParams = route.parentId === undefined
+    || params.parent_id !== undefined
+    ? params
+    : { ...params, parent_id: route.parentId };
   recordMutation(
     ctx,
     attribution,
     stored.id,
-    params as unknown as Record<string, unknown>,
+    effectiveParams as unknown as Record<string, unknown>,
     result,
   );
   return result;

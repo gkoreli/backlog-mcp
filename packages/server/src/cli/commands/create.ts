@@ -3,11 +3,21 @@ import { EntityType } from '@backlog-mcp/shared';
 import { createEntity } from '../../core/create.js';
 import { cliRuntimeDependencies, run } from '../runner.js';
 import { parseFields } from '../parse-fields.js';
+import type { CreateResult } from '../../core/types.js';
 
 const CLI_CREATE_ATTRIBUTION = {
   tool: 'backlog create',
   mutation: 'create',
 } as const;
+
+function formatCreateResult(result: CreateResult): string {
+  if (result.routed_by === undefined) {
+    return result.parent_id === undefined
+      ? `Created ${result.id}`
+      : `Created ${result.id} in ${result.parent_id}`;
+  }
+  return `Created ${result.id} (${result.routed_by} → ${result.parent_id ?? 'unfiled'})`;
+}
 
 export function registerCreate(program: Command): void {
   program
@@ -36,7 +46,7 @@ export function registerCreate(program: Command): void {
           CLI_CREATE_ATTRIBUTION,
         );
       },
-      (r) => `Created ${r.id}`,
+      formatCreateResult,
       program.opts().json,
       cliRuntimeDependencies(program),
     ));

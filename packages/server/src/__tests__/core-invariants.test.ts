@@ -312,8 +312,111 @@ describe('core/createEntity', () => {
 
   it('sets parent_id when provided', async () => {
     const svc = mockService();
-    await createEntity(svc, { title: 'Child', parent_id: 'EPIC-0001' }, testCtx());
+    const result = await createEntity(
+      svc,
+      { title: 'Child', parent_id: 'EPIC-0001' },
+      testCtx(),
+    );
     expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({ parent_id: 'EPIC-0001' }));
+    expect(result).toEqual({ id: 'TASK-0001', parent_id: 'EPIC-0001' });
+  });
+
+  it('routes from the first referenced entity before session evidence', async () => {
+    const svc = mockService([
+      makeEntity({ id: 'EPIC-0001', title: 'Referenced epic', type: 'epic' }),
+    ]);
+    const ctx: WriteContext = {
+      actor: { type: 'agent', name: 'agate' },
+      operationLog: {
+        append: () => {},
+        query: async () => [{
+          ts: new Date().toISOString(),
+          tool: 'backlog_create_work',
+          mutation: 'create',
+          params: { parent_id: 'EPIC-0002' },
+          result: {},
+          actor: { type: 'agent', name: 'agate' },
+        }],
+        countForTask: async () => 0,
+      },
+    };
+
+    const result = await createEntity(svc, {
+      title: 'Referenced child',
+      references: [{ url: 'mcp://backlog/tasks/EPIC-0001.md' }],
+    }, ctx);
+
+    expect(result).toEqual({
+      id: 'TASK-0002',
+      parent_id: 'EPIC-0001',
+      routed_by: 'reference',
+    });
+  });
+
+  it('uses bounded journal stickiness and records effective routing provenance', async () => {
+    const entries: Array<{
+      params: Record<string, unknown>;
+      result: unknown;
+    }> = [];
+    const ctx: WriteContext = {
+      actor: { type: 'agent', name: 'agate', taskContext: 'task-24' },
+      operationLog: {
+        append: (entry) => entries.push(entry),
+        query: async () => [{
+          ts: new Date().toISOString(),
+          tool: 'backlog_create_work',
+          mutation: 'create',
+          params: {},
+          result: { parent_id: 'EPIC-0003', routed_by: 'reference' },
+          actor: { type: 'agent', name: 'agate', taskContext: 'task-24' },
+        }],
+        countForTask: async () => 0,
+      },
+    };
+
+    const result = await createEntity(mockService(), { title: 'Burst task' }, ctx);
+
+    expect(result).toEqual({
+      id: 'TASK-0001',
+      parent_id: 'EPIC-0003',
+      routed_by: 'session',
+    });
+    expect(entries[0]).toMatchObject({
+      params: { parent_id: 'EPIC-0003' },
+      result,
+    });
+  });
+
+  it('enforces required intake and applies a configured scope default', async () => {
+    const svc = mockService();
+    await expect(createEntity(svc, {
+      title: 'Unattached artifact',
+      type: EntityType.Artifact,
+    }, testCtx())).rejects.toThrow(/requires an explicit parent_id/);
+
+    const result = await createEntity(svc, {
+      title: 'Scoped cron',
+      type: EntityType.Cron,
+      schedule: '0 9 * * 1',
+      command: 'backlog wakeup',
+    }, {
+      ...testCtx(),
+      scopeRoot: 'FLDR-0001',
+    });
+    expect(result).toEqual({
+      id: 'CRON-0001',
+      parent_id: 'FLDR-0001',
+      routed_by: 'default',
+    });
+  });
+
+  it('marks a parentless fallback as visibly unfiled', async () => {
+    const result = await createEntity(
+      mockService(),
+      { title: 'Unfiled task' },
+      testCtx(),
+    );
+    expect(result).toEqual({ id: 'TASK-0001', routed_by: 'default' });
   });
 
   it('accepts pre-resolved content (no source_path in core)', async () => {

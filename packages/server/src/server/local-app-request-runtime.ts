@@ -9,6 +9,7 @@ import {
   resolve,
 } from 'node:path';
 import { isPathWithin } from '../core/backlog-home.js';
+import { resolveContext } from '../core/config.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
 import type { AppRequestRuntime } from './app-request-runtime.types.js';
 
@@ -54,11 +55,14 @@ function createResolveSourcePath(runtime: LocalRuntime) {
 export function createLocalAppRequestRuntime(
   runtime: LocalRuntime,
 ): AppRequestRuntime {
+  const scopeRoot = resolveContext({ home: runtime.home, env: {} });
   return {
     home: runtime.home,
     service: runtime.service,
     operationLog: runtime.operationLogger,
     operationLogger: runtime.operationLogger,
+    substrateRegistry: runtime.substrateRegistry,
+    ...(scopeRoot === undefined ? {} : { scopeRoot }),
     eventBus: runtime.eventBus,
     memoryComposer: runtime.memoryComposer,
     mintMemoryEntry: function mintMemoryEntry(memory) {

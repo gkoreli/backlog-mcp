@@ -10,6 +10,7 @@ import type { OperationLogger } from '../operations/logger.js';
 import type { IOperationLog } from '../operations/types.js';
 import type { ResourceManager } from '../resources/manager.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { ProjectSubstrateRegistry } from '../core/substrates/project-substrate-registry.js';
 
 /** Runtime-owned services selected for one transport request. */
 export interface AppRequestRuntime {
@@ -17,6 +18,8 @@ export interface AppRequestRuntime {
   service: IBacklogService;
   operationLog?: IOperationLog;
   operationLogger?: OperationLogger;
+  substrateRegistry?: ProjectSubstrateRegistry;
+  scopeRoot?: string;
   eventBus?: EventBus;
   memoryComposer?: MemoryComposer;
   mintMemoryEntry?: (memory: Memory) => MemoryEntry;

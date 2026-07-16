@@ -54,6 +54,7 @@ export interface CompiledSubstrateDefinition {
   sourcePath: string;
   definition: RuntimeSubstrateDefinition;
   intake?: SubstrateIntakeDefinition;
+  acceptsParent: boolean;
   disclosure: CompiledSubstrateDisclosure;
   disclosureRelations: readonly CompiledDisclosureRelation[];
   intents: readonly CompiledSubstrateIntent[];
@@ -66,6 +67,7 @@ export interface CompiledBuiltinSubstrate {
   sourcePath: string;
   type: SubstrateType;
   intake?: SubstrateIntakeDefinition;
+  acceptsParent: boolean;
   disclosure: CompiledSubstrateDisclosure;
   disclosureRelations: readonly CompiledDisclosureRelation[];
   intents: readonly CompiledSubstrateIntent[];

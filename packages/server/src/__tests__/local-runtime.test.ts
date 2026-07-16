@@ -208,6 +208,7 @@ describe('LocalRuntime', function describeLocalRuntime() {
           minimumDigits: 3,
           displayTemplate: 'decision-{key}-root',
         },
+        intake: { container: 'scope-root' },
         schema: {
           $schema: 'https://json-schema.org/draft/2020-12/schema',
           type: 'object',
@@ -216,6 +217,7 @@ describe('LocalRuntime', function describeLocalRuntime() {
             type: { const: 'decision' },
             title: { type: 'string' },
             content: { type: 'string' },
+            parent_id: { type: 'string' },
             summary: { type: 'string' },
             private_note: { type: 'string' },
           },
@@ -237,6 +239,8 @@ describe('LocalRuntime', function describeLocalRuntime() {
     const context = {
       actor: { type: 'agent' as const, name: 'basalt' },
       operationLog: runtime.operationLogger,
+      substrateRegistry: runtime.substrateRegistry,
+      scopeRoot: 'FLDR-0001',
     };
 
     const created = await createEntityCore(
@@ -264,8 +268,13 @@ describe('LocalRuntime', function describeLocalRuntime() {
     );
 
     expect(created.id).toBe('decision-001-root');
+    expect(created).toMatchObject({
+      parent_id: 'FLDR-0001',
+      routed_by: 'default',
+    });
     expect(runtime.service.getSync(created.id)).toMatchObject({
       type: 'decision',
+      parent_id: 'FLDR-0001',
       summary: 'Updated summary',
     });
     const searchResults = await runtime.service.searchUnified(

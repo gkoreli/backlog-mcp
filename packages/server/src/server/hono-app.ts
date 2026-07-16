@@ -140,6 +140,8 @@ function createRequestToolDeps(
     actor: deps?.actor,
     operationLog: runtime.operationLog,
     operationLogger: runtime.operationLogger,
+    substrateRegistry: runtime.substrateRegistry,
+    scopeRoot: runtime.scopeRoot,
     eventBus: runtime.eventBus,
     memoryComposer: runtime.memoryComposer,
     mintMemoryEntry: runtime.mintMemoryEntry,

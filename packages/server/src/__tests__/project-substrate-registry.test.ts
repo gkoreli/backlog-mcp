@@ -157,6 +157,8 @@ describe('ProjectSubstrateRegistry', function describeRegistry() {
       container: 'scope-root',
     });
     expect(PACKAGED_RESULT.registry.getIntake('task')).toBeUndefined();
+    expect(PACKAGED_RESULT.registry.acceptsParent('task')).toBe(true);
+    expect(PACKAGED_RESULT.registry.acceptsParent('adr')).toBe(false);
   });
 
   it('implements Quartz storage catalog for packaged definitions', () => {

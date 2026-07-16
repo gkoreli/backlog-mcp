@@ -13,6 +13,12 @@ export { wakeup } from './wakeup.js';
 export { recall } from './recall.js';
 export type { RecallDeps } from './recall.js';
 export { recordMutation } from './operation-log.js';
+export { routeContainer } from './container-routing.js';
+export type {
+  ContainerRoute,
+  ContainerRouteProvenance,
+  ContainerRoutingInput,
+} from './container-routing.js';
 export { NotFoundError, ValidationError } from './types.js';
 export type {
   ListParams, ListItem, ListResult,
