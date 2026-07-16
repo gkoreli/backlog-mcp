@@ -136,6 +136,16 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
     );
   });
 
+  it('rejects contradictory explicit docs-native selection', async function rejectsContradictorySelection() {
+    await expect(createCliRuntime({
+      env: { BACKLOG_DOCS_NATIVE: '1' },
+      home: 'global',
+      projectRoot: '/workspace/repo',
+    })).rejects.toThrow(
+      'Project root cannot be combined with home "global"',
+    );
+  });
+
   it('selects a project runtime from caller cwd and env', async function selectsProject() {
     mkdirSync('/workspace/repo/.git', { recursive: true });
     mkdirSync('/workspace/repo/packages/server', { recursive: true });

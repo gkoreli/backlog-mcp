@@ -15,6 +15,7 @@ import {
 } from '../memory/bootstrap.js';
 import { createLocalAppRequestRuntime } from '../server/local-app-request-runtime.js';
 import { BACKLOG_DOCS_NATIVE_ENV_VAR } from '../server/docs-native-dev-runtime.js';
+import { validateLocalRuntimeSelection } from '../server/local-runtime-request-resolver.js';
 import { BacklogService } from '../storage/local/backlog-service.js';
 import {
   createLocalRuntime,
@@ -79,9 +80,16 @@ async function createDocsNativeCliRuntime(
   deps: CliRunnerDependencies,
 ): Promise<CliRuntime> {
   const env = deps.env ?? process.env;
+  const explicitSelection = deps.home === undefined
+    && deps.projectRoot === undefined
+    ? undefined
+    : validateLocalRuntimeSelection({
+      home: deps.home,
+      projectRoot: deps.projectRoot,
+    });
   const home = resolveBacklogHome({
-    home: deps.home,
-    projectRoot: deps.projectRoot,
+    home: explicitSelection?.home,
+    projectRoot: explicitSelection?.projectRoot,
     cwd: deps.cwd ?? process.cwd(),
     env,
   });
