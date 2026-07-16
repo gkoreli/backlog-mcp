@@ -512,9 +512,14 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
       memoryComposer: composer,
     };
 
+    const source = await createEntity(service, {
+      title: 'Design memory experience',
+      type: 'task',
+    }, ctx, CREATE_ATTRIBUTION);
     await createEntity(service, {
       title: 'ADR 0092.3 memory experience design',
       type: 'artifact',
+      parent_id: source.id,
       content: 'Four verbs: wakeup, recall, remember, forget',
     }, ctx, CREATE_ATTRIBUTION);
 
