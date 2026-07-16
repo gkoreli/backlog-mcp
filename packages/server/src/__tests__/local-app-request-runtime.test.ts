@@ -6,6 +6,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
+import type { Entity } from '@backlog-mcp/shared';
 import { describe, expect, it } from 'vitest';
 import { createBacklogHome } from '../core/backlog-home.js';
 import type {
@@ -53,6 +54,18 @@ describe('createLocalAppRequestRuntime', function describeLocalAppRuntime() {
   it('maps one isolated runtime graph into Hono dependencies', async function mapsRuntime() {
     const runtime = createRuntime('mapping');
     await runtime.start();
+    const entity: Entity = {
+      id: 'TASK-0001',
+      title: 'Mapped task',
+      status: 'open',
+      type: 'task',
+      created_at: '2026-07-16T00:00:00.000Z',
+      updated_at: '2026-07-16T00:00:00.000Z',
+    };
+    runtime.storage.createDocument(
+      entity,
+      'tasks/TASK-0001-mapped-task.md',
+    );
 
     const appRuntime = createLocalAppRequestRuntime(runtime);
 
@@ -66,6 +79,9 @@ describe('createLocalAppRequestRuntime', function describeLocalAppRuntime() {
       resourceManager: runtime.resourceManager,
       identityPath: join(runtime.home.documentsDir, 'identity.md'),
     });
+    expect(appRuntime.getSourcePath?.(entity.id)).toBe(
+      'tasks/TASK-0001-mapped-task.md',
+    );
     await runtime.stop();
   });
 

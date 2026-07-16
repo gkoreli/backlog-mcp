@@ -64,6 +64,9 @@ export function createLocalAppRequestRuntime(
     resourceManager: runtime.resourceManager,
     readLocalFile: createReadLocalFile(runtime),
     resolveSourcePath: createResolveSourcePath(runtime),
+    getSourcePath: function getSourcePath(id) {
+      return runtime.storage.getDocumentById(id)?.sourcePath;
+    },
     identityPath: join(runtime.home.documentsDir, 'identity.md'),
   };
 }

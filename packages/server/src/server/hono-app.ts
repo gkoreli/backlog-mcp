@@ -27,6 +27,11 @@ import type {
   AppRequestRuntimeResolver,
   AppRequestRuntimeSelection,
 } from './app-request-runtime.types.js';
+import {
+  getHomeProvenance,
+  withEntityHomeProvenance,
+  withSearchHomeProvenance,
+} from './home-provenance.js';
 import { selectMcpRequestRuntime } from './mcp-request-runtime.js';
 // Note: paths.ts and operations/index.ts are NOT imported here — they pull in
 // Node.js modules (import.meta.url, fs, path) that break the Workers bundle.
@@ -242,7 +247,9 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     const status = statusMap[filterParam] as any;
 
     const results = await runtime.service.list({ status, query: q || undefined, limit });
-    return c.json(results);
+    return c.json(results.map(function addProvenance(result) {
+      return withEntityHomeProvenance(runtime, result);
+    }));
   });
 
   // GET /tasks/:id
@@ -254,7 +261,11 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     if (!task) return c.json({ error: 'Not found' }, 404);
 
     const raw = await requestService.getMarkdown(id);
-    const children = await requestService.list({ parent_id: id, limit: 1000 });
+    const children = (
+      await requestService.list({ parent_id: id, limit: 1000 })
+    ).map(function addProvenance(child) {
+      return withEntityHomeProvenance(runtime, child);
+    });
     let parentTitle: string | undefined;
     const parentId = task.parent_id || task.epic_id;
     if (parentId) {
@@ -279,7 +290,10 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     }
 
     return c.json({
-      ...task, raw, parentTitle, children,
+      ...withEntityHomeProvenance(runtime, task),
+      raw,
+      parentTitle,
+      children,
       ...(contradicts ? { contradicts } : {}),
       ...(usage_series ? { usage_series } : {}),
     });
@@ -294,7 +308,9 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     const types = c.req.query('types')?.split(',');
     const sort = c.req.query('sort');
     const results = await runtime.service.searchUnified(q, { types: types as Array<'task' | 'epic' | 'resource'> | undefined, sort, limit });
-    return c.json(results);
+    return c.json(results.map(function addProvenance(result) {
+      return withSearchHomeProvenance(runtime, result);
+    }));
   });
 
   // GET /memory/contradictions — all contradiction sets (ADR 0092.13 R-9)
@@ -316,6 +332,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       dataDir: deps?.dataDir,
       port: parseInt(c.req.header('host')?.split(':')[1] ?? '0'),
       uptime: Math.floor((Date.now() - startTime) / 1000),
+      ...getHomeProvenance(runtime),
     });
   });
 
@@ -324,9 +341,20 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   // GET /operations/count/:taskId  (must be before /operations)
   app.get('/operations/count/:taskId', async (c) => {
     const runtime = await resolveRequestRuntime(c.req);
-    if (!runtime.operationLog) return c.json({ count: 0 });
+    if (!runtime.operationLog) {
+      return c.json({
+        count: 0,
+        ...getHomeProvenance(runtime),
+      });
+    }
     const count = await runtime.operationLog.countForTask(c.req.param('taskId'));
-    return c.json({ count });
+    return c.json({
+      count,
+      ...getHomeProvenance(
+        runtime,
+        runtime.getSourcePath?.(c.req.param('taskId')),
+      ),
+    });
   });
 
   // GET /operations — works identically for local and cloud via IOperationLog
@@ -356,7 +384,11 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       const id = op.resourceId;
       if (!id) {
         const targetFilename = extractTargetFilename(op.tool, op.params);
-        return targetFilename ? { ...op, targetFilename } : op;
+        return {
+          ...op,
+          ...(targetFilename ? { targetFilename } : {}),
+          ...getHomeProvenance(runtime),
+        };
       }
 
       if (!taskCache.has(id)) {
@@ -364,7 +396,12 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
         taskCache.set(id, { title: entity?.title, epicId: entity?.parent_id ?? entity?.epic_id });
       }
       const cached = taskCache.get(id);
-      if (cached === undefined) return op;
+      if (cached === undefined) {
+        return {
+          ...op,
+          ...getHomeProvenance(runtime, runtime.getSourcePath?.(id)),
+        };
+      }
 
       let epicTitle: string | undefined;
       if (cached.epicId) {
@@ -381,6 +418,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
         epicId: cached.epicId,
         epicTitle,
         targetFilename: extractTargetFilename(op.tool, op.params),
+        ...getHomeProvenance(runtime, runtime.getSourcePath?.(id)),
       };
     }));
 
@@ -400,7 +438,13 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       writer.write(enc.encode(': connected\n\n'));
 
       const onEvent: BacklogEventCallback = function onEvent(event) {
-        writer.write(enc.encode(`id: ${event.seq}\ndata: ${JSON.stringify(event)}\n\n`)).catch(() => {});
+        const payload = {
+          ...event,
+          ...getHomeProvenance(runtime, runtime.getSourcePath?.(event.id)),
+        };
+        writer.write(
+          enc.encode(`id: ${event.seq}\ndata: ${JSON.stringify(payload)}\n\n`),
+        ).catch(() => {});
       };
       eventBus.subscribe(onEvent);
 
@@ -487,6 +531,10 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
           fileUri: `file://${filePath}`,
           mcpUri: resourceManager.toUri(filePath),
           ext,
+          ...getHomeProvenance(
+            runtime,
+            filePath.startsWith('/') ? undefined : filePath,
+          ),
         });
       } catch (error: unknown) {
         return c.json({
@@ -523,6 +571,10 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
           fileUri: `file://${filePath}`,
           mcpUri: uri,
           ext,
+          ...getHomeProvenance(
+            runtime,
+            decodeURIComponent(new URL(uri).pathname).replace(/^\/+/u, ''),
+          ),
         });
       } catch (error: unknown) {
         return c.json({

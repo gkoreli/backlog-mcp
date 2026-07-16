@@ -19,6 +19,7 @@ export interface AppRequestRuntime {
   resourceManager?: ResourceManager;
   readLocalFile?: (filePath: string) => string | null;
   resolveSourcePath?: (path: string) => string;
+  getSourcePath?: (id: string) => string | undefined;
   readUsageLines?: () => string[];
   identityPath?: string;
 }
