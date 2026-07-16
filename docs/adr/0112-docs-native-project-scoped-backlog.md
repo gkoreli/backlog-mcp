@@ -185,6 +185,12 @@ asymmetry. It varies per bridge request even when every client shares one
 detached HTTP server. The installed `mcp-remote` dependency already supports
 custom request headers; no new side channel is required.
 
+`X-Backlog-Project-Root` is a trusted local capability: it can select any
+canonicalized path visible to the server process. The single-user localhost
+deployment posture is therefore load-bearing. Any future untrusted-network
+exposure must authenticate this capability and restrict roots through an
+explicit allowlist before enabling request-selected project homes.
+
 MCP roots remain useful guidance, but are not the only contract: clients may
 omit them, may expose several roots, and the current server runs stateless
 request transports. When several roots contain eligible homes, the resolver
