@@ -173,3 +173,10 @@ never be used to manufacture that evidence.
 The runner enforces this boundary: v1 rejects recall queries, while v2 and
 later require at least four reviewed recall queries and at least one real
 memory entity in the selected corpus.
+
+Baseline v1's known failures make the next pressure points explicit. In BM25,
+`nav-01` finds its target only at rank 9 (`success@1 = 0`, reciprocal rank
+`0.111`); `about-03` is the genuinely absent target. Aboutness is the weakest
+class at nDCG@10 `0.551` for BM25 and `0.605` for hybrid, while tail retrieval
+scores `0.800` and `0.846` respectively. These are measured failures to test,
+not authority to change ranking without the judged gate.
