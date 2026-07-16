@@ -396,6 +396,8 @@ export interface WakeupResult {
     constraints_omitted: number;
     completion_count: number;
     activity_count: number;
+    /** Home-wide parentless work count; memories and containers are exempt. */
+    unfiled_count: number;
   };
 }
 

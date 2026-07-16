@@ -53,6 +53,33 @@ describe('core/wakeup', () => {
     expect(result.recent.activity).toEqual([]);
     expect(result.identity).toBeUndefined();
     expect(result.metadata.identity_present).toBe(false);
+    expect(result.metadata.unfiled_count).toBe(0);
+  });
+
+  it('reports parentless work while exempting parents, containers, memories, and declarative documents', async () => {
+    const svc = mockService([
+      makeEntity({ id: 'TASK-0001', title: 'Unfiled open task' }),
+      makeEntity({ id: 'TASK-0002', title: 'Unfiled done task', status: 'done' }),
+      makeEntity({ id: 'TASK-0003', title: 'Filed task', parent_id: 'EPIC-0001' }),
+      makeEntity({ id: 'ARTF-0001', title: 'Unfiled artifact', type: 'artifact', status: undefined }),
+      makeEntity({
+        id: 'CRON-0001',
+        title: 'Unfiled cron',
+        type: 'cron',
+        schedule: '0 9 * * 1',
+        command: 'backlog wakeup',
+        enabled: true,
+      } as Entity),
+      makeEntity({ id: 'EPIC-0001', title: 'Container', type: 'epic' }),
+      makeEntity({ id: 'FLDR-0001', title: 'Container', type: 'folder', status: undefined }),
+      makeEntity({ id: 'MEMO-0001', title: 'Unscoped memory', type: 'memory', status: undefined } as Entity),
+      makeEntity({ id: 'ADR 0119', title: 'Project document', type: 'adr', status: 'proposed' } as Entity),
+    ]);
+
+    const result = await wakeup(svc);
+
+    expect(result.metadata.unfiled_count).toBe(4);
+    expect(svc.list).toHaveBeenCalledWith({ limit: 100_000 });
   });
 
   it('includes identity when readIdentity returns a string', async () => {

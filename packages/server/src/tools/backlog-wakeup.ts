@@ -47,7 +47,7 @@ export function registerBacklogWakeupTool(
     'backlog_wakeup',
     {
       description:
-        'Dense session-start briefing: active tasks, current epics, project constraints (requirements as stubs, violated/at-risk first — treat these as standing product intent), recent completions (with evidence snippets), and recent activity. No focal entity required — use this at the start of every session to understand what you were working on. Optional `scope` narrows to a folder (for project-scoped briefing), milestone, or epic.',
+        'Dense session-start briefing: active tasks, current epics, project constraints (requirements as stubs, violated/at-risk first — treat these as standing product intent), recent completions (with evidence snippets), recent activity, and the home-wide unfiled work count. No focal entity required — use this at the start of every session to understand what you were working on. Optional `scope` narrows the entity sections to a folder, milestone, or epic; unfiled remains home-wide because parentless work has no subtree ancestry.',
       // The Cold-Open Test makes wakeup the product's one always-visible door.
       // Every other tool stays deferred under Tenet 8 until the briefing teaches it.
       _meta: {

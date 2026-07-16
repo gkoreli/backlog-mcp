@@ -68,6 +68,15 @@ function byUpdatedAtDesc(a: Entity, b: Entity): number {
   return (b.updated_at ?? '').localeCompare(a.updated_at ?? '');
 }
 
+function isUnfiledWorkEntity(entity: RuntimeEntity): boolean {
+  const builtin = asBuiltinEntity(entity);
+  if (builtin === undefined || builtin.type === EntityType.Memory) return false;
+  const identity = parseEntityId(builtin.id);
+  if (identity === null) return false;
+  return !getSubstrate(identity.type).structure.isContainer
+    && builtin.parent_id === undefined;
+}
+
 /**
  * Derive a focal entity id from an operation's params. Knows the shape of
  * the four write tools (ADR 0094) but degrades gracefully for unknown tools.
@@ -153,6 +162,12 @@ export async function wakeup(
   const snippetChars = params.evidenceSnippetChars ?? 160;
 
   const identity = params.readIdentity?.();
+
+  // Home-wide by necessity: an unattached entity has no subtree ancestry by
+  // which to assign it to a narrower wakeup scope.
+  const unfiledCount = (await service.list({ limit: 100_000 }))
+    .filter(isUnfiledWorkEntity)
+    .length;
 
   // Scope validation + descendant set.
   // Scope is validated at the boundary — see assertValidScope + the
@@ -340,6 +355,7 @@ export async function wakeup(
       constraints_omitted: constraintsOmitted,
       completion_count: completions.length,
       activity_count: activity.length,
+      unfiled_count: unfiledCount,
     },
   };
 }
