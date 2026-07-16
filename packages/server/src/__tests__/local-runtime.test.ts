@@ -137,6 +137,10 @@ describe('LocalRuntime', function describeLocalRuntime() {
       watcher,
       createSearch: createBm25Search,
     });
+    const siblingRuntime = createLocalRuntime(createHome('owned-graph-sibling'), {
+      watcher: new FakeDocsTreeWatcher(),
+      createSearch: createBm25Search,
+    });
     const task = createEntity({
       id: 'TASK-0001',
       title: 'Runtime-owned task',
@@ -191,6 +195,7 @@ describe('LocalRuntime', function describeLocalRuntime() {
       join(home.controlDir, 'state', 'operations.jsonl'),
       'utf-8',
     )).toContain(task.id);
+    expect(runtime.eventBus).not.toBe(siblingRuntime.eventBus);
     expect(watcher.unsubscribeCount).toBe(1);
   });
 

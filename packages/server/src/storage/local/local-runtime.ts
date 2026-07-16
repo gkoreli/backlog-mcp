@@ -4,6 +4,7 @@ import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { MemoryComposer } from '@backlog-mcp/memory';
 import type { EntityType } from '@backlog-mcp/shared';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
+import { LocalEventBus } from '../../events/local-event-bus.js';
 import { createDefaultComposer } from '../../memory/bootstrap.js';
 import {
   createOperationLogger,
@@ -56,6 +57,7 @@ export class LocalRuntime {
     readonly resourceManager: ResourceManager,
     readonly service: BacklogService,
     readonly operationLogger: OperationLogger,
+    readonly eventBus: LocalEventBus,
     readonly memoryComposer: MemoryComposer,
     private readonly watcher: DocsTreeWatcher,
     private readonly onWatcherError?: DocsTreeWatcherErrorCallback,
@@ -174,6 +176,7 @@ export function createLocalRuntime(
   const operationLogger = createOperationLogger(
     join(home.controlDir, 'state', 'operations.jsonl'),
   );
+  const eventBus = new LocalEventBus();
   const memoryComposer = createDefaultComposer(function getRuntimeService() {
     return service;
   });
@@ -185,6 +188,7 @@ export function createLocalRuntime(
     resourceManager,
     service,
     operationLogger,
+    eventBus,
     memoryComposer,
     deps.watcher ?? new ParcelDocsTreeWatcher(),
     deps.onWatcherError,
