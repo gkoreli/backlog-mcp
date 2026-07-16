@@ -126,6 +126,11 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
       'backlog_wakeup',
       'write_resource',
     ]);
+    expect(metadata.get('write_resource')).toMatchObject({
+      _meta: {
+        'anthropic/alwaysLoad': false,
+      },
+    });
     const crossHomeTools = new Set([
       'backlog_recall',
       'backlog_search',

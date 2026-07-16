@@ -15,12 +15,15 @@ export function registerWriteResourceTool(server: McpServer, service: IBacklogSe
   server.registerTool(
     'write_resource',
     {
-      description: `Edit the markdown body of an existing task or epic. All entity creation goes through backlog_create.
+      description: `Use when you want backlog-mcp to validate and canonically persist an existing entity edit before reporting success. For ordinary repository prose edits, use your native Edit tool; reconciliation updates indexes afterward.
  * The \`append\` command will add content to the end of the body, automatically adding a newline if needed.
  Notes for using the \`str_replace\` command:
  * The \`old_str\` parameter should match EXACTLY one or more consecutive lines from the original body. Be mindful of whitespaces!
  * If the \`old_str\` parameter is not unique in the body, the replacement will not be performed. Include enough context to make it unique.
  * The \`new_str\` parameter should contain the edited lines that should replace the \`old_str\``,
+      _meta: {
+        'anthropic/alwaysLoad': false,
+      },
       inputSchema: z.object({
         ...BACKLOG_HOME_INPUT_FIELDS,
         id: z.string().describe('Task or epic ID, e.g. TASK-0001 or EPIC-0002'),
