@@ -56,8 +56,39 @@ describe('core/recall', () => {
     expect(item.entity_id).toBe('TASK-0001');
     expect(item.kind).toBe('completion');
     expect(item.layer).toBe('episodic');
-    expect(item.created_at).toBe(new Date(1_700_000_000_000).toISOString());
+    // Provenance (ADR 0115 R-1): age derives from createdAt; unused memory
+    // reports uses:0 with no idle_days.
+    expect(item.age_days).toBe(Math.floor((Date.now() - 1_700_000_000_000) / (24 * 60 * 60 * 1000)));
+    expect(item.uses).toBe(0);
+    expect(item.idle_days).toBeUndefined();
     expect(item.score).toBeGreaterThan(0);
+  });
+
+  it('carries provenance signals on stubs: uses, idle_days, lineage, temporal kind (ADR 0115 R-1)', async () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    await store.store({
+      id: 'seasoned', title: 'Deploy procedure', layer: 'episodic',
+      content: 'Release = typecheck → test → tag → publish', source: 's',
+      createdAt: Date.now() - 40 * DAY,
+      metadata: {
+        usageCount: 5,
+        last_used_at: new Date(Date.now() - 3 * DAY).toISOString(),
+        supersedes: 'MEMO-0001',
+        derived: true,
+        memory_kind: 'timeless',
+        occurred_at: new Date(Date.now() - 60 * DAY).toISOString(),
+      },
+    });
+
+    const result = await recall({ query: 'release' }, { memoryComposer: composer });
+    const item = result.items[0]!;
+    expect(item.title).toBe('Deploy procedure');
+    expect(item.uses).toBe(5);
+    expect(item.idle_days).toBe(3);
+    expect(item.supersedes).toBe('MEMO-0001');
+    expect(item.derived).toBe(true);
+    expect(item.kind).toBe('timeless');           // temporal kind wins over capture kind
+    expect(item.age_days).toBe(60);               // occurred_at anchors age, not createdAt
   });
 
   it('filters by context (parent_id)', async () => {

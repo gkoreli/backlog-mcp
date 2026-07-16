@@ -212,6 +212,7 @@ export class BacklogMemoryStore implements MemoryStore {
         ...(m.occurred_at ? { occurred_at: m.occurred_at } : {}),
         ...(m.derived === true ? { derived: true } : {}),
         usageCount: m.usage_count ?? 0,
+        ...(m.last_used_at ? { last_used_at: m.last_used_at } : {}),
         ...(m.tags?.includes('completion') ? { kind: 'completion' } : m.tags?.includes('artifact') ? { kind: 'artifact' } : {}),
       },
     };
