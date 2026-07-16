@@ -11,9 +11,11 @@
 import { signal, computed, type ReadonlySignal, component, html, when, each, type TemplateResult, inject } from '@nisli/core';
 import { isValidEntityId } from '@backlog-mcp/shared';
 import { SplitPaneState } from '../services/split-pane-state.js';
+import type { HomeSelection } from '../utils/api.js';
 
 type MetadataCardProps = {
   entries: Array<{ key: string; value: unknown }>;
+  homeSelection: HomeSelection | undefined;
 };
 
 /**
@@ -25,10 +27,20 @@ type MetadataCardProps = {
  * `valid_until` in the past and `derived: true` get semantic chips so
  * expiry and inference-vs-evidence are legible at a glance.
  */
-function renderValue(value: unknown, key: string, splitState: SplitPaneState): TemplateResult {
+function renderValue(
+  value: unknown,
+  key: string,
+  splitState: SplitPaneState,
+  selection: HomeSelection | undefined,
+): TemplateResult {
   // Reference object: { url, title? }
   if (isReference(value)) {
-    return renderLink(value.url, value.title || value.url, splitState);
+    return renderLink(
+      value.url,
+      value.title || value.url,
+      splitState,
+      selection,
+    );
   }
 
   // Array
@@ -48,7 +60,7 @@ function renderValue(value: unknown, key: string, splitState: SplitPaneState): T
       return html`<span>
         <span class="meta-chip meta-chip--contradiction">contradiction — ${value.length} live ${value.length === 1 ? 'memory shares' : 'memories share'} this state_key</span>
         <ul class="meta-list">${each(items, (_v, i) => i, (item) =>
-          html`<li>${renderScalar(item.value, key, splitState)}</li>`
+          html`<li>${renderScalar(item.value, key, splitState, selection)}</li>`
         )}</ul>
       </span>`;
     }
@@ -57,13 +69,18 @@ function renderValue(value: unknown, key: string, splitState: SplitPaneState): T
       const items = signal(value);
       return html`<ul class="meta-list">${each(items, (_v, i) => i, (ref) => {
         const r = ref.value as { url: string; title?: string };
-        return html`<li>${renderLink(r.url, r.title || r.url, splitState)}</li>`;
+        return html`<li>${renderLink(
+          r.url,
+          r.title || r.url,
+          splitState,
+          selection,
+        )}</li>`;
       })}</ul>`;
     }
     // Array of strings — entity ids become links (ADR 0092.11)
     const items = signal(value);
     return html`<ul class="meta-list">${each(items, (_v, i) => i, (item) =>
-      html`<li>${renderScalar(item.value, key, splitState)}</li>`
+      html`<li>${renderScalar(item.value, key, splitState, selection)}</li>`
     )}</ul>`;
   }
 
@@ -73,13 +90,23 @@ function renderValue(value: unknown, key: string, splitState: SplitPaneState): T
   }
 
   // Primitive
-  return renderScalar(value, key, splitState);
+  return renderScalar(value, key, splitState, selection);
 }
 
 /** Scalar rendering with entity-id links and validity/inference chips. */
-function renderScalar(value: unknown, key: string, splitState: SplitPaneState): TemplateResult {
+function renderScalar(
+  value: unknown,
+  key: string,
+  splitState: SplitPaneState,
+  selection: HomeSelection | undefined,
+): TemplateResult {
   if (typeof value === 'string' && isValidEntityId(value)) {
-    return renderLink(`mcp://backlog/tasks/${value}.md`, value, splitState);
+    return renderLink(
+      `mcp://backlog/tasks/${value}.md`,
+      value,
+      splitState,
+      selection,
+    );
   }
   if (key === 'valid_until' && typeof value === 'string') {
     const ts = Date.parse(value);
@@ -119,13 +146,21 @@ function renderSparkline(series: number[]): TemplateResult {
   </span>`;
 }
 
-function renderLink(url: string, title: string, splitState: SplitPaneState): TemplateResult {
+function renderLink(
+  url: string,
+  title: string,
+  splitState: SplitPaneState,
+  selection: HomeSelection | undefined,
+): TemplateResult {
   const isInternal = url.startsWith('file://') || url.startsWith('mcp://');
   function onClick(e: Event) {
     if (!isInternal) return;
     e.preventDefault();
-    if (url.startsWith('file://')) splitState.openResource(url.replace('file://', ''));
-    else splitState.openMcpResource(url);
+    if (url.startsWith('file://')) {
+      splitState.openResource(url.replace('file://', ''), selection);
+    } else {
+      splitState.openMcpResource(url, selection);
+    }
   }
   return html`<a href="${url}" target="${isInternal ? '' : '_blank'}" rel="noopener" @click="${onClick}">${title}</a>`;
 }
@@ -146,7 +181,12 @@ export const MetadataCard = component<MetadataCardProps>('metadata-card', (props
     const entryClass = computed(() => isList.value ? 'meta-entry meta-entry--list' : 'meta-entry meta-entry--scalar');
 
     // Re-render value when it changes
-    const renderedValue = computed(() => renderValue(val.value, key.value, splitState));
+    const renderedValue = computed(() => renderValue(
+      val.value,
+      key.value,
+      splitState,
+      props.homeSelection.value,
+    ));
 
     return html`
       <div class="${entryClass}" data-key="${key}">

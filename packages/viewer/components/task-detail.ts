@@ -26,10 +26,16 @@ export const TaskDetail = component('task-detail', () => {
   const app = inject(AppState);
   const splitState = inject(SplitPaneState);
 
+  function getSelectedTaskId(): string {
+    const id = app.selectedTaskId.value;
+    if (!id) throw new Error('No task selected');
+    return id;
+  }
+
   // ── Data loading — auto-fetches when selectedTaskId changes ─────
   const taskQuery = query<TaskResponse>(
-    () => ['task-detail', app.selectedTaskId.value],
-    () => fetchTask(app.selectedTaskId.value!),
+    () => ['task-detail', app.homeId.value, app.selectedTaskId.value],
+    () => fetchTask(getSelectedTaskId(), app.homeSelection.value),
     {
       enabled: () => !!app.selectedTaskId.value,
       staleTime: 0,
@@ -42,8 +48,8 @@ export const TaskDetail = component('task-detail', () => {
 
   // ── Operation count for activity badge ─────────────────────────
   const opCountQuery = query<number>(
-    () => ['op-count', app.selectedTaskId.value],
-    () => fetchOperationCount(app.selectedTaskId.value!),
+    () => ['op-count', app.homeId.value, app.selectedTaskId.value],
+    () => fetchOperationCount(getSelectedTaskId(), app.homeSelection.value),
     {
       enabled: () => !!app.selectedTaskId.value,
       staleTime: 5000,
@@ -87,7 +93,7 @@ export const TaskDetail = component('task-detail', () => {
   function handleActivityClick() {
     const id = app.selectedTaskId.value;
     if (id) {
-      splitState.openActivity(id);
+      splitState.openActivity(id, app.homeSelection.value);
     }
   }
 
@@ -141,9 +147,13 @@ export const TaskDetail = component('task-detail', () => {
   const taskView = DocumentView({
     frontmatter,
     content: taskDescription,
+    homeSelection: app.homeSelection,
     onNavigate: (id) => {
       if (getTypeConfig(getTypeFromId(id)).opensInPane) {
-        splitState.openMcpResource(`mcp://backlog/tasks/${id}.md`);
+        splitState.openMcpResource(
+          `mcp://backlog/tasks/${id}.md`,
+          app.homeSelection.value,
+        );
       } else {
         app.selectTask(id);
       }

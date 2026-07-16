@@ -7,9 +7,14 @@
  *
  * See ADR 0007 for design rationale.
  */
-import { signal, effect } from '@nisli/core';
+import { signal, effect, computed } from '@nisli/core';
 import { getTypeFromId } from '@backlog-mcp/shared';
 import { getTypeConfig } from '../type-registry.js';
+import {
+  getHomeId,
+  getHomeSelection,
+  type HomeSelection,
+} from '../utils/api.js';
 import { UrlState } from './url-state.js';
 
 const SCOPE_STORAGE_KEY = 'backlog:sidebar-scope';
@@ -32,6 +37,16 @@ export class AppState {
   readonly type = this.url.type;
   readonly selectedTaskId = this.url.id;
   readonly query = this.url.q;
+  readonly home = this.url.home;
+  readonly projectRoot = this.url.projectRoot;
+
+  /** Active request selection; undefined preserves the legacy viewer runtime. */
+  readonly homeSelection = computed<HomeSelection | undefined>(() =>
+    getHomeSelection(this.home.value, this.projectRoot.value)
+  );
+
+  /** Stable identity used by every home-bound query and persisted view. */
+  readonly homeId = computed(() => getHomeId(this.homeSelection.value));
 
   // ── Local state ──────────────────────────────────────────────────
   readonly sort = signal(loadSavedSort());
@@ -74,6 +89,14 @@ export class AppState {
   selectTask(id: string) {
     this.selectedTaskId.value = id;
     this.deriveScope(id);
+  }
+
+  /** Replace the URL-backed request selection as one coalesced state update. */
+  setHomeSelection(selection: HomeSelection | undefined) {
+    this.home.value = selection?.home ?? null;
+    this.projectRoot.value = selection?.home === 'project'
+      ? selection.projectRoot
+      : null;
   }
 
   /**

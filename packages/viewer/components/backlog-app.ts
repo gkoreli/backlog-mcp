@@ -23,6 +23,7 @@ import { SplitPaneState } from '../services/split-pane-state.js';
 export const BacklogApp = component('backlog-app', (_props, host) => {
   const app = inject(AppState);
   const splitState = inject(SplitPaneState);
+  splitState.restore(app.homeSelection.value);
   const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
   const shortcut = isMac ? '⌘J' : 'Ctrl+J';
 
@@ -41,7 +42,7 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
   }
 
   function handleActivityClick() {
-    splitState.openActivity();
+    splitState.openActivity(undefined, app.homeSelection.value);
   }
 
   function handleSystemInfoClick() {

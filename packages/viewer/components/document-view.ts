@@ -19,10 +19,12 @@ import { TaskBadge } from './task-badge.js';
 import { MetadataCard } from './metadata-card.js';
 import { MdBlock } from './md-block.js';
 import type { ReadonlySignal } from '@nisli/core';
+import type { HomeSelection } from '../utils/api.js';
 
 type DocumentViewProps = {
   frontmatter: Record<string, unknown>;
   content: string;
+  homeSelection: HomeSelection | undefined;
   onNavigate?: (id: string) => void;
 };
 
@@ -46,8 +48,12 @@ export const DocumentView = component<DocumentViewProps>('document-view', (props
   // Route file:// and mcp:// link clicks from md-block
   useHostEvent(host, 'link-click', (e: CustomEvent<{ href: string }>) => {
     const { href } = e.detail;
-    if (href.startsWith('file://')) splitState.openResource(href.replace('file://', ''));
-    else if (href.startsWith('mcp://')) splitState.openMcpResource(href);
+    const selection = props.homeSelection.value;
+    if (href.startsWith('file://')) {
+      splitState.openResource(href.replace('file://', ''), selection);
+    } else if (href.startsWith('mcp://')) {
+      splitState.openMcpResource(href, selection);
+    }
   });
 
   const fm = props.frontmatter;
@@ -163,7 +169,10 @@ export const DocumentView = component<DocumentViewProps>('document-view', (props
               `)}
             </div>
           `)}
-          ${MetadataCard({ entries: extraEntries })}
+          ${MetadataCard({
+            entries: extraEntries,
+            homeSelection: props.homeSelection,
+          })}
         </div>
       `)}
       ${when(hasChildren, html`

@@ -34,6 +34,7 @@ import {
   type JournalEntry,
   type EpicGroup,
 } from './activity-utils.js';
+import { buildApiUrl } from '../utils/api.js';
 
 type ViewMode = 'timeline' | 'journal';
 
@@ -68,17 +69,28 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
     const taskId = splitState.activityTaskId.value;
     const currentMode = mode.value;
 
-    let url: string;
+    let path: string;
+    let query: Record<string, string | number>;
     if (taskId) {
-      url = `/operations?task=${encodeURIComponent(taskId)}&limit=100`;
+      path = '/operations';
+      query = { task: taskId, limit: 100 };
     } else if (currentMode === 'journal') {
-      url = `/operations?date=${selectedDate.value}&tz=${new Date().getTimezoneOffset()}`;
+      path = '/operations';
+      query = {
+        date: selectedDate.value,
+        tz: new Date().getTimezoneOffset(),
+      };
     } else {
-      url = '/operations?limit=100';
+      path = '/operations';
+      query = { limit: 100 };
     }
 
     try {
-      const res = await fetch(url);
+      const res = await fetch(buildApiUrl(
+        path,
+        query,
+        splitState.homeSelection.value,
+      ));
       operations.value = await res.json();
     } catch {
       operations.value = [];
@@ -134,6 +146,7 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
   }
 
   function handleTaskClick(taskId: string) {
+    app.setHomeSelection(splitState.homeSelection.value);
     app.selectTask(taskId);
   }
 

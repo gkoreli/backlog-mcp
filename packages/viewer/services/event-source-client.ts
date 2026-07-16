@@ -6,11 +6,16 @@
  * or transport details — they just register callbacks.
  */
 
-import { API_URL } from '../utils/api.js';
+import {
+  buildApiUrl,
+  getHomeId,
+  type HomeProvenance,
+  type HomeSelection,
+} from '../utils/api.js';
 
 export type BacklogEventType = 'task_changed' | 'task_created' | 'task_deleted' | 'resource_changed';
 
-export interface BacklogEvent {
+export interface BacklogEvent extends Partial<HomeProvenance> {
   seq: number;
   type: BacklogEventType;
   id: string;
@@ -23,13 +28,17 @@ export type ChangeCallback = (event: BacklogEvent) => void;
 
 class BacklogEvents {
   private source: EventSource | null = null;
+  private homeId: string | null = null;
   private listeners = new Set<ChangeCallback>();
 
-  /** Start listening for server events. Call once on app init. */
-  connect(): void {
-    if (this.source) return;
+  /** Connect to the selected home, replacing only the transport connection. */
+  connect(selection?: HomeSelection): void {
+    const nextHomeId = getHomeId(selection);
+    if (this.source && this.homeId === nextHomeId) return;
 
-    this.source = new EventSource(`${API_URL}/events`);
+    this.source?.close();
+    this.source = new EventSource(buildApiUrl('/events', {}, selection));
+    this.homeId = nextHomeId;
 
     this.source.onmessage = (e) => {
       try {
@@ -56,6 +65,7 @@ class BacklogEvents {
   disconnect(): void {
     this.source?.close();
     this.source = null;
+    this.homeId = null;
   }
 }
 

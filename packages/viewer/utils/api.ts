@@ -6,12 +6,77 @@ export const API_URL =
     ? __API_URL__
     : window.location.origin;
 
+export type HomeSelection =
+  | { home: 'global' }
+  | { home: 'project'; projectRoot: string };
+
+export interface HomeProvenance {
+  home: 'global' | 'project';
+  home_id: string;
+  source_path?: string;
+}
+
+type ApiQuery = Readonly<Record<string, string | number | null | undefined>>;
+
+/** Stable cache and persistence identity for one viewer home selection. */
+export function getHomeId(selection: HomeSelection | undefined): string {
+  if (selection?.home === 'project') return selection.projectRoot;
+  return selection?.home === 'global' ? 'global' : 'legacy';
+}
+
+/** Convert URL-backed fields into the single selection sent to viewer APIs. */
+export function getHomeSelection(
+  home: 'global' | 'project' | null,
+  projectRoot: string | null,
+): HomeSelection | undefined {
+  if (home === 'global') return { home: 'global' };
+  if (projectRoot) return { home: 'project', projectRoot };
+  return undefined;
+}
+
+/** Recover a request selection from server-returned home provenance. */
+export function getProvenanceSelection(
+  provenance: Partial<HomeProvenance>,
+): HomeSelection | undefined {
+  if (provenance.home === 'global' && provenance.home_id === 'global') {
+    return { home: 'global' };
+  }
+  if (provenance.home === 'project' && provenance.home_id) {
+    return { home: 'project', projectRoot: provenance.home_id };
+  }
+  return undefined;
+}
+
+/** Build one viewer API URL, adding request-scoped home params when selected. */
+export function buildApiUrl(
+  path: string,
+  query: ApiQuery = {},
+  selection?: HomeSelection,
+): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== null) {
+      params.set(key, String(value));
+    }
+  }
+
+  if (selection?.home === 'global') {
+    params.set('home', 'global');
+  } else if (selection?.home === 'project') {
+    params.set('home', 'project');
+    params.set('project_root', selection.projectRoot);
+  }
+
+  const search = params.toString();
+  return `${API_URL}${path}${search ? `?${search}` : ''}`;
+}
+
 export interface Reference {
   url: string;
   title?: string;
 }
 
-export interface Task {
+export interface Task extends Partial<HomeProvenance> {
   id: string;
   title: string;
   content?: string;
@@ -37,20 +102,35 @@ export interface TaskResponse extends Task {
   children?: Task[];
 }
 
-export async function fetchTasks(filter: 'active' | 'completed' | 'all' = 'all', query?: string): Promise<Task[]> {
-  let url = `${API_URL}/tasks?filter=${filter}`;
-  if (query) url += `&q=${encodeURIComponent(query)}`;
-  const response = await fetch(url);
+export async function fetchTasks(
+  filter: 'active' | 'completed' | 'all' = 'all',
+  query?: string,
+  selection?: HomeSelection,
+): Promise<Task[]> {
+  const response = await fetch(buildApiUrl('/tasks', {
+    filter,
+    q: query,
+  }, selection));
   return response.json();
 }
 
-export async function fetchTask(taskId: string): Promise<TaskResponse> {
-  const response = await fetch(`${API_URL}/tasks/${taskId}`);
+export async function fetchTask(
+  taskId: string,
+  selection?: HomeSelection,
+): Promise<TaskResponse> {
+  const response = await fetch(buildApiUrl(`/tasks/${encodeURIComponent(taskId)}`, {}, selection));
   return response.json();
 }
 
-export async function fetchOperationCount(taskId: string): Promise<number> {
-  const response = await fetch(`${API_URL}/operations/count/${encodeURIComponent(taskId)}`);
+export async function fetchOperationCount(
+  taskId: string,
+  selection?: HomeSelection,
+): Promise<number> {
+  const response = await fetch(buildApiUrl(
+    `/operations/count/${encodeURIComponent(taskId)}`,
+    {},
+    selection,
+  ));
   const data = await response.json();
   return data.count || 0;
 }

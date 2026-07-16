@@ -10,6 +10,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushEffects } from '@nisli/core';
+import { AppState } from './app-state.js';
 import { UrlState } from './url-state.js';
 
 // Stub window.location and history for JSDOM
@@ -27,11 +28,12 @@ describe('UrlState', () => {
 
   beforeEach(() => {
     setLocation('/');
+    localStorage.clear();
     pushStateSpy = vi.spyOn(history, 'pushState').mockImplementation(() => {});
   });
 
   it('readUrl sets signals from URL params', () => {
-    setLocation('/?filter=done&type=epic&id=TASK-0001&q=hello');
+    setLocation('/?filter=done&type=epic&id=TASK-0001&q=hello&home=project&project_root=%2Frepo');
     const state = new UrlState();
     flushEffects();
 
@@ -39,6 +41,8 @@ describe('UrlState', () => {
     expect(state.type.value).toBe('epic');
     expect(state.id.value).toBe('TASK-0001');
     expect(state.q.value).toBe('hello');
+    expect(state.home.value).toBe('project');
+    expect(state.projectRoot.value).toBe('/repo');
   });
 
   it('defaults when URL has no params', () => {
@@ -73,6 +77,37 @@ describe('UrlState', () => {
     expect(pushStateSpy).toHaveBeenCalledTimes(1);
     const pushedUrl = String(pushStateSpy.mock.calls[0][2]);
     expect(pushedUrl).toContain('id=TASK-0042');
+  });
+
+  it('writes home selection to URL params', () => {
+    const state = new UrlState();
+    flushEffects();
+    pushStateSpy.mockClear();
+
+    state.home.value = 'project';
+    state.projectRoot.value = '/repo with spaces';
+    flushEffects();
+
+    const pushedUrl = new URL(String(pushStateSpy.mock.calls[0]?.[2]));
+    expect(pushedUrl.searchParams.get('home')).toBe('project');
+    expect(pushedUrl.searchParams.get('project_root')).toBe('/repo with spaces');
+  });
+
+  it('AppState exposes the active selection and deterministic home id', () => {
+    setLocation('/?project_root=%2Frepo');
+    const state = new AppState();
+    flushEffects();
+
+    expect(state.homeSelection.value).toEqual({
+      home: 'project',
+      projectRoot: '/repo',
+    });
+    expect(state.homeId.value).toBe('/repo');
+
+    state.setHomeSelection({ home: 'global' });
+    flushEffects();
+    expect(state.homeSelection.value).toEqual({ home: 'global' });
+    expect(state.homeId.value).toBe('global');
   });
 
   it('default values are omitted from URL', () => {

@@ -11,10 +11,20 @@
  * See ADR 0010 Gap 2, ADR 0011 for design rationale.
  */
 import { signal } from '@nisli/core';
+import {
+  getHomeId,
+  type HomeSelection,
+} from '../utils/api.js';
 
 export type PaneContent = 'resource' | 'mcp' | 'activity';
 
 const STORAGE_KEY = 'openPane';
+
+interface PersistedPane {
+  value: string;
+  homeId: string;
+  selection?: HomeSelection;
+}
 
 export class SplitPaneState {
   /** What type of content the split pane is showing, or null if closed */
@@ -29,6 +39,9 @@ export class SplitPaneState {
   /** Task ID filter for activity panel, or null for all activity */
   readonly activityTaskId = signal<string | null>(null);
 
+  /** Request selection captured when this pane was opened. */
+  readonly homeSelection = signal<HomeSelection | undefined>(undefined);
+
   /** Header title for the split pane */
   readonly headerTitle = signal('');
 
@@ -41,13 +54,10 @@ export class SplitPaneState {
   /** Header MCP URI for resource loaded events */
   readonly headerMcpUri = signal<string | null>(null);
 
-  constructor() {
-    this.restore();
-  }
-
   /** Open a file resource in the split pane */
-  openResource(path: string) {
+  openResource(path: string, selection?: HomeSelection) {
     this.activePane.value = 'resource';
+    this.homeSelection.value = selection;
     this.resourcePath.value = path;
     this.mcpUri.value = null;
     this.activityTaskId.value = null;
@@ -59,8 +69,9 @@ export class SplitPaneState {
   }
 
   /** Open an MCP resource in the split pane */
-  openMcpResource(uri: string) {
+  openMcpResource(uri: string, selection?: HomeSelection) {
     this.activePane.value = 'mcp';
+    this.homeSelection.value = selection;
     this.mcpUri.value = uri;
     this.resourcePath.value = null;
     this.activityTaskId.value = null;
@@ -72,8 +83,9 @@ export class SplitPaneState {
   }
 
   /** Open the activity panel, optionally filtered to a task */
-  openActivity(taskId?: string) {
+  openActivity(taskId?: string, selection?: HomeSelection) {
     this.activePane.value = 'activity';
+    this.homeSelection.value = selection;
     this.activityTaskId.value = taskId || null;
     this.resourcePath.value = null;
     this.mcpUri.value = null;
@@ -95,6 +107,7 @@ export class SplitPaneState {
     this.headerFileUri.value = null;
     this.headerMcpUri.value = null;
     this.persist(null);
+    this.homeSelection.value = undefined;
   }
 
   /** Update header with URI info (called after resource loads) */
@@ -124,26 +137,62 @@ export class SplitPaneState {
   private persist(value: string | null) {
     try {
       if (value) {
-        localStorage.setItem(STORAGE_KEY, value);
+        const selection = this.homeSelection.value;
+        const persisted: PersistedPane = {
+          value,
+          homeId: getHomeId(selection),
+          ...(selection === undefined ? {} : { selection }),
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
       } else {
         localStorage.removeItem(STORAGE_KEY);
       }
     } catch { /* */ }
   }
 
-  private restore() {
+  /** Restore only when the saved pane belongs to the currently selected home. */
+  restore(selection: HomeSelection | undefined) {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (!saved) return;
+      const persisted = parsePersistedPane(saved);
+      if (!persisted || persisted.homeId !== getHomeId(selection)) return;
 
-      if (saved.startsWith('activity:')) {
-        const taskId = saved.slice(9) || undefined;
-        this.openActivity(taskId);
-      } else if (saved.startsWith('mcp://')) {
-        this.openMcpResource(saved);
+      if (persisted.value.startsWith('activity:')) {
+        const taskId = persisted.value.slice(9) || undefined;
+        this.openActivity(taskId, persisted.selection);
+      } else if (persisted.value.startsWith('mcp://')) {
+        this.openMcpResource(persisted.value, persisted.selection);
       } else {
-        this.openResource(saved);
+        this.openResource(persisted.value, persisted.selection);
       }
     } catch { /* */ }
   }
+}
+
+function parsePersistedPane(value: string): PersistedPane | null {
+  const parsed: unknown = JSON.parse(value);
+  if (typeof parsed !== 'object' || parsed === null) return null;
+  const pane = parsed as Partial<PersistedPane>;
+  if (typeof pane.value !== 'string' || typeof pane.homeId !== 'string') {
+    return null;
+  }
+  if (pane.selection !== undefined && !isHomeSelection(pane.selection)) {
+    return null;
+  }
+  if (getHomeId(pane.selection) !== pane.homeId) return null;
+  return {
+    value: pane.value,
+    homeId: pane.homeId,
+    ...(pane.selection === undefined ? {} : { selection: pane.selection }),
+  };
+}
+
+function isHomeSelection(value: unknown): value is HomeSelection {
+  if (typeof value !== 'object' || value === null) return false;
+  const selection = value as Partial<HomeSelection>;
+  if (selection.home === 'global') return true;
+  return selection.home === 'project'
+    && typeof selection.projectRoot === 'string'
+    && selection.projectRoot.length > 0;
 }

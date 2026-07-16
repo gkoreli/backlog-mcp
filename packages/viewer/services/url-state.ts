@@ -12,6 +12,8 @@ export class UrlState {
   readonly type = signal('all');
   readonly id = signal<string | null>(null);
   readonly q = signal<string | null>(null);
+  readonly home = signal<'global' | 'project' | null>(null);
+  readonly projectRoot = signal<string | null>(null);
 
   constructor() {
     this.readUrl();
@@ -22,7 +24,9 @@ export class UrlState {
       const t = this.type.value;
       const id = this.id.value;
       const q = this.q.value;
-      this.pushUrl(f, t, id, q);
+      const home = this.home.value;
+      const projectRoot = this.projectRoot.value;
+      this.pushUrl(f, t, id, q, home, projectRoot);
     });
   }
 
@@ -45,9 +49,19 @@ export class UrlState {
     this.type.value = params.get('type') || 'all';
     this.id.value = params.get('id');
     this.q.value = params.get('q');
+    const home = params.get('home');
+    this.home.value = home === 'global' || home === 'project' ? home : null;
+    this.projectRoot.value = params.get('project_root');
   }
 
-  private pushUrl(f: string, t: string, id: string | null, q: string | null) {
+  private pushUrl(
+    f: string,
+    t: string,
+    id: string | null,
+    q: string | null,
+    home: 'global' | 'project' | null,
+    projectRoot: string | null,
+  ) {
     const url = new URL(window.location.href);
     const set = (k: string, v: string | null, def?: string) => {
       if (v && v !== def) url.searchParams.set(k, v);
@@ -57,6 +71,8 @@ export class UrlState {
     set('type', t, 'all');
     set('id', id);
     set('q', q);
+    set('home', home);
+    set('project_root', projectRoot);
     if (url.href !== window.location.href) {
       history.pushState(null, '', url);
     }

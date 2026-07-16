@@ -9,7 +9,7 @@
 import { computed, component, html, inject, query, onMount } from '@nisli/core';
 import { AppState } from '../services/app-state.js';
 import { CopyButton } from './copy-button.js';
-import { API_URL } from '../utils/api.js';
+import { buildApiUrl } from '../utils/api.js';
 
 interface SystemInfo {
   version: string;
@@ -34,8 +34,12 @@ export const SystemInfoModal = component('system-info-modal', (_props, _host) =>
 
   // ── Data loading — only fetches when modal is open ──────────────
   const infoQuery = query<SystemInfo>(
-    () => ['system-info', app.isSystemInfoOpen.value],
-    () => fetch(`${API_URL}/api/status`).then(r => r.json()),
+    () => ['system-info', app.homeId.value, app.isSystemInfoOpen.value],
+    () => fetch(buildApiUrl(
+      '/api/status',
+      {},
+      app.homeSelection.value,
+    )).then(r => r.json()),
     {
       enabled: () => app.isSystemInfoOpen.value,
       staleTime: 0, // always refetch on open

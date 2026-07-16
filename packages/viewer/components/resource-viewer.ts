@@ -9,6 +9,10 @@ import { signal, computed, effect, component, html, inject } from '@nisli/core';
 import { SplitPaneState } from '../services/split-pane-state.js';
 import { highlight } from '../markdown/index.js';
 import { DocumentView } from './document-view.js';
+import {
+  buildApiUrl,
+  type HomeSelection,
+} from '../utils/api.js';
 
 interface ResourceData {
   frontmatter?: Record<string, unknown>;
@@ -30,10 +34,13 @@ export const ResourceViewer = component('resource-viewer', () => {
   const errorMessage = signal('');
 
   // ── Data loading ─────────────────────────────────────────────────
-  async function loadResource(path: string) {
+  async function loadResource(
+    path: string,
+    selection: HomeSelection | undefined,
+  ) {
     loadState.value = 'loading';
     try {
-      const res = await fetch(`/resource?path=${encodeURIComponent(path)}`);
+      const res = await fetch(buildApiUrl('/resource', { path }, selection));
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load resource');
       data.value = json;
@@ -45,10 +52,13 @@ export const ResourceViewer = component('resource-viewer', () => {
     }
   }
 
-  async function loadMcpResource(uri: string) {
+  async function loadMcpResource(
+    uri: string,
+    selection: HomeSelection | undefined,
+  ) {
     loadState.value = 'loading';
     try {
-      const res = await fetch(`/mcp/resource?uri=${encodeURIComponent(uri)}`);
+      const res = await fetch(buildApiUrl('/mcp/resource', { uri }, selection));
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load resource');
       data.value = json;
@@ -73,12 +83,13 @@ export const ResourceViewer = component('resource-viewer', () => {
   // ── React to SplitPaneState changes ──────────────────────────────
   effect(() => {
     const paneType = splitState.activePane.value;
+    const selection = splitState.homeSelection.value;
     if (paneType === 'resource') {
       const path = splitState.resourcePath.value;
-      if (path) loadResource(path).catch(() => {});
+      if (path) loadResource(path, selection).catch(() => {});
     } else if (paneType === 'mcp') {
       const uri = splitState.mcpUri.value;
-      if (uri) loadMcpResource(uri).catch(() => {});
+      if (uri) loadMcpResource(uri, selection).catch(() => {});
     } else {
       // Reset when pane closes or switches to activity
       data.value = null;
@@ -126,6 +137,7 @@ export const ResourceViewer = component('resource-viewer', () => {
       return DocumentView({
         frontmatter: computed(() => data.value?.frontmatter ?? {}),
         content: computed(() => data.value?.content || ''),
+        homeSelection: splitState.homeSelection,
       });
     }
 

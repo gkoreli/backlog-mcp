@@ -15,8 +15,13 @@
  */
 import { signal, computed, effect, component, html, when, each, inject, query, onMount, onCleanup } from '@nisli/core';
 import { Highlight } from '@orama/highlight';
-import type { Task } from '../utils/api.js';
-import { API_URL } from '../utils/api.js';
+import {
+  buildApiUrl,
+  getProvenanceSelection,
+  type HomeProvenance,
+  type HomeSelection,
+  type Task,
+} from '../utils/api.js';
 import { AppState } from '../services/app-state.js';
 import { SplitPaneState } from '../services/split-pane-state.js';
 import { recentSearchesService, type RecentSearchItem } from '../services/recent-searches-service.js';
@@ -26,20 +31,20 @@ import { TaskBadge } from './task-badge.js';
 
 const highlighter = new Highlight({ CSSClass: 'spotlight-match' });
 
-interface Resource {
+interface Resource extends Partial<HomeProvenance> {
   id: string;
   path: string;
   title: string;
   content: string;
 }
 
-interface UnifiedSearchResult {
+interface UnifiedSearchResult extends Partial<HomeProvenance> {
   item: Task | Resource;
   score: number;
   type: 'task' | 'epic' | 'resource';
 }
 
-interface SearchResult {
+interface SearchResult extends Partial<HomeProvenance> {
   item: Task | Resource;
   type: 'task' | 'epic' | 'resource';
   snippet: { field: string; html: string; matchedFields: string[] };
@@ -144,8 +149,12 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
 
   // ── Recent activity — loaded via query() when spotlight opens ─────
   const activityQuery = query<Task[]>(
-    () => ['spotlight-activity', app.isSpotlightOpen.value],
-    () => fetch(`${API_URL}/tasks?filter=all&limit=15`).then(r => r.json()),
+    () => ['spotlight-activity', app.homeId.value, app.isSpotlightOpen.value],
+    () => fetch(buildApiUrl(
+      '/tasks',
+      { filter: 'all', limit: 15 },
+      app.homeSelection.value,
+    )).then(r => r.json()),
     {
       enabled: () => app.isSpotlightOpen.value,
       staleTime: 10000,
@@ -200,14 +209,26 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
       if (typeFilter.value !== 'all') {
         params.set('types', typeFilter.value);
       }
-      const response = await fetch(`${API_URL}/search?${params}`);
+      const response = await fetch(buildApiUrl(
+        '/search',
+        Object.fromEntries(params),
+        app.homeSelection.value,
+      ));
       const apiResults: UnifiedSearchResult[] = await response.json();
 
       results.value = apiResults.map(r => {
         const snippet = isResource(r.item)
           ? generateResourceSnippet(r.item, q)
           : generateTaskSnippet(r.item, q);
-        return { item: r.item, type: r.type, snippet, score: r.score };
+        return {
+          item: r.item,
+          type: r.type,
+          snippet,
+          score: r.score,
+          ...(r.home === undefined ? {} : { home: r.home }),
+          ...(r.home_id === undefined ? {} : { home_id: r.home_id }),
+          ...(r.source_path === undefined ? {} : { source_path: r.source_path }),
+        };
       });
       selectedIndex.value = 0;
     } catch {
@@ -246,9 +267,14 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
     selectedIndex.value = 0;
   }
 
-  function selectItem(id: string, type: 'task' | 'epic' | 'resource') {
+  function selectItem(
+    id: string,
+    type: 'task' | 'epic' | 'resource',
+    selection: HomeSelection | undefined,
+  ) {
+    app.setHomeSelection(selection);
     if (type === 'resource') {
-      splitState.openMcpResource(id);
+      splitState.openMcpResource(id, selection);
     } else {
       app.selectTask(id);
     }
@@ -261,13 +287,25 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
 
     if (r.type === 'resource') {
       const resource = r.item as Resource;
-      recentSearchesService.add({ id: resource.id, title: resource.title, type: 'resource' });
-      selectItem(resource.id, 'resource');
+      const selection = getProvenanceSelection(r) ?? app.homeSelection.value;
+      recentSearchesService.add({
+        id: resource.id,
+        title: resource.title,
+        type: 'resource',
+        selection,
+      });
+      selectItem(resource.id, 'resource', selection);
     } else {
       const task = r.item as Task;
       const type = task.type || (task.id.startsWith('EPIC-') ? 'epic' : 'task');
-      recentSearchesService.add({ id: task.id, title: task.title, type: type as 'task' | 'epic' });
-      selectItem(task.id, type as 'task' | 'epic');
+      const selection = getProvenanceSelection(r) ?? app.homeSelection.value;
+      recentSearchesService.add({
+        id: task.id,
+        title: task.title,
+        type: type as 'task' | 'epic',
+        selection,
+      });
+      selectItem(task.id, type as 'task' | 'epic', selection);
     }
   }
 
@@ -276,18 +314,26 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
       const items = recentSearches.value;
       const item = items[index];
       if (!item) return;
-      selectItem(item.id, item.type);
+      selectItem(item.id, item.type, item.selection);
     } else {
       const items = recentActivity.value;
       const result = items[index];
       if (!result) return;
       if (result.type === 'resource') {
         const resource = result.item as Resource;
-        selectItem(resource.id, 'resource');
+        selectItem(
+          resource.id,
+          'resource',
+          getProvenanceSelection(resource) ?? app.homeSelection.value,
+        );
       } else {
         const task = result.item as Task;
         const type = task.type || (task.id.startsWith('EPIC-') ? 'epic' : 'task');
-        selectItem(task.id, type as 'task' | 'epic');
+        selectItem(
+          task.id,
+          type as 'task' | 'epic',
+          getProvenanceSelection(task) ?? app.homeSelection.value,
+        );
       }
     }
   }
@@ -457,7 +503,7 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
   // Recent searches tab items
   const recentSearchItems = each(
     recentSearches,
-    (item) => item.id,
+    (item) => `${item.home_id}\0${item.id}`,
     (item, index) => {
       const isSelected = computed(() => index.value === selectedIndex.value);
       const itemClass = computed(() => `spotlight-tab-item ${isSelected.value ? 'selected' : ''}`);
@@ -467,7 +513,7 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
 
       const handleClick = () => {
         const i = item.value;
-        selectItem(i.id, i.type);
+        selectItem(i.id, i.type, i.selection);
       };
 
       const content = computed(() => {
@@ -510,7 +556,11 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
       const handleClick = () => {
         const t = task.value;
         const type = t.type || (t.id.startsWith('EPIC-') ? 'epic' : 'task');
-        selectItem(t.id, type as 'task' | 'epic');
+        selectItem(
+          t.id,
+          type as 'task' | 'epic',
+          getProvenanceSelection(t) ?? app.homeSelection.value,
+        );
       };
 
       return html`
