@@ -230,9 +230,32 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     if (external === undefined) throw new Error('expected claimed external ADR');
 
     expect(function saveExternalShape() {
-      storage.save(external);
+      storage.save(external, { canonicalAdoption: true });
     }).toThrow(/additional properties/);
     expect(readFileSync(join(home.documentsDir, sourcePath), 'utf8')).toBe(markdown);
+  });
+
+  it('requires separate consent before adopting a noncanonical document', function requiresAdoptionConsent() {
+    const { home, storage } = createStorage('explicit-adoption-consent');
+    const sourcePath = 'adr/0003-external.md';
+    const markdown = '# External ADR\n\nOriginal body.';
+    writeRawDocument(home, sourcePath, markdown);
+
+    const external = storage.get('ADR 0003');
+    if (external === undefined) throw new Error('expected claimed external ADR');
+    const edited = { ...external, content: '# External ADR\n\nEdited body.' };
+
+    expect(function saveWithoutAdoptionConsent() {
+      storage.save(edited);
+    }).toThrow(/canonical adoption requires separate explicit consent/iu);
+    expect(readFileSync(join(home.documentsDir, sourcePath), 'utf8')).toBe(markdown);
+
+    storage.save(edited, { canonicalAdoption: true });
+
+    expect(readFileSync(join(home.documentsDir, sourcePath), 'utf8')).toContain(
+      'id: ADR 0003',
+    );
+    expect(storage.get('ADR 0003')?.content).toContain('Edited body.');
   });
 
   it('quarantines duplicate semantic identities after substrate claim', function quarantinesDuplicateClaims() {

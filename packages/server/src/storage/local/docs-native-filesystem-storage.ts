@@ -29,6 +29,7 @@ import {
 import type {
   DocumentStorageAdapter,
   ListFilter,
+  StorageSaveOptions,
   StoredEntityDocument,
 } from '../storage-adapter.js';
 import {
@@ -104,6 +105,15 @@ function parseStoredDocument(
 function serializeEntity(entity: AnyEntity): string {
   const { content, ...frontmatter } = entity;
   return matter.stringify(typeof content === 'string' ? content : '', frontmatter);
+}
+
+function isCanonicalDocument(
+  document: StoredEntityDocument,
+  registry: ProjectSubstrateRegistry,
+): boolean {
+  const validation = registry.validateWrite(document.entity);
+  return validation.ok
+    && serializeEntity(validation.entity) === document.markdown;
 }
 
 function normalizeWritableSourcePath(sourcePath: string): string {
@@ -392,8 +402,17 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     );
   }
 
-  save(entity: AnyEntity): AnyEntity {
+  save(entity: AnyEntity, options?: StorageSaveOptions): AnyEntity {
     const existing = this.getDocumentById(entity.id);
+    if (
+      existing !== undefined
+      && options?.canonicalAdoption !== true
+      && !isCanonicalDocument(existing, this.registry)
+    ) {
+      throw new Error(
+        `Canonical adoption requires separate explicit consent: ${entity.id}`,
+      );
+    }
     const claim = this.claimFor(entity);
     const sourcePath = existing?.sourcePath
       ?? storageDocumentSourcePath(claim, entity.id);

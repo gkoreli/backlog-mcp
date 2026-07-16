@@ -13,6 +13,7 @@ import type {
 } from '@backlog-mcp/shared';
 import type { UnifiedSearchResult, SearchableType } from '@backlog-mcp/memory/search';
 import type { ResourceContent } from '../resources/manager.js';
+import type { StorageSaveOptions } from './storage-adapter.js';
 
 export interface ListFilter {
   status?: string[];
@@ -27,7 +28,7 @@ export interface IBacklogService {
   getMarkdown(id: string): Promise<string | null>;
   list(filter?: ListFilter): Promise<AnyEntity[]>;
   add(entity: AnyEntity): Promise<AnyEntity>;
-  save(entity: AnyEntity): Promise<AnyEntity>;
+  save(entity: AnyEntity, options?: StorageSaveOptions): Promise<AnyEntity>;
   delete(id: string): Promise<boolean>;
   counts(): Promise<{ total_tasks: number; total_epics: number; by_status: Record<string, number>; by_type: Record<string, number> }>;
   getMaxId(type?: SubstrateType): Promise<number>;

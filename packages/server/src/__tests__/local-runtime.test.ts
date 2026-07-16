@@ -15,6 +15,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createBacklogHome } from '../core/backlog-home.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';
 import { createEntity as createEntityCore } from '../core/create.js';
+import { editItem } from '../core/edit.js';
 import { recall } from '../core/recall.js';
 import { updateEntity as updateEntityCore } from '../core/update.js';
 import { buildEntity } from '../storage/entity-factory.js';
@@ -39,6 +40,11 @@ const CREATE_ATTRIBUTION = {
 const UPDATE_ATTRIBUTION = {
   tool: 'backlog_complete_task',
   mutation: 'update',
+} as const;
+
+const EDIT_ATTRIBUTION = {
+  tool: 'write_resource',
+  mutation: 'resource-edit',
 } as const;
 
 class FakeDocsTreeWatcher implements DocsTreeWatcher {
@@ -529,17 +535,33 @@ describe('LocalRuntime', function describeLocalRuntime() {
       join(home.documentsDir, 'notes/native.md'),
       '# Native note\n\ngenericnativeopal',
     );
-    writeFileSync(
-      join(home.documentsDir, 'tasks/TASK-0003-malformed.md'),
-      [
-        '---',
-        'title: [unterminated',
-        '---',
-        '# Malformed task',
-        '',
-        'malformedclaimmarker',
-      ].join('\n'),
+    const malformedPath = join(
+      home.documentsDir,
+      'tasks/TASK-0003-malformed.md',
     );
+    const malformedMarkdown = [
+      '---',
+      'title: [unterminated',
+      '---',
+      '# Malformed task',
+      '',
+      'malformedclaimmarker',
+    ].join('\n');
+    writeFileSync(malformedPath, malformedMarkdown);
+    const invalidPath = join(
+      home.documentsDir,
+      'tasks/TASK-0004-schema-invalid.md',
+    );
+    const invalidMarkdown = [
+      '---',
+      'type: task',
+      'id: TASK-0004',
+      'title: Schema-invalid task',
+      'unexpected: external',
+      '---',
+      'schemainvalidmarker',
+    ].join('\n');
+    writeFileSync(invalidPath, invalidMarkdown);
 
     await watcher.emit();
 
@@ -554,8 +576,42 @@ describe('LocalRuntime', function describeLocalRuntime() {
     expect((await runtime.service.searchUnified(
       'malformedclaimmarker',
     ))[0]?.type).toBe('resource');
+    expect(readFileSync(malformedPath, 'utf8')).toBe(malformedMarkdown);
+    expect(readFileSync(invalidPath, 'utf8')).toBe(invalidMarkdown);
 
     await runtime.stop();
+  });
+
+  it('does not treat a body edit as canonical-adoption consent', async function keepsAdoptionSeparate() {
+    const home = createHome('body-edit-adoption');
+    const runtime = createLocalRuntime(home, {
+      watcher: new FakeDocsTreeWatcher(),
+      createSearch: createBm25Search,
+    });
+    const sourcePath = join(home.documentsDir, 'adr/0004-external.md');
+    const original = '# External ADR\n\nOriginal body.';
+    mkdirSync(dirname(sourcePath), { recursive: true });
+    writeFileSync(sourcePath, original);
+
+    const result = await editItem(
+      runtime.service,
+      {
+        id: 'ADR 0004',
+        operation: {
+          type: 'str_replace',
+          old_str: 'Original body.',
+          new_str: 'Edited body.',
+        },
+      },
+      { actor: { type: 'agent', name: 'basalt' } },
+      EDIT_ATTRIBUTION,
+    );
+
+    expect(result).toMatchObject({
+      success: false,
+      error: expect.stringMatching(/canonical adoption requires separate explicit consent/iu),
+    });
+    expect(readFileSync(sourcePath, 'utf8')).toBe(original);
   });
 
   it('coalesces watcher bursts while preserving a trailing reconciliation', async function coalescesWatcherBursts() {

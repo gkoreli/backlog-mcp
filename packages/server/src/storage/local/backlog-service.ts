@@ -7,6 +7,7 @@ import {
 } from '@backlog-mcp/shared';
 import type {
   DocumentStorageAdapter,
+  StorageSaveOptions,
   StorageAdapter,
 } from '../storage-adapter.js';
 import {
@@ -259,8 +260,11 @@ export class BacklogService implements IBacklogService {
     return entity;
   }
 
-  async save(candidate: AnyEntity): Promise<AnyEntity> {
-    const entity = this.storage.save(candidate);
+  async save(
+    candidate: AnyEntity,
+    options?: StorageSaveOptions,
+  ): Promise<AnyEntity> {
+    const entity = this.storage.save(candidate, options);
     const document = createSearchEntityDocument(entity, this.getSearchFields);
     if (document !== undefined) {
       if (this.searchReady) {

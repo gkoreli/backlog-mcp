@@ -14,6 +14,11 @@ export interface ListFilter {
   limit?: number;
 }
 
+/** Explicit authority for a managed write to canonicalize an external document. */
+export interface StorageSaveOptions {
+  canonicalAdoption?: true;
+}
+
 /** Closed satellite filter retained by the descoped D1 adapter. */
 export interface AsyncListFilter {
   status?: Status[];
@@ -31,7 +36,7 @@ export interface StorageAdapter {
   getMarkdown(id: string): string | null;
   list(filter?: ListFilter): AnyEntity[];
   add(entity: AnyEntity): AnyEntity;
-  save(entity: AnyEntity): AnyEntity;
+  save(entity: AnyEntity, options?: StorageSaveOptions): AnyEntity;
   delete(id: string): boolean;
   counts(): {
     total_tasks: number;
