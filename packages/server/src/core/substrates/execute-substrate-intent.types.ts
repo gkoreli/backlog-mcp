@@ -17,7 +17,6 @@ export interface ExecuteSubstrateIntentResult {
 }
 
 export type SubstrateIntentFailureCode =
-  | 'mutation-failed'
   | 'compensated-failure'
   | 'partial_failure';
 

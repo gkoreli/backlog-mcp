@@ -308,7 +308,7 @@ async function executeRelateAndTransition(
       );
     }
     throw new SubstrateIntentExecutionError(
-      `Intent ${params.intent.toolName} failed; the source write was compensated`,
+      `Intent ${params.intent.toolName} failed; attempted writes were compensated`,
       'compensated-failure',
       [sourceId, targetId],
       error,
