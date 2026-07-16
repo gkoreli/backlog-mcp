@@ -2,8 +2,8 @@
  * Wake-up core (ADR-0092.1 Phase 2).
  *
  * Produces a dense briefing for "what am I working on?" — no focal entity
- * required. Distinct from ``backlog_context`` (which hydrates around a
- * specific task); wake-up is time-oriented rather than entity-oriented.
+ * required. Wake-up is time-oriented; use ``backlog_get({ context: true })``
+ * to expand a specific entity or recall to retrieve learned knowledge.
  *
  * Layering mirrors MemPalace's L0–L3 adapted to our substrates:
  *

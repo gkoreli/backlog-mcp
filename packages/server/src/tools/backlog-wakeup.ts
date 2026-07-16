@@ -26,8 +26,8 @@ export interface BacklogWakeupDeps {
  * Optional ``scope`` narrows everything to a folder/milestone/epic subtree
  * (use a Folder ID for project-scoped wake-up).
  *
- * Distinct from ``backlog_context``: that tool hydrates around a specific
- * focal entity. Wakeup is time-oriented and needs no focal entity.
+ * Wakeup is time-oriented and needs no focal entity. Use
+ * ``backlog_get({ context: true })`` to expand a specific entity.
  */
 export function registerBacklogWakeupTool(
   server: McpServer,

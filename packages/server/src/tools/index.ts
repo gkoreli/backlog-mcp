@@ -8,7 +8,6 @@ import { registerBacklogCreateTool } from './backlog-create.js';
 import { registerBacklogUpdateTool } from './backlog-update.js';
 import { registerBacklogDeleteTool } from './backlog-delete.js';
 import { registerBacklogSearchTool } from './backlog-search.js';
-import { registerBacklogContextTool } from './backlog-context.js';
 import { registerBacklogWakeupTool } from './backlog-wakeup.js';
 import { registerBacklogRecallTool } from './backlog-recall.js';
 import { registerBacklogRememberTool } from './backlog-remember.js';
@@ -58,9 +57,6 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
   registerBacklogDeleteTool(server, service, deps);
   registerBacklogSearchTool(server, service);
   registerWriteResourceTool(server, service, deps);
-  if (deps?.resourceManager && deps?.operationLogger) {
-    registerBacklogContextTool(server, service, { resourceManager: deps.resourceManager, operationLogger: deps.operationLogger });
-  }
   registerBacklogWakeupTool(server, service, {
     ...(deps?.operationLogger ? { operationLogger: deps.operationLogger } : {}),
     ...(deps?.readLocalFile ? { readLocalFile: deps.readLocalFile } : {}),
