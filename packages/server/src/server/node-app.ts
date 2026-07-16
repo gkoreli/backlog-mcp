@@ -40,6 +40,7 @@ export function createNodeApp(options: CreateNodeAppOptions): Hono {
     readUsageLines: runtime.readUsageLines,
     resolveSourcePath: runtime.resolveSourcePath,
     identityPath: runtime.identityPath,
+    visionPath: runtime.visionPath,
     resolveRuntime: options.resolveRuntime,
     requestShutdown: options.requestShutdown,
     logError: (message, data) => logger.error(message, data),

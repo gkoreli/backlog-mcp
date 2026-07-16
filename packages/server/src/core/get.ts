@@ -46,6 +46,10 @@ function contextDeps(service: IBacklogService): GetContextDeps | null {
       // Exhaustive like wakeup's constraint read: reverse relations must
       // see every declaring document (ListFilter has no paging).
       listByType: (type) => listSync({ type, limit: 100_000 }),
+      // Registry-compiled edges (0113 C.2) — absent on legacy services.
+      ...(service.listDisclosureRelations === undefined
+        ? {}
+        : { listRelationEdges: service.listDisclosureRelations.bind(service) }),
     },
   };
 }

@@ -303,6 +303,7 @@ export function createProjectSubstrateRegistry(
   const issuesBySource = new Map<string, SubstrateDefinitionIssue[]>();
   const candidates: CompiledSubstrateDefinition[] = [];
   const reservedToolNames = new Set(params.reservedToolNames ?? []);
+  const reservedWakeupSections = new Set(params.reservedWakeupSections ?? []);
 
   for (const builtin of builtins) {
     const type = substrateType(builtin);
@@ -406,6 +407,31 @@ export function createProjectSubstrateRegistry(
         continue;
       }
       throw new Error(collisionIssue.message);
+    }
+    if (addedRejection) continue;
+    // Built-in wakeup section names are consumer-reserved (ADR 0113.1 build
+    // guardrail, carried by beryl): a substrate may not claim a section the
+    // briefing composes itself — same law as reserved tool names.
+    for (const source of composed) {
+      const wakeupSection = source.disclosure.wakeup?.section;
+      if (wakeupSection === undefined || !reservedWakeupSections.has(wakeupSection)) {
+        continue;
+      }
+      const reservedIssue: SubstrateDefinitionIssue = {
+        code: 'shape',
+        path: '/disclosure/wakeup/section',
+        message: `wakeup section ${wakeupSection} is reserved by the consumer`,
+      };
+      if (
+        source.kind === 'declarative'
+        && candidates.includes(source)
+        && !rejectedSources.has(source.sourcePath)
+      ) {
+        reject(source, reservedIssue);
+        addedRejection = true;
+        continue;
+      }
+      throw new Error(reservedIssue.message);
     }
     if (addedRejection) continue;
     for (const collision of findClaimCollisions(composed)) {

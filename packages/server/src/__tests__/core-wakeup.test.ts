@@ -496,4 +496,64 @@ describe('core/wakeup', () => {
       expect(result.constraints.map(c => c.id)).toEqual(['REQ-0001']);
     });
   });
+
+  describe('registry-declared sections + vision (ADR 0113 C.2)', () => {
+    const DECISIONS = {
+      type: 'adr',
+      wakeup: {
+        section: 'decisions',
+        includeStatuses: ['proposed', 'accepted', 'living'],
+        limit: 2,
+        projection: ['id', 'title', 'status'],
+      },
+    };
+    const withDisclosures = (svc: IBacklogService, declared = [DECISIONS]) => {
+      (svc as any).listWakeupDisclosures = () => declared;
+      return svc;
+    };
+    const adr = (id: string, over: Record<string, unknown> = {}) => makeEntity({
+      id, title: `decision ${id}`, type: 'adr', status: 'accepted', ...over,
+    } as never);
+
+    it('folds declared sections as projection stubs with includeStatuses + limit + omitted count', async () => {
+      const svc = withDisclosures(mockService([
+        adr('ADR 0001', { updated_at: '2026-07-10T00:00:00.000Z' }),
+        adr('ADR 0002', { updated_at: '2026-07-12T00:00:00.000Z' }),
+        adr('ADR 0003', { updated_at: '2026-07-11T00:00:00.000Z' }),
+        adr('ADR 0004', { status: 'rejected' }),          // filtered by includeStatuses
+      ]));
+      const result = await wakeup(svc);
+      const decisions = result.sections['decisions'] ?? [];
+      expect(decisions.map(d => d.id)).toEqual(['ADR 0002', 'ADR 0003']);  // updated_at desc, limit 2
+      expect(decisions[0]).toEqual({ id: 'ADR 0002', title: 'decision ADR 0002', status: 'accepted' });
+      expect(result.metadata.sections_omitted['decisions']).toBe(1);       // ADR 0001 cut, rejected never counted
+    });
+
+    it('the requirement constraints declaration is satisfied by the specialized fold, never duplicated', async () => {
+      const svc = withDisclosures(
+        mockService([makeEntity({ id: 'REQ-0001', title: 'need', type: 'requirement', status: 'ruled' } as never)]),
+        [{ type: 'requirement', wakeup: { section: 'constraints', includeStatuses: [], limit: 5, projection: ['id', 'title'] } }],
+      );
+      const result = await wakeup(svc);
+      expect(result.sections['constraints']).toBeUndefined();
+      expect(result.constraints.map(c => c.id)).toEqual(['REQ-0001']);
+    });
+
+    it('legacy services (no disclosure surface) degrade to empty sections', async () => {
+      const result = await wakeup(mockService([]));
+      expect(result.sections).toEqual({});
+      expect(result.metadata.sections_omitted).toEqual({});
+    });
+
+    it('vision pointer: path + first-heading title, never the body; absent without readVision', async () => {
+      const withVision = await wakeup(mockService([]), {
+        readVision: () => '# North Star — Demo\n\nLots of body text that must not inline.',
+      });
+      expect(withVision.vision).toEqual({ path: 'NORTH-STAR.md', title: 'North Star — Demo' });
+      expect(JSON.stringify(withVision)).not.toContain('must not inline');
+
+      const without = await wakeup(mockService([]));
+      expect(without.vision).toBeUndefined();
+    });
+  });
 });

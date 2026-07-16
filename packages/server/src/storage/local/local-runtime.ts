@@ -223,6 +223,18 @@ export function createLocalRuntime(
     resourceManager,
     getSearchFields: substrateRegistry.getSearchFields.bind(substrateRegistry),
     allocateId,
+    listDisclosureRelations:
+      substrateRegistry.listDisclosureRelations.bind(substrateRegistry),
+    listWakeupDisclosures: function listWakeupDisclosures() {
+      // Deterministic: listSubstrates is sourcePath-sorted; only substrates
+      // declaring a wakeup disclosure appear.
+      return substrateRegistry.listSubstrates().flatMap(function toSection(substrate) {
+        const wakeup = substrateRegistry.getDisclosure(substrate.storageClaim.type)?.wakeup;
+        return wakeup === undefined
+          ? []
+          : [{ type: substrate.storageClaim.type, wakeup }];
+      });
+    },
   });
   const operationLogger = createOperationLogger(
     join(home.controlDir, 'state', 'operations.jsonl'),

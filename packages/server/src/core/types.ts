@@ -301,6 +301,12 @@ export interface WakeupParams {
    * omit the section. Truncation is reported via metadata.constraints_omitted.
    */
   maxConstraints?: number;
+  /**
+   * Synchronous vision-doc loader (NORTH-STAR.md at the docs root) — same
+   * injection discipline as readIdentity. Core surfaces a pointer stub only
+   * (path + title), never the body; hydrate via resources (ADR 0113 C.2).
+   */
+  readVision?: () => string | undefined;
   /** Evidence snippet max chars on completion summaries. Default: 160. */
   evidenceSnippetChars?: number;
   /**
@@ -370,6 +376,13 @@ export interface WakeupKnowledgeItem {
   uses: number;
 }
 
+/** Projection-shaped stub for a registry-declared wakeup section. */
+export interface WakeupSectionStub {
+  id: string;
+  title: string;
+  [field: string]: unknown;
+}
+
 export interface WakeupResult {
   identity?: string;
   /** Echoes the scope param so callers can confirm what was included. */
@@ -387,6 +400,20 @@ export interface WakeupResult {
    * metadata.constraints_omitted, never implied complete.
    */
   constraints: ConstraintStub[];
+  /**
+   * Registry-declared disclosure sections (ADR 0113 C.2), keyed by the
+   * substrate's declared wakeup section name (e.g. `decisions` from the
+   * packaged ADR definition). Projection-shaped stubs; hydrate with get.
+   * The `constraints` section is NOT here — the Requirement declaration is
+   * satisfied by the specialized constraint fold above (0113.1 ordering law).
+   */
+  sections: Record<string, WakeupSectionStub[]>;
+  /**
+   * Pointer to the project vision doc (NORTH-STAR.md) when present — path +
+   * title only, never the body (ADR 0113 C.2; the Cold-Open Test's fifth
+   * orientation). Hydrate via resources.
+   */
+  vision?: { path: string; title: string };
   recent: {
     completions: WakeupCompletion[];
     activity: WakeupActivity[];
@@ -399,6 +426,8 @@ export interface WakeupResult {
     knowledge_count: number;
     /** Live constraints beyond the maxConstraints bound (0 = complete). */
     constraints_omitted: number;
+    /** Per-section omitted counts for registry-declared sections (0 = complete). */
+    sections_omitted: Record<string, number>;
     completion_count: number;
     activity_count: number;
     /** Home-wide parentless work count; memories and containers are exempt. */

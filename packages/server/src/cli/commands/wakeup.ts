@@ -49,6 +49,18 @@ function format(result: WakeupResult): string {
         ? [`  … ${result.metadata.constraints_omitted} more live constraint(s) omitted — raise --max-constraints`]
         : []),
     ]),
+    ...Object.entries(result.sections).flatMap(([name, stubs]) =>
+      section(name, [
+        ...stubs.map(st =>
+          `  ${String(st.id).padEnd(12)} ${st.status !== undefined ? `[${st.status}] ` : ''}${st.title}`),
+        ...((result.metadata.sections_omitted[name] ?? 0) > 0
+          ? [`  … ${result.metadata.sections_omitted[name]} more omitted`]
+          : []),
+      ]),
+    ),
+    ...section('vision', result.vision
+      ? [`  ${result.vision.title} — ${result.vision.path} (hydrate on demand)`]
+      : []),
     ...section('recent completions', result.recent.completions.map(c =>
       c.evidence_snippet
         ? `  ${c.id.padEnd(12)} ${c.title}\n      ↪ ${c.evidence_snippet}`
@@ -132,6 +144,7 @@ export function registerWakeup(program: Command): void {
               acceptsParent: function acceptsParent(type) {
                 return runtime.writeContext.substrateRegistry?.acceptsParent(type) === true;
               },
+              ...(runtime.readVision === undefined ? {} : { readVision: runtime.readVision }),
               readOperations: (options) => runtime.operationLogger.read(options),
               ...(runtime.mintMemoryEntry === undefined
                 ? {}

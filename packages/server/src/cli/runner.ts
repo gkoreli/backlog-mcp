@@ -92,6 +92,7 @@ async function createDocsNativeCliRuntime(
     throw new Error('Docs-native CLI runtime has no source-path resolver');
   }
   const identityPath = appRuntime.identityPath;
+  const visionPath = appRuntime.visionPath;
   const actor = deps.actor?.() ?? envActor();
   const scopeRoot = resolveContext({ home, env });
 
@@ -125,6 +126,11 @@ async function createDocsNativeCliRuntime(
       return identityPath === undefined
         ? undefined
         : readIdentityFile(identityPath);
+    },
+    readVision: function readDocsNativeVision() {
+      return visionPath === undefined
+        ? undefined
+        : readIdentityFile(visionPath);
     },
     getSourcePath: appRuntime.getSourcePath,
     resolveSourcePath: sourceResolver,

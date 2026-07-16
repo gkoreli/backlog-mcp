@@ -24,6 +24,7 @@ export interface BacklogWakeupDeps {
   };
   readLocalFile?: (filePath: string) => string | null;
   identityPath?: string;
+  visionPath?: string;
   mintMemoryEntry?: (memory: Memory) => MemoryEntry;
   substrateRegistry?: Pick<ProjectSubstrateRegistry, 'acceptsParent'>;
   homeReadCoordinator?: HomeReadCoordinator;
@@ -114,6 +115,11 @@ export function registerBacklogWakeupTool(
           const raw = deps.readLocalFile(deps.identityPath);
           return raw?.trim() || undefined;
         };
+        const readVision = (): string | undefined => {
+          if (!deps?.readLocalFile || !deps?.visionPath) return undefined;
+          const raw = deps.readLocalFile(deps.visionPath);
+          return raw?.trim() || undefined;
+        };
 
         const result = await wakeup(service, {
           ...wakeupParams,
@@ -125,6 +131,7 @@ export function registerBacklogWakeupTool(
                   return deps.substrateRegistry?.acceptsParent(type) === true;
                 },
               }),
+          readVision,
           ...(operationLogger
             ? { readOperations: (options) => operationLogger.read(options) }
             : {}),

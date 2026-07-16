@@ -105,6 +105,8 @@ export interface CreateProjectSubstrateRegistryParams {
   packaged: readonly CompiledSubstrateDefinition[];
   project: readonly CompiledSubstrateDefinition[];
   reservedToolNames?: readonly string[];
+  /** Wakeup section names composed by the consumer itself — unclaimable. */
+  reservedWakeupSections?: readonly string[];
 }
 
 export interface CreateProjectSubstrateRegistryResult {
@@ -117,6 +119,8 @@ export interface LoadSubstrateDefinitionsParams {
   packagedDefinitions: readonly CompileSubstrateDefinitionParams[];
   declarations: readonly DiscoveredSubstrateDeclaration[];
   reservedToolNames?: readonly string[];
+  /** Wakeup section names composed by the consumer itself — unclaimable. */
+  reservedWakeupSections?: readonly string[];
 }
 
 export type LoadSubstrateDefinitionsResult = CreateProjectSubstrateRegistryResult;

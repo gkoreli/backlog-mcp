@@ -166,7 +166,13 @@ describe('Cold-Open Test (NORTH-STAR acceptance)', () => {
       }),
     });
 
-    wakeupTool = captureHandler(s => registerBacklogWakeupTool(s, runtime.service));
+    const readLocalFile = (path: string): string | null => {
+      try { return readFileSync(path, 'utf-8'); } catch { return null; }
+    };
+    wakeupTool = captureHandler(s => registerBacklogWakeupTool(s, runtime.service, {
+      readLocalFile,
+      visionPath: join(home.documentsDir, 'NORTH-STAR.md'),
+    }));
     getTool = captureHandler(s => registerBacklogGetTool(s, runtime.service));
 
     // ONE command.
@@ -231,9 +237,21 @@ describe('Cold-Open Test (NORTH-STAR acceptance)', () => {
     expect(after).toEqual(committedBefore);
   });
 
-  // ── The vision's remaining gap — graduate these when the surface lands
-  // (granite signals post-Phase-E). Until then they document what "done"
-  // still requires; they are the difference between the code and the vision.
-  it.todo('orients on decisions: ADR stubs surface in the briefing (no wakeup section for decisions yet)');
-  it.todo('orients on the vision: NORTH-STAR.md is surfaced or pointed to by the briefing (no vision surface yet)');
+  // ── Graduated 0113 C.2 (registry-declared disclosure sections): the last
+  // two Cold-Open orientations are now live tripwires.
+  it('orients on decisions: accepted ADRs surface as projection stubs in the briefing', () => {
+    const decisions = (briefing.sections?.decisions ?? []) as Array<Record<string, any>>;
+    const ids = decisions.map(d => d.id);
+    expect(ids).toContain('ADR 0001');
+    expect(ids).toContain('ADR 0002');
+    const stub = decisions.find(d => d.id === 'ADR 0001');
+    expect(stub?.status).toBe('accepted');
+    expect(stub?.title).toBe('Markdown is the database');
+  });
+
+  it('orients on the vision: the briefing points at NORTH-STAR.md without inlining it', () => {
+    expect(briefing.vision).toEqual({ path: 'NORTH-STAR.md', title: 'North Star — Fixture Product' });
+    // Pointer, not payload — the body stays hydrate-on-demand.
+    expect(JSON.stringify(briefing)).not.toContain('prove cold-open orientation');
+  });
 });

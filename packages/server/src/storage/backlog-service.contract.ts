@@ -9,6 +9,8 @@
  */
 import type {
   AnyEntity,
+  CompiledDisclosureRelation,
+  CompiledSubstrateWakeupDisclosure,
   SubstrateType,
 } from '@backlog-mcp/shared';
 import type { UnifiedSearchResult, SearchableType } from '@backlog-mcp/memory/search';
@@ -42,6 +44,10 @@ export interface IBacklogService {
   }): Promise<UnifiedSearchResult[]>;
   // Optional local-only methods
   getSync?(id: string): AnyEntity | undefined;
+  /** Registry-declared relation edges (0113 R6/R7) — docs-native only. */
+  listDisclosureRelations?(): readonly CompiledDisclosureRelation[];
+  /** Registry-declared wakeup sections (0113 C.2) — docs-native only. */
+  listWakeupDisclosures?(): ReadonlyArray<{ type: string; wakeup: CompiledSubstrateWakeupDisclosure }>;
   getResource?(uri: string): ResourceContent | undefined;
   isHybridSearchActive?(): boolean;
   getFilePath?(id: string): string | null;

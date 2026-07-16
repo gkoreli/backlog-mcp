@@ -30,6 +30,8 @@ export interface AppRequestRuntime {
   getSourcePath?: (id: string) => string | undefined;
   readUsageLines?: () => string[];
   identityPath?: string;
+  /** Absolute path to the vision doc (NORTH-STAR.md) — docs-native only. */
+  visionPath?: string;
 }
 
 /** Explicit caller context extracted from one HTTP request. */

@@ -1,5 +1,5 @@
 import type { OramaSearchService } from '@backlog-mcp/memory/search';
-import type { SubstrateType } from '@backlog-mcp/shared';
+import type { CompiledDisclosureRelation, CompiledSubstrateWakeupDisclosure, SubstrateType } from '@backlog-mcp/shared';
 import type { ResourceManager } from '../../resources/manager.js';
 import type { StorageAdapter } from '../storage-adapter.js';
 
@@ -10,6 +10,9 @@ export interface BacklogServiceDependencies {
   resourceManager: ResourceManager;
   getSearchFields?: (type: SubstrateType) => readonly string[] | undefined;
   allocateId?: (type: SubstrateType, currentMaxId: number) => string;
+  /** Registry-derived reads (0113 C.2) — injected like getSearchFields. */
+  listDisclosureRelations?: () => readonly CompiledDisclosureRelation[];
+  listWakeupDisclosures?: () => ReadonlyArray<{ type: string; wakeup: CompiledSubstrateWakeupDisclosure }>;
 }
 
 /** Drift repaired for one search-index document family. */

@@ -288,7 +288,10 @@ export const PACKAGED_SUBSTRATE_DEFINITIONS = [
         },
         wakeup: {
           section: 'decisions',
-          includeStatuses: ['proposed', 'living'],
+          // 'accepted' included (0113 C.2): the Cold-Open Test's decisions
+          // orientation is ABOUT the accepted record — a cold agent needs
+          // the decisions that shaped the codebase, not only open proposals.
+          includeStatuses: ['proposed', 'accepted', 'living'],
           limit: 5,
           projection: ['id', 'title', 'status'],
         },

@@ -1,16 +1,29 @@
 import { describe, it, expect } from 'vitest';
-import type { AnyEntity } from '@backlog-mcp/shared';
+import type { AnyEntity, CompiledDisclosureRelation } from '@backlog-mcp/shared';
 import { traverseTypedRelations, type TypedRelationDeps } from './typed-relations.js';
 
 function doc(id: string, type: string, fields: Record<string, unknown> = {}): AnyEntity {
   return { id, type, title: `title ${id}`, ...fields } as AnyEntity;
 }
 
+/** Compiled-shaped edge fixture mirroring the packaged REQ/ADR declarations. */
+const EDGES: CompiledDisclosureRelation[] = [
+  { sourceType: 'requirement', field: 'spawned', cardinality: 'many', targets: [], inverse: 'spawned_by' },
+  { sourceType: 'requirement', field: 'supersedes', cardinality: 'many', targets: [], inverse: 'superseded_by' },
+  { sourceType: 'requirement', field: 'violated_by', cardinality: 'many', targets: [], inverse: 'violates' },
+  { sourceType: 'adr', field: 'respects', cardinality: 'many', targets: [], inverse: 'respected_by' },
+  { sourceType: 'adr', field: 'violates', cardinality: 'many', targets: [], inverse: 'violated_by' },
+  { sourceType: 'adr', field: 'implements', cardinality: 'many', targets: [], inverse: 'implemented_by' },
+  { sourceType: 'adr', field: 'spawned_by', cardinality: 'many', targets: [], inverse: 'spawned' },
+  { sourceType: 'adr', field: 'supersedes', cardinality: 'many', targets: [], inverse: 'superseded_by' },
+];
+
 function makeDeps(entities: AnyEntity[]): TypedRelationDeps {
   const byId = new Map(entities.map(e => [e.id, e]));
   return {
     getEntity: (id) => byId.get(id),
     listByType: (type) => entities.filter(e => e.type === type),
+    listRelationEdges: () => EDGES,
   };
 }
 
@@ -80,6 +93,30 @@ describe('traverseTypedRelations (ADR 0113.1 R-3)', () => {
     ];
     const relations = traverseTypedRelations(corpus[0] as AnyEntity, makeDeps(corpus));
     expect(relations.superseded_by?.map(s => s.id)).toEqual(['REQ-0002']);
+  });
+
+  it('returns empty when the service exposes no compiled edges (legacy)', () => {
+    const corpus = [
+      doc('REQ-0001', 'requirement', { spawned: ['TASK-0001'] }),
+      doc('TASK-0001', 'task'),
+    ];
+    const deps = { ...makeDeps(corpus), listRelationEdges: undefined };
+    expect(traverseTypedRelations(corpus[0] as AnyEntity, deps)).toEqual({});
+  });
+
+  it('edges without a declared inverse are forward-only', () => {
+    const corpus = [
+      doc('ADR-0001', 'adr', { extends: ['ADR-0002'] }),
+      doc('ADR-0002', 'adr'),
+    ];
+    const deps = {
+      ...makeDeps(corpus),
+      listRelationEdges: () => [
+        { sourceType: 'adr', field: 'extends', cardinality: 'many', targets: [] },
+      ] as CompiledDisclosureRelation[],
+    };
+    expect(traverseTypedRelations(corpus[0] as AnyEntity, deps).extends?.map(s => s.id)).toEqual(['ADR-0002']);
+    expect(traverseTypedRelations(corpus[1] as AnyEntity, deps)).toEqual({});
   });
 
   it('returns an empty record when nothing relates', () => {

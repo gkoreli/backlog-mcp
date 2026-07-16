@@ -29,6 +29,8 @@ export interface CliRuntime {
   operationLogger: OperationLogger;
   readUsageLines?: () => string[];
   readIdentity: () => string | undefined;
+  /** Vision-doc loader (NORTH-STAR.md) — undefined off docs-native homes. */
+  readVision?: () => string | undefined;
   getSourcePath?: (id: string) => string | undefined;
   resolveSourcePath: (sourcePath: string) => string;
   close: () => Promise<void>;

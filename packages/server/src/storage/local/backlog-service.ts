@@ -79,6 +79,8 @@ export class BacklogService implements IBacklogService {
   private readonly search: OramaSearchService;
   private readonly resourceManager: BacklogServiceDependencies['resourceManager'];
   private readonly getSearchFields: BacklogServiceDependencies['getSearchFields'];
+  readonly listDisclosureRelations: NonNullable<BacklogServiceDependencies['listDisclosureRelations']> | undefined;
+  readonly listWakeupDisclosures: NonNullable<BacklogServiceDependencies['listWakeupDisclosures']> | undefined;
   private readonly allocateEntityId: BacklogServiceDependencies['allocateId'];
   private searchReady = false;
   private pendingOps: PendingSearchOperation[] = [];
@@ -88,6 +90,8 @@ export class BacklogService implements IBacklogService {
     this.search = dependencies.search;
     this.resourceManager = dependencies.resourceManager;
     this.getSearchFields = dependencies.getSearchFields;
+    this.listDisclosureRelations = dependencies.listDisclosureRelations;
+    this.listWakeupDisclosures = dependencies.listWakeupDisclosures;
     this.allocateEntityId = dependencies.allocateId;
   }
 

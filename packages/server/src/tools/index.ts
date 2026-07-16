@@ -57,6 +57,8 @@ export interface ToolDeps {
   usageTracker?: MemoryUsageTracker;
   /** Absolute path to identity.md. Node-only. */
   identityPath?: string;
+  /** Absolute path to NORTH-STAR.md. Docs-native only (ADR 0113 C.2). */
+  visionPath?: string;
   /**
    * memory-usage.jsonl reader (ADR 0092.9 R-16) — powers the consolidation
    * demand gate. Node wires bootstrap's reader; Worker omits (demand 0,
@@ -81,6 +83,7 @@ export function registerTools(server: McpServer, service: IBacklogService, deps?
     ...(deps?.operationLogger ? { operationLogger: deps.operationLogger } : {}),
     ...(deps?.readLocalFile ? { readLocalFile: deps.readLocalFile } : {}),
     ...(deps?.identityPath ? { identityPath: deps.identityPath } : {}),
+    ...(deps?.visionPath ? { visionPath: deps.visionPath } : {}),
     ...(deps?.mintMemoryEntry
       ? { mintMemoryEntry: deps.mintMemoryEntry }
       : {}),

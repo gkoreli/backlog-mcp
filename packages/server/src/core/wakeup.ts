@@ -31,6 +31,7 @@ import {
 } from './requirements/constraint-stub.js';
 import {
   ValidationError,
+  type WakeupSectionStub,
   type WakeupParams,
   type WakeupResult,
   type WakeupEntitySummary,
@@ -158,6 +159,12 @@ async function descendantSet(
   }
 
   return set;
+}
+
+/** First markdown heading of the vision doc, stripped of `#` marks. */
+function visionTitle(text: string): string {
+  const heading = text.split('\n').find(line => line.trim().startsWith('#'));
+  return heading?.replace(/^#+\s*/, '').trim() || 'NORTH-STAR';
 }
 
 export async function wakeup(
@@ -306,6 +313,58 @@ export async function wakeup(
     constraintsOmitted = live.length - constraints.length;
   }
 
+  // L1.6 Registry-declared disclosure sections (ADR 0113 C.2) — substrates
+  // that declared `disclosure.wakeup` surface as projection-shaped stubs.
+  // Same discipline as constraints: pure list fold, exhaustive read, stable
+  // total order (updated_at desc, id asc), per-section omitted counts, scope
+  // rule (parented follows scope; unparented is home-wide). The Requirement
+  // declaration ('constraints') is satisfied by the specialized fold above —
+  // its beryl-approved worst-first ordering is law, not a generic projection.
+  const sections: Record<string, WakeupSectionStub[]> = {};
+  const sectionsOmitted: Record<string, number> = {};
+  const declaredSections = service.listWakeupDisclosures?.() ?? [];
+  for (const declared of declaredSections) {
+    if (declared.wakeup.section === 'constraints') continue;
+    const entities = await service.list({ type: declared.type, limit: 100_000 });
+    const included = entities
+      .filter(e =>
+        declared.wakeup.includeStatuses.length === 0 ||
+        (typeof e.status === 'string' && declared.wakeup.includeStatuses.includes(e.status)),
+      )
+      .filter(e => {
+        const parentId = typeof e.parent_id === 'string' ? e.parent_id : undefined;
+        return !scopeFilter || parentId === undefined ||
+          scopeFilter(parentId) || parentId === params.scope;
+      })
+      .sort((a, b) => {
+        const updated = (typeof b.updated_at === 'string' ? b.updated_at : '')
+          .localeCompare(typeof a.updated_at === 'string' ? a.updated_at : '');
+        return updated !== 0 ? updated : a.id.localeCompare(b.id);
+      });
+    const limit = declared.wakeup.limit;
+    const stubs = included.slice(0, limit).map(e => {
+      const record = e as Record<string, unknown>;
+      const stub: WakeupSectionStub = { id: e.id, title: e.title };
+      for (const field of declared.wakeup.projection) {
+        if (field === 'id' || field === 'title') continue;
+        const value = record[field];
+        if (value !== undefined && value !== null) stub[field] = value;
+      }
+      return stub;
+    });
+    sections[declared.wakeup.section] = stubs;
+    sectionsOmitted[declared.wakeup.section] = included.length - stubs.length;
+  }
+
+  // Vision pointer (ADR 0113 C.2; Cold-Open's fifth orientation): path +
+  // first-heading title only — the briefing points at the vision, the agent
+  // hydrates it when it matters. Never inlined (budget discipline).
+  const visionText = params.readVision?.();
+  const vision = visionText === undefined ? undefined : {
+    path: 'NORTH-STAR.md',
+    title: visionTitle(visionText),
+  };
+
   // L2 Recent — last N done tasks by updated_at, + last N ops from the log.
   const done = await service.list({ status: ['done'] });
   const completions = inScope(done.flatMap(function getCompletedBuiltin(entity) {
@@ -351,6 +410,8 @@ export async function wakeup(
     },
     knowledge,
     constraints,
+    sections,
+    ...(vision === undefined ? {} : { vision }),
     recent: {
       completions,
       activity,
@@ -362,6 +423,7 @@ export async function wakeup(
       epic_count: currentEpics.length,
       knowledge_count: knowledge.length,
       constraints_omitted: constraintsOmitted,
+      sections_omitted: sectionsOmitted,
       completion_count: completions.length,
       activity_count: activity.length,
       unfiled_count: unfiledCount,

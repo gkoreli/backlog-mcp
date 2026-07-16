@@ -128,6 +128,7 @@ function createStaticRequestRuntime(
     resolveSourcePath: deps?.resolveSourcePath,
     readUsageLines: deps?.readUsageLines,
     identityPath: deps?.identityPath,
+    visionPath: deps?.visionPath,
   };
 }
 
@@ -151,6 +152,7 @@ function createRequestToolDeps(
     resolveSourcePath: runtime.resolveSourcePath,
     readUsageLines: runtime.readUsageLines,
     identityPath: runtime.identityPath,
+    visionPath: runtime.visionPath,
     homeReadCoordinator,
   };
 }
