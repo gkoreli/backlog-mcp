@@ -121,9 +121,9 @@ describe('parseDocumentIdentity', () => {
 
   it('keeps date-prefixed Markdown notes generic', () => {
     expect(parseDocumentIdentity({
-      sourcePath: 'notes/2026-07-16-daily-notes.md',
+      sourcePath: 'notes/2026-07-16T09-30-daily-notes.md',
     })).toEqual({
-      sourcePath: 'notes/2026-07-16-daily-notes.md',
+      sourcePath: 'notes/2026-07-16T09-30-daily-notes.md',
     });
   });
 

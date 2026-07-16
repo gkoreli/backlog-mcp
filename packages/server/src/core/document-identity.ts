@@ -5,7 +5,7 @@ import type {
 } from './document-identity.types.js';
 
 const MARKDOWN_EXTENSION = /\.(?:md|markdown)$/iu;
-const DATE_PREFIXED_FILENAME = /^\d{4}-\d{2}-\d{2}(?:-|$)/u;
+const DATE_PREFIXED_FILENAME = /^\d{4}-\d{2}-\d{2}(?!\d)/u;
 const NUMBERED_FILENAME = /^(\d+(?:\.\d+)*)(?:-(.*))?$/u;
 const PREFIXED_NUMBER_FILENAME = /^([A-Za-z][A-Za-z0-9]*)-(\d+(?:\.\d+)*)(?:-(.*))?$/u;
 
