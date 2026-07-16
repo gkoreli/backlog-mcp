@@ -48,7 +48,7 @@ const GOLDEN_TASKS: Entity[] = [
     id: 'TASK-0001',
     title: 'Implement Spotlight-style search UI',
     content: 'Global search modal triggered by Cmd+J with keyboard-first navigation',
-    epic_id: 'EPIC-0001',
+    parent_id: 'EPIC-0001',
     references: [
       { url: 'https://docs.orama.com', title: 'Orama documentation' },
       { url: 'file:///path/to/adr-0038.md', title: 'ADR-0038: Search Architecture' },
@@ -64,7 +64,7 @@ const GOLDEN_TASKS: Entity[] = [
     id: 'TASK-0003',
     title: 'Add keyboard shortcuts',
     content: 'Implement Cmd+K for command palette, Cmd+J for search',
-    epic_id: 'EPIC-0001',
+    parent_id: 'EPIC-0001',
   }),
   makeEntity({
     id: 'TASK-0004',
@@ -77,7 +77,7 @@ const GOLDEN_TASKS: Entity[] = [
     id: 'TASK-0005',
     title: 'SearchService abstraction layer',
     content: 'Create pluggable search backend interface for Orama, future RAG',
-    epic_id: 'EPIC-0002',
+    parent_id: 'EPIC-0002',
     evidence: ['Implemented SearchService interface', 'Added OramaSearchService'],
   }),
   makeEntity({
@@ -187,7 +187,7 @@ describe('Search Golden Benchmark', () => {
         const results = await service.search('EPIC-0001');
         expect(results[0].task.id).toBe('EPIC-0001');
 
-        const children = await service.search('search', { filters: { epic_id: 'EPIC-0001' } });
+        const children = await service.search('search', { filters: { parent_id: 'EPIC-0001' } });
         const ids = children.map(r => r.task.id);
         expect(ids).toContain('TASK-0001');
         expect(ids).toContain('TASK-0003');
@@ -329,9 +329,9 @@ describe('Search Golden Benchmark', () => {
       expect(results.every(r => r.task.type === 'epic')).toBe(true);
     });
 
-    it('search + epic_id filter', async () => {
-      const results = await service.search('keyboard', { filters: { epic_id: 'EPIC-0001' } });
-      expect(results.every(r => r.task.epic_id === 'EPIC-0001')).toBe(true);
+    it('search + parent_id filter', async () => {
+      const results = await service.search('keyboard', { filters: { parent_id: 'EPIC-0001' } });
+      expect(results.every(r => r.task.parent_id === 'EPIC-0001')).toBe(true);
     });
 
     it('search + multiple status filter', async () => {

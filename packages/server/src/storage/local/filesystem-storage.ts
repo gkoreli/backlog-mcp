@@ -114,10 +114,10 @@ export class FilesystemStorage implements StorageAdapter {
   }
 
   save(candidate: AnyEntity): Entity {
-    const entity = EntitySchema.parse(candidate);
-    if (!isValidEntityId(entity.id)) {
-      throw new Error(`Cannot save entity with invalid id: ${String(entity.id)}`);
+    if (typeof candidate.id !== 'string' || !isValidEntityId(candidate.id)) {
+      throw new Error(`Cannot save entity with invalid id: ${String(candidate.id)}`);
     }
+    const entity = EntitySchema.parse(candidate);
     this.ensureDir(this.entitiesPath);
     writeFileSync(this.entityFilePath(entity.id), this.entityToMarkdown(entity));
     return entity;

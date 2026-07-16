@@ -6,7 +6,11 @@
  * right actor attribution, and silently drop on failures.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Entity } from '@backlog-mcp/shared';
+import {
+  EntitySchema,
+  type AnyEntity,
+  type Entity,
+} from '@backlog-mcp/shared';
 import { MemoryComposer, InMemoryStore } from '@backlog-mcp/memory';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { updateItem } from '../core/update.js';
@@ -33,8 +37,16 @@ function mockService(initial: Entity[] = []): IBacklogService {
     }),
     getMarkdown: vi.fn(async () => null),
     list: vi.fn(async () => [...store.values()]),
-    add: vi.fn(async (task: Entity) => { store.set(task.id, { ...task }); }),
-    save: vi.fn(async (task: Entity) => { store.set(task.id, { ...task }); }),
+    add: vi.fn(async (candidate: AnyEntity) => {
+      const entity = EntitySchema.parse(candidate);
+      store.set(entity.id, { ...entity });
+      return entity;
+    }),
+    save: vi.fn(async (candidate: AnyEntity) => {
+      const entity = EntitySchema.parse(candidate);
+      store.set(entity.id, { ...entity });
+      return entity;
+    }),
     delete: vi.fn(async () => true),
     counts: vi.fn(async () => ({ total_tasks: store.size, total_epics: 0, by_status: {}, by_type: {} })),
     getMaxId: vi.fn(async () => store.size),

@@ -22,7 +22,7 @@ describe('OramaSearchService', () => {
     makeEntity({ id: 'TASK-0002', title: 'Fix login bug', content: 'Users cannot authenticate with SSO' }),
     makeEntity({ id: 'TASK-0003', title: 'Add search feature', content: 'Full-text search for tasks', status: 'in_progress' }),
     makeEntity({ id: 'EPIC-0001', title: 'User Management Epic', type: 'epic' }),
-    makeEntity({ id: 'TASK-0004', title: 'Database migration', epic_id: 'EPIC-0001', status: 'blocked', blocked_reason: ['Waiting for DBA approval'] }),
+    makeEntity({ id: 'TASK-0004', title: 'Database migration', parent_id: 'EPIC-0001', status: 'blocked', blocked_reason: ['Waiting for DBA approval'] }),
   ];
 
   beforeEach(async () => {
@@ -85,8 +85,8 @@ describe('OramaSearchService', () => {
       expect(results[0].task.id).toBe('EPIC-0001');
     });
 
-    it('filters by epic_id', async () => {
-      const results = await service.search('migration', { filters: { epic_id: 'EPIC-0001' } });
+    it('filters by parent_id', async () => {
+      const results = await service.search('migration', { filters: { parent_id: 'EPIC-0001' } });
       expect(results.length).toBe(1);
       expect(results[0].task.id).toBe('TASK-0004');
     });

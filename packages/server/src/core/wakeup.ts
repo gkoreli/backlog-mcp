@@ -38,7 +38,7 @@ function toSummary(e: Entity): WakeupEntitySummary {
     status: e.status ?? 'open',
     type: e.type ?? 'task',
   };
-  const parent = e.parent_id ?? e.epic_id;
+  const parent = e.parent_id;
   if (parent) s.parent_id = parent;
   if (e.updated_at) s.updated_at = e.updated_at;
   return s;

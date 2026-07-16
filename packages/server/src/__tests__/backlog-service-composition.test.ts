@@ -5,7 +5,13 @@ import {
   OramaSearchService,
   type Resource,
 } from '@backlog-mcp/memory/search';
-import type { Entity, EntityType, Status } from '@backlog-mcp/shared';
+import {
+  EntitySchema,
+  type AnyEntity,
+  type Entity,
+  type Status,
+  type SubstrateType,
+} from '@backlog-mcp/shared';
 import { describe, expect, it } from 'vitest';
 import { createBacklogHome } from '../core/backlog-home.js';
 import {
@@ -79,12 +85,16 @@ class MemoryStorage implements StorageAdapter {
     return entities.slice(0, filter?.limit);
   }
 
-  add(entity: Entity): void {
+  add(candidate: AnyEntity): Entity {
+    const entity = EntitySchema.parse(candidate);
     this.entities.set(entity.id, entity);
+    return entity;
   }
 
-  save(entity: Entity): void {
+  save(candidate: AnyEntity): Entity {
+    const entity = EntitySchema.parse(candidate);
     this.entities.set(entity.id, entity);
+    return entity;
   }
 
   delete(id: string): boolean {
@@ -118,13 +128,13 @@ class MemoryStorage implements StorageAdapter {
     };
   }
 
-  getMaxId(type?: EntityType): number {
-    const prefix = `${type ?? 'task'}-`;
+  getMaxId(type: SubstrateType): number {
+    const prefix = `${type}-`;
     return Array.from(this.entities.values()).reduce(function getMaximum(
       maximum,
       entity,
     ) {
-      if (entity.type !== type && type !== undefined) return maximum;
+      if (entity.type !== type) return maximum;
       const numericPart = entity.id.startsWith(prefix)
         ? entity.id.slice(prefix.length)
         : entity.id.slice(entity.id.lastIndexOf('-') + 1);

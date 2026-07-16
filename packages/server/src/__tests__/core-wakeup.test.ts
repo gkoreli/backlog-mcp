@@ -174,15 +174,15 @@ describe('core/wakeup', () => {
     expect(result.metadata.activity_count).toBe(1);
   });
 
-  it('parent_id resolution: uses parent_id when present, else epic_id alias', async () => {
+  it('parent_id resolution uses the canonical relationship field', async () => {
     const svc = mockService([
       makeEntity({ id: 'TASK-0001', title: 'a', status: 'in_progress', parent_id: 'EPIC-0001' }),
-      makeEntity({ id: 'TASK-0002', title: 'b', status: 'in_progress', epic_id: 'EPIC-0002' }),
+      makeEntity({ id: 'TASK-0002', title: 'b', status: 'in_progress' }),
     ]);
     const result = await wakeup(svc);
     const byId = Object.fromEntries(result.now.active_tasks.map(t => [t.id, t.parent_id]));
     expect(byId['TASK-0001']).toBe('EPIC-0001');
-    expect(byId['TASK-0002']).toBe('EPIC-0002');
+    expect(byId['TASK-0002']).toBeUndefined();
   });
 
   // ── scope: runtime validation + descendant filtering (ADR-0092.1) ──
@@ -302,6 +302,7 @@ describe('core/wakeup', () => {
   describe('knowledge section (ADR-0092.5 R-6)', () => {
     const mem = (id: string, over: Record<string, unknown> = {}) => makeEntity({
       id, title: `knowledge ${id}`, type: 'memory', layer: 'semantic',
+      content: `knowledge body ${id}`,
       status: undefined, entity_refs: ['TASK-0676'], ...over,
     } as any);
 

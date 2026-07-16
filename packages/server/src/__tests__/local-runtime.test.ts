@@ -196,6 +196,17 @@ describe('LocalRuntime', function describeLocalRuntime() {
     expect(existsSync(
       join(home.documentsDir, 'decisions', '001.md'),
     )).toBe(true);
+    const storedPath = join(home.documentsDir, 'decisions', '001.md');
+    const beforeRejectedUpdate = readFileSync(storedPath, 'utf8');
+    await expect(updateItem(
+      runtime.service,
+      {
+        id: created.id,
+        fields: { undeclared: true },
+      },
+      context,
+    )).rejects.toThrow(/additional properties/);
+    expect(readFileSync(storedPath, 'utf8')).toBe(beforeRejectedUpdate);
 
     await expect(createItem(
       runtime.service,

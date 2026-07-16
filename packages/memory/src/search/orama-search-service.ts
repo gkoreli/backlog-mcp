@@ -109,7 +109,7 @@ export class OramaSearchService implements SearchService {
       content: task.content || '',
       status: task.status ?? 'open',
       type: task.type || 'task',
-      epic_id: task.parent_id ?? task.epic_id ?? '',  // Effective parent for where filtering (ADR-0079)
+      epic_id: task.parent_id ?? '',  // Effective parent for where filtering (ADR-0079)
       evidence: (task.evidence || []).join(' '),
       blocked_reason: (task.blocked_reason || []).join(' '),
       references: referenceText,
@@ -577,7 +577,7 @@ export class OramaSearchService implements SearchService {
   ): Array<{ id: string; score: number; type: SearchableType; item: Entity | Resource; snippet: SearchSnippet }> {
     const statusFilter = filters?.status;
     const typeFilter = filters?.type;
-    const epicFilter = filters?.epic_id ?? filters?.parent_id;
+    const epicFilter = filters?.parent_id;
 
     const wantsResources = !docTypes || docTypes.includes('resource');
     const wantsEntities = !docTypes || docTypes.some(t => t === 'task' || t === 'epic');
@@ -591,7 +591,7 @@ export class OramaSearchService implements SearchService {
         if (statusFilter && !statusFilter.includes((task.status ?? 'open') as typeof statusFilter[number])) continue;
         if (typeFilter && (task.type || 'task') !== typeFilter) continue;
         if (docTypes && !docTypes.includes(((task.type || 'task') as SearchableType))) continue;
-        if (epicFilter && (task.parent_id ?? task.epic_id) !== epicFilter) continue;
+        if (epicFilter && task.parent_id !== epicFilter) continue;
         out.push({
           id: task.id,
           score: 1.0,

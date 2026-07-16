@@ -24,7 +24,7 @@ export function taskToContextEntity(task: Entity, fidelity: Fidelity = 'full'): 
     fidelity,
   };
 
-  const parentId = task.parent_id ?? task.epic_id;
+  const parentId = task.parent_id;
   if (parentId) entity.parent_id = parentId;
 
   if (fidelity === 'reference') return entity;
