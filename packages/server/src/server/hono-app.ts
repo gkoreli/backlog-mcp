@@ -11,12 +11,22 @@ import { detectContradictions, contradictsFor } from '../core/contradictions.js'
 import { usageSeries, hasUsage } from '../core/usage-series.js';
 import type { Entity, Memory } from '@backlog-mcp/shared';
 import {
+  BACKLOG_HOME_HEADER,
+  BACKLOG_PROJECT_ROOT_HEADER,
+} from '../core/backlog-home.js';
+import type { BacklogEventCallback } from '../events/event-bus.js';
+import {
   createAuthRuntime,
   registerMcpAuthMiddleware,
   registerOAuthRoutes,
   type AuthEvent,
   type OAuthStore,
 } from '../auth/index.js';
+import type {
+  AppRequestRuntime,
+  AppRequestRuntimeResolver,
+  AppRequestRuntimeSelection,
+} from './app-request-runtime.types.js';
 // Note: paths.ts and operations/index.ts are NOT imported here — they pull in
 // Node.js modules (import.meta.url, fs, path) that break the Workers bundle.
 // name/version and the MCP server wrapper are injected via AppDeps.
@@ -57,10 +67,85 @@ export interface AppDeps extends ToolDeps {
   readLocalFile?: (filePath: string) => string | null;  // injected by node-server.ts; absent in Worker
   readUsageLines?: () => string[];  // memory-usage.jsonl reader (ADR 0092.14); Node-only, absent in Worker
   db?: any;                // cloud: D1 database — used for mode detection only
+  resolveRuntime?: AppRequestRuntimeResolver;
+}
+
+interface RequestSelectionSource {
+  header(name: string): string | undefined;
+  query(name: string): string | undefined;
+}
+
+/**
+ * Read explicit caller context from one HTTP request.
+ *
+ * Headers are the bridge/server contract and therefore win over viewer query
+ * parameters. Missing values remain missing; server cwd and process env are
+ * deliberately not request-selection inputs.
+ */
+export function selectAppRequestRuntime(
+  request: RequestSelectionSource,
+): AppRequestRuntimeSelection {
+  const home = request.header(BACKLOG_HOME_HEADER) ?? request.query('home');
+  const projectRoot = request.header(BACKLOG_PROJECT_ROOT_HEADER)
+    ?? request.query('project_root');
+
+  return {
+    ...(home === undefined ? {} : { home }),
+    ...(projectRoot === undefined ? {} : { projectRoot }),
+  };
+}
+
+function createStaticRequestRuntime(
+  service: IBacklogService,
+  deps: AppDeps | undefined,
+): AppRequestRuntime {
+  return {
+    service,
+    operationLog: deps?.operationLog,
+    operationLogger: deps?.operationLogger,
+    eventBus: deps?.eventBus,
+    memoryComposer: deps?.memoryComposer,
+    usageTracker: deps?.usageTracker,
+    resourceManager: deps?.resourceManager,
+    readLocalFile: deps?.readLocalFile,
+    resolveSourcePath: deps?.resolveSourcePath,
+    readUsageLines: deps?.readUsageLines,
+    identityPath: deps?.identityPath,
+  };
+}
+
+function createRequestToolDeps(
+  runtime: AppRequestRuntime,
+  deps: AppDeps | undefined,
+): ToolDeps {
+  return {
+    actor: deps?.actor,
+    operationLog: runtime.operationLog,
+    operationLogger: runtime.operationLogger,
+    eventBus: runtime.eventBus,
+    memoryComposer: runtime.memoryComposer,
+    usageTracker: runtime.usageTracker,
+    resourceManager: runtime.resourceManager,
+    readLocalFile: runtime.readLocalFile,
+    resolveSourcePath: runtime.resolveSourcePath,
+    readUsageLines: runtime.readUsageLines,
+    identityPath: runtime.identityPath,
+  };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   const app = new Hono();
+  const staticRuntime = createStaticRequestRuntime(service, deps);
+  async function resolveRequestRuntime(
+    request: RequestSelectionSource,
+  ): Promise<AppRequestRuntime> {
+    if (deps?.resolveRuntime === undefined) return staticRuntime;
+    return deps.resolveRuntime(selectAppRequestRuntime(request));
+  }
   const authRuntime = createAuthRuntime({
     store: deps?.oauthStore,
     inactivitySeconds: deps?.refreshTokenInactivitySeconds,
@@ -93,19 +178,14 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
   // MCP endpoint — WebStandardStreamableHTTPServerTransport works on Node.js + Workers
   app.all('/mcp', async (c) => {
+    const runtime = await resolveRequestRuntime(c.req);
     const server = new McpServer({ name: deps?.name ?? 'backlog-mcp', version: deps?.version ?? '0.0.0' });
     // ToolDeps carries write-boundary wiring; core builds WriteContext
     // per-write using these pieces. See ADR 0094.
-    const toolDeps: ToolDeps = {
-      ...deps,
-      actor: deps?.actor,
-      operationLog: deps?.operationLog,
-      eventBus: deps?.eventBus,
-      memoryComposer: deps?.memoryComposer,
-    };
-    registerTools(server, service, toolDeps);
-    if (deps?.resourceManager) {
-      deps.resourceManager.registerResource(server);
+    const toolDeps = createRequestToolDeps(runtime, deps);
+    registerTools(server, runtime.service, toolDeps);
+    if (runtime.resourceManager) {
+      runtime.resourceManager.registerResource(server);
     }
 
     const transport = new WebStandardStreamableHTTPServerTransport({
@@ -139,6 +219,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
   // GET /tasks
   app.get('/tasks', async (c) => {
+    const runtime = await resolveRequestRuntime(c.req);
     const filterParam = c.req.query('filter') ?? 'active';
     const q = c.req.query('q');
     const limit = parseInt(c.req.query('limit') ?? '10000', 10);
@@ -150,22 +231,24 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     };
     const status = statusMap[filterParam] as any;
 
-    const results = await service.list({ status, query: q || undefined, limit });
+    const results = await runtime.service.list({ status, query: q || undefined, limit });
     return c.json(results);
   });
 
   // GET /tasks/:id
   app.get('/tasks/:id', async (c) => {
+    const runtime = await resolveRequestRuntime(c.req);
+    const requestService = runtime.service;
     const id = c.req.param('id');
-    const task = await service.get(id);
+    const task = await requestService.get(id);
     if (!task) return c.json({ error: 'Not found' }, 404);
 
-    const raw = await service.getMarkdown(id);
-    const children = await service.list({ parent_id: id, limit: 1000 });
+    const raw = await requestService.getMarkdown(id);
+    const children = await requestService.list({ parent_id: id, limit: 1000 });
     let parentTitle: string | undefined;
     const parentId = task.parent_id || task.epic_id;
     if (parentId) {
-      const parent = await service.get(parentId);
+      const parent = await requestService.get(parentId);
       parentTitle = parent?.title;
     }
 
@@ -177,10 +260,10 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     // viewer sparkline. Node-only (reader injected); omitted if no activity.
     let usage_series: number[] | undefined;
     if ((task.type ?? 'task') === 'memory') {
-      const conflicts = await contradictsFor(service, task as Entity as Memory);
+      const conflicts = await contradictsFor(requestService, task as Entity as Memory);
       if (conflicts.length > 0) contradicts = conflicts;
-      if (deps?.readUsageLines) {
-        const series = usageSeries(deps.readUsageLines(), id);
+      if (runtime.readUsageLines) {
+        const series = usageSeries(runtime.readUsageLines(), id);
         if (hasUsage(series)) usage_series = series;
       }
     }
@@ -194,25 +277,28 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
   // GET /search
   app.get('/search', async (c) => {
+    const runtime = await resolveRequestRuntime(c.req);
     const q = c.req.query('q');
     if (!q) return c.json({ error: 'Missing required query param: q' }, 400);
     const limit = parseInt(c.req.query('limit') ?? '20', 10);
     const types = c.req.query('types')?.split(',');
     const sort = c.req.query('sort');
-    const results = await service.searchUnified(q, { types: types as Array<'task' | 'epic' | 'resource'> | undefined, sort, limit });
+    const results = await runtime.service.searchUnified(q, { types: types as Array<'task' | 'epic' | 'resource'> | undefined, sort, limit });
     return c.json(results);
   });
 
   // GET /memory/contradictions — all contradiction sets (ADR 0092.13 R-9)
   app.get('/memory/contradictions', async (c) => {
-    const result = await detectContradictions(service);
+    const runtime = await resolveRequestRuntime(c.req);
+    const result = await detectContradictions(runtime.service);
     return c.json(result);
   });
 
   // GET /api/status
   const startTime = Date.now();
   app.get('/api/status', async (c) => {
-    const counts = await service.counts();
+    const runtime = await resolveRequestRuntime(c.req);
+    const counts = await runtime.service.counts();
     return c.json({
       version: deps?.version ?? '0.0.0',
       mode: deps?.db ? 'cloudflare-worker' : 'local',
@@ -227,21 +313,25 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
   // GET /operations/count/:taskId  (must be before /operations)
   app.get('/operations/count/:taskId', async (c) => {
-    if (!deps?.operationLog) return c.json({ count: 0 });
-    const count = await deps.operationLog.countForTask(c.req.param('taskId'));
+    const runtime = await resolveRequestRuntime(c.req);
+    if (!runtime.operationLog) return c.json({ count: 0 });
+    const count = await runtime.operationLog.countForTask(c.req.param('taskId'));
     return c.json({ count });
   });
 
   // GET /operations — works identically for local and cloud via IOperationLog
   app.get('/operations', async (c) => {
-    if (!deps?.operationLog) return c.json([]);
+    const runtime = await resolveRequestRuntime(c.req);
+    const operationLog = runtime.operationLog;
+    const requestService = runtime.service;
+    if (!operationLog) return c.json([]);
 
     const limit = parseInt(c.req.query('limit') ?? '50', 10);
     const taskFilter = c.req.query('task');
     const date = c.req.query('date');
     const tz = c.req.query('tz');
 
-    const operations = await deps.operationLog.query({
+    const operations = await operationLog.query({
       limit: date ? 1000 : limit,
       taskId: taskFilter || undefined,
       date: date || undefined,
@@ -260,15 +350,16 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       }
 
       if (!taskCache.has(id)) {
-        const entity = await service.get(id);
+        const entity = await requestService.get(id);
         taskCache.set(id, { title: entity?.title, epicId: entity?.parent_id ?? entity?.epic_id });
       }
-      const cached = taskCache.get(id)!;
+      const cached = taskCache.get(id);
+      if (cached === undefined) return op;
 
       let epicTitle: string | undefined;
       if (cached.epicId) {
         if (!epicCache.has(cached.epicId)) {
-          const epic = await service.get(cached.epicId);
+          const epic = await requestService.get(cached.epicId);
           epicCache.set(cached.epicId, epic?.title);
         }
         epicTitle = epicCache.get(cached.epicId);
@@ -284,13 +375,13 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     }));
 
     return c.json(enriched);
-
-    return c.json([]);
   });
 
   // ── SSE events ──────────────────────────────────────────────────────────────
-  app.get('/events', (c) => {
-    if (deps?.eventBus) {
+  app.get('/events', async (c) => {
+    const runtime = await resolveRequestRuntime(c.req);
+    const eventBus = runtime.eventBus;
+    if (eventBus) {
       // Node.js: live push via eventBus
       const { readable, writable } = new TransformStream();
       const writer = writable.getWriter();
@@ -298,10 +389,10 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
       writer.write(enc.encode(': connected\n\n'));
 
-      const onEvent = (event: any) => {
+      const onEvent: BacklogEventCallback = function onEvent(event) {
         writer.write(enc.encode(`id: ${event.seq}\ndata: ${JSON.stringify(event)}\n\n`)).catch(() => {});
       };
-      deps.eventBus.subscribe(onEvent);
+      eventBus.subscribe(onEvent);
 
       const heartbeat = setInterval(() => {
         writer.write(enc.encode(': heartbeat\n\n')).catch(() => clearInterval(heartbeat));
@@ -310,7 +401,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       // Cleanup when client disconnects
       c.req.raw.signal.addEventListener('abort', () => {
         clearInterval(heartbeat);
-        deps.eventBus!.unsubscribe(onEvent);
+        eventBus.unsubscribe(onEvent);
         writer.close().catch(() => {});
       });
 
@@ -335,90 +426,112 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   });
 
   // ── Node.js-only routes (filesystem) ────────────────────────────────────────
-  if (deps?.staticMiddleware || deps?.resourceManager) {
+  const hasRequestResources = deps?.resourceManager !== undefined
+    || deps?.resolveRuntime !== undefined;
+  if (hasRequestResources) {
     // Resource proxy — serves local filesystem resources
-    if (deps?.resourceManager) {
-      app.get('/resource', async (c) => {
-        const filePath = c.req.query('path');
+    app.get('/resource', async (c) => {
+      const filePath = c.req.query('path');
 
-        if (!filePath) {
-          return c.json({ error: 'Missing path parameter' }, 400);
+      if (!filePath) {
+        return c.json({ error: 'Missing path parameter' }, 400);
+      }
+
+      const runtime = await resolveRequestRuntime(c.req);
+      const resourceManager = runtime.resourceManager;
+      const readLocalFile = runtime.readLocalFile;
+      if (resourceManager === undefined || readLocalFile === undefined) {
+        return c.json({ error: 'Resource access unavailable' }, 404);
+      }
+
+      const content = readLocalFile(filePath);
+      if (content === null) {
+        return c.json({ error: 'File not found', path: filePath }, 404);
+      }
+
+      try {
+        const ext = filePath.split('.').pop()?.toLowerCase() || 'txt';
+        const mimeMap: Record<string, string> = {
+          md: 'text/markdown',
+          ts: 'text/typescript',
+          js: 'text/javascript',
+          json: 'application/json',
+          txt: 'text/plain',
+        };
+
+        let frontmatter = {};
+        let bodyContent = content;
+
+        // Parse frontmatter for markdown files
+        if (ext === 'md') {
+          const parsed = matter(content);
+          frontmatter = parsed.data;
+          bodyContent = parsed.content;
         }
 
-        const content = deps.readLocalFile!(filePath);
-        if (content === null) {
-          return c.json({ error: 'File not found', path: filePath }, 404);
-        }
+        return c.json({
+          content: bodyContent,
+          frontmatter,
+          type: mimeMap[ext] || 'text/plain',
+          path: filePath,
+          fileUri: `file://${filePath}`,
+          mcpUri: resourceManager.toUri(filePath),
+          ext,
+        });
+      } catch (error: unknown) {
+        return c.json({
+          error: 'Failed to read file',
+          message: errorMessage(error),
+        }, 500);
+      }
+    });
 
-        try {
-          const ext = filePath.split('.').pop()?.toLowerCase() || 'txt';
-          const mimeMap: Record<string, string> = {
-            md: 'text/markdown',
-            ts: 'text/typescript',
-            js: 'text/javascript',
-            json: 'application/json',
-            txt: 'text/plain',
-          };
+    // MCP resource proxy — resolves mcp://backlog/ URIs to filesystem content
+    app.get('/mcp/resource', async (c) => {
+      const uri = c.req.query('uri');
 
-          let frontmatter = {};
-          let bodyContent = content;
+      if (!uri || !uri.startsWith('mcp://backlog/')) {
+        return c.json({ error: 'Invalid MCP URI' }, 400);
+      }
 
-          // Parse frontmatter for markdown files
-          if (ext === 'md') {
-            const parsed = matter(content);
-            frontmatter = parsed.data;
-            bodyContent = parsed.content;
-          }
+      const runtime = await resolveRequestRuntime(c.req);
+      const resourceManager = runtime.resourceManager;
+      if (resourceManager === undefined) {
+        return c.json({ error: 'Resource access unavailable' }, 404);
+      }
 
-          return c.json({
-            content: bodyContent,
-            frontmatter,
-            type: mimeMap[ext] || 'text/plain',
-            path: filePath,
-            fileUri: `file://${filePath}`,
-            mcpUri: deps.resourceManager.toUri(filePath),
-            ext,
-          });
-        } catch (error: any) {
-          return c.json({ error: 'Failed to read file', message: error.message }, 500);
-        }
-      });
+      try {
+        const resource = resourceManager.read(uri);
+        const filePath = resourceManager.resolve(uri);
+        const ext = filePath.split('.').pop()?.toLowerCase() || 'txt';
 
-      // MCP resource proxy — resolves mcp://backlog/ URIs to filesystem content
-      app.get('/mcp/resource', async (c) => {
-        const uri = c.req.query('uri');
+        return c.json({
+          content: resource.content,
+          frontmatter: resource.frontmatter || {},
+          type: resource.mimeType,
+          path: filePath,
+          fileUri: `file://${filePath}`,
+          mcpUri: uri,
+          ext,
+        });
+      } catch (error: unknown) {
+        return c.json({
+          error: 'Resource not found',
+          uri,
+          message: errorMessage(error),
+        }, 404);
+      }
+    });
 
-        if (!uri || !uri.startsWith('mcp://backlog/')) {
-          return c.json({ error: 'Invalid MCP URI' }, 400);
-        }
+    app.get('/open', (c) => {
+      const uri = c.req.query('uri');
+      if (!uri) return c.json({ error: 'Missing uri' }, 400);
+      return c.redirect(`/?resource=${encodeURIComponent(uri)}`);
+    });
+  }
 
-        try {
-          const resource = deps.resourceManager.read(uri);
-          const filePath = deps.resourceManager.resolve(uri);
-          const ext = filePath.split('.').pop()?.toLowerCase() || 'txt';
-
-          return c.json({
-            content: resource.content,
-            frontmatter: resource.frontmatter || {},
-            type: resource.mimeType,
-            path: filePath,
-            fileUri: `file://${filePath}`,
-            mcpUri: uri,
-            ext,
-          });
-        } catch (error: any) {
-          return c.json({ error: 'Resource not found', uri, message: error.message }, 404);
-        }
-      });
-
-      app.get('/open', (c) => {
-        const uri = c.req.query('uri');
-        if (!uri) return c.json({ error: 'Missing uri' }, 400);
-        return c.redirect(`/?resource=${encodeURIComponent(uri)}`);
-      });
-    }
-
-    // Shutdown (local only)
+  // Shutdown remains app-scoped and retains its existing Node registration.
+  if (deps?.staticMiddleware || deps?.resourceManager) {
     app.post('/shutdown', (c) => {
       setTimeout(() => process.exit(0), 500);
       return c.text('Shutting down...');
