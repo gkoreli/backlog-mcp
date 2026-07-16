@@ -95,7 +95,7 @@ describe('Operations Module', () => {
 
     it('filters operations by date', () => {
       const storage = createStorage('date-filter');
-      
+
       // Manually append entries with specific dates for testing
       const entry1 = {
         ts: '2026-02-04T10:00:00.000Z',
@@ -113,17 +113,17 @@ describe('Operations Module', () => {
         resourceId: 'TASK-0002',
         actor: { type: 'user' as const, name: 'test' },
       };
-      
+
       storage.append(entry1);
       storage.append(entry2);
       
       // Query by date
       const feb4Ops = storage.query({ date: '2026-02-04' });
       const feb5Ops = storage.query({ date: '2026-02-05' });
-      
+
       expect(feb4Ops.length).toBe(1);
       expect(feb4Ops[0].resourceId).toBe('TASK-0001');
-      
+
       expect(feb5Ops.length).toBe(1);
       expect(feb5Ops[0].resourceId).toBe('TASK-0002');
     });

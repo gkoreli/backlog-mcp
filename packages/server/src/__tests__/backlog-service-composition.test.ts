@@ -26,7 +26,7 @@ import type {
   ListFilter,
   StorageAdapter,
 } from '../storage/storage-adapter.js';
-import { createEntity } from '../storage/entity-factory.js';
+import { buildEntity } from '../storage/entity-factory.js';
 
 let pathSequence = 0;
 
@@ -154,7 +154,7 @@ class MemoryStorage implements StorageAdapter {
 
 describe('BacklogService composition', function describeComposition() {
   it('constructs with runtime-owned dependencies instead of the legacy singleton', async function constructsIndependently() {
-    const entity = createEntity({
+    const entity = buildEntity({
       id: 'TASK-0001',
       title: 'Injected storage entity',
     });
@@ -171,7 +171,7 @@ describe('BacklogService composition', function describeComposition() {
   });
 
   it('defaults allocation to the legacy formatter when no runtime allocator is injected', async function defaultsAllocation() {
-    const entity = createEntity({
+    const entity = buildEntity({
       id: 'TASK-0004',
       title: 'Existing task',
     });
@@ -192,13 +192,13 @@ describe('BacklogService composition', function describeComposition() {
       cachePath,
       hybridSearch: false,
     });
-    const staleEntity = createEntity({
+    const staleEntity = buildEntity({
       id: 'TASK-0001',
       title: 'Stale entity',
       content: 'old entity marker',
       updated_at: '2026-01-01T00:00:00.000Z',
     });
-    const removedEntity = createEntity({
+    const removedEntity = buildEntity({
       id: 'TASK-0002',
       title: 'Removed entity',
       content: 'obsoleteentityzephyr',
@@ -227,7 +227,7 @@ describe('BacklogService composition', function describeComposition() {
       content: 'updated entity marker',
       updated_at: '2026-02-01T00:00:00.000Z',
     };
-    const addedEntity = createEntity({
+    const addedEntity = buildEntity({
       id: 'TASK-0003',
       title: 'Added entity',
       content: 'added entity marker',
@@ -281,7 +281,7 @@ describe('BacklogService composition', function describeComposition() {
       createBuiltinSubstrateRegistrations(catalog),
     ).registry;
     const docsStorage = new DocsNativeFilesystemStorage(home, registry);
-    const typedEntity = createEntity({
+    const typedEntity = buildEntity({
       id: 'TASK-0004',
       title: 'Typed marker entity',
       content: 'typed marker body',

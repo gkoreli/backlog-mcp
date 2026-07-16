@@ -17,7 +17,7 @@ import {
   loadProjectSubstrateDefinitions,
   ProjectSubstrateRegistry,
 } from '../core/substrates/index.js';
-import { createEntity } from '../storage/entity-factory.js';
+import { buildEntity } from '../storage/entity-factory.js';
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
 import { DocsNativeFilesystemStorage } from '../storage/local/docs-native-filesystem-storage.js';
 import type { SubstrateStorageCatalog } from '../storage/substrate-storage-catalog.contract.js';
@@ -64,8 +64,8 @@ function entityMarkdown(entity: Entity, content = entity.content ?? ''): string 
 describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
   it('routes built-in tasks and memories to their claimed folders', function routesBuiltins() {
     const { home, storage } = createStorage('builtin-routing');
-    const task = createEntity({ id: 'TASK-0001', title: 'Task' });
-    const memory = createEntity({
+    const task = buildEntity({ id: 'TASK-0001', title: 'Task' });
+    const memory = buildEntity({
       id: 'MEMO-0001',
       title: 'Memory',
       type: EntityType.Memory,
@@ -87,7 +87,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
 
   it('looks up exact source paths and retains neutral document identity', function looksUpSourcePaths() {
     const { storage } = createStorage('source-path-identity');
-    const task = createEntity({ id: 'TASK-0002', title: 'Native task' });
+    const task = buildEntity({ id: 'TASK-0002', title: 'Native task' });
     const sourcePath = 'tasks/native/TASK-0002-original-slug.md';
 
     storage.createDocument(task, sourcePath);
@@ -109,7 +109,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
 
   it('observes native Markdown edits on the next read', function observesNativeEdits() {
     const { home, storage } = createStorage('native-edit');
-    const task = createEntity({
+    const task = buildEntity({
       id: 'TASK-0001',
       title: 'Before edit',
       content: 'Original body',
@@ -131,8 +131,8 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
 
   it('keeps generic, out-of-claim, malformed, and invalid documents out of typed storage', function ignoresUntypedDocuments() {
     const { home, storage } = createStorage('ignored-documents');
-    const validTask = createEntity({ id: 'TASK-0001', title: 'Valid task' });
-    const outOfClaimTask = createEntity({
+    const validTask = buildEntity({ id: 'TASK-0001', title: 'Valid task' });
+    const outOfClaimTask = buildEntity({
       id: 'TASK-0002',
       title: 'Wrong folder',
     });
@@ -270,7 +270,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
 
   it('rejects explicit paths outside the entity claim and missing claims', function rejectsInvalidClaims() {
     const { storage } = createStorage('claim-containment');
-    const task = createEntity({ id: 'TASK-0001', title: 'Task' });
+    const task = buildEntity({ id: 'TASK-0001', title: 'Task' });
 
     expect(function createInWrongFolder() {
       storage.createDocument(task, 'memories/TASK-0001.md');
@@ -281,7 +281,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     expect(function createWithMismatchedIdentity() {
       storage.createDocument(task, 'tasks/TASK-0002-wrong-identity.md');
     }).toThrow(/filename identity must match entity id/);
-    const customPrefixTask = createEntity({
+    const customPrefixTask = buildEntity({
       id: 'CUSTOM-0012',
       title: 'Wrong prefix',
     });
@@ -291,7 +291,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
         'tasks/CUSTOM-0012-wrong-prefix.md',
       );
     }).toThrow(/filename identity must match/);
-    const shortIdentityTask = createEntity({
+    const shortIdentityTask = buildEntity({
       id: 'TASK-001',
       title: 'Short identity',
     });
@@ -323,7 +323,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     const outsideDirectory = join(tmpdir(), 'docs-native-storage-outside');
     mkdirSync(outsideDirectory, { recursive: true });
     symlinkSync(outsideDirectory, join(home.documentsDir, 'tasks'));
-    const task = createEntity({ id: 'TASK-0001', title: 'Escaping task' });
+    const task = buildEntity({ id: 'TASK-0001', title: 'Escaping task' });
 
     expect(function writeThroughEscapingSymlink() {
       storage.add(task);
@@ -333,7 +333,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
 
   it('uses exclusive creation and leaves the colliding document intact', function createsAtomically() {
     const { storage } = createStorage('atomic-create');
-    const first = createEntity({ id: 'TASK-0001', title: 'First writer' });
+    const first = buildEntity({ id: 'TASK-0001', title: 'First writer' });
     const second = { ...first, title: 'Second writer' };
 
     storage.add(first);
@@ -346,8 +346,8 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
 
   it('preserves an existing slugged source path when saving', function preservesNativePath() {
     const { home, storage } = createStorage('save-native-path');
-    const task = createEntity({ id: 'TASK-0007', title: 'Original' });
-    const newTask = createEntity({ id: 'TASK-0008', title: 'New through save' });
+    const task = buildEntity({ id: 'TASK-0007', title: 'Original' });
+    const newTask = buildEntity({ id: 'TASK-0008', title: 'New through save' });
     const sourcePath = 'tasks/archive/TASK-0007-human-title.md';
     storage.createDocument(task, sourcePath);
 
@@ -366,22 +366,22 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
   it('supports recursive CRUD, filtering, counts, and type-local max ids', function supportsStorageOperations() {
     const { home, storage } = createStorage('storage-operations');
     const parentId = 'EPIC-0002';
-    const nestedTask = createEntity({
+    const nestedTask = buildEntity({
       id: 'TASK-0012',
       title: 'Nested task',
       parent_id: parentId,
     });
-    const doneTask = createEntity({
+    const doneTask = buildEntity({
       id: 'TASK-0003',
       title: 'Done task',
       status: 'done',
     });
-    const epic = createEntity({
+    const epic = buildEntity({
       id: parentId,
       title: 'Epic',
       type: EntityType.Epic,
     });
-    const memory = createEntity({
+    const memory = buildEntity({
       id: 'MEMO-0007',
       title: 'Memory',
       type: EntityType.Memory,
