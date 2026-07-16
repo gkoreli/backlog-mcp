@@ -27,6 +27,10 @@
 import { EntityType, MemorySchema, nextEntityId, isValidEntityId, type Entity, type Memory } from '@backlog-mcp/shared';
 import type { MemoryStore, MemoryEntry, MemoryLayer, RecallQuery, MemoryResult, ForgetFilter } from '@backlog-mcp/memory';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type {
+  MemoryUsageSummary,
+  MemoryUsageSummaryStore,
+} from './memory-usage.contract.js';
 import { usageFactor } from './usage-signal.js';
 
 /** Layers this store persists. 'session' is intentionally absent. */
@@ -40,7 +44,10 @@ export class BacklogMemoryStore implements MemoryStore {
    * service construction at import time (the singleton may not be configured
    * yet when the composer module loads).
    */
-  constructor(private readonly getService: () => IBacklogService) {}
+  constructor(
+    private readonly getService: () => IBacklogService,
+    private readonly usageSummaryStore?: MemoryUsageSummaryStore,
+  ) {}
 
   async store(entry: MemoryEntry): Promise<MemoryEntry> {
     if (!PERSISTED_LAYERS.includes(entry.layer)) {
@@ -86,7 +93,9 @@ export class BacklogMemoryStore implements MemoryStore {
       ...(supersedes ? { supersedes } : {}),
       ...(occurredAt ? { occurred_at: occurredAt } : {}),
       ...(derived ? { derived: true } : {}),
-      usage_count: typeof meta.usageCount === 'number' ? meta.usageCount : 0,
+      ...(this.usageSummaryStore === undefined
+        ? { usage_count: typeof meta.usageCount === 'number' ? meta.usageCount : 0 }
+        : {}),
       created_at: nowIso,
       updated_at: nowIso,
     });
@@ -108,7 +117,7 @@ export class BacklogMemoryStore implements MemoryStore {
     }
 
     await service.add(memory as Entity);
-    return toMemoryEntry(memory as Memory);
+    return this.toMemoryEntry(memory as Memory);
   }
 
   /** Soft-expire a memory by id (no-op if missing, not a memory, or already expired). */
@@ -148,7 +157,11 @@ export class BacklogMemoryStore implements MemoryStore {
       // Bounded usage multiplier (ADR 0092.9 R-15): reorders, never hides.
       // Applied over the full filtered candidate set BEFORE truncation so
       // the multiplier has room to reorder (Mem0's widened-pool lesson).
-      results.push({ entry: toMemoryEntry(m), score: hit.score * usageFactor(m, now) });
+      const entry = this.toMemoryEntry(m);
+      results.push({
+        entry,
+        score: hit.score * usageFactor(usageSummaryFromEntry(entry), now),
+      });
     }
     results.sort((a, b) => b.score - a.score);
     return results.slice(0, limit);
@@ -197,17 +210,47 @@ export class BacklogMemoryStore implements MemoryStore {
     }).length;
   }
 
+  /**
+   * Mint one read-side memory entry.
+   *
+   * This is the sole merge point for usage truth. Project stores ignore
+   * committed usage frontmatter even when old files still carry it; a missing
+   * overlay checkpoint means zero uses. Global stores keep frontmatter.
+   */
+  toMemoryEntry(memory: Memory): MemoryEntry {
+    const usageSummary = this.usageSummaryStore === undefined
+      ? undefined
+      : this.usageSummaryStore.get(memory.id) ?? { usageCount: 0 };
+    return mintMemoryEntry(memory, usageSummary);
+  }
 }
 
-/**
- * Mint a MemoryEntry from a memory entity — THE store boundary for
- * provenance/usage signals (ADR 0115 R-5): every read surface (recall,
- * wakeup) consumes memories through this function, never by parsing
- * frontmatter fields directly. Containment here is what lets ADR 0112's
- * project-home overlay swap the storage of usage state without touching
- * stub shapes or usageFactor.
- */
-export function toMemoryEntry(m: Memory): MemoryEntry {
+function usageSummaryFromEntry(entry: MemoryEntry): {
+  created_at: string;
+  usage_count: number;
+  last_used_at?: string;
+} {
+  const metadata = entry.metadata ?? {};
+  const lastUsedAt = metadata.last_used_at;
+  return {
+    created_at: new Date(entry.createdAt).toISOString(),
+    usage_count: typeof metadata.usageCount === 'number'
+      ? metadata.usageCount
+      : 0,
+    ...(typeof lastUsedAt === 'string'
+      ? { last_used_at: lastUsedAt }
+      : {}),
+  };
+}
+
+function mintMemoryEntry(
+  m: Memory,
+  usageSummary?: MemoryUsageSummary,
+): MemoryEntry {
+  const usageCount = usageSummary?.usageCount ?? m.usage_count ?? 0;
+  const lastUsedAt = usageSummary === undefined
+    ? m.last_used_at
+    : usageSummary.lastUsedAt;
   return {
     id: m.id,
     title: m.title,
@@ -229,8 +272,8 @@ export function toMemoryEntry(m: Memory): MemoryEntry {
       ...(m.kind ? { memory_kind: m.kind } : {}),
       ...(m.occurred_at ? { occurred_at: m.occurred_at } : {}),
       ...(m.derived === true ? { derived: true } : {}),
-      usageCount: m.usage_count ?? 0,
-      ...(m.last_used_at ? { last_used_at: m.last_used_at } : {}),
+      usageCount,
+      ...(lastUsedAt ? { last_used_at: lastUsedAt } : {}),
       ...(m.tags?.includes('completion') ? { kind: 'completion' } : m.tags?.includes('artifact') ? { kind: 'artifact' } : {}),
     },
   };

@@ -17,9 +17,10 @@
  */
 
 import type { Entity, Memory } from '@backlog-mcp/shared';
+import type { MemoryEntry } from '@backlog-mcp/memory';
 import { EntityType, getSubstrate, isValidEntityId, parseEntityId } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
-import { toMemoryEntry } from '../memory/backlog-memory-store.js';
+import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import { asBuiltinEntity } from './substrates/index.js';
 import {
   ValidationError,
@@ -90,7 +91,10 @@ function assertValidScope(scope: string): void {
   if (!isValidEntityId(scope)) {
     throw new ValidationError(`Invalid scope ID: ${JSON.stringify(scope)} (expected e.g. "FLDR-0001")`);
   }
-  const parsed = parseEntityId(scope)!;  // safe — isValidEntityId returned true
+  const parsed = parseEntityId(scope);
+  if (parsed === null) {
+    throw new ValidationError(`Invalid scope ID: ${JSON.stringify(scope)}`);
+  }
   const substrate = getSubstrate(parsed.type);
   if (!substrate.structure.isContainer) {
     throw new ValidationError(
@@ -157,8 +161,14 @@ export async function wakeup(
     scopeFilter = (id: string) => set.has(id);
   }
 
-  const inScope = <T extends { id: string }>(xs: T[]): T[] =>
-    scopeFilter ? xs.filter(e => scopeFilter!(e.id)) : xs;
+  function inScope<T extends { id: string }>(entities: T[]): T[] {
+    const filter = scopeFilter;
+    return filter === null
+      ? entities
+      : entities.filter(function isInScope(entity) {
+          return filter(entity.id);
+        });
+  }
 
   // L1 Now — active tasks (in_progress | blocked), epics excluded;
   // and current epics as their own section.
@@ -187,6 +197,13 @@ export async function wakeup(
         const builtin = asBuiltinEntity(entity);
         return builtin?.type === EntityType.Memory ? [builtin] : [];
       });
+    const fallbackStore = new BacklogMemoryStore(function getWakeupService() {
+      return service;
+    });
+    const mintMemoryEntry = params.mintMemoryEntry
+      ?? function mintFrontmatterMemory(memory: Memory): MemoryEntry {
+        return fallbackStore.toMemoryEntry(memory);
+      };
     const now = Date.now();
     const MS_PER_DAY = 24 * 60 * 60 * 1000;
     knowledge = memories
@@ -195,7 +212,9 @@ export async function wakeup(
       // surfaces only via the store's MemoryEntry minting. Wakeup stays a
       // pure list fold — sort is on the raw entity, everything the item
       // surfaces comes off the minted entry.
-      .map(m => toMemoryEntry(m as Memory))
+      .map(function mintKnowledgeMemory(memory) {
+        return mintMemoryEntry(memory as Memory);
+      })
       .filter(e =>
         (e.layer === 'semantic' || e.layer === 'procedural') &&
         (e.expiresAt === undefined || e.expiresAt > now) &&
@@ -241,12 +260,13 @@ export async function wakeup(
   const ops = params.readOperations
     ? params.readOperations({ limit: opLimit })
     : [];
-  const filteredOps = scopeFilter
-    ? ops.filter(op => {
+  const activityScopeFilter = scopeFilter;
+  const filteredOps = activityScopeFilter === null
+    ? ops
+    : ops.filter(op => {
         const eid = opEntityId(op);
-        return eid !== undefined && scopeFilter!(eid);
-      })
-    : ops;
+        return eid !== undefined && activityScopeFilter(eid);
+      });
   const activity: WakeupActivity[] = filteredOps.slice(0, maxActivity).map(op => {
     const a: WakeupActivity = {
       ts: op.ts,

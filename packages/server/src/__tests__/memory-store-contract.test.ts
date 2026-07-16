@@ -23,12 +23,17 @@ import {
   EntityType,
   parseEntityNum,
   type Entity,
+  type Memory,
 } from '@backlog-mcp/shared';
 import { MemoryComposer, type MemoryEntry } from '@backlog-mcp/memory';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import { createDefaultComposer } from '../memory/bootstrap.js';
+import type {
+  MemoryUsageSummary,
+  MemoryUsageSummaryStore,
+} from '../memory/memory-usage.contract.js';
 import { createEntity } from '../core/create.js';
 import { recall as coreRecall } from '../core/recall.js';
 import { remember as coreRemember } from '../core/remember.js';
@@ -100,6 +105,21 @@ function entry(overrides: Partial<MemoryEntry> & { id: string; content: string }
   };
 }
 
+function memorySummaryStore(): MemoryUsageSummaryStore & {
+  summaries: Map<string, MemoryUsageSummary>;
+} {
+  const summaries = new Map<string, MemoryUsageSummary>();
+  return {
+    summaries,
+    get(id) {
+      return summaries.get(id);
+    },
+    set(id, summary) {
+      summaries.set(id, summary);
+    },
+  };
+}
+
 describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
   let service: IBacklogService;
   let store: BacklogMemoryStore;
@@ -138,6 +158,92 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     await store.store(entry({ id: 'x', content: 'Claim-shaped memory id' }));
 
     expect(await service.get('MEMO-00009')).toBeDefined();
+  });
+
+  it('R1: project stores omit committed usage and mint overlay truth', async () => {
+    const summaries = memorySummaryStore();
+    const projectStore = new BacklogMemoryStore(() => service, summaries);
+
+    const stored = await projectStore.store(entry({
+      id: 'x',
+      content: 'Project usage belongs outside committed Markdown',
+      metadata: { usageCount: 99 },
+    }));
+    const entity = await service.get(stored.id);
+
+    expect(entity).not.toHaveProperty('usage_count');
+    expect(stored.metadata?.usageCount).toBe(0);
+
+    summaries.set(stored.id, {
+      usageCount: 5,
+      lastUsedAt: '2026-07-16T12:00:00.000Z',
+    });
+    const refreshed = projectStore.toMemoryEntry(entity as Memory);
+    expect(refreshed.metadata).toMatchObject({
+      usageCount: 5,
+      last_used_at: '2026-07-16T12:00:00.000Z',
+    });
+  });
+
+  it('R2: project recall ranks from overlay usage and ignores stale frontmatter', async () => {
+    const summaries = memorySummaryStore();
+    const projectStore = new BacklogMemoryStore(() => service, summaries);
+    const now = Date.now();
+    const createdAt = new Date(now - 60 * 24 * 60 * 60 * 1000).toISOString();
+    const lastUsedAt = new Date(now).toISOString();
+    const staleFrontmatterWinner = {
+      id: 'MEMO-0001',
+      type: 'memory',
+      title: 'Stale frontmatter winner',
+      content: 'same query phrase',
+      layer: 'semantic',
+      usage_count: 255,
+      last_used_at: lastUsedAt,
+      created_at: createdAt,
+      updated_at: createdAt,
+    } satisfies Memory;
+    const overlayWinner = {
+      id: 'MEMO-0002',
+      type: 'memory',
+      title: 'Overlay winner',
+      content: 'same query phrase',
+      layer: 'semantic',
+      usage_count: 0,
+      created_at: createdAt,
+      updated_at: createdAt,
+    } satisfies Memory;
+    await service.add(staleFrontmatterWinner);
+    await service.add(overlayWinner);
+    service.searchUnified = async function equalSearchResults() {
+      return [
+        {
+          item: staleFrontmatterWinner,
+          score: 1,
+          type: 'memory',
+          snippet: staleFrontmatterWinner.content,
+        },
+        {
+          item: overlayWinner,
+          score: 1,
+          type: 'memory',
+          snippet: overlayWinner.content,
+        },
+      ];
+    };
+    summaries.set(staleFrontmatterWinner.id, { usageCount: 0 });
+    summaries.set(overlayWinner.id, { usageCount: 8, lastUsedAt });
+
+    const results = await projectStore.recall({
+      query: 'same query phrase',
+      limit: 2,
+    });
+
+    expect(results.map(result => result.entry.id)).toEqual([
+      overlayWinner.id,
+      staleFrontmatterWinner.id,
+    ]);
+    expect(results[0]?.entry.metadata?.usageCount).toBe(8);
+    expect(results[1]?.entry.metadata?.usageCount).toBe(0);
   });
 
   // ── R2: Ranked ─────────────────────────────────────────────────────

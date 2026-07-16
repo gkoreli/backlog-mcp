@@ -10,6 +10,7 @@ import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { Entity } from '@backlog-mcp/shared';
 import { wakeup } from '../core/wakeup.js';
 import { ValidationError } from '../core/types.js';
+import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 
 function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): Entity {
   return {
@@ -350,6 +351,35 @@ describe('core/wakeup', () => {
       const k = result.knowledge.find(x => x.id === 'MEMO-0001');
       expect(k?.age_days).toBe(10);
       expect(k?.uses).toBe(4);
+    });
+
+    it('uses the selected store mint for project overlay usage', async () => {
+      const svc = mockService([
+        mem('MEMO-0001', { usage_count: 89 }),
+      ]);
+      const store = new BacklogMemoryStore(
+        function getWakeupService() {
+          return svc;
+        },
+        {
+          get(id) {
+            return id === 'MEMO-0001'
+              ? {
+                  usageCount: 3,
+                  lastUsedAt: '2026-07-16T12:00:00.000Z',
+                }
+              : undefined;
+          },
+          set() {},
+        },
+      );
+      function mintMemoryEntry(memory: Parameters<typeof store.toMemoryEntry>[0]) {
+        return store.toMemoryEntry(memory);
+      }
+
+      const result = await wakeup(svc, { mintMemoryEntry });
+
+      expect(result.knowledge[0]?.uses).toBe(3);
     });
 
     it('excludes expired memories and respects maxKnowledge', async () => {

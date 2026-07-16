@@ -22,8 +22,10 @@
  *   - `valid_until` is temporal validity (ADR 0092 Phase 5): expired
  *     memories are excluded from recall by default. Forgetting is soft —
  *     `backlog_forget` sets `valid_until: now` rather than deleting.
- *   - `usage_count` is the echo/fizzle surface (ADR 0092 Phase 4) — durable
- *     here so the feedback loop has somewhere real to write.
+ *   - `usage_count` is the echo/fizzle surface (ADR 0092 Phase 4). Global
+ *     homes persist it in frontmatter; project homes keep it in the local
+ *     `.backlog-mcp/state/` overlay so reads never dirty committed Markdown
+ *     (ADR 0112 R-3).
  *   - `supersedes` records correction lineage: `remember({ supersedes })`
  *     expires the old memory and links the new one to it.
  *   - No `status` — memories aren't workflow items. Validity is expressed
@@ -67,8 +69,12 @@ export const MemorySchema = BaseEntitySchema.extend({
   tags: z.array(z.string()).optional(),
   /** ISO timestamp after which this memory is expired. Absent = always valid. */
   valid_until: z.string().nullable().optional(),
-  /** Strong-usage counter — expand + cite events only (ADR 0092.9 R-14). */
-  usage_count: z.number().int().nonnegative().default(0),
+  /**
+   * Strong-usage counter — expand + cite events only (ADR 0092.9 R-14).
+   * Optional so project-home Markdown can omit derived usage truth entirely;
+   * the global memory store still writes an explicit zero for compatibility.
+   */
+  usage_count: z.number().int().nonnegative().optional(),
   /**
    * When the memory was last strongly used (ADR 0092.9 R-13). Flushed
    * relatime-style: only on bucket boundaries or >24h staleness — the

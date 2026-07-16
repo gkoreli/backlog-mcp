@@ -31,8 +31,14 @@ import { paths } from '../utils/paths.js';
 export function createDefaultComposer(
   getService: () => IBacklogService = () => BacklogService.getInstance(),
 ): MemoryComposer {
+  return createComposerForStore(new BacklogMemoryStore(getService));
+}
+
+/** Register one store instance for every persisted memory layer. */
+export function createComposerForStore(
+  store: BacklogMemoryStore,
+): MemoryComposer {
   const composer = new MemoryComposer();
-  const store = new BacklogMemoryStore(getService);
   composer.register('episodic', store);
   composer.register('semantic', store);
   composer.register('procedural', store);
@@ -44,7 +50,15 @@ export function createDefaultComposer(
  * Durable since ADR 0092.3 Phase B — memories survive process boundaries
  * because they live in the backlog itself.
  */
-export const defaultMemoryComposer: MemoryComposer = createDefaultComposer();
+export const defaultMemoryStore = new BacklogMemoryStore(
+  function getDefaultService() {
+    return BacklogService.getInstance();
+  },
+);
+
+export const defaultMemoryComposer: MemoryComposer = createComposerForStore(
+  defaultMemoryStore,
+);
 
 /**
  * Default usage tracker (ADR 0092.9). JSONL audit log lives next to the

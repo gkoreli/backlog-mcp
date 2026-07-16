@@ -11,11 +11,16 @@
  */
 import type {
   EditOperation,
+  Memory,
   Reference,
   Status,
   SubstrateType,
 } from '@backlog-mcp/shared';
-import type { MemoryComposer, MemoryLayer } from '@backlog-mcp/memory';
+import type {
+  MemoryComposer,
+  MemoryEntry,
+  MemoryLayer,
+} from '@backlog-mcp/memory';
 import type { ResourceContent } from '../resources/manager.js';
 import type {
   Actor,
@@ -299,6 +304,12 @@ export interface WakeupParams {
     resourceId?: string;
     actor: { type: string; name: string };
   }>;
+  /**
+   * Mint read-side memory metadata through the selected home's store.
+   * Project runtimes inject their local usage overlay; omitted callers use
+   * a frontmatter-backed store over the supplied service.
+   */
+  mintMemoryEntry?: (memory: Memory) => MemoryEntry;
 }
 
 export interface WakeupEntitySummary {
