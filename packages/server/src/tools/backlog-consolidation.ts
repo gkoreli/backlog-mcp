@@ -14,6 +14,7 @@ import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { consolidationCandidates, type ConsolidationDeps } from '../core/consolidation.js';
 import { ValidationError } from '../core/types.js';
+import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export function registerBacklogConsolidationTool(
   server: McpServer,
@@ -30,6 +31,7 @@ export function registerBacklogConsolidationTool(
         'a self-contained story, not fragments; (3) retire the members via backlog_forget({ ids }) so they stop appearing here while staying auditable; ' +
         '(4) track your progress with a backlog_remember state_key like "consolidation.watermark.<scope>".',
       inputSchema: z.object({
+        ...BACKLOG_HOME_INPUT_FIELDS,
         min_count: z.number().min(1).optional().describe('Minimum bundle size to be ripe. Default: 3.'),
         min_age_days: z.number().min(0).optional().describe('Minimum age (days) of the oldest member. Default: 7.'),
         min_demand: z.number().min(0).optional().describe('Recall-demand threshold — bundles recalled this often (30d) are ripe regardless of age. Default: 3.'),

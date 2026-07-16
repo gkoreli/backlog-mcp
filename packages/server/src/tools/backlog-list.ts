@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { ENTITY_TYPES, STATUSES } from '@backlog-mcp/shared';
 import { listItems } from '../core/list.js';
+import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export function registerBacklogListTool(server: McpServer, service: IBacklogService): void {
   server.registerTool(
@@ -10,6 +11,7 @@ export function registerBacklogListTool(server: McpServer, service: IBacklogServ
     {
       description: 'List tasks from backlog. Returns most recently updated items first. Default: shows only active work (open/in_progress/blocked), limited to 20 items. Use counts=true to check if more items exist beyond the limit.',
       inputSchema: z.object({
+        ...BACKLOG_HOME_INPUT_FIELDS,
         status: z.array(z.enum(STATUSES)).optional().describe('Filter by status. Options: open, in_progress, blocked, done, cancelled. Default: [open, in_progress, blocked]. Pass ["done"] to see completed work.'),
         type: z.enum(ENTITY_TYPES).optional().describe('Filter by type. Options: task, epic, folder, artifact, milestone. Default: returns all.'),
         epic_id: z.string().optional().describe('Filter tasks belonging to a specific epic. Example: epic_id="EPIC-0001"'),
@@ -19,7 +21,7 @@ export function registerBacklogListTool(server: McpServer, service: IBacklogServ
         limit: z.number().optional().describe('Max items to return. Default: 20. Increase if you need to see more items (e.g., limit=100 to list all epics).'),
       }),
     },
-    async (params) => {
+    async ({ home: _home, project_root: _projectRoot, ...params }) => {
       const result = await listItems(service, params);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     }

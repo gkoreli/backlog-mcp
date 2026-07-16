@@ -12,6 +12,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { detectContradictions } from '../core/contradictions.js';
+import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export function registerBacklogContradictionsTool(
   server: McpServer,
@@ -27,7 +28,9 @@ export function registerBacklogContradictionsTool(
         'either backlog_remember({ content, state_key, supersedes: <stale MEMO- id> }) to record the right value and retire ' +
         'the rest, or backlog_forget({ ids: [<stale MEMO- ids>] }) to expire the wrong ones. Read members with backlog_get ' +
         'for full context before deciding.',
-      inputSchema: z.object({}),
+      inputSchema: z.object({
+        ...BACKLOG_HOME_INPUT_FIELDS,
+      }),
     },
     async () => {
       const result = await detectContradictions(service);

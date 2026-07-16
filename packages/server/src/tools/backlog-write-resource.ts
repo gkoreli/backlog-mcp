@@ -4,6 +4,7 @@ import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { ToolDeps } from './index.js';
 import { editItem, NotFoundError } from '../core/index.js';
 import { buildWriteContext } from './build-write-context.js';
+import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export function registerWriteResourceTool(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   server.registerTool(
@@ -16,6 +17,7 @@ export function registerWriteResourceTool(server: McpServer, service: IBacklogSe
  * If the \`old_str\` parameter is not unique in the body, the replacement will not be performed. Include enough context to make it unique.
  * The \`new_str\` parameter should contain the edited lines that should replace the \`old_str\``,
       inputSchema: z.object({
+        ...BACKLOG_HOME_INPUT_FIELDS,
         id: z.string().describe('Task or epic ID, e.g. TASK-0001 or EPIC-0002'),
         operation: z.object({
           type: z.enum(['str_replace', 'insert', 'append']).describe('Operation type'),
@@ -29,9 +31,14 @@ export function registerWriteResourceTool(server: McpServer, service: IBacklogSe
       try {
         const result = await editItem(service, { id, operation }, buildWriteContext(deps));
         if (!result.success) {
-          return { content: [{ type: 'text' as const, text: result.error! }], isError: true };
+          return {
+            content: [{ type: 'text' as const, text: result.error ?? 'Resource edit failed' }],
+            isError: true,
+          };
         }
-        return { content: [{ type: 'text' as const, text: result.message! }] };
+        return {
+          content: [{ type: 'text' as const, text: result.message ?? 'Resource updated' }],
+        };
       } catch (error) {
         if (error instanceof NotFoundError) {
           return { content: [{ type: 'text' as const, text: `Task not found: ${id}` }], isError: true };

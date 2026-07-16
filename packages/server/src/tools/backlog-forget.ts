@@ -12,6 +12,7 @@ import type { MemoryComposer } from '@backlog-mcp/memory';
 import { z } from 'zod';
 import { forget } from '../core/forget.js';
 import { ValidationError } from '../core/types.js';
+import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export interface BacklogForgetDeps {
   memoryComposer?: MemoryComposer;
@@ -27,6 +28,7 @@ export function registerBacklogForgetTool(
       description:
         'Retract memories — soft-expire them so recall stops returning them (the record stays auditable in the viewer). Use when knowledge is wrong or obsolete and there is no replacement (if there IS a replacement, use backlog_remember with supersedes instead). expired:true garbage-collects already-expired memories.',
       inputSchema: z.object({
+        ...BACKLOG_HOME_INPUT_FIELDS,
         ids: z.array(z.string()).optional().describe('Specific MEMO- ids to forget.'),
         context: z.string().optional().describe('Forget all memories scoped to this context (e.g. "FLDR-0001").'),
         layer: z.enum(['episodic', 'semantic', 'procedural']).optional().describe('Forget all memories in a layer.'),

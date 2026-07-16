@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { wakeup } from '../core/wakeup.js';
 import { ValidationError } from '../core/types.js';
+import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export interface BacklogWakeupDeps {
   operationLogger?: {
@@ -40,6 +41,7 @@ export function registerBacklogWakeupTool(
       description:
         'Dense session-start briefing: active tasks, current epics, recent completions (with evidence snippets), and recent activity. No focal entity required — use this at the start of every session to understand what you were working on. Optional `scope` narrows to a folder (for project-scoped briefing), milestone, or epic.',
       inputSchema: z.object({
+        ...BACKLOG_HOME_INPUT_FIELDS,
         scope: z.string().optional().describe(
           'Optional entity ID to scope the briefing to a subtree. Must be a container (folder/milestone/epic). Use a folder ID for project-scoped wake-up (e.g. "FLDR-0001"). Omit to get everything across the whole backlog.',
         ),
@@ -56,6 +58,7 @@ export function registerBacklogWakeupTool(
     },
     async ({ scope, max_completions, max_activity, evidence_snippet_chars }) => {
       try {
+        const operationLogger = deps?.operationLogger;
         const readIdentity = (): string | undefined => {
           if (!deps?.readLocalFile || !deps?.identityPath) return undefined;
           const raw = deps.readLocalFile(deps.identityPath);
@@ -68,8 +71,8 @@ export function registerBacklogWakeupTool(
           ...(max_activity !== undefined ? { maxActivity: max_activity } : {}),
           ...(evidence_snippet_chars !== undefined ? { evidenceSnippetChars: evidence_snippet_chars } : {}),
           readIdentity,
-          ...(deps?.operationLogger
-            ? { readOperations: (o) => deps.operationLogger!.read(o) }
+          ...(operationLogger
+            ? { readOperations: (options) => operationLogger.read(options) }
             : {}),
         });
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { getItems, type GetItem, type ContextStub, type ContextStubs } from '../core/index.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
+import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export interface BacklogGetDeps {
   /** Records MEMO- expands as strong usage events (ADR 0092.9 R-14). */
@@ -54,6 +55,7 @@ export function registerBacklogGetTool(server: McpServer, service: IBacklogServi
     {
       description: 'Get full details by ID. Accepts task IDs (TASK-0001, EPIC-0002) or MCP resource URIs (mcp://backlog/resources/design.md). Works for any item regardless of status. Pass context:true when starting work on an entity to also see its relational neighborhood as stubs.',
       inputSchema: z.object({
+        ...BACKLOG_HOME_INPUT_FIELDS,
         id: z.union([z.string(), z.array(z.string())]).describe('Task ID (e.g. TASK-0001) or MCP resource URI (e.g. mcp://backlog/resources/file.md). Array for batch fetch.'),
         context: z.boolean().optional().describe('Expand the entity\'s relational neighborhood as stubs — parent/children/siblings/references/referenced_by/related; hydrate any stub with another backlog_get.'),
         depth: z.number().int().min(1).max(2).optional().describe('Relational expansion depth with context:true. 1 = direct relations (default), 2 = grandparents/grandchildren.'),

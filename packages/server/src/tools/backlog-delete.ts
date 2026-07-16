@@ -4,6 +4,7 @@ import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { ToolDeps } from './index.js';
 import { deleteItem } from '../core/delete.js';
 import { buildWriteContext } from './build-write-context.js';
+import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export function registerBacklogDeleteTool(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   server.registerTool(
@@ -11,6 +12,7 @@ export function registerBacklogDeleteTool(server: McpServer, service: IBacklogSe
     {
       description: 'Delete an item permanently.',
       inputSchema: z.object({
+        ...BACKLOG_HOME_INPUT_FIELDS,
         id: z.string().describe('Task ID to delete'),
       }),
     },

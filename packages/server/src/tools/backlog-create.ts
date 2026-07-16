@@ -5,6 +5,7 @@ import type { ToolDeps } from './index.js';
 import { ENTITY_TYPES } from '@backlog-mcp/shared';
 import { createItem } from '../core/create.js';
 import { buildWriteContext } from './build-write-context.js';
+import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export function registerBacklogCreateTool(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   server.registerTool(
@@ -12,6 +13,7 @@ export function registerBacklogCreateTool(server: McpServer, service: IBacklogSe
     {
       description: 'Create a new item in the backlog.',
       inputSchema: z.object({
+        ...BACKLOG_HOME_INPUT_FIELDS,
         title: z.string().describe('Task title'),
         content: z.string().optional().describe('Item body in markdown'),
         source_path: z.string().optional().describe('Local file path to read as content. Mutually exclusive with content — provide one or the other. Server reads the file directly.'),
@@ -28,7 +30,7 @@ export function registerBacklogCreateTool(server: McpServer, service: IBacklogSe
         { message: 'Cannot provide both content and source_path — use one or the other' },
       ),
     },
-    async ({ source_path, ...params }) => {
+    async ({ home: _home, project_root: _projectRoot, source_path, ...params }) => {
       try {
         // Transport resolves source_path to content before calling core.
         // resolveSourcePath is injected by node-server.ts; absent in cloud mode.

@@ -14,6 +14,7 @@ import { remember } from '../core/remember.js';
 import { ValidationError } from '../core/types.js';
 import type { Actor } from '../operations/types.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
+import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export interface BacklogRememberDeps {
   memoryComposer?: MemoryComposer;
@@ -32,6 +33,7 @@ export function registerBacklogRememberTool(
       description:
         'Write a durable memory — a stable fact, a procedure, or a preference you should know next session. Use when you learn something worth keeping: "this repo deploys via wrangler", "Goga prefers terse evidence bullets". To CORRECT existing knowledge, pass supersedes (the old MEMO- id is expired, lineage kept) or state_key (previous holders of the same evolving fact are closed). Do not use for task events — completions are captured automatically.',
       inputSchema: z.object({
+        ...BACKLOG_HOME_INPUT_FIELDS,
         content: z.string().describe('The memory body (markdown) — the fact itself.'),
         title: z.string().describe('Memory title (required, like a task title) — a short human-readable label for the fact. Title and body are both first-class.'),
         layer: z.enum(['episodic', 'semantic', 'procedural']).optional().describe(

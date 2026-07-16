@@ -27,6 +27,7 @@ import type {
   AppRequestRuntimeResolver,
   AppRequestRuntimeSelection,
 } from './app-request-runtime.types.js';
+import { selectMcpRequestRuntime } from './mcp-request-runtime.js';
 // Note: paths.ts and operations/index.ts are NOT imported here — they pull in
 // Node.js modules (import.meta.url, fs, path) that break the Workers bundle.
 // name/version and the MCP server wrapper are injected via AppDeps.
@@ -140,11 +141,16 @@ function errorMessage(error: unknown): string {
 export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   const app = new Hono();
   const staticRuntime = createStaticRequestRuntime(service, deps);
+  async function resolveSelectedRuntime(
+    selection: AppRequestRuntimeSelection,
+  ): Promise<AppRequestRuntime> {
+    if (deps?.resolveRuntime === undefined) return staticRuntime;
+    return deps.resolveRuntime(selection);
+  }
   async function resolveRequestRuntime(
     request: RequestSelectionSource,
   ): Promise<AppRequestRuntime> {
-    if (deps?.resolveRuntime === undefined) return staticRuntime;
-    return deps.resolveRuntime(selectAppRequestRuntime(request));
+    return resolveSelectedRuntime(selectAppRequestRuntime(request));
   }
   const authRuntime = createAuthRuntime({
     store: deps?.oauthStore,
@@ -178,7 +184,11 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
   // MCP endpoint — WebStandardStreamableHTTPServerTransport works on Node.js + Workers
   app.all('/mcp', async (c) => {
-    const runtime = await resolveRequestRuntime(c.req);
+    const selection = await selectMcpRequestRuntime(
+      c.req.raw,
+      selectAppRequestRuntime(c.req),
+    );
+    const runtime = await resolveSelectedRuntime(selection);
     const server = new McpServer({ name: deps?.name ?? 'backlog-mcp', version: deps?.version ?? '0.0.0' });
     // ToolDeps carries write-boundary wiring; core builds WriteContext
     // per-write using these pieces. See ADR 0094.

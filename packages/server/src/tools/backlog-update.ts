@@ -5,6 +5,7 @@ import type { ToolDeps } from './index.js';
 import { STATUSES } from '@backlog-mcp/shared';
 import { updateItem, NotFoundError } from '../core/index.js';
 import { buildWriteContext } from './build-write-context.js';
+import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export function registerBacklogUpdateTool(server: McpServer, service: IBacklogService, deps?: ToolDeps): void {
   server.registerTool(
@@ -12,6 +13,7 @@ export function registerBacklogUpdateTool(server: McpServer, service: IBacklogSe
     {
       description: 'Update an existing item. For editing the markdown body, use write_resource with str_replace.',
       inputSchema: z.object({
+        ...BACKLOG_HOME_INPUT_FIELDS,
         id: z.string().describe('Task ID to update'),
         title: z.string().optional().describe('New title'),
         status: z.enum(STATUSES).optional().describe('New status'),
@@ -30,7 +32,7 @@ export function registerBacklogUpdateTool(server: McpServer, service: IBacklogSe
         next_run: z.union([z.string(), z.null()]).optional().describe('ISO-8601 timestamp of next scheduled tick. Typically written by the scheduler. Null to clear.'),
       }),
     },
-    async (params) => {
+    async ({ home: _home, project_root: _projectRoot, ...params }) => {
       try {
         const result = await updateItem(service, params, buildWriteContext(deps));
         return { content: [{ type: 'text', text: `Updated ${result.id}` }] };

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { STATUSES } from '@backlog-mcp/shared';
 import { searchItems } from '../core/search.js';
+import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export function registerBacklogSearchTool(server: McpServer, service: IBacklogService): void {
   server.registerTool(
@@ -10,6 +11,7 @@ export function registerBacklogSearchTool(server: McpServer, service: IBacklogSe
     {
       description: 'Search across all backlog content — tasks, epics, and resources. Returns relevance-ranked results with match context. Use this for discovery; use backlog_list for filtering by status/type.',
       inputSchema: z.object({
+        ...BACKLOG_HOME_INPUT_FIELDS,
         query: z.string().describe('Search query. Supports keywords, phrases, and natural language. Fuzzy matching and semantic similarity are applied automatically.'),
         types: z.array(z.enum(['task', 'epic', 'resource'])).optional().describe('Filter results by type. Default: all types. Example: ["task", "epic"] to exclude resources.'),
         status: z.array(z.enum(STATUSES)).optional().describe('Filter tasks/epics by status. Default: all statuses. Example: ["open", "in_progress"] for active work only.'),
@@ -20,7 +22,7 @@ export function registerBacklogSearchTool(server: McpServer, service: IBacklogSe
         include_scores: z.boolean().optional().describe('Include relevance scores in results. Default: false.'),
       }),
     },
-    async (params) => {
+    async ({ home: _home, project_root: _projectRoot, ...params }) => {
       try {
         const result = await searchItems(service, params);
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
