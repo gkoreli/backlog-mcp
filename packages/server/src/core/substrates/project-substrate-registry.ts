@@ -2,6 +2,7 @@ import type {
   CompiledDisclosureRelation,
   CompiledSubstrateDisclosure,
   CompiledSubstrateIntent,
+  SubstrateIntakeDefinition,
 } from '@backlog-mcp/shared';
 import type {
   SubstrateStorageCatalog,
@@ -51,6 +52,10 @@ export class ProjectSubstrateRegistry implements SubstrateStorageCatalog {
 
   getSubstrate(type: string): RegisteredSubstrate | undefined {
     return this.#substrates.get(type);
+  }
+
+  getIntake(type: string): SubstrateIntakeDefinition | undefined {
+    return this.#substrates.get(type)?.intake;
   }
 
   getDisclosure(type: string): CompiledSubstrateDisclosure | undefined {

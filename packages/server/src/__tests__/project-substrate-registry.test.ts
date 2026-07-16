@@ -149,6 +149,16 @@ const PACKAGED_REQUIREMENT = packagedSubstrate('requirement');
 const PACKAGED_PROMPT = packagedSubstrate('prompt');
 
 describe('ProjectSubstrateRegistry', function describeRegistry() {
+  it('exposes built-in container intake policies without adding router state', () => {
+    expect(PACKAGED_RESULT.registry.getIntake('artifact')).toEqual({
+      container: 'required',
+    });
+    expect(PACKAGED_RESULT.registry.getIntake('cron')).toEqual({
+      container: 'scope-root',
+    });
+    expect(PACKAGED_RESULT.registry.getIntake('task')).toBeUndefined();
+  });
+
   it('implements Quartz storage catalog for packaged definitions', () => {
     const result = createProjectSubstrateRegistry({
       packaged: [PACKAGED_ADR, PACKAGED_REQUIREMENT, PACKAGED_PROMPT],

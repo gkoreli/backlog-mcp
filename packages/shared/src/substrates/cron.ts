@@ -39,6 +39,9 @@ export const CronSubstrate = {
     hasStatus: true,
     validParents: ['epic', 'folder'],
   },
+  intake: {
+    container: 'scope-root',
+  },
   extraFields: ['schedule', 'command', 'enabled', 'last_run', 'next_run'],
   hint: 'Scheduled intake descriptor. Requires schedule (5-field cron expr) and command. Executed by an external scheduler — see ADR 0097. `enabled` is separate from `status`.',
   ui: {

@@ -4,6 +4,7 @@
  * Pure Zod/TypeScript. Every substrate extends BaseEntitySchema to get common fields.
  */
 import { z } from 'zod';
+import type { SubstrateIntakeDefinition } from './substrate-definition.schema.js';
 
 // ============================================================================
 // Status — canonical workflow states
@@ -89,6 +90,8 @@ export interface SubstrateDefinition<TSchema extends z.ZodTypeAny = z.ZodTypeAny
   readonly schema: TSchema;
   /** Structural/relationship invariants. */
   readonly structure: SubstrateStructure;
+  /** Optional deterministic container policy for parentless intake. */
+  readonly intake?: SubstrateIntakeDefinition;
   /** Ordered list of type-specific field keys to surface in detail UIs. */
   readonly extraFields: readonly string[];
   /** Description for agents — rendered into MCP tool hints. */

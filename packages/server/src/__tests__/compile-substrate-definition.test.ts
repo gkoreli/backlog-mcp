@@ -74,6 +74,22 @@ describe('compileSubstrateDefinition', function describeCompiler() {
     });
   });
 
+  it('compiles only the bounded container intake policies', () => {
+    const result = compile({
+      ...(createDefinition() as Record<string, unknown>),
+      intake: { container: 'scope-root' },
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    if (!result.ok) return;
+    expect(result.substrate.intake).toEqual({ container: 'scope-root' });
+
+    expect(compile({
+      ...(createDefinition() as Record<string, unknown>),
+      intake: { container: 'semantic-match' },
+    }).ok).toBe(false);
+  });
+
   it('rejects unknown definition fields and invalid identity variants', () => {
     const withUnknownField = {
       ...(createDefinition() as Record<string, unknown>),

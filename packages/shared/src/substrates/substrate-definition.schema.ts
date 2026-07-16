@@ -47,6 +47,11 @@ const WorkflowStateSchema = z.union([
 ]);
 const InputNamesSchema = z.array(FieldNameSchema).max(64);
 
+/** Bounded, deterministic container policy applied when create omits parent_id. */
+export const SubstrateIntakeDefinitionSchema = z.object({
+  container: z.enum(['required', 'scope-root']),
+}).strict();
+
 export const SubstrateWorkflowTransitionDefinitionSchema = z.object({
   name: z.string().min(1).max(80).regex(INTENT_VERB_PATTERN),
   from: z.array(WorkflowStateSchema).min(1).max(64),
@@ -171,6 +176,7 @@ export const RuntimeSubstrateDefinitionSchema = z.object({
   }).strict(),
   folder: z.string().min(1).max(240),
   identity: SubstrateIdentityDefinitionSchema,
+  intake: SubstrateIntakeDefinitionSchema.optional(),
   schema: z.record(z.string(), z.unknown()),
   workflow: SubstrateWorkflowDefinitionSchema.optional(),
   relations: z.record(FieldNameSchema, SubstrateRelationDefinitionSchema).optional(),
@@ -186,6 +192,9 @@ export const RuntimeSubstrateDefinitionJsonSchema = z.toJSONSchema(
 
 export type SubstrateIdentityDefinition =
   z.infer<typeof SubstrateIdentityDefinitionSchema>;
+
+export type SubstrateIntakeDefinition =
+  z.infer<typeof SubstrateIntakeDefinitionSchema>;
 
 export type RuntimeSubstrateDefinition =
   z.infer<typeof RuntimeSubstrateDefinitionSchema>;

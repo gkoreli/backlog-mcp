@@ -22,6 +22,9 @@ export const ArtifactSubstrate = {
     hasStatus: false,
     validParents: ['task', 'epic', 'folder'],
   },
+  intake: {
+    container: 'required',
+  },
   extraFields: ['content_type', 'path'],
   hint: 'File or resource. Attach to task/epic/folder via parent_id. Optional: content_type, path.',
   ui: {

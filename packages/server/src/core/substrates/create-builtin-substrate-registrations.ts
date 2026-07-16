@@ -4,6 +4,7 @@ import {
   SUBSTRATES,
   type AnyEntity,
   type CompiledSubstrateIntent,
+  type SubstrateDefinition,
 } from '@backlog-mcp/shared';
 import { z } from 'zod';
 import {
@@ -92,10 +93,14 @@ export function createBuiltinSubstrateRegistrations(
     if (!storageClaim) {
       throw new Error(`Missing built-in storage claim for ${type}`);
     }
+    const substrate: SubstrateDefinition = SUBSTRATES[type];
     return {
       kind: 'compiled',
       sourcePath: `builtin:${type}@compiled`,
       type,
+      ...(substrate.intake === undefined
+        ? {}
+        : { intake: substrate.intake }),
       disclosure: {},
       disclosureRelations: [],
       intents: compileBuiltinIntents(type, storageClaim),

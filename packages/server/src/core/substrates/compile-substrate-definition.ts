@@ -320,6 +320,7 @@ export function compileSubstrateDefinition(
       kind: 'declarative',
       sourcePath: params.sourcePath,
       definition,
+      ...(definition.intake === undefined ? {} : { intake: definition.intake }),
       disclosure: compiledDisclosure.disclosure,
       disclosureRelations: compiledDisclosure.relations,
       intents: compiledIntents.intents,

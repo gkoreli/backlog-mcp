@@ -5,6 +5,7 @@ import type {
   CompiledSubstrateIntent,
   RuntimeEntity,
   RuntimeSubstrateDefinition,
+  SubstrateIntakeDefinition,
   SubstrateType,
 } from '@backlog-mcp/shared';
 import type {
@@ -52,6 +53,7 @@ export interface CompiledSubstrateDefinition {
   kind: 'declarative';
   sourcePath: string;
   definition: RuntimeSubstrateDefinition;
+  intake?: SubstrateIntakeDefinition;
   disclosure: CompiledSubstrateDisclosure;
   disclosureRelations: readonly CompiledDisclosureRelation[];
   intents: readonly CompiledSubstrateIntent[];
@@ -63,6 +65,7 @@ export interface CompiledBuiltinSubstrate {
   kind: 'compiled';
   sourcePath: string;
   type: SubstrateType;
+  intake?: SubstrateIntakeDefinition;
   disclosure: CompiledSubstrateDisclosure;
   disclosureRelations: readonly CompiledDisclosureRelation[];
   intents: readonly CompiledSubstrateIntent[];

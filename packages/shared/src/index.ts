@@ -34,6 +34,7 @@ export {
   SUBSTRATE_DEFINITION_SCHEMA_URI,
   SubstrateDisclosureDefinitionSchema,
   SubstrateIdentityDefinitionSchema,
+  SubstrateIntakeDefinitionSchema,
   SubstrateRelationDefinitionSchema,
   SubstrateWorkflowDefinitionSchema,
   SubstrateWorkflowTransitionDefinitionSchema,
@@ -71,6 +72,7 @@ export {
   type SubstrateDisclosureDefinition,
   type SubstrateRelationDefinition,
   type SubstrateIdentityDefinition,
+  type SubstrateIntakeDefinition,
   type SubstrateWorkflowDefinition,
   type SubstrateWorkflowTransitionDefinition,
 } from './substrates/index.js';
