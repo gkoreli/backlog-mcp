@@ -21,6 +21,8 @@ import { loadRepoConfig, type RepoConfig } from './config.js';
 
 export const BACKLOG_HOME_ENV_VAR = 'BACKLOG_HOME';
 export const BACKLOG_PROJECT_ROOT_ENV_VAR = 'BACKLOG_PROJECT_ROOT';
+export const BACKLOG_HOME_HEADER = 'X-Backlog-Home';
+export const BACKLOG_PROJECT_ROOT_HEADER = 'X-Backlog-Project-Root';
 export const BACKLOG_CONTROL_DIR = '.backlog-mcp';
 export const BACKLOG_DOCUMENTS_DIR = 'docs';
 export const VCS_MARKER = '.git';

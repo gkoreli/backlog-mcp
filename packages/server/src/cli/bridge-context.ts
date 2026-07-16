@@ -1,11 +1,17 @@
-import { resolveBacklogHome } from '../core/backlog-home.js';
+import {
+  BACKLOG_HOME_HEADER,
+  BACKLOG_PROJECT_ROOT_HEADER,
+  resolveBacklogHome,
+} from '../core/backlog-home.js';
 import type {
   BridgeHomeContext,
   ResolveBridgeHomeContextParams,
 } from './bridge-context.types.js';
 
-export const BACKLOG_HOME_HEADER = 'X-Backlog-Home';
-export const BACKLOG_PROJECT_ROOT_HEADER = 'X-Backlog-Project-Root';
+export {
+  BACKLOG_HOME_HEADER,
+  BACKLOG_PROJECT_ROOT_HEADER,
+} from '../core/backlog-home.js';
 
 /** Resolve the canonical home identity for one caller-side bridge process. */
 export function resolveBridgeHomeContext(
