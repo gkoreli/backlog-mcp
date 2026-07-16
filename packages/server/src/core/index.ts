@@ -68,6 +68,27 @@ export type {
   DocumentIdentity,
   ParseDocumentIdentityParams,
 } from './document-identity.types.js';
+export { createHomeReadCoordinator } from './home-read-coordinator.js';
+export type {
+  AvailableHomeReadStatus,
+  CrossHomeItemProvenance,
+  CrossHomeRecallItem,
+  CrossHomeRecallResult,
+  CrossHomeSearchResult,
+  CrossHomeSearchResultItem,
+  CrossHomeWakeupGroup,
+  CrossHomeWakeupParams,
+  CrossHomeWakeupResult,
+  HomeReadCoordinator,
+  HomeReadCoordinatorDependencies,
+  HomeReadRuntime,
+  HomeReadRuntimeResolver,
+  HomeReadRuntimeSelection,
+  HomeReadSelection,
+  HomeReadStatus,
+  HomeRecallDemandRecorder,
+  UnavailableHomeReadStatus,
+} from './home-read-coordinator.types.js';
 export {
   claimSubstrateDocuments,
   compileSubstrateDefinition,
