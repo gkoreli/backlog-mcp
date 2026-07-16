@@ -189,6 +189,22 @@ describe('discoverDocuments', () => {
     });
   });
 
+  it('keeps date-named documents generic without duplicate identity diagnostics', () => {
+    const dateDocumentsDir = join(tmpdir(), 'date-named-documents');
+    mkdirSync(`${dateDocumentsDir}/notes`, { recursive: true });
+    writeFileSync(`${dateDocumentsDir}/notes/2026-07-16-alpha.md`, '# Alpha');
+    writeFileSync(`${dateDocumentsDir}/notes/2026-07-16-beta.md`, '# Beta');
+
+    const result = discoverDocuments({ documentsDir: dateDocumentsDir });
+
+    expect(result.documents.map(function getPathKey(document) {
+      return document.identity.pathKey;
+    })).toEqual([undefined, undefined]);
+    expect(result.diagnostics).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'duplicate-path-key' }),
+    ]));
+  });
+
   it('reports malformed, unreadable, escaping, and duplicate paths without choosing a winner', () => {
     const result = discoverDocuments({
       documentsDir: DOCUMENTS_DIR,
