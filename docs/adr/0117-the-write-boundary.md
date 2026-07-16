@@ -33,11 +33,11 @@ Recommend two deliberately unequal lanes:
    validation before success, canonical serialization, and one best-effort
    operation-log append with exact tool input and actor attribution.
 
-Hooks are optional audit enrichment. A supported harness may report a
+Hooks are optional diagnostic enrichment. A supported harness may report a
 successful native Edit/Write call after it occurs, but hooks do not validate
 the file, do not repair it, and do not participate in reconciliation
 correctness. Unsupported editors remain fully functional; they simply lack
-exact operation attribution.
+immediate edit-aware feedback.
 
 This is **native by default, strict on demand**. It is not two equivalent tools
 competing for ordinary prose editing.
@@ -390,7 +390,7 @@ Minimum disclosure:
 
 Concise hook feedback can reuse that surface later.
 
-## R4. Hooks enrich attribution; they never own correctness
+## R4. Hooks enrich feedback; they never own correctness or the journal
 
 Hook support is adapter-by-adapter.
 
@@ -399,19 +399,26 @@ An adapter may use:
 - `SessionStart` only when needed to establish home/session metadata;
 - successful `PostToolUse`/`AfterTool` events for native Edit/Write intent.
 
-A post-edit adapter may append a best-effort operation-log entry containing
-the harness, session, path, native tool name, and exact tool input. It does
-not derive the operation from a watcher event.
+A post-edit adapter may submit the harness, session, path, native tool name,
+and exact tool input to request reconciliation and return concise diagnostics.
+It does not derive the operation from a watcher event.
 
-The watcher never synthesizes journal entries. Therefore no path/hash
-correlation buffer, managed-write in-flight marker, delayed classification,
-fallback journal entry, or duplicate-suppression protocol is required.
+Neither hook nor watcher appends to ADR 0094's mutation journal. A post hook
+may be retried, duplicated, or observe bytes that are immediately overwritten;
+without a stable delivery key and postimage proof, direct append would violate
+the journal's logged-once semantics. Therefore no path/hash correlation buffer,
+managed-write in-flight marker, delayed classification, fallback journal
+entry, or duplicate-suppression protocol is required.
+
+If persistent native-edit activity becomes valuable, design it as a separately
+named observation stream or expand the journal only after one real adapter
+proves an idempotency contract. Version one does neither.
 
 If a hook is absent or fails:
 
 - reconciliation still converges;
 - diagnostics still appear;
-- only exact native-edit attribution is missing.
+- only immediate edit-aware feedback is missing.
 
 Do not implement a hook adapter until the diagnostic lane is useful and one
 documented harness is selected.
@@ -496,7 +503,7 @@ core.
 It is not a complete history of arbitrary filesystem changes:
 
 - unsupported editors may leave no actor/tool entry;
-- hooks are best-effort;
+- hook-observed edits are deliberately not appended;
 - watcher events do not contain sufficient evidence to reconstruct intent.
 
 Do not weaken the exact managed journal by adding coarse watcher-derived
@@ -530,8 +537,8 @@ Native edits plus watcher diagnostics only.
 
 **Benefit:** smallest tool list and one ordinary edit path.
 
-**Cost:** no opt-in pre-write substrate validation; exact attribution depends
-on harness hooks.
+**Cost:** no opt-in pre-write substrate validation; native edits do not enter
+the canonical mutation journal.
 
 ## Option B — Keep `write_resource` as the required agent write path
 
@@ -579,11 +586,12 @@ No hooks, persistence layer, history stream, or source mutation.
 - Make logging language accurately say "best-effort append attempt."
 - Resolve the ADR 0113 R4 canonical-adoption consent question.
 
-## Phase C — one hook adapter, only if attribution demand remains
+## Phase C — one hook adapter, only if feedback demand remains
 
 - Select one harness with documented native edit payloads.
 - Implement explicit install/status/uninstall.
-- Append exact hook-observed native edit intent best-effort.
+- Use exact hook-observed intent to request reconciliation and return
+  diagnostics; do not append it to the mutation journal.
 - Measure hook latency, missed events, and usefulness before a second adapter.
 
 No shared hook framework until a second concrete adapter creates common code.
@@ -605,8 +613,8 @@ The selected direction is successful when:
 6. strict managed edits reject an invalid postimage before persistence;
 7. strict managed edits attempt one exact attributed journal append;
 8. hook absence does not affect correctness;
-9. a future supported hook records exact native tool intent without watcher
-   reconstruction;
+9. a future supported hook uses exact native tool intent for immediate
+   diagnostic feedback without claiming journal completeness;
 10. no D1 code is added or expanded.
 
 ## Human decision gate
@@ -616,8 +624,8 @@ Goga chooses:
 1. Option A, B, C, or D — this ADR recommends C;
 2. whether the strict editor is MCP-visible, deferred, or core/CLI-only;
 3. whether to accept the separate-consent correction to ADR 0113 R4;
-4. whether attribution demand justifies one hook adapter after diagnostics are
-   proven.
+4. whether immediate edit-aware diagnostics justify one hook adapter after
+   ordinary watcher diagnostics are proven.
 
 Until those choices are made, this ADR is evidence and a proposed ruling set,
 not an engineering mandate.
