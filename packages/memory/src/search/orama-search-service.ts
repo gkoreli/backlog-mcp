@@ -6,7 +6,6 @@ import type {
   IndexableEntity,
   Resource,
   ResourceSearchResult,
-  SearchEntityDocument,
   SearchEntityField,
   SearchOptions,
   SearchResult,
@@ -19,7 +18,6 @@ import { compoundWordTokenizer } from './tokenizer.js';
 import {
   generateEntitySnippet,
   generateResourceSnippet,
-  generateTaskSnippet,
 } from './snippets.js';
 import {
   type OramaDoc, type OramaDocWithEmbeddings,
@@ -45,7 +43,6 @@ export interface OramaSearchOptions {
 interface NormalizedSearchEntityDocument {
   entity: AnyEntity;
   fields: readonly SearchEntityField[];
-  projected: boolean;
 }
 
 function textValue(value: unknown): string {
@@ -67,53 +64,10 @@ function textValue(value: unknown): string {
   }
 }
 
-function isSearchEntityDocument(
-  value: IndexableEntity,
-): value is SearchEntityDocument {
-  return 'kind' in value
-    && value.kind === 'entity-document'
-    && 'entity' in value
-    && typeof value.entity === 'object'
-    && value.entity !== null
-    && 'fields' in value
-    && Array.isArray(value.fields);
-}
-
-function defaultSearchFields(entity: AnyEntity): readonly SearchEntityField[] {
-  const record = entity as Record<string, unknown>;
-  return [
-    { name: 'title', value: entity.title },
-    { name: 'content', value: entity.content },
-    { name: 'evidence', value: record.evidence },
-    { name: 'blocked_reason', value: record.blocked_reason },
-    { name: 'references', value: record.references },
-    { name: 'entity_refs', value: record.entity_refs },
-    { name: 'tags', value: record.tags },
-  ];
-}
-
 function normalizeDocument(
   value: IndexableEntity,
 ): NormalizedSearchEntityDocument {
-  return isSearchEntityDocument(value)
-    ? { entity: value.entity, fields: value.fields, projected: true }
-    : {
-      entity: value,
-      fields: defaultSearchFields(value),
-      projected: false,
-    };
-}
-
-function toIndexableEntity(
-  document: NormalizedSearchEntityDocument,
-): IndexableEntity {
-  return document.projected
-    ? {
-      kind: 'entity-document',
-      entity: document.entity,
-      fields: document.fields,
-    }
-    : document.entity;
+  return { entity: value.entity, fields: value.fields };
 }
 
 /**
@@ -179,12 +133,6 @@ export class OramaSearchService implements SearchService {
   // ── Document conversion ─────────────────────────────────────────
 
   private getTextForEmbedding(document: NormalizedSearchEntityDocument): string {
-    if (!document.projected) {
-      const content = typeof document.entity.content === 'string'
-        ? document.entity.content
-        : '';
-      return `${document.entity.title} ${content}`.trim();
-    }
     return document.fields
       .map(function fieldText(field) {
         return textValue(field.value);
@@ -195,31 +143,34 @@ export class OramaSearchService implements SearchService {
 
   private taskToDoc(document: NormalizedSearchEntityDocument): OramaDoc {
     const task = document.entity;
-    // Memory-substrate extras (ADR-0092.3): entity_refs (pointers back to
-    // source entities) and tags are indexed into the references text field so
-    // recall-by-referenced-id ("TASK-0629") and tag terms are searchable.
-    const extras = task as { entity_refs?: string[]; tags?: string[] };
-    const referenceText = [
-      ...(task.references || []).map(r => `${r.title || ''} ${r.url}`),
-      ...(extras.entity_refs || []),
-      ...(extras.tags || []),
-    ].join(' ');
+    const fields = new Map(document.fields.map(function fieldEntry(field) {
+      return [field.name, textValue(field.value)];
+    }));
+    const dedicatedFields = new Set([
+      'title',
+      'content',
+      'evidence',
+      'blocked_reason',
+      'references',
+    ]);
 
     return {
       id: task.id,
-      title: task.title,
-      content: typeof task.content === 'string' ? task.content : '',
+      title: fields.get('title') ?? '',
+      content: fields.get('content') ?? '',
       status: typeof task.status === 'string' ? task.status : '',
       type: typeof task.type === 'string' ? task.type : 'task',
       parent_id: typeof task.parent_id === 'string' ? task.parent_id : '',
-      evidence: textValue(task.evidence),
-      blocked_reason: textValue(task.blocked_reason),
-      references: referenceText,
-      search_text: document.projected
-        ? document.fields.map(function fieldText(field) {
+      evidence: fields.get('evidence') ?? '',
+      blocked_reason: fields.get('blocked_reason') ?? '',
+      references: fields.get('references') ?? '',
+      search_text: document.fields
+        .filter(function isGenericSearchField(field) {
+          return !dedicatedFields.has(field.name);
+        })
+        .map(function fieldText(field) {
           return textValue(field.value);
-        }).join(' ')
-        : '',
+        }).join(' '),
       path: '',  // Tasks don't have paths
       updated_at: typeof task.updated_at === 'string' ? task.updated_at : '',
     };
@@ -347,9 +298,7 @@ export class OramaSearchService implements SearchService {
     const documents = tasks.map(normalizeDocument);
     for (const document of documents) {
       this.taskCache.set(document.entity.id, document.entity);
-      if (document.projected) {
-        this.entityFieldCache.set(document.entity.id, document.fields);
-      }
+      this.entityFieldCache.set(document.entity.id, document.fields);
     }
 
     if (useEmbeddings) {
@@ -492,14 +441,13 @@ export class OramaSearchService implements SearchService {
   private _getSearchableText(id: string): string {
     const task = this.taskCache.get(id);
     if (task) {
-      const fields = this.entityFieldCache.get(id);
-      return fields === undefined
-        ? [
-          task.title,
-          typeof task.content === 'string' ? task.content : '',
-          textValue(task.evidence),
-        ].join(' ')
-        : fields.map(function fieldText(field) {
+      return (this.entityFieldCache.get(id) ?? [])
+        .filter(function isCoordinationField(field) {
+          return field.name === 'title'
+            || field.name === 'content'
+            || field.name === 'evidence';
+        })
+        .map(function fieldText(field) {
           return textValue(field.value);
         }).join(' ');
     }
@@ -515,10 +463,11 @@ export class OramaSearchService implements SearchService {
     entity: AnyEntity,
     query: string,
   ): SearchSnippet {
-    const fields = this.entityFieldCache.get(id);
-    return fields === undefined
-      ? generateTaskSnippet(entity, query)
-      : generateEntitySnippet(entity, fields, query);
+    return generateEntitySnippet(
+      entity,
+      this.entityFieldCache.get(id) ?? [],
+      query,
+    );
   }
 
   /** Get title for a document by ID. Used by coordination bonus for title weighting. */
@@ -834,7 +783,11 @@ export class OramaSearchService implements SearchService {
 
     for (const document of documents) {
       if (!cachedIds.has(document.entity.id)) {
-        await this.addDocument(toIndexableEntity(document));
+        await this.addDocument({
+          kind: 'entity-document',
+          entity: document.entity,
+          fields: document.fields,
+        });
         added++;
       }
     }
@@ -851,7 +804,7 @@ export class OramaSearchService implements SearchService {
       if (cachedIds.has(entity.id)) {
         const cached = this.taskCache.get(entity.id);
         const cachedFields = this.entityFieldCache.get(entity.id);
-        const currentFields = document.projected ? document.fields : undefined;
+        const currentFields = document.fields;
         if (
           cached
           && (
@@ -859,7 +812,11 @@ export class OramaSearchService implements SearchService {
             || JSON.stringify(cachedFields) !== JSON.stringify(currentFields)
           )
         ) {
-          await this.updateDocument(toIndexableEntity(document));
+          await this.updateDocument({
+            kind: 'entity-document',
+            entity: document.entity,
+            fields: document.fields,
+          });
           updated++;
         }
       }
@@ -927,11 +884,7 @@ export class OramaSearchService implements SearchService {
     const previous = this.taskCache.get(entity.id);
     const previousFields = this.entityFieldCache.get(entity.id);
     this.taskCache.set(entity.id, entity);
-    if (document.projected) {
-      this.entityFieldCache.set(entity.id, document.fields);
-    } else {
-      this.entityFieldCache.delete(entity.id);
-    }
+    this.entityFieldCache.set(entity.id, document.fields);
 
     try {
       if (this.hasEmbeddingsInIndex && this.embeddingsReady) {
@@ -983,9 +936,7 @@ export class OramaSearchService implements SearchService {
     const prevFields = this.entityFieldCache.get(entity.id);
     await this.removeDocument(entity.id);
     this.taskCache.set(entity.id, entity);
-    if (document.projected) {
-      this.entityFieldCache.set(entity.id, document.fields);
-    }
+    this.entityFieldCache.set(entity.id, document.fields);
 
     try {
       if (this.hasEmbeddingsInIndex && this.embeddingsReady) {
@@ -998,13 +949,10 @@ export class OramaSearchService implements SearchService {
       if (prev) {
         const restored = {
           entity: prev,
-          fields: prevFields ?? defaultSearchFields(prev),
-          projected: prevFields !== undefined,
+          fields: prevFields ?? [],
         };
         this.taskCache.set(entity.id, prev);
-        if (restored.projected) {
-          this.entityFieldCache.set(entity.id, restored.fields);
-        }
+        this.entityFieldCache.set(entity.id, restored.fields);
         try { await insert(this.db as OramaInstance, this.taskToDoc(restored)); } catch { /* index unrecoverable for this doc */ }
       } else {
         this.taskCache.delete(entity.id);

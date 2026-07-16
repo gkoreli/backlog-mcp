@@ -48,7 +48,7 @@ export type OramaInstance = import('@orama/orama').Orama<typeof schema>;
 export type OramaInstanceWithEmbeddings = import('@orama/orama').Orama<typeof schemaWithEmbeddings>;
 
 /** Bump when tokenizer or schema changes to force index rebuild. */
-export const INDEX_VERSION = 6;  // ADR-0113 Phase C: runtime substrate search projection
+export const INDEX_VERSION = 7;  // ADR-0113 Phase C: server-owned entity projections
 
 // ── Search constants ────────────────────────────────────────────────
 

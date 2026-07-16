@@ -2,7 +2,6 @@ import {
   EntityType,
   nextEntityId,
   type AnyEntity,
-  type RuntimeEntity,
   type Status,
   type SubstrateType,
 } from '@backlog-mcp/shared';
@@ -13,13 +12,12 @@ import type {
 import {
   OramaSearchService,
   type IndexableEntity,
-  type SearchEntityDocument,
   type SearchableType,
   type UnifiedSearchResult,
 } from '@backlog-mcp/memory/search';
 import { logger } from '../../utils/logger.js';
 import {
-  asBuiltinEntity,
+  createSearchEntityDocument,
   isBuiltinSubstrateType,
 } from '../../core/substrates/index.js';
 import type { IBacklogService } from '../backlog-service.contract.js';
@@ -62,29 +60,6 @@ function listIndexableResources(
   return resources.filter(function isGenericResource(resource) {
     return !entitySourcePaths.has(resource.path);
   });
-}
-
-function createSearchDocument(
-  entity: AnyEntity,
-  getSearchFields:
-    | ((type: SubstrateType) => readonly string[] | undefined)
-    | undefined,
-): IndexableEntity | undefined {
-  const builtin = asBuiltinEntity(entity);
-  if (builtin !== undefined) return builtin;
-  const type = typeof entity.type === 'string' ? entity.type : undefined;
-  if (!type) return undefined;
-  const fields = getSearchFields?.(type);
-  if (!fields) return undefined;
-  const record = entity as RuntimeEntity;
-  const document: SearchEntityDocument = {
-    kind: 'entity-document',
-    entity,
-    fields: fields.map(function projectField(name) {
-      return { name, value: record[name] };
-    }),
-  };
-  return document;
 }
 
 function hasChanges(stats: SearchReconciliationStats): boolean {
@@ -142,7 +117,7 @@ export class BacklogService implements IBacklogService {
   async reconcile(): Promise<BacklogReconciliationResult> {
     const allEntities = Array.from(this.storage.iterateEntities()).flatMap(
       (entity) => {
-        const document = createSearchDocument(entity, this.getSearchFields);
+        const document = createSearchEntityDocument(entity, this.getSearchFields);
         return document === undefined ? [] : [document];
       },
     );
@@ -273,7 +248,7 @@ export class BacklogService implements IBacklogService {
 
   async add(candidate: AnyEntity): Promise<AnyEntity> {
     const entity = this.storage.add(candidate);
-    const document = createSearchDocument(entity, this.getSearchFields);
+    const document = createSearchEntityDocument(entity, this.getSearchFields);
     if (document !== undefined) {
       if (this.searchReady) {
         this.search.addDocument(document);
@@ -286,7 +261,7 @@ export class BacklogService implements IBacklogService {
 
   async save(candidate: AnyEntity): Promise<AnyEntity> {
     const entity = this.storage.save(candidate);
-    const document = createSearchDocument(entity, this.getSearchFields);
+    const document = createSearchEntityDocument(entity, this.getSearchFields);
     if (document !== undefined) {
       if (this.searchReady) {
         this.search.updateDocument(document);

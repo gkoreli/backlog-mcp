@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { Entity, TaskEntity } from '@backlog-mcp/shared';
+import { searchDocuments } from './helpers/search-document.js';
 
 /**
  * Semantic/Hybrid search tests.
@@ -13,6 +14,7 @@ import type { Entity, TaskEntity } from '@backlog-mcp/shared';
 
 function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): TaskEntity {
   return {
+    type: 'task',
     status: 'open',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -57,7 +59,7 @@ describe('Hybrid Search (Semantic)', () => {
   beforeAll(async () => {
     // Use fresh index to ensure embeddings are generated
     service = new OramaSearchService({ cachePath: TEST_CACHE_PATH, hybridSearch: true });
-    await service.index(tasks);
+    await service.index(searchDocuments(tasks));
   }, 60000); // 60s timeout for model download on first run
 
   describe('semantic similarity', () => {
@@ -111,7 +113,7 @@ describe('Hybrid Search (Semantic)', () => {
         cachePath: join(process.cwd(), 'test-data', '.cache', 'bm25-only-index.json'),
         hybridSearch: false,
       });
-      await bm25Service.index(tasks);
+      await bm25Service.index(searchDocuments(tasks));
 
       // Should still find exact matches
       const results = await bm25Service.search('authentication');
@@ -130,7 +132,7 @@ describe('Hybrid Search (Semantic)', () => {
         cachePath: join(process.cwd(), 'test-data', '.cache', 'bm25-check-index.json'),
         hybridSearch: false,
       });
-      await bm25Service.index(tasks);
+      await bm25Service.index(searchDocuments(tasks));
       expect(bm25Service.isHybridSearchActive()).toBe(false);
     });
   });

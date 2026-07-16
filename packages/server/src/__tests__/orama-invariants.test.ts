@@ -16,9 +16,11 @@ import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { Entity, TaskEntity } from '@backlog-mcp/shared';
 import type { Resource } from '@backlog-mcp/memory/search';
+import { searchDocument, searchDocuments } from './helpers/search-document.js';
 
 function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): TaskEntity {
   return {
+    type: 'task',
     status: 'open',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -42,12 +44,12 @@ describe('Invariant: enum fields excluded from text search (ADR-0079)', () => {
 
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await service.index([
+    await service.index(searchDocuments([
       makeEntity({ id: 'TASK-0001', title: 'Build dashboard', status: 'open' }),
       makeEntity({ id: 'TASK-0002', title: 'Fix open issue', status: 'done' }),
       makeEntity({ id: 'TASK-0003', title: 'Deploy service', status: 'in_progress', type: 'task' }),
       makeEntity({ id: 'EPIC-0001', title: 'Platform epic', type: 'epic' }),
-    ]);
+    ]));
   });
 
   it('searching "open" does NOT match tasks just because status=open', async () => {
@@ -95,7 +97,7 @@ describe('Invariant: native where filtering matches old JS filtering (ADR-0079)'
 
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await service.index(tasks);
+    await service.index(searchDocuments(tasks));
   });
 
   it('status filter: single status', async () => {
@@ -148,10 +150,10 @@ describe('Invariant: canonical parent_id where filtering (ADR-0079)', () => {
 
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await service.index([
+    await service.index(searchDocuments([
       makeEntity({ id: 'TASK-0001', title: 'Child task', parent_id: 'FLDR-0001' }),
       makeEntity({ id: 'TASK-0002', title: 'Child task two', parent_id: 'EPIC-0001' }),
-    ]);
+    ]));
   });
 
   it('parent_id filter matches task with parent_id set', async () => {
@@ -191,7 +193,7 @@ describe('Invariant: where filtering has no window limit (ADR-0079)', () => {
     }
 
     const service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await service.index(tasks);
+    await service.index(searchDocuments(tasks));
 
     // With limit=10, native where should find open tasks regardless of how many done tasks exist
     const results = await service.search('search task', { limit: 10, filters: { status: ['open'] } });
@@ -212,13 +214,13 @@ describe('Invariant: insertMultiple equivalence (ADR-0079)', () => {
   it('batch-indexed service returns same search results as sequentially-indexed', async () => {
     // Service 1: uses insertMultiple (via index())
     const batchService = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await batchService.index(tasks);
+    await batchService.index(searchDocuments(tasks));
 
     // Service 2: uses sequential addDocument
     const seqService = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await seqService.index([]); // init empty
     for (const t of tasks) {
-      await seqService.addDocument(t);
+      await seqService.addDocument(searchDocument(t));
     }
 
     const batchResults = await batchService.search('feature');
@@ -236,10 +238,10 @@ describe('Invariant: searchAll native docType filtering (ADR-0079)', () => {
 
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await service.index([
+    await service.index(searchDocuments([
       makeEntity({ id: 'TASK-0001', title: 'Search implementation' }),
       makeEntity({ id: 'EPIC-0001', title: 'Search epic', type: 'epic' }),
-    ]);
+    ]));
     await service.indexResources([
       makeResource({ id: 'res-1', title: 'Search design doc', content: 'Search architecture', path: 'resources/search.md' }),
     ]);
@@ -275,9 +277,9 @@ describe('Invariant: searchResources native filtering (ADR-0079)', () => {
 
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await service.index([
+    await service.index(searchDocuments([
       makeEntity({ id: 'TASK-0001', title: 'Design document review' }),
-    ]);
+    ]));
     await service.indexResources([
       makeResource({ id: 'res-1', title: 'Design document', content: 'Architecture overview', path: 'resources/design.md' }),
     ]);

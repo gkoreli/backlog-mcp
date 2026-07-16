@@ -12,6 +12,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { join } from 'node:path';
 import { OramaSearchService, type Resource } from '@backlog-mcp/memory/search';
 import type { Entity } from '@backlog-mcp/shared';
+import { searchDocuments } from './helpers/search-document.js';
 
 let cacheCounter = 0;
 function freshCachePath(): string {
@@ -39,17 +40,17 @@ describe('OramaSearchService.reconcile (ADR-0101)', () => {
 
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await service.index(initialTasks);
+    await service.index(searchDocuments(initialTasks));
   });
 
   it('returns zero counts when index already matches input', async () => {
-    const stats = await service.reconcile(initialTasks);
+    const stats = await service.reconcile(searchDocuments(initialTasks));
     expect(stats).toEqual({ added: 0, removed: 0, updated: 0 });
   });
 
   it('adds entities present in input but missing from index', async () => {
     const newTask = makeEntity({ id: 'TASK-0099', title: 'Drifted task', content: 'gamma' });
-    const stats = await service.reconcile([...initialTasks, newTask]);
+    const stats = await service.reconcile(searchDocuments([...initialTasks, newTask]));
 
     expect(stats).toEqual({ added: 1, removed: 0, updated: 0 });
 
@@ -59,7 +60,7 @@ describe('OramaSearchService.reconcile (ADR-0101)', () => {
   });
 
   it('removes entities in index but missing from input', async () => {
-    const stats = await service.reconcile([initialTasks[0]]);
+    const stats = await service.reconcile(searchDocuments([initialTasks[0]]));
 
     expect(stats).toEqual({ added: 0, removed: 1, updated: 0 });
 
@@ -75,7 +76,7 @@ describe('OramaSearchService.reconcile (ADR-0101)', () => {
       updated_at: '2026-05-15T00:00:00.000Z',
     };
 
-    const stats = await service.reconcile([initialTasks[0], edited]);
+    const stats = await service.reconcile(searchDocuments([initialTasks[0], edited]));
 
     expect(stats).toEqual({ added: 0, removed: 0, updated: 1 });
 
@@ -93,7 +94,7 @@ describe('OramaSearchService.reconcile (ADR-0101)', () => {
     };
     // initialTasks[1] (TASK-0002) is dropped from input → should be removed
 
-    const stats = await service.reconcile([editedFirst, newTask]);
+    const stats = await service.reconcile(searchDocuments([editedFirst, newTask]));
 
     expect(stats).toEqual({ added: 1, removed: 1, updated: 1 });
 
@@ -103,22 +104,21 @@ describe('OramaSearchService.reconcile (ADR-0101)', () => {
     expect(editedHits.some(r => r.task.id === 'TASK-0001')).toBe(true);
   });
 
-  it('does not update when updated_at is unchanged', async () => {
-    // Same updated_at, different title — reconcile should NOT propagate the change
-    // (we trust updated_at as the modification signal per ADR 0101 Phase 1)
+  it('updates when projected search fields change even if updated_at is unchanged', async () => {
+    // Search projections are authoritative for indexed text, so a changed
+    // projected title must reconcile even when the entity timestamp is stale.
     const stale: Entity = { ...initialTasks[0], title: 'Should not be indexed' };
-    const stats = await service.reconcile([stale, initialTasks[1]]);
+    const stats = await service.reconcile(searchDocuments([stale, initialTasks[1]]));
 
-    expect(stats.updated).toBe(0);
+    expect(stats.updated).toBe(1);
 
-    // Index still has the original title
-    const results = await service.search('First task');
-    expect(results[0].task.title).toBe('First task');
+    const results = await service.search('Should not be indexed');
+    expect(results[0]?.task.title).toBe('Should not be indexed');
   });
 
   it('returns zero counts when db is not yet initialized', async () => {
     const fresh = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    const stats = await fresh.reconcile([initialTasks[0]]);
+    const stats = await fresh.reconcile(searchDocuments([initialTasks[0]]));
     expect(stats).toEqual({ added: 0, removed: 0, updated: 0 });
   });
 });

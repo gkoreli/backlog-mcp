@@ -209,6 +209,7 @@ describe('LocalRuntime', function describeLocalRuntime() {
             id: { type: 'string' },
             type: { const: 'decision' },
             title: { type: 'string' },
+            content: { type: 'string' },
             summary: { type: 'string' },
             private_note: { type: 'string' },
           },
@@ -237,6 +238,7 @@ describe('LocalRuntime', function describeLocalRuntime() {
       {
         title: 'Runtime decision',
         type: 'decision',
+        content: 'undeclaredcontentmarker',
         fields: {
           summary: 'Initial summary',
           private_note: 'hiddenambermarker',
@@ -275,6 +277,9 @@ describe('LocalRuntime', function describeLocalRuntime() {
       },
     });
     expect(await runtime.service.searchUnified('hiddenambermarker')).toEqual([]);
+    expect(await runtime.service.searchUnified(
+      'undeclaredcontentmarker',
+    )).toEqual([]);
     expect((await runtime.service.searchUnified(
       'Updated summary',
       { types: ['decision'] },

@@ -19,6 +19,7 @@ import type { Entity, Memory } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import { recall } from '../core/recall.js';
+import { searchDocuments } from './helpers/search-document.js';
 
 const TEST_CACHE_PATH = join(process.cwd(), 'test-data', '.cache', 'recall-golden.json');
 const DAY = 24 * 60 * 60 * 1000;
@@ -101,7 +102,7 @@ describe('Recall Golden Benchmark', () => {
 
   beforeAll(async () => {
     const search = new OramaSearchService({ cachePath: TEST_CACHE_PATH });
-    await search.index(GOLDEN_MEMORIES as Entity[]);
+    await search.index(searchDocuments(GOLDEN_MEMORIES as Entity[]));
 
     // Minimal service: recall's read path only touches searchUnified.
     const service = {

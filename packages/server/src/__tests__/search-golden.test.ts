@@ -13,11 +13,13 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { Entity, TaskEntity } from '@backlog-mcp/shared';
+import { searchDocuments } from './helpers/search-document.js';
 
 const TEST_CACHE_PATH = join(process.cwd(), 'test-data', '.cache', 'search-golden.json');
 
 function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): TaskEntity {
   return {
+    type: 'task',
     status: 'open',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -111,7 +113,7 @@ describe('Search Golden Benchmark', () => {
 
   beforeAll(async () => {
     service = new OramaSearchService({ cachePath: TEST_CACHE_PATH });
-    await service.index(GOLDEN_TASKS);
+    await service.index(searchDocuments(GOLDEN_TASKS));
   });
 
   /**

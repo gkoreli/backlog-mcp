@@ -40,6 +40,7 @@ import { remember as coreRemember } from '../core/remember.js';
 import { forget as coreForget } from '../core/forget.js';
 import { consolidationCandidates } from '../core/consolidation.js';
 import type { MutationAttribution, WriteContext } from '../core/types.js';
+import { searchDocuments } from './helpers/search-document.js';
 
 const CREATE_ATTRIBUTION = {
   tool: 'backlog_attach_artifact',
@@ -85,7 +86,7 @@ function fakeService(): IBacklogService {
         cachePath: join(tmpdir(), `mem-contract-${Date.now()}-${Math.random().toString(36).slice(2)}.json`),
         hybridSearch: false,
       });
-      await search.index([...store.values()]);
+      await search.index(searchDocuments([...store.values()]));
       const results = await search.searchAll(query, {
         docTypes: options?.types,
         limit: options?.limit ?? 20,

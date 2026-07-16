@@ -2,9 +2,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { Entity, TaskEntity } from '@backlog-mcp/shared';
+import { searchDocument, searchDocuments } from './helpers/search-document.js';
 
 function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): TaskEntity {
   return {
+    type: 'task',
     status: 'open',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -27,7 +29,7 @@ describe('OramaSearchService', () => {
 
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: TEST_CACHE_PATH });
-    await service.index(tasks);
+    await service.index(searchDocuments(tasks));
   });
 
   describe('search', () => {
@@ -100,7 +102,7 @@ describe('OramaSearchService', () => {
   describe('document operations', () => {
     it('adds new document to index', async () => {
       const newTask = makeEntity({ id: 'TASK-0005', title: 'New feature request' });
-      await service.addDocument(newTask);
+      await service.addDocument(searchDocument(newTask));
 
       const results = await service.search('feature request');
       expect(results.some(r => r.task.id === 'TASK-0005')).toBe(true);
@@ -115,7 +117,7 @@ describe('OramaSearchService', () => {
 
     it('updates document in index', async () => {
       const updated = { ...tasks[0], title: 'Updated authentication system' };
-      await service.updateDocument(updated);
+      await service.updateDocument(searchDocument(updated));
 
       const results = await service.search('Updated authentication');
       expect(results.length).toBeGreaterThan(0);

@@ -35,7 +35,7 @@ export interface SearchEntityDocument {
   fields: readonly SearchEntityField[];
 }
 
-export type IndexableEntity = AnyEntity | SearchEntityDocument;
+export type IndexableEntity = SearchEntityDocument;
 
 /**
  * Search filter options

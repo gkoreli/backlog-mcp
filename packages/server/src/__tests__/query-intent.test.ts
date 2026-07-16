@@ -14,6 +14,7 @@ import {
   OramaSearchService,
 } from '@backlog-mcp/memory/search';
 import type { Entity } from '@backlog-mcp/shared';
+import { searchDocuments } from './helpers/search-document.js';
 
 let cacheCounter = 0;
 function freshCachePath(): string {
@@ -223,12 +224,12 @@ describe('parseQueryIntent', () => {
 describe('OramaSearchService.searchAll: intent routing', () => {
   it('id_lookup short-circuits to direct cache hit with score=1.0', async () => {
     const svc = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await svc.index([
+    await svc.index(searchDocuments([
       makeEntity({ id: 'TASK-0596', title: 'Research: Fredrika Unified Diff Viewer' }),
       // Decoys that BM25 would otherwise rank higher
       makeEntity({ id: 'TASK-0001', title: 'TASK 596 mention in title to confuse ranker', content: 'task 596' }),
       makeEntity({ id: 'TASK-0002', title: 'task 596 again', content: 'task 596 task 596 task 596' }),
-    ]);
+    ]));
 
     const results = await svc.searchAll('task 596', { limit: 5 });
     expect(results.length).toBe(1);
@@ -238,9 +239,9 @@ describe('OramaSearchService.searchAll: intent routing', () => {
 
   it('id_lookup falls through to fulltext when canonical ID not in cache', async () => {
     const svc = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await svc.index([
+    await svc.index(searchDocuments([
       makeEntity({ id: 'TASK-0001', title: 'A task that mentions task 999 in body' }),
-    ]);
+    ]));
 
     // TASK-0999 doesn't exist; should fall through to fulltext.
     // The fulltext path may or may not return results — we just verify
@@ -251,12 +252,12 @@ describe('OramaSearchService.searchAll: intent routing', () => {
 
   it('filtered intent applies status filter without BM25', async () => {
     const svc = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await svc.index([
+    await svc.index(searchDocuments([
       makeEntity({ id: 'TASK-0001', title: 'First', status: 'open' }),
       makeEntity({ id: 'TASK-0002', title: 'Second', status: 'blocked' }),
       makeEntity({ id: 'TASK-0003', title: 'Third', status: 'blocked' }),
       makeEntity({ id: 'TASK-0004', title: 'Fourth', status: 'done' }),
-    ]);
+    ]));
 
     const results = await svc.searchAll('blocked tasks', { limit: 10 });
     const ids = results.map(r => r.id).sort();
@@ -265,12 +266,12 @@ describe('OramaSearchService.searchAll: intent routing', () => {
 
   it('filtered intent with residual text runs BM25 scoped to filter', async () => {
     const svc = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await svc.index([
+    await svc.index(searchDocuments([
       makeEntity({ id: 'TASK-0001', title: 'database migration', status: 'open' }),
       makeEntity({ id: 'TASK-0002', title: 'database migration', status: 'blocked' }),
       makeEntity({ id: 'TASK-0003', title: 'database migration', status: 'blocked' }),
       makeEntity({ id: 'TASK-0004', title: 'unrelated task', status: 'blocked' }),
-    ]);
+    ]));
 
     const results = await svc.searchAll('blocked tasks database', { limit: 10 });
     const ids = results.map(r => r.id);
@@ -282,10 +283,10 @@ describe('OramaSearchService.searchAll: intent routing', () => {
 
   it('caller filters override intent filters', async () => {
     const svc = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await svc.index([
+    await svc.index(searchDocuments([
       makeEntity({ id: 'TASK-0001', title: 'task one', status: 'open' }),
       makeEntity({ id: 'TASK-0002', title: 'task two', status: 'blocked' }),
-    ]);
+    ]));
 
     // Caller passes status:['open'], query says "blocked tasks" — caller wins.
     const results = await svc.searchAll('blocked tasks', {
@@ -299,10 +300,10 @@ describe('OramaSearchService.searchAll: intent routing', () => {
 
   it('fulltext path unchanged for plain queries', async () => {
     const svc = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await svc.index([
+    await svc.index(searchDocuments([
       makeEntity({ id: 'TASK-0001', title: 'database migration to postgres' }),
       makeEntity({ id: 'TASK-0002', title: 'unrelated task' }),
-    ]);
+    ]));
 
     const results = await svc.searchAll('database migration', { limit: 5 });
     expect(results[0]?.id).toBe('TASK-0001');

@@ -41,7 +41,7 @@ export function generateTaskSnippet(task: AnyEntity, query: string): SearchSnipp
 
 /** Generate a snippet from the exact registry-projected substrate fields. */
 export function generateEntitySnippet(
-  entity: AnyEntity,
+  _entity: AnyEntity,
   fields: readonly SearchEntityField[],
   query: string,
 ): SearchSnippet {
@@ -51,7 +51,7 @@ export function generateEntitySnippet(
   return generateSnippetFromFields(
     projected.length > 0
       ? projected
-      : [{ name: 'title', value: entity.title }],
+      : [{ name: 'title', value: '' }],
     query,
   );
 }

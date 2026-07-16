@@ -16,6 +16,7 @@ import {
 } from '../../../memory/src/search/evaluation.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
+import { searchDocument, searchDocuments } from './helpers/search-document.js';
 import {
   SEARCH_RELEVANCE_ENTITIES,
   SEARCH_RELEVANCE_FIXTURE_NOW,
@@ -144,7 +145,7 @@ class FixtureBacklogService implements IBacklogService {
   });
 
   async initialize(): Promise<void> {
-    await this.search.index([...this.entities.values()]);
+    await this.search.index(searchDocuments([...this.entities.values()]));
   }
 
   isHybridActive(): boolean {
@@ -169,12 +170,12 @@ class FixtureBacklogService implements IBacklogService {
 
   async add(entity: Entity): Promise<void> {
     this.entities.set(entity.id, entity);
-    await this.search.addDocument(entity);
+    await this.search.addDocument(searchDocument(entity));
   }
 
   async save(entity: Entity): Promise<void> {
     this.entities.set(entity.id, entity);
-    await this.search.updateDocument(entity);
+    await this.search.updateDocument(searchDocument(entity));
   }
 
   async delete(id: string): Promise<boolean> {

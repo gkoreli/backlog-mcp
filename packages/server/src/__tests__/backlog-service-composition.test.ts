@@ -27,6 +27,7 @@ import type {
   StorageAdapter,
 } from '../storage/storage-adapter.js';
 import { buildEntity } from '../storage/entity-factory.js';
+import { searchDocuments } from './helpers/search-document.js';
 
 let pathSequence = 0;
 
@@ -217,7 +218,7 @@ describe('BacklogService composition', function describeComposition() {
         content: '# Removed guide\nobsoleteresourcezephyr',
       },
     ];
-    await staleSearch.index([staleEntity, removedEntity]);
+    await staleSearch.index(searchDocuments([staleEntity, removedEntity]));
     await staleSearch.indexResources(staleResources);
     staleSearch.flush();
 

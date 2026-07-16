@@ -11,6 +11,9 @@ export {
   createBuiltinSubstrateRegistrations,
 } from './create-builtin-substrate-registrations.js';
 export {
+  createSearchEntityDocument,
+} from './create-search-entity-document.js';
+export {
   loadProjectSubstrateDefinitions,
   loadSubstrateDefinitions,
 } from './load-substrate-definitions.js';

@@ -6,11 +6,18 @@ import { describe, it, beforeAll } from 'vitest';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { Entity, TaskEntity } from '@backlog-mcp/shared';
+import { searchDocuments } from './helpers/search-document.js';
 
 const TEST_CACHE_PATH = join(process.cwd(), 'test-data', '.cache', 'search-scale.json');
 
 function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): TaskEntity {
-  return { status: 'open', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...overrides };
+  return {
+    type: 'task',
+    status: 'open',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    ...overrides,
+  };
 }
 
 /**
@@ -69,7 +76,7 @@ describe('Scaling Diagnostic: "backlog mcp" ranking vs corpus size', () => {
         type: 'epic',
       });
 
-      await service.index([target, ...noisyTasks]);
+      await service.index(searchDocuments([target, ...noisyTasks]));
       const results = await service.search('backlog mcp');
 
       const targetIdx = results.findIndex(r => r.task.id === 'EPIC-0001');

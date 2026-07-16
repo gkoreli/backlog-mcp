@@ -16,9 +16,11 @@ import { OramaSearchService, type SearchSnippet } from '@backlog-mcp/memory/sear
 import { generateTaskSnippet, generateResourceSnippet } from '@backlog-mcp/memory/search';
 import type { Entity, TaskEntity } from '@backlog-mcp/shared';
 import type { Resource } from '@backlog-mcp/memory/search';
+import { searchDocuments } from './helpers/search-document.js';
 
 function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): TaskEntity {
   return {
+    type: 'task',
     status: 'open',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -57,7 +59,7 @@ describe('Invariant: searchAll always returns snippets (ADR-0073)', () => {
 
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await service.index(tasks);
+    await service.index(searchDocuments(tasks));
     await service.indexResources(resources);
   });
 
@@ -186,7 +188,7 @@ describe('Invariant: searchAll type filtering (ADR-0073)', () => {
 
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await service.index(tasks);
+    await service.index(searchDocuments(tasks));
     await service.indexResources(resources);
   });
 
@@ -235,7 +237,7 @@ describe('Invariant: searchAll sort modes (ADR-0073)', () => {
 
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await service.index(tasks);
+    await service.index(searchDocuments(tasks));
   });
 
   it('sort=recent orders by updated_at descending', async () => {
@@ -300,9 +302,9 @@ describe('Invariant: edge cases (ADR-0073)', () => {
 
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
-    await service.index([
+    await service.index(searchDocuments([
       makeEntity({ id: 'TASK-0001', title: 'Test task' }),
-    ]);
+    ]));
   });
 
   it('searchAll with empty query returns empty array', async () => {
