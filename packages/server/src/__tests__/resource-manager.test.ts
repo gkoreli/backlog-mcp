@@ -1,163 +1,205 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { ResourceManager } from '../resources/manager.js';
 
-describe('ResourceManager - Pure Catch-All Design', () => {
-  let testDir: string;
-  let manager: ResourceManager;
+const ROOT_DIR = join(tmpdir(), 'resource-manager-root');
+const LEGACY_ROOT_DIR = join(tmpdir(), 'legacy-resource-manager-root');
+const LEGACY_SCAN_DIR = join(LEGACY_ROOT_DIR, 'resources');
+const OUTSIDE_FILE = join(tmpdir(), 'resource-manager-outside.md');
 
-  beforeEach(() => {
-    testDir = join(tmpdir(), `backlog-test-${Date.now()}`);
-    mkdirSync(testDir, { recursive: true });
-    mkdirSync(join(testDir, 'tasks'), { recursive: true });
-    mkdirSync(join(testDir, 'resources'), { recursive: true });
-    
-    // Create test files
-    writeFileSync(join(testDir, 'tasks', 'TASK-0001.md'), '---\nid: TASK-0001\n---\n# Task 1');
-    writeFileSync(join(testDir, 'resources', 'test.md'), '# Test Resource');
-    writeFileSync(join(testDir, 'resources', 'data.json'), '{"key": "value"}');
-    
-    manager = new ResourceManager(testDir);
+function writeDocument(rootDir: string, sourcePath: string, content: string): void {
+  const filePath = join(rootDir, ...sourcePath.split('/'));
+  const parentDir = filePath.slice(0, filePath.lastIndexOf('/'));
+  mkdirSync(parentDir, { recursive: true });
+  writeFileSync(filePath, content);
+}
+
+describe('ResourceManager', () => {
+  beforeAll(() => {
+    writeDocument(
+      ROOT_DIR,
+      'tasks/TASK-0001.md',
+      '---\nid: TASK-0001\n---\n# Task 1',
+    );
+    writeDocument(ROOT_DIR, 'README.markdown', '# Home Documents');
+    writeDocument(ROOT_DIR, 'config.json', '{"key":"value"}');
+    writeDocument(ROOT_DIR, 'notes.txt', 'Plain notes');
+    writeDocument(ROOT_DIR, 'settings.yaml', 'enabled: true');
+    writeDocument(ROOT_DIR, 'settings.yml', 'mode: local');
+    writeDocument(ROOT_DIR, 'nested/zeta.md', '# Zeta');
+    writeDocument(ROOT_DIR, 'nested/alpha.md', '# Alpha');
+    writeDocument(ROOT_DIR, 'substrates/declaration.json', '{"type":"built-in"}');
+    writeDocument(ROOT_DIR, 'substrates/notes.yaml', 'type: notes');
+    writeDocument(ROOT_DIR, 'ignored.ts', 'export const ignored = true;');
+    writeDocument(ROOT_DIR, '..notes/inside.md', '# Dot Dot Notes');
+    writeFileSync(OUTSIDE_FILE, '# Outside');
+    symlinkSync(OUTSIDE_FILE, join(ROOT_DIR, 'escape.md'));
+
+    writeDocument(LEGACY_ROOT_DIR, 'tasks/TASK-9999.md', '# Not Legacy Search');
+    writeDocument(LEGACY_SCAN_DIR, 'beta.txt', 'Beta');
+    writeDocument(LEGACY_SCAN_DIR, 'alpha.md', '# Legacy Alpha');
+    writeDocument(
+      LEGACY_SCAN_DIR,
+      'substrates/declaration.json',
+      '{"type":"legacy"}',
+    );
   });
 
-  afterEach(() => {
-    if (existsSync(testDir)) {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+  describe('list()', () => {
+    it('scans the whole root by default and returns all supported document formats', () => {
+      const resources = new ResourceManager(ROOT_DIR).list();
+
+      expect(resources.map(function getPath(resource) {
+        return resource.path;
+      })).toEqual([
+        '..notes/inside.md',
+        'README.markdown',
+        'config.json',
+        'nested/alpha.md',
+        'nested/zeta.md',
+        'notes.txt',
+        'settings.yaml',
+        'settings.yml',
+        'substrates/notes.yaml',
+        'tasks/TASK-0001.md',
+      ]);
+      expect(resources.map(function getUri(resource) {
+        return resource.id;
+      })).toEqual(resources.map(function makeExpectedUri(resource) {
+        return `mcp://backlog/${resource.path}`;
+      }));
+      expect(resources).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          path: 'README.markdown',
+          title: 'Home Documents',
+        }),
+        expect.objectContaining({
+          path: 'config.json',
+          title: 'config',
+          content: '{"key":"value"}',
+        }),
+      ]));
+      expect(resources.some(function isUnsupported(resource) {
+        return resource.path === 'ignored.ts';
+      })).toBe(false);
+    });
+
+    it('excludes substrate JSON declarations from search resources', () => {
+      const resources = new ResourceManager(ROOT_DIR).list();
+
+      expect(resources.some(function isDeclaration(resource) {
+        return resource.path === 'substrates/declaration.json';
+      })).toBe(false);
+      expect(resources.some(function isOrdinarySubstrateDocument(resource) {
+        return resource.path === 'substrates/notes.yaml';
+      })).toBe(true);
+    });
+
+    it('prefixes paths when a legacy resources-only scan differs from the root', () => {
+      const resources = new ResourceManager(LEGACY_ROOT_DIR, LEGACY_SCAN_DIR).list();
+
+      expect(resources.map(function getPath(resource) {
+        return resource.path;
+      })).toEqual([
+        'resources/alpha.md',
+        'resources/beta.txt',
+      ]);
+      expect(resources.map(function getUri(resource) {
+        return resource.id;
+      })).toEqual([
+        'mcp://backlog/resources/alpha.md',
+        'mcp://backlog/resources/beta.txt',
+      ]);
+    });
   });
 
-  describe('resolve() - URI to file path', () => {
-    it('should resolve URI to file path with pure catch-all', () => {
-      const uri = 'mcp://backlog/tasks/TASK-0001.md';
-      const path = manager.resolve(uri);
-      expect(path).toBe(join(testDir, 'tasks', 'TASK-0001.md'));
+  describe('resolve()', () => {
+    const manager = new ResourceManager(ROOT_DIR);
+
+    it('resolves catch-all and nested URIs beneath the root', () => {
+      expect(manager.resolve('mcp://backlog/tasks/TASK-0001.md'))
+        .toBe(join(ROOT_DIR, 'tasks', 'TASK-0001.md'));
+      expect(manager.resolve('mcp://backlog/resources/nested/file.md'))
+        .toBe(join(ROOT_DIR, 'resources', 'nested', 'file.md'));
     });
 
-    it('should handle nested paths', () => {
-      const uri = 'mcp://backlog/resources/nested/file.md';
-      const path = manager.resolve(uri);
-      expect(path).toBe(join(testDir, 'resources', 'nested', 'file.md'));
-    });
-
-    it('should NOT add .md extension automatically', () => {
+    it('does not add a markdown extension automatically', () => {
       const uri = 'mcp://backlog/tasks/TASK-0001';
-      const path = manager.resolve(uri);
-      expect(path).toBe(join(testDir, 'tasks', 'TASK-0001'));
-      expect(path).not.toContain('.md');
+
+      expect(manager.resolve(uri)).toBe(join(ROOT_DIR, 'tasks', 'TASK-0001'));
+      expect(() => manager.read(uri))
+        .toThrow('Did you mean: mcp://backlog/tasks/TASK-0001.md?');
     });
 
-    it('should give helpful error for extension-less task URIs', () => {
-      const uri = 'mcp://backlog/tasks/TASK-0001';
-      expect(() => manager.read(uri)).toThrow('Task URIs must include .md extension');
-      expect(() => manager.read(uri)).toThrow('Did you mean: mcp://backlog/tasks/TASK-0001.md?');
-    });
-
-    it('should throw on invalid URI scheme', () => {
+    it('rejects invalid schemes, hosts, and parent path segments', () => {
       expect(() => manager.resolve('http://backlog/tasks')).toThrow('Not an MCP URI');
-    });
-
-    it('should throw on invalid hostname', () => {
       expect(() => manager.resolve('mcp://other/tasks')).toThrow('Invalid hostname');
+      expect(() => manager.resolve('mcp://backlog/../etc/passwd'))
+        .toThrow('Path traversal');
+      expect(() => manager.resolve('mcp://backlog/%2e%2e/etc/passwd'))
+        .toThrow('Path traversal');
     });
 
-    it('should throw on path traversal', () => {
-      expect(() => manager.resolve('mcp://backlog/../etc/passwd')).toThrow('Path traversal');
-      expect(() => manager.resolve('mcp://backlog/tasks/../../etc/passwd')).toThrow('Path traversal');
+    it('allows contained names that merely include two dots', () => {
+      expect(manager.resolve('mcp://backlog/..notes/inside.md'))
+        .toBe(join(ROOT_DIR, '..notes', 'inside.md'));
     });
   });
 
-  describe('read() - Read resource content', () => {
-    it('should read markdown file with frontmatter', () => {
-      const uri = 'mcp://backlog/tasks/TASK-0001.md';
-      const resource = manager.read(uri);
-      
-      expect(resource.content).toBe('# Task 1');
-      expect(resource.frontmatter).toEqual({ id: 'TASK-0001' });
-      expect(resource.mimeType).toBe('text/markdown');
-    });
+  describe('read()', () => {
+    const manager = new ResourceManager(ROOT_DIR);
 
-    it('should read markdown file without frontmatter', () => {
-      const uri = 'mcp://backlog/resources/test.md';
-      const resource = manager.read(uri);
-      
-      expect(resource.content).toBe('# Test Resource');
-      expect(resource.frontmatter).toBeUndefined();
-      expect(resource.mimeType).toBe('text/markdown');
-    });
-
-    it('should read JSON file', () => {
-      const uri = 'mcp://backlog/resources/data.json';
-      const resource = manager.read(uri);
-      
-      expect(resource.content).toBe('{"key": "value"}');
-      expect(resource.mimeType).toBe('application/json');
-    });
-
-    it('should throw on non-existent file', () => {
-      const uri = 'mcp://backlog/missing.md';
-      expect(() => manager.read(uri)).toThrow('not found');
-    });
-
-    it('should detect MIME types correctly', () => {
-      const testCases = [
-        { uri: 'mcp://backlog/file.md', expected: 'text/markdown' },
-        { uri: 'mcp://backlog/file.json', expected: 'application/json' },
-        { uri: 'mcp://backlog/file.ts', expected: 'text/typescript' },
-        { uri: 'mcp://backlog/file.js', expected: 'application/javascript' },
-        { uri: 'mcp://backlog/file.txt', expected: 'text/plain' },
-        { uri: 'mcp://backlog/file.unknown', expected: 'text/plain' },
-      ];
-
-      testCases.forEach(({ uri, expected }) => {
-        const path = manager.resolve(uri);
-        writeFileSync(path, 'test content');
-        const resource = manager.read(uri);
-        expect(resource.mimeType).toBe(expected);
+    it('reads markdown and preserves frontmatter parsing', () => {
+      expect(manager.read('mcp://backlog/tasks/TASK-0001.md')).toEqual({
+        content: '# Task 1',
+        frontmatter: { id: 'TASK-0001' },
+        mimeType: 'text/markdown',
+      });
+      expect(manager.read('mcp://backlog/README.markdown')).toEqual({
+        content: '# Home Documents',
+        mimeType: 'text/markdown',
       });
     });
-  });
 
-  describe('toUri() - File path to URI (optional)', () => {
-    it('should convert file path to URI', () => {
-      const filePath = join(testDir, 'tasks', 'TASK-0001.md');
-      const uri = manager.toUri(filePath);
-      expect(uri).toBe('mcp://backlog/tasks/TASK-0001.md');
+    it('reads generic formats with the correct MIME types', () => {
+      expect(manager.read('mcp://backlog/config.json').mimeType)
+        .toBe('application/json');
+      expect(manager.read('mcp://backlog/settings.yaml').mimeType)
+        .toBe('application/yaml');
+      expect(manager.read('mcp://backlog/settings.yml').mimeType)
+        .toBe('application/yaml');
+      expect(manager.read('mcp://backlog/notes.txt').mimeType)
+        .toBe('text/plain');
     });
 
-    it('should handle nested paths', () => {
-      const filePath = join(testDir, 'resources', 'nested', 'file.md');
-      const uri = manager.toUri(filePath);
-      expect(uri).toBe('mcp://backlog/resources/nested/file.md');
+    it('throws for a missing resource', () => {
+      expect(() => manager.read('mcp://backlog/missing.md')).toThrow('not found');
     });
 
-    it('should return null for paths outside data directory', () => {
-      const uri = manager.toUri('/some/other/path/file.md');
-      expect(uri).toBeNull();
-    });
-
-    it('should NOT strip .md extension', () => {
-      const filePath = join(testDir, 'tasks', 'TASK-0001.md');
-      const uri = manager.toUri(filePath);
-      expect(uri).toBe('mcp://backlog/tasks/TASK-0001.md');
-      expect(uri).toContain('.md');
+    it('refuses an in-root symlink whose target is outside the root', () => {
+      expect(() => manager.read('mcp://backlog/escape.md'))
+        .toThrow('Resource resolves outside root');
     });
   });
 
-  describe('Round-trip consistency', () => {
-    it('should round-trip URI → path → URI', () => {
-      const originalUri = 'mcp://backlog/tasks/TASK-0001.md';
-      const path = manager.resolve(originalUri);
-      const roundTripUri = manager.toUri(path);
-      expect(roundTripUri).toBe(originalUri);
+  describe('toUri()', () => {
+    const manager = new ResourceManager(ROOT_DIR);
+
+    it('converts contained paths and round-trips nested URIs', () => {
+      const uri = 'mcp://backlog/tasks/TASK-0001.md';
+      const filePath = manager.resolve(uri);
+
+      expect(manager.toUri(filePath)).toBe(uri);
+      expect(manager.toUri(join(ROOT_DIR, 'resources', 'nested', 'file.md')))
+        .toBe('mcp://backlog/resources/nested/file.md');
     });
 
-    it('should round-trip for nested paths', () => {
-      const originalUri = 'mcp://backlog/resources/nested/file.md';
-      const path = manager.resolve(originalUri);
-      const roundTripUri = manager.toUri(path);
-      expect(roundTripUri).toBe(originalUri);
+    it('rejects outside paths, including sibling paths with the same prefix', () => {
+      expect(manager.toUri('/some/other/path/file.md')).toBeNull();
+      expect(manager.toUri(join(`${ROOT_DIR}-sibling`, 'file.md'))).toBeNull();
+      expect(manager.toUri(join(ROOT_DIR, 'escape.md'))).toBeNull();
     });
   });
 });
