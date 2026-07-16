@@ -7,9 +7,18 @@
 import { getRequestListener } from '@hono/node-server';
 import { createDocsNativeDevRuntimeResolver } from './server/docs-native-dev-runtime.js';
 import { createNodeApp } from './server/node-app.js';
+import { LocalRuntimeRegistry } from './storage/local/local-runtime-registry.js';
 
-const app = createNodeApp({
-  skipStatic: true,
-  resolveRuntime: createDocsNativeDevRuntimeResolver(process.env),
-});
+/** Construct the Vite dev app with an injectable per-home runtime registry. */
+export function createDevApp(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+  registry = new LocalRuntimeRegistry(),
+) {
+  return createNodeApp({
+    skipStatic: true,
+    resolveRuntime: createDocsNativeDevRuntimeResolver(env, registry),
+  });
+}
+
+const app = createDevApp();
 export const handler = getRequestListener(app.fetch);
