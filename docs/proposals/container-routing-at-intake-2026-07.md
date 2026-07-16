@@ -1,8 +1,8 @@
 # Container Routing at Intake — Proposal (July 2026)
 
-**Status**: Proposal — design exploration for Goga's retention idea
-(task 23), proposal-grade only, no implementation. Anchors: NORTH-STAR
-Pillar 4's organize-at-intake note (a30ae93), PROMPT 0002 #11.
+**Status**: P-1/P-2/P-3/P-5 implemented; P-4 explicitly deferred to the
+docs-native allocation seam. Anchors: NORTH-STAR Pillar 4's
+organize-at-intake note (a30ae93), PROMPT 0002 #11.
 
 ## The problem, split in two
 
@@ -35,8 +35,9 @@ by an ordered, deterministic fold — no LLM, no fuzzy matching, no stored
 routing state:
 
 1. **Substrate intake default** — the substrate's declaration names its
-   routing rule (ADR threads continue their parent ADR; artifacts require
-   an explicit parent already; crons default to scope root).
+   routing rule (artifacts require an explicit parent already; crons
+   default to scope root). Docs-native thread continuation is the distinct
+   allocation seam recorded under P-4.
 2. **Reference-derived** — if the new entity carries references /
    `entity_refs`, route to the container of the first referenced entity.
    This is literally consolidation's bucketing fold (0092.7: context →
@@ -75,6 +76,15 @@ thread membership is a semantic claim only the author can make (P-1
 spirit). What the server automates is the mechanical numbering, not the
 membership decision.
 
+**Implementation disposition — deferred by name.** Atomic next-`T`
+allocation is storage-boundary counter machinery, not another rung in the
+create-time container ladder. It remains owned by the docs-native allocation
+seam established by ADR 0112 R-7. Implement it when the first real
+thread-continuation consumer appears, or when a 0106.5 semantic intent needs
+child allocation. Until one of those triggers exists, docs-native creates
+continue to allocate thread roots only; this is deliberate, not silent
+fallthrough.
+
 ### P-5 — The routing duty is disclosed at the tool boundary
 
 The strongest router is still the calling agent at create time. The intent
@@ -83,6 +93,11 @@ tools' discovery descriptions (0106.5's 16 verbs) should say so —
 the duty in the agent's face at selection time, per progressive
 disclosure. Server heuristics (P-2) are the net under the trapeze, not the
 act.
+
+The implemented disclosure applies to create intents whose schemas accept
+`parent_id`. Packaged ADR, Requirement, and Prompt intents do not claim a
+container input they cannot accept; their thread-continuation disclosure
+belongs with the P-4 child-allocation contract when that seam is triggered.
 
 ## What this is deliberately not
 
@@ -97,8 +112,9 @@ act.
 
 ## Cross-thread fits
 
-- **0112 (quartz)**: folders, thread grammar, atomic allocation — P-4
-  consumes R-7; per-home scoping bounds the session-sticky fold.
+- **0112 (quartz)**: folders, thread grammar, atomic allocation — a future
+  P-4 implementation consumes R-7; per-home scoping bounds the
+  session-sticky fold.
 - **0113 (basalt)**: substrate declarations gain an optional intake-default
   descriptor — compiler-validated, deterministic (P-2.1).
 - **0106.5 (chert)**: create intents carry optional parent today; the
@@ -109,19 +125,18 @@ act.
 - **0113.1 (onyx)**: unfiled count sits beside the constraints section in
   wakeup — both are "orientation-time pressure" surfaces.
 
-## Open questions for Goga
+## Resolved choices
 
-1. Session-sticky window: how long is a "burst" (last N minutes vs last N
-   operations)? Recommend last 10 write operations or 30 minutes,
-   whichever is smaller — but this is taste.
-2. Should reference-derived routing outrank session-sticky (as proposed),
-   or the reverse? References are stronger evidence but rarer.
-3. Is the unfiled wakeup count enough pressure, or does Goga want a
-   `backlog doctor`-style weekly digest of unattached entities too?
+1. Session stickiness is the last 20 write operations or 30 minutes,
+   whichever is smaller.
+2. Reference-derived routing outranks session stickiness.
+3. The wakeup unfiled count is the only pressure surface in v1; there is no
+   additional digest or nagging mechanism.
 
 ## Effort
 
 S/M as scoped: the ladder is a small pure function in the create path,
 provenance is a response field, the unfiled count is one list filter in
-wakeup, and P-4/P-2.1 land inside seams 0112/0113 already build. Nothing
-here justifies a new subsystem.
+wakeup, and P-2.1 lands inside the 0113 registry seam. P-4 is deliberately
+deferred to 0112's storage-boundary allocation seam under the trigger above.
+Nothing here justifies a new subsystem.
