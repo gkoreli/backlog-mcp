@@ -12,9 +12,9 @@ import type { Entity } from '@backlog-mcp/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { createBacklogHome } from '../core/backlog-home.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';
-import { createItem } from '../core/create.js';
-import { updateItem } from '../core/update.js';
-import { createEntity } from '../storage/entity-factory.js';
+import { createEntity as createEntityCore } from '../core/create.js';
+import { updateEntity as updateEntityCore } from '../core/update.js';
+import { buildEntity } from '../storage/entity-factory.js';
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
 import type {
   DocsTreeReconcileCallback,
@@ -27,6 +27,16 @@ import type {
   SubstrateStorageCatalog,
   SubstrateStorageClaim,
 } from '../storage/substrate-storage-catalog.contract.js';
+
+const CREATE_ATTRIBUTION = {
+  tool: 'backlog_create_work',
+  mutation: 'create',
+} as const;
+
+const UPDATE_ATTRIBUTION = {
+  tool: 'backlog_complete_task',
+  mutation: 'update',
+} as const;
 
 class FakeDocsTreeWatcher implements DocsTreeWatcher {
   private onReconcile: DocsTreeReconcileCallback | undefined;
@@ -113,13 +123,14 @@ describe('LocalRuntime', function describeLocalRuntime() {
       createSearch: createBm25Search,
     });
 
-    const result = await createItem(
+    const result = await createEntityCore(
       runtime.service,
-      { title: 'Claim-shaped task' },
+      { title: 'Claim-shaped task', type: 'task' },
       {
         actor: { type: 'agent', name: 'quartz' },
         operationLog: runtime.operationLogger,
       },
+      CREATE_ATTRIBUTION,
     );
 
     expect(result.id).toBe('TASK-00001');
@@ -170,7 +181,7 @@ describe('LocalRuntime', function describeLocalRuntime() {
       operationLog: runtime.operationLogger,
     };
 
-    const created = await createItem(
+    const created = await createEntityCore(
       runtime.service,
       {
         title: 'Runtime decision',
@@ -178,14 +189,16 @@ describe('LocalRuntime', function describeLocalRuntime() {
         fields: { summary: 'Initial summary' },
       },
       context,
+      CREATE_ATTRIBUTION,
     );
-    await updateItem(
+    await updateEntityCore(
       runtime.service,
       {
         id: created.id,
         fields: { summary: 'Updated summary' },
       },
       context,
+      UPDATE_ATTRIBUTION,
     );
 
     expect(created.id).toBe('decision-001-root');
@@ -198,17 +211,18 @@ describe('LocalRuntime', function describeLocalRuntime() {
     )).toBe(true);
     const storedPath = join(home.documentsDir, 'decisions', '001.md');
     const beforeRejectedUpdate = readFileSync(storedPath, 'utf8');
-    await expect(updateItem(
+    await expect(updateEntityCore(
       runtime.service,
       {
         id: created.id,
         fields: { undeclared: true },
       },
       context,
+      UPDATE_ATTRIBUTION,
     )).rejects.toThrow(/additional properties/);
     expect(readFileSync(storedPath, 'utf8')).toBe(beforeRejectedUpdate);
 
-    await expect(createItem(
+    await expect(createEntityCore(
       runtime.service,
       {
         title: 'Invalid runtime decision',
@@ -216,15 +230,17 @@ describe('LocalRuntime', function describeLocalRuntime() {
         fields: { summary: 42 },
       },
       context,
+      CREATE_ATTRIBUTION,
     )).rejects.toThrow(/must be string/);
     expect(existsSync(
       join(home.documentsDir, 'decisions', '002.md'),
     )).toBe(false);
 
-    await expect(createItem(
+    await expect(createEntityCore(
       runtime.service,
       { title: 'Unknown', type: 'unknown' },
       context,
+      CREATE_ATTRIBUTION,
     )).rejects.toThrow(/Unknown substrate type/);
   });
 
@@ -239,7 +255,7 @@ describe('LocalRuntime', function describeLocalRuntime() {
       watcher: new FakeDocsTreeWatcher(),
       createSearch: createBm25Search,
     });
-    const task = createEntity({
+    const task = buildEntity({
       id: 'TASK-0001',
       title: 'Runtime-owned task',
       content: 'typedquartzzephyr',
@@ -306,7 +322,7 @@ describe('LocalRuntime', function describeLocalRuntime() {
     });
     await runtime.start();
 
-    const task = createEntity({
+    const task = buildEntity({
       id: 'TASK-0002',
       title: 'Native runtime task',
       content: 'singletypezephyr',
