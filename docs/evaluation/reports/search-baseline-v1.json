@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "baseline_version": 1,
-  "generated_at": "2026-07-16T23:41:47.820Z",
+  "generated_at": "2026-07-16T23:46:35.095Z",
   "runner": "scripts/search-eval.mjs",
   "inputs": {
     "corpus": {
       "project_root": "/Users/goga/Documents/goga/backlog-mcp-wt-0116",
       "documents_dir": "/Users/goga/Documents/goga/backlog-mcp-wt-0116/docs",
       "home_id": "/Users/goga/Documents/goga/backlog-mcp-wt-0116",
-      "sha256": "94965dbd50d60ddaf250c4c5b09d0f605a3419fbc2d46740024eb0f4742cd57c",
+      "sha256": "73f0bac3b8cba1e1cfeccc768d5a815717556ecd778847c9e0fd27fcc27c325d",
       "count": 165,
       "entity_count": 143,
       "resource_count": 22,
@@ -57,8 +57,8 @@
     }
   },
   "provenance": {
-    "git_commit": "7dcd471a2643cc93049b4d12a414740d6bd80525",
-    "runner_sha256": "318a6b9f95f0b6b435d4d36acffaed1578f37d41366d041e65edf169c4838a74",
+    "git_commit": "125405a577cc53e83a98d0ce55de7cf0f0d73ce1",
+    "runner_sha256": "9dfb6454665376d911abd6495f555d2e2aa6365cda9618cea661e57d6d2635cd",
     "corpus_membership_ruling": "Beryl domain ruling, 2026-07-16: record after ADR 0113 Phase C so packaged substrate documents are members of the measured corpus.",
     "query_assessors": [
       "chert-initial; reviewed:beryl 2026-07-16"
@@ -167,60 +167,60 @@
     }
   },
   "readiness_ms": {
-    "lexical_ready": 1356.896,
-    "semantic_ready": 9105.486
+    "lexical_ready": 403.213,
+    "semantic_ready": 9140.832
   },
   "modes": {
     "bm25": {
       "mode": "bm25",
       "hybrid_active": false,
-      "build_duration_ms": 1356.896,
+      "build_duration_ms": 403.213,
       "startup_ms": {
-        "service_build_to_first_result": 1641.685,
-        "first_result_after_ready": 161.649,
+        "service_build_to_first_result": 507.119,
+        "first_result_after_ready": 53.239,
         "probe_query_id": "nav-01"
       },
-      "cache_bytes": 10654091,
+      "cache_bytes": 10655492,
       "rss": {
-        "before_bytes": 305463296,
-        "after_bytes": 368361472,
-        "peak_sampled_bytes": 445349888,
+        "before_bytes": 307920896,
+        "after_bytes": 501481472,
+        "peak_sampled_bytes": 501481472,
         "samples": [
           {
             "phase": "before_index",
-            "bytes": 305463296
+            "bytes": 307920896
           },
           {
             "phase": "after_index",
-            "bytes": 445349888
+            "bytes": 485031936
           },
           {
             "phase": "after_warmups",
-            "bytes": 312442880
+            "bytes": 475004928
           },
           {
             "phase": "after_repetition_1",
-            "bytes": 312836096
+            "bytes": 475267072
           },
           {
             "phase": "after_repetition_2",
-            "bytes": 313147392
+            "bytes": 475594752
           },
           {
             "phase": "after_repetition_3",
-            "bytes": 313442304
+            "bytes": 475938816
           },
           {
             "phase": "after_repetition_4",
-            "bytes": 313868288
+            "bytes": 476299264
           },
           {
             "phase": "after_repetition_5",
-            "bytes": 314064896
+            "bytes": 476659712
           },
           {
             "phase": "after_flush",
-            "bytes": 368361472
+            "bytes": 501481472
           }
         ]
       },
@@ -285,11 +285,11 @@
       },
       "first_measured_query": {
         "query_id": "nav-01",
-        "duration_ms": 40.845
+        "duration_ms": 36.984
       },
       "warm_query_latency_ms": {
-        "p50": 30.563,
-        "p95": 49.871
+        "p50": 31.704,
+        "p95": 51.413
       },
       "queries": [
         {
@@ -319,11 +319,11 @@
             "ADR 0118"
           ],
           "timings_ms": [
-            40.845,
-            35.31,
-            35.584,
-            35.512,
-            35.62
+            36.984,
+            37.089,
+            36.482,
+            36.799,
+            36.918
           ],
           "deterministic": true,
           "metrics": {
@@ -361,11 +361,11 @@
             "ADR 0092.13"
           ],
           "timings_ms": [
-            37.01,
-            33.255,
-            33.388,
-            33.716,
-            33.606
+            34.678,
+            37.658,
+            35.424,
+            34.756,
+            36.769
           ],
           "deterministic": true,
           "metrics": {
@@ -385,11 +385,11 @@
             "PROMPT 0001"
           ],
           "timings_ms": [
-            1.245,
-            1.046,
-            1.052,
-            1.103,
-            1.059
+            1.192,
+            1.201,
+            1.168,
+            1.177,
+            1.195
           ],
           "deterministic": true,
           "metrics": {
@@ -427,11 +427,11 @@
             "ADR 0117"
           ],
           "timings_ms": [
-            29.572,
-            27.658,
-            27.649,
-            28.143,
-            27.745
+            29.067,
+            29.312,
+            28.92,
+            28.659,
+            30.026
           ],
           "deterministic": true,
           "metrics": {
@@ -469,11 +469,11 @@
             "ADR 0092.10"
           ],
           "timings_ms": [
-            31.041,
-            30.135,
-            30.125,
-            30.247,
-            30.787
+            31.581,
+            31.827,
+            31.364,
+            30.968,
+            31.758
           ],
           "deterministic": true,
           "metrics": {
@@ -511,11 +511,11 @@
             "ADR 0059"
           ],
           "timings_ms": [
-            32.275,
-            31.858,
-            31.812,
-            31.778,
-            32.211
+            33.084,
+            33.31,
+            32.928,
+            34.425,
+            33.54
           ],
           "deterministic": true,
           "metrics": {
@@ -553,11 +553,11 @@
             "ADR 0053"
           ],
           "timings_ms": [
-            34.19,
-            34.961,
-            33.779,
-            34.022,
-            34.567
+            35.505,
+            36.214,
+            35.873,
+            37.348,
+            35.762
           ],
           "deterministic": true,
           "metrics": {
@@ -595,11 +595,11 @@
             "ADR 0097"
           ],
           "timings_ms": [
-            30.524,
-            32.239,
-            30.563,
-            30.553,
-            30.703
+            31.789,
+            31.956,
+            31.389,
+            31.704,
+            31.704
           ],
           "deterministic": true,
           "metrics": {
@@ -618,11 +618,11 @@
             "PROMPT 0002"
           ],
           "timings_ms": [
-            0.524,
-            0.58,
-            0.509,
-            0.536,
-            0.548
+            0.59,
+            0.762,
+            0.609,
+            0.575,
+            0.605
           ],
           "deterministic": true,
           "metrics": {
@@ -642,11 +642,11 @@
             "PROMPT 0002"
           ],
           "timings_ms": [
-            1.226,
-            1.215,
-            1.134,
-            1.18,
-            1.257
+            1.244,
+            1.291,
+            1.237,
+            1.214,
+            1.412
           ],
           "deterministic": true,
           "metrics": {
@@ -684,11 +684,11 @@
             "ADR 0062"
           ],
           "timings_ms": [
-            24.78,
-            25.776,
-            24.726,
-            24.91,
-            24.991
+            25.301,
+            26.557,
+            25.664,
+            25.768,
+            25.578
           ],
           "deterministic": true,
           "metrics": {
@@ -725,11 +725,11 @@
             "ADR 0112.3"
           ],
           "timings_ms": [
-            28.866,
-            35.947,
-            28.621,
-            29.244,
-            28.944
+            30.166,
+            31.371,
+            29.797,
+            30.147,
+            30.075
           ],
           "deterministic": true,
           "metrics": {
@@ -767,11 +767,11 @@
             "ADR 0010"
           ],
           "timings_ms": [
-            42.208,
-            43.963,
-            42.14,
-            42.397,
-            42.342
+            43.627,
+            43.567,
+            43.916,
+            43.669,
+            43.951
           ],
           "deterministic": true,
           "metrics": {
@@ -809,11 +809,11 @@
             "ADR 0092.7"
           ],
           "timings_ms": [
-            40.58,
-            40.886,
-            41.141,
-            40.669,
-            41
+            42.527,
+            42.495,
+            42.506,
+            43.696,
+            42.426
           ],
           "deterministic": true,
           "metrics": {
@@ -851,11 +851,11 @@
             "ADR 0098"
           ],
           "timings_ms": [
-            28.484,
-            28.739,
-            28.976,
-            28.601,
-            28.425
+            29.563,
+            30.25,
+            29.351,
+            29.772,
+            29.924
           ],
           "deterministic": true,
           "metrics": {
@@ -893,11 +893,11 @@
             "ADR 0092.12"
           ],
           "timings_ms": [
-            31.975,
-            31.66,
-            32.261,
-            32.101,
-            31.805
+            32.56,
+            33.555,
+            33.278,
+            33.801,
+            33.068
           ],
           "deterministic": true,
           "metrics": {
@@ -935,11 +935,11 @@
             "ADR 0119"
           ],
           "timings_ms": [
-            49.871,
-            49.267,
-            49.794,
-            49.482,
-            54.681
+            51.661,
+            51.324,
+            51.055,
+            51.413,
+            51.242
           ],
           "deterministic": true,
           "metrics": {
@@ -977,11 +977,11 @@
             "ADR 0011"
           ],
           "timings_ms": [
-            34.348,
-            34.314,
-            34.367,
-            34.415,
-            49.272
+            36.412,
+            36.163,
+            36.225,
+            35.517,
+            35.678
           ],
           "deterministic": true,
           "metrics": {
@@ -1019,11 +1019,11 @@
             "ADR 0092.9"
           ],
           "timings_ms": [
-            50.47,
-            50.084,
-            50.311,
-            50.439,
-            51.181
+            51.798,
+            51.903,
+            54.356,
+            52.669,
+            51.678
           ],
           "deterministic": true,
           "metrics": {
@@ -1061,11 +1061,11 @@
             "ADR 0092.11"
           ],
           "timings_ms": [
-            34.502,
-            34.932,
-            34.836,
-            34.667,
-            35.12
+            36.105,
+            36.111,
+            35.987,
+            36.542,
+            36.95
           ],
           "deterministic": true,
           "metrics": {
@@ -1103,11 +1103,11 @@
             "mcp://backlog/proposals/semantic-contradiction-detection-2026-07.md"
           ],
           "timings_ms": [
-            17.877,
-            17.877,
-            18.93,
-            17.997,
-            18.271
+            19.126,
+            18.655,
+            18.587,
+            18.799,
+            18.542
           ],
           "deterministic": true,
           "metrics": {
@@ -1145,11 +1145,11 @@
             "mcp://backlog/adr/0106.4-DELEGATION-BRIEF.md"
           ],
           "timings_ms": [
-            17.456,
-            17.795,
-            17.816,
-            18.13,
-            17.869
+            18.142,
+            18.043,
+            18.759,
+            18.381,
+            19.418
           ],
           "deterministic": true,
           "metrics": {
@@ -1187,11 +1187,11 @@
             "mcp://backlog/adr/0106.4-STEP0-AUDIT.md"
           ],
           "timings_ms": [
-            19.862,
-            18.371,
-            18.308,
-            21.298,
-            18.74
+            18.892,
+            19.457,
+            18.965,
+            19.343,
+            19.749
           ],
           "deterministic": true,
           "metrics": {
@@ -1227,11 +1227,11 @@
             "mcp://backlog/adr/0018-local-llm-optimization-layer.md"
           ],
           "timings_ms": [
-            16.333,
-            15.644,
-            15.894,
-            16.21,
-            15.81
+            16.356,
+            17.618,
+            16.381,
+            16.696,
+            16.837
           ],
           "deterministic": true,
           "metrics": {
@@ -1247,53 +1247,53 @@
     "hybrid": {
       "mode": "hybrid",
       "hybrid_active": true,
-      "build_duration_ms": 9105.486,
+      "build_duration_ms": 9140.832,
       "startup_ms": {
-        "service_build_to_first_result": 9206.464,
-        "first_result_after_ready": 50.373,
+        "service_build_to_first_result": 9242.863,
+        "first_result_after_ready": 49.851,
         "probe_query_id": "nav-01"
       },
-      "cache_bytes": 12006135,
+      "cache_bytes": 12007535,
       "rss": {
-        "before_bytes": 368754688,
-        "after_bytes": 671301632,
-        "peak_sampled_bytes": 712671232,
+        "before_bytes": 501628928,
+        "after_bytes": 807501824,
+        "peak_sampled_bytes": 831766528,
         "samples": [
           {
             "phase": "before_index",
-            "bytes": 368754688
+            "bytes": 501628928
           },
           {
             "phase": "after_index",
-            "bytes": 712671232
+            "bytes": 831766528
           },
           {
             "phase": "after_warmups",
-            "bytes": 666877952
+            "bytes": 777043968
           },
           {
             "phase": "after_repetition_1",
-            "bytes": 610304000
+            "bytes": 777043968
           },
           {
             "phase": "after_repetition_2",
-            "bytes": 575586304
+            "bytes": 777043968
           },
           {
             "phase": "after_repetition_3",
-            "bytes": 575586304
+            "bytes": 777043968
           },
           {
             "phase": "after_repetition_4",
-            "bytes": 576438272
+            "bytes": 777895936
           },
           {
             "phase": "after_repetition_5",
-            "bytes": 578043904
+            "bytes": 779485184
           },
           {
             "phase": "after_flush",
-            "bytes": 671301632
+            "bytes": 807501824
           }
         ]
       },
@@ -1358,11 +1358,11 @@
       },
       "first_measured_query": {
         "query_id": "nav-01",
-        "duration_ms": 43.26
+        "duration_ms": 43.286
       },
       "warm_query_latency_ms": {
-        "p50": 35.115,
-        "p95": 52.746
+        "p50": 35.403,
+        "p95": 54.89
       },
       "queries": [
         {
@@ -1392,11 +1392,11 @@
             "ADR 0016"
           ],
           "timings_ms": [
-            43.26,
-            42.317,
-            42.271,
-            42.033,
-            42.105
+            43.286,
+            45.044,
+            45.906,
+            42.211,
+            43.817
           ],
           "deterministic": true,
           "metrics": {
@@ -1434,11 +1434,11 @@
             "ADR 0119"
           ],
           "timings_ms": [
-            43.517,
-            43.721,
-            46.52,
-            43.327,
-            43.416
+            45.951,
+            46.375,
+            46.32,
+            43.535,
+            43.295
           ],
           "deterministic": true,
           "metrics": {
@@ -1458,11 +1458,11 @@
             "PROMPT 0001"
           ],
           "timings_ms": [
-            2.12,
+            2.264,
             2.132,
-            2.201,
-            2.065,
-            2.07
+            2.169,
+            2.072,
+            2.072
           ],
           "deterministic": true,
           "metrics": {
@@ -1500,11 +1500,11 @@
             "ADR 0022"
           ],
           "timings_ms": [
-            33.317,
-            31.838,
-            33.285,
-            31.191,
-            31.325
+            33.55,
+            32.757,
+            33.341,
+            31.121,
+            31.327
           ],
           "deterministic": true,
           "metrics": {
@@ -1542,11 +1542,11 @@
             "ADR 0092.4"
           ],
           "timings_ms": [
-            41.387,
-            40.079,
-            41.567,
-            38.784,
-            38.82
+            41.101,
+            39.295,
+            41.699,
+            39.421,
+            38.884
           ],
           "deterministic": true,
           "metrics": {
@@ -1584,11 +1584,11 @@
             "ADR 0095"
           ],
           "timings_ms": [
-            37.302,
-            36.228,
-            37.714,
-            35.211,
-            34.922
+            35.403,
+            35.471,
+            37.008,
+            35.27,
+            38.391
           ],
           "deterministic": true,
           "metrics": {
@@ -1626,11 +1626,11 @@
             "ADR 0087"
           ],
           "timings_ms": [
-            43.226,
-            43.096,
-            44.88,
-            41.771,
-            41.648
+            41.747,
+            43.41,
+            42.516,
+            41.607,
+            44.574
           ],
           "deterministic": true,
           "metrics": {
@@ -1668,11 +1668,11 @@
             "ADR 0112"
           ],
           "timings_ms": [
-            42.39,
-            42.042,
-            42.417,
-            41.318,
-            41.5
+            41.162,
+            43.57,
+            45.531,
+            41.376,
+            44.423
           ],
           "deterministic": true,
           "metrics": {
@@ -1692,11 +1692,11 @@
             "PROMPT 0001"
           ],
           "timings_ms": [
-            1.823,
-            1.97,
-            2.049,
-            1.848,
-            1.871
+            1.854,
+            2.044,
+            2.231,
+            1.872,
+            1.904
           ],
           "deterministic": true,
           "metrics": {
@@ -1716,11 +1716,11 @@
             "PROMPT 0002"
           ],
           "timings_ms": [
-            2.168,
-            2.266,
-            2.27,
-            2.187,
-            2.206
+            2.209,
+            2.283,
+            2.435,
+            2.199,
+            2.264
           ],
           "deterministic": true,
           "metrics": {
@@ -1758,11 +1758,11 @@
             "ADR 0101"
           ],
           "timings_ms": [
-            26.428,
-            25.828,
-            25.963,
-            25.776,
-            25.744
+            25.803,
+            27.221,
+            27.937,
+            25.791,
+            26.706
           ],
           "deterministic": true,
           "metrics": {
@@ -1799,11 +1799,11 @@
             "ADR 0112.3"
           ],
           "timings_ms": [
-            31.968,
-            30.55,
-            30.414,
-            30.525,
-            30.184
+            32.881,
+            32.788,
+            32.266,
+            30.404,
+            30.691
           ],
           "deterministic": true,
           "metrics": {
@@ -1841,11 +1841,11 @@
             "ADR 0092.9"
           ],
           "timings_ms": [
-            52.746,
-            52.461,
-            52.333,
-            52.28,
-            52.303
+            55.746,
+            55.86,
+            53.044,
+            52.428,
+            55.908
           ],
           "deterministic": true,
           "metrics": {
@@ -1883,11 +1883,11 @@
             "ADR 0032"
           ],
           "timings_ms": [
-            48.502,
-            48.856,
-            48.773,
-            48.636,
-            48.657
+            51.537,
+            49.293,
+            48.827,
+            48.452,
+            51.729
           ],
           "deterministic": true,
           "metrics": {
@@ -1925,11 +1925,11 @@
             "ADR 0100"
           ],
           "timings_ms": [
-            34.83,
-            35.115,
-            34.903,
-            34.921,
-            34.747
+            35.439,
+            34.636,
+            34.905,
+            34.444,
+            35.533
           ],
           "deterministic": true,
           "metrics": {
@@ -1967,11 +1967,11 @@
             "ADR 0112"
           ],
           "timings_ms": [
-            33.649,
-            36.983,
-            34.091,
-            34.153,
-            33.775
+            34.08,
+            33.713,
+            33.656,
+            33.69,
+            33.986
           ],
           "deterministic": true,
           "metrics": {
@@ -2009,11 +2009,11 @@
             "ADR 0073"
           ],
           "timings_ms": [
-            52.233,
-            52.4,
-            52.626,
-            52.966,
-            52.141
+            57.518,
+            51.777,
+            52.137,
+            51.887,
+            52.028
           ],
           "deterministic": true,
           "metrics": {
@@ -2051,11 +2051,11 @@
             "ADR 0092.4"
           ],
           "timings_ms": [
-            46.115,
-            45.299,
-            45.304,
-            45.362,
-            45.163
+            50.246,
+            45.15,
+            45.197,
+            45.084,
+            45.12
           ],
           "deterministic": true,
           "metrics": {
@@ -2093,11 +2093,11 @@
             "ADR 0117"
           ],
           "timings_ms": [
-            55.225,
-            54.734,
-            55.151,
-            56.214,
-            54.993
+            60.695,
+            54.255,
+            54.518,
+            55.005,
+            54.89
           ],
           "deterministic": true,
           "metrics": {
@@ -2135,11 +2135,11 @@
             "ADR 0101"
           ],
           "timings_ms": [
-            39.303,
-            39.198,
-            39.091,
-            40.216,
-            39.253
+            43.29,
+            43.956,
+            39.098,
+            39.056,
+            39.165
           ],
           "deterministic": true,
           "metrics": {
@@ -2177,11 +2177,11 @@
             "mcp://backlog/proposals/semantic-contradiction-detection-2026-07.md"
           ],
           "timings_ms": [
-            19.215,
-            19.351,
-            19.214,
-            19.509,
-            19.287
+            21.705,
+            21.224,
+            19.288,
+            19.157,
+            19.231
           ],
           "deterministic": true,
           "metrics": {
@@ -2219,11 +2219,11 @@
             "mcp://backlog/adr/0106.4-DELEGATION-BRIEF.md"
           ],
           "timings_ms": [
-            18.983,
-            19.022,
-            19.029,
-            19.057,
-            18.953
+            20.438,
+            20.781,
+            18.831,
+            18.904,
+            19.116
           ],
           "deterministic": true,
           "metrics": {
@@ -2261,11 +2261,11 @@
             "mcp://backlog/adr/0106.4-STEP0-AUDIT.md"
           ],
           "timings_ms": [
-            19.909,
-            20.048,
-            19.969,
-            20.224,
-            19.914
+            21.354,
+            22.008,
+            21.159,
+            19.828,
+            20.557
           ],
           "deterministic": true,
           "metrics": {
@@ -2302,11 +2302,11 @@
             "mcp://backlog/adr/0008-task-labels-and-sprint-management.md"
           ],
           "timings_ms": [
-            18.495,
-            18.661,
-            18.376,
-            19.242,
-            18.487
+            19.721,
+            20.283,
+            18.354,
+            18.461,
+            18.943
           ],
           "deterministic": true,
           "metrics": {
