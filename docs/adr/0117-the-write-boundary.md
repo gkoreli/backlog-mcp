@@ -1,8 +1,8 @@
 ---
-title: "0117. The Write Boundary — Native Editing, Hook Attribution, and Strict Canonical Writes"
+title: "0117. The Write Boundary — Native Editing, Diagnostics, and Strict Managed Writes"
 date: 2026-07-16
 status: Proposed
-spawned_by: "PROMPT 0002 — docs/prompts/0002-operating-principles-directives.md"
+spawned_by: "PROMPT 0002 item 7 — docs/prompts/0002-operating-principles-directives.md"
 extends:
   - 0094-transport-agnostic-operation-logging.md
   - 0098-unified-substrate-architecture.md
@@ -14,186 +14,192 @@ relates_to:
   - 0113-user-defined-substrates.md
 ---
 
-# 0117. The Write Boundary — Native Editing, Hook Attribution, and Strict Canonical Writes
+# 0117. The Write Boundary — Native Editing, Diagnostics, and Strict Managed Writes
 
-**Status:** Proposed — research record and design rulings. Goga chooses the
+**Status:** Proposed — research and rulings only. Goga chooses the product
 direction before engineering.
 
 ## Decision summary
 
-backlog-mcp should support two deliberately different write lanes:
+Recommend two deliberately unequal lanes:
 
-1. **Native edit — the ordinary, lenient lane.** Humans and agents edit the
-   authoritative Markdown with the editor already available to them. A
-   docs-tree watcher reconciles the resulting bytes, updates derived indexes,
-   and emits diagnostics after the write. It never silently rewrites,
-   normalizes, or upgrades the source file.
-2. **Strict canonical write — the opt-in lane.** An agent that wants
-   pre-write substrate validation, canonical serialization, exact operation
-   attribution, and an immediate success/failure result may use
-   backlog-mcp's managed write surface. `write_resource` earns retention only
-   in this narrower role; it is not the default way to edit a repository file.
+1. **Native Edit is the default lane.** Humans and agents edit the
+   authoritative Markdown with the editor already available to them. The
+   docs-tree watcher requests full reconciliation. Reconciliation reads,
+   indexes, and diagnoses the resulting bytes; it never silently repairs,
+   formats, canonicalizes, or upgrades the file.
+2. **Managed edit is the strict lane.** `write_resource` remains only for a
+   caller that explicitly wants anchored editing, complete postimage
+   validation before success, canonical serialization, and one best-effort
+   operation-log append with exact tool input and actor attribution.
 
-Harness hooks improve the native lane when they exist. A `SessionStart` hook
-registers session attribution; a successful `PostToolUse`/`AfterTool` hook for
-native file editing places tool intent in a bounded attribution buffer consumed
-by full reconciliation. Hooks are an enrichment layer, not the correctness
-boundary: external editors, unsupported harnesses, hook failures, and dropped
-hook events must still reconcile correctly.
+Hooks are optional audit enrichment. A supported harness may report a
+successful native Edit/Write call after it occurs, but hooks do not validate
+the file, do not repair it, and do not participate in reconciliation
+correctness. Unsupported editors remain fully functional; they simply lack
+exact operation attribution.
 
-This preserves ADR 0113's central law:
+This is **native by default, strict on demand**. It is not two equivalent tools
+competing for ordinary prose editing.
 
-- external and historical files are read leniently and losslessly;
-- backlog-mcp's own managed writes are strict and canonical;
-- neither rule authorizes heuristics to mutate a user's file.
+The recommendation preserves ADR 0113's governing law:
 
-It also asks Goga to rule on one narrow conflict with ADR 0113 R4: whether a
-body-edit request is sufficient consent to canonically adopt parseable but
-noncanonical metadata. This ADR recommends that adoption remain separately
-authorized.
+- external and historical content is read leniently and losslessly;
+- backlog-mcp's managed writes are strict and canonical;
+- neither rule authorizes heuristic mutation of a user's file.
 
-The recommendation is therefore **both lanes, explicitly priced**, not two
-equivalent tools competing for the same job.
+It proposes one narrow correction to ADR 0113 R4: editing a document body is
+not sufficient consent to adopt noncanonical frontmatter. Canonical adoption
+should be a separately named, previewable action. Goga must explicitly accept
+or reject that correction.
+
+This ADR is chartered by
+[PROMPT 0002 item 7](../prompts/0002-operating-principles-directives.md)
+and continues the docs-native/substrate batch spawned by
+[PROMPT 0001](../prompts/0001-tasks-and-vision.md).
 
 ## Context
 
-`write_resource` currently duplicates an edit capability common coding
-harnesses already ship:
+`write_resource` duplicates a capability every coding harness and IDE already
+provides: edit a file. That duplication has a visible cost:
 
-- Claude Code has `Edit` and `Write`;
-- Codex has patch/file editing;
-- Gemini CLI has file replacement/write tools;
-- IDE agents and humans already edit repository files directly.
+- another tool schema consumes context;
+- the agent must choose between two textual-edit mechanisms;
+- documentation must explain an alternative tool whose value is not obvious
+  from its name;
+- the agent leaves the native edit path on which its harness is trained and
+  optimized.
 
-That duplication has a real price:
+PROMPT 0002 captures the unresolved conflict directly. Goga dislikes an
+alternative to native Edit and the heuristics required to make direct edits
+look canonical, but recognizes that `write_resource` protects substrate
+validity.
 
-- another tool schema enters the model's context;
-- the agent must choose between two ways to perform the same textual edit;
-- docs must explain an alternative whose name says nothing about the value it
-  uniquely provides.
+The answer should not hide either side:
 
-PROMPT 0002 records the unresolved human directive directly: Goga dislikes an
-alternative tool that repeats native Edit and spends tokens, but also recognizes
-that the managed path protects substrate validity; he explicitly rejects
-heuristic repair that mutates user files. This ADR preserves that tension rather
-than resolving it by hiding one side.
+- native file editing is the docs-native north star;
+- a post-write watcher cannot provide pre-write validity;
+- a managed write does buy a real guarantee, but only when the caller asks for
+  it.
 
-The tool was not pointless, however. It currently buys two properties that a
-plain file edit does not:
+The pressure point is therefore:
 
-1. the core write path records an attributed operation entry;
-2. the post-edit entity is validated before the managed save succeeds.
-
-ADR 0094 deliberately put operation logging inside core writes so MCP, CLI,
-HTTP, and internal callers could not drift. ADR 0113 Phase B strengthens the
-same boundary by routing managed writes through the project substrate registry.
-Removing `write_resource` without replacing those properties would simplify
-the tool list by weakening the write contract.
-
-ADR 0112 changes the pressure point. Markdown under the selected docs home is
-the source of truth, and its Parcel-backed watcher requests full
-reconciliation after native edits. That makes direct editing viable without
-making a cache authoritative. It does not make a watcher an operation log or
-a schema gate: a filesystem event carries a path and change kind, not the
-writer's intent, session, old/new strings, or a transaction boundary.
-
-The unresolved question is therefore not "tool or files?" It is:
-
-> Which guarantees belong to the default file-native path, which guarantees
-> require a managed write, and how do we keep the two lanes honest?
+> Which guarantees belong to ordinary file editing, and which guarantees are
+> worth paying for through a backlog-mcp-managed write?
 
 ## Constraints
 
-1. **Markdown is authoritative.** Derived indexes, diagnostics, and session
-   correlation caches are rebuildable state. The operation log is persistent
-   best-effort local audit state under the current implementation; it is
-   neither Markdown authority nor reconstructible from the current document
-   tree.
-2. **Native editing must remain real.** A human, IDE, script, or unsupported
-   agent harness can edit a document without routing through backlog-mcp.
-3. **No silent source mutation.** Reconciliation never adds frontmatter,
-   fixes YAML, changes formatting, invents dates, or moves a file.
+1. **Markdown remains authoritative.** Search, diagnostics, and other indexes
+   are derived and rebuildable.
+2. **Native editing remains real.** Humans, scripts, IDEs, and unsupported
+   harnesses may write the file directly.
+3. **No silent source mutation.** Watching, parsing, indexing, and diagnosis
+   never change the source.
 4. **Lenient reads, strict managed writes.** ADR 0098 and ADR 0113 remain the
-   governing law.
-5. **No LLM in the write or reconcile path.** Validation and diagnostics are
-   deterministic.
-6. **Attribution must be truthful.** Unknown writers are recorded as unknown;
-   watcher timing is not evidence of actor identity.
-7. **Hooks cannot be required for correctness.** Harness coverage and payload
-   fidelity vary.
-8. **Local-first only.** Hooks, filesystem watching, and local operation logs
-   do not need a D1 parity story.
-9. **Do not over-engineer.** No distributed transaction protocol, universal
-   hook abstraction, auto-migration engine, or file-history system enters the
-   first slice.
+   governing precedent.
+5. **No LLM in the write or reconcile path.** Validation is deterministic.
+6. **Attribution remains truthful.** Absence of hook evidence means unknown,
+   not inferred identity.
+7. **Hooks are optional.** Harness support is uneven and versioned.
+8. **Local-first only.** No D1 parity work is required.
+9. **Do not over-engineer.** No correlation protocol, auto-migration engine,
+   file-history subsystem, or universal hook framework enters the first slice.
 
 ---
 
 # Part 1 — Current-system audit
 
-## `write_resource` is an anchored body editor, not a general filesystem API
+## `write_resource` is an anchored body editor
 
-`packages/server/src/tools/backlog-write-resource.ts` exposes three operations:
+`packages/server/src/tools/backlog-write-resource.ts` exposes:
 
 - exact unique `str_replace`;
 - line-based `insert`;
 - end-of-body `append`.
 
-Creation was removed by ADR 0087 after overlapping creation paths caused
-confusion and corruption. `backlog_create` owns creation; `write_resource`
-edits an existing entity body.
+ADR 0087 removed creation after overlapping create paths caused confusion and
+corruption. Creation belongs to canonical create/intent surfaces;
+`write_resource` edits an existing entity body.
 
-The transport calls `core/edit.ts`, which:
+`packages/server/src/core/edit.ts`:
 
-1. loads the entity;
-2. applies the anchored text operation;
-3. saves the merged entity;
-4. records a `write_resource` mutation only after success.
+1. loads the current entity;
+2. applies the anchored operation;
+3. saves the complete merged entity;
+4. records `write_resource` only after the save succeeds.
 
-Today, docs-native storage validates built-in entities with `EntitySchema` and
-canonically serializes them. ADR 0113 Phase B proposes routing the complete
-candidate through the project substrate registry so runtime-defined substrates
-receive the same guarantee. The important value is therefore not "it can
-replace text." The value is:
+Docs-native storage routes managed saves through
+`ProjectSubstrateRegistry.validateWrite()` before canonical serialization
+(`packages/server/src/storage/local/docs-native-filesystem-storage.ts`).
+That is the tool's real value: not text replacement, but strict postimage
+validation and a synchronous success/failure result.
 
-- pre-return validation of the complete postimage;
-- exact operation parameters for the activity view;
-- caller-provided actor attribution;
-- a single synchronous result.
+## Managed operation logging is exact but best-effort
 
-## ADR 0094's current completeness claim assumes managed writes
+ADR 0094 moved logging into core so MCP, CLI, HTTP, and internal callers could
+not drift. Each managed core write receives `WriteContext` and builds one
+exactly attributed entry.
 
-ADR 0094 calls the operation log the canonical write journal and requires every
-successful write to produce exactly one attributed entry. That is structurally
-true for `createItem`, `updateItem`, `deleteItem`, and `editItem` because
-`WriteContext` is mandatory.
+The local log is not crash-atomic or durable:
 
-A native file edit does not call those functions. Once ADR 0112 makes native
-editing a first-class path, the old claim needs a precise amendment:
+- `recordMutation()` appends after persistence;
+- `OperationStorage.append()` returns `void` and swallows append failures.
 
-- managed writes remain exact, attributed operations;
-- native writes become observed document reconciliations;
-- hook metadata may enrich the observation, but missing metadata must not hide
-  the state change.
+The honest guarantee is therefore:
 
-Pretending both records have equal fidelity would make the log lie.
+> one successful managed write makes one best-effort append attempt carrying
+> exact actor, tool, resource, and operation parameters.
 
-## The ADR 0112 watcher is an invalidation signal
+This ADR does not introduce a transaction or change that failure policy.
 
-Quartz's docs-native runtime uses `@parcel/watcher` behind an injected
-`DocsTreeWatcher` contract. A non-empty event batch requests reconciliation.
-The runtime collapses bursts while preserving a trailing pass, and full
-reconciliation remains the correctness boundary.
+## The watcher is already an invalidation signal
 
-That is the right foundation:
+ADR 0112's `ParcelDocsTreeWatcher` sends only "something changed" into
+`LocalRuntime`. The runtime collapses bursts, preserves a trailing pass, and
+requests full reconciliation.
 
-- watcher events are not applied as entity mutations;
-- dropped events cannot make the cache authoritative;
-- Git checkout bursts collapse;
-- native edits become visible without requiring a backlog-specific tool.
+That is the correct correctness boundary:
 
-The remaining gap is diagnostics and attribution. Reconciliation currently
-answers "what bytes exist now?" It does not answer "who intended what edit?"
+- event order is not treated as document history;
+- a Git checkout burst is reconciled from final bytes;
+- dropped or coalesced events cannot make the event stream authoritative;
+- startup reconciliation can rebuild derived state.
+
+The watcher currently refreshes storage/search projections. It does not retain
+or expose the discovery and substrate-validation diagnostics needed for a
+good native-edit experience.
+
+## Discovery already knows about malformed documents
+
+`packages/server/src/core/document-discovery.ts`:
+
+- preserves the document content;
+- records non-fatal `malformed-frontmatter` diagnostics;
+- continues discovering the file and neutral filename identity.
+
+Typed storage omits a document whose frontmatter cannot be parsed. The generic
+resource path can still expose and search the underlying Markdown. This is the
+right bolt-on posture: invalid typed data loses its typed projection, not its
+bytes or usefulness.
+
+The smallest missing seam is diagnostic disclosure, not repair.
+
+## ADR 0113 R4 contains the remaining consent question
+
+ADR 0113 says an external document becomes canonical when backlog-mcp is asked
+to mutate it. That is coherent for an explicit canonical adoption or semantic
+intent.
+
+It is less clearly authorized for a body-only edit. A request to replace one
+paragraph does not necessarily authorize:
+
+- reordering frontmatter;
+- removing external aliases;
+- moving unknown metadata into an extensions bag;
+- changing filename or formatting.
+
+ADR 0117 makes that conflict explicit instead of letting implementation choose
+silently.
 
 ---
 
@@ -201,187 +207,120 @@ answers "what bytes exist now?" It does not answer "who intended what edit?"
 
 ## Method
 
-Four independent research tracks covered:
+Four delegated research tracks reviewed first-party documentation and
+repositories:
 
-1. agent-harness lifecycle and tool hooks;
-2. Basic Memory and Obsidian's file/index behavior;
-3. Mem0 and Letta's managed memory write surfaces;
-4. watcher semantics and post-write diagnostic patterns.
+1. harness lifecycle/tool hooks and Herdr integration management;
+2. Basic Memory and Obsidian file/index behavior;
+3. Mem0 and Letta managed memory surfaces;
+4. Parcel watcher semantics and diagnostic/fix separation.
 
-Accepted evidence is limited to official documentation, first-party
-repositories, and first-party issue/source records where the public contract
-is still moving. Absence of documentation is recorded as a gap, not proof that
-a capability cannot exist.
+Claims below distinguish documented behavior from inference.
 
-## Finding 1 — Claude and Gemini can expose native edit intent
+## Harness hooks: useful, but not portable enough for correctness
 
-Claude Code's hook envelope includes `session_id`, cwd, tool name, tool input,
-and `tool_use_id`; subagent calls may also include `agent_id` and
-`agent_type`. Its native `Edit` input carries `file_path`, `old_string`,
-`new_string`, and `replace_all`, while `Write` carries the path and content.
-`PostToolUse` runs after the write and may return additional context, but it
-cannot undo the already-applied file mutation.
-([Claude Code hook reference](https://code.claude.com/docs/en/hooks))
+Claude Code documents `SessionStart`, `PreToolUse`, `PostToolUse`, and related
+events. `PostToolUse` receives the tool name/input and session information
+after a successful tool call. Native Edit/Write inputs contain the file path
+and edit content. A post hook can report feedback, but it cannot undo bytes
+already written.
+([Claude Code hooks](https://code.claude.com/docs/en/hooks))
 
-Gemini CLI exposes a comparable `SessionStart`, `BeforeTool`, and `AfterTool`
-model. Hooks receive a common session envelope; `BeforeTool` can deny or
-rewrite arguments, while `AfterTool` receives the original input and tool
-response.
-([Gemini CLI hook reference](https://geminicli.com/docs/hooks/reference/))
+Gemini CLI documents `SessionStart`, `BeforeTool`, and `AfterTool`; pre hooks
+may block or modify tool execution, while after hooks observe the completed
+tool input/output.
+([Gemini CLI hooks](https://geminicli.com/docs/hooks/reference/))
 
-GitHub Copilot CLI and the Copilot SDK likewise expose pre/post tool hooks and
-session lifecycle hooks, including audit/logging use cases.
-([Copilot hooks reference](https://docs.github.com/en/copilot/reference/hooks-reference),
-[Copilot SDK session hooks](https://docs.github.com/en/copilot/how-tos/copilot-sdk/hooks/hooks-overview))
+Codex exposes an evolving hook/configuration surface, but the inspected
+first-party material does not yet establish one stable native-edit attribution
+contract across its write mechanisms.
+([Codex configuration schema](https://github.com/openai/codex/blob/main/codex-rs/core/config.schema.json))
 
-**Implication:** hook-captured edit intent is a proven integration shape. A
-portable envelope can normalize required common fields:
+Herdr demonstrates the operating model we should copy: explicit per-harness
+integration installation, inspection, and removal. It does not prove a
+universal file-edit hook or justify silently mutating harness configuration.
+([Herdr](https://github.com/ogulcancelik/herdr))
 
-- harness;
-- session ID;
-- cwd;
-- canonical file path;
-- native tool name;
-- native tool input;
-- observed time.
+**Steal:** explicit adapter ownership, install/status/uninstall, documented
+payload mapping.
 
-Harness-specific tool-use and agent/subagent identifiers remain optional.
+**Reject:** hooks as a correctness dependency or a universal abstraction
+before two real adapters need one.
 
-## Finding 2 — Hook coverage is not portable enough to own correctness
+## Basic Memory and Obsidian: files can be truth while writes stay explicit
 
-Claude's native Edit/Write coverage is strong. Gemini's tool hooks are broad.
-Copilot has multiple hook surfaces. Codex's public configuration schema
-currently exposes a `hooks` feature flag but does not itself document a stable
-lifecycle or pre/post-tool event contract. A community-authored tracker in the
-first-party repository reports partial pre/post coverage, including incomplete
-coverage across write paths.
-([Codex hook configuration schema](https://github.com/openai/codex/blob/main/codex-rs/core/config.schema.json),
-[Codex full hook-parity tracking](https://github.com/openai/codex/issues/21753))
+Basic Memory states that Markdown is authoritative and its database/search
+state is derived. Its watcher reparses external changes, while its structured
+`write_note`/`edit_note` tools remain available.
+([technical information](https://docs.basicmemory.com/reference/technical-information),
+[MCP tools](https://docs.basicmemory.com/reference/mcp-tools-reference))
 
-The installed Codex migration guidance on the development machine is stricter:
-it currently treats pre/post-tool migration as shell-focused and warns that
-Claude Edit/Write fixups need another boundary. That local observation is
-version-specific and must be rechecked before implementation, but it is enough
-to reject a universal-hook correctness claim.
-
-Cursor did not expose a comparable first-party native-edit hook contract in
-the inspected public material.
-
-**Implication:** the watcher must handle every write correctly without hook
-metadata. A hook is an optional attribution and feedback adapter.
-
-## Finding 3 — Herdr proves explicit, per-harness integration management
-
-Herdr's first-party repository documents direct integrations installed with
-an explicit per-harness command:
-
-```text
-herdr integration install <harness>
-```
-
-The installed CLI also exposes matching `status` and `uninstall` commands.
-([Herdr repository and integration overview](https://github.com/ogulcancelik/herdr))
-
-This proves a useful operating pattern, not a specific config-merging
-implementation:
-
-- one explicit install command;
-- one adapter per harness;
-- status and uninstall are first-class;
-- generated files have clear ownership;
-- upgrades replace only owned artifacts.
-
-**Implication:** backlog-mcp should not silently edit harness configuration
-during npm installation or server startup. It should offer explicit,
-idempotent per-harness installation with inspection and removal.
-
-## Finding 4 — File-first systems accept native edits, but mutation policy matters
-
-Basic Memory calls Markdown the source of truth and its database a derived
-index. Its watcher reparses external changes and refreshes the graph/search
-projection. It also exposes structured `write_note` and `edit_note` tools.
-([Basic Memory technical information](https://docs.basicmemory.com/reference/technical-information),
-[Basic Memory user guide](https://docs.basicmemory.com/local/user-guide))
-
-That broad architecture aligns with backlog-mcp. Its current default
-`ensure_frontmatter_on_sync=true` does not: missing frontmatter may be injected
+Its default `ensure_frontmatter_on_sync=true` may insert missing frontmatter
 during synchronization. Formatting is separately opt-in.
-([Basic Memory configuration](https://docs.basicmemory.com/reference/configuration))
+([configuration](https://docs.basicmemory.com/reference/configuration))
 
-Obsidian similarly treats vault files as truth and metadata caches as derived.
-Its `Vault.process()` API exists for explicit concurrency-safe mutation, while
-external filesystem changes invalidate cached reads. Its public
-`processFrontMatter()` method is an explicit mutating API and may throw
-`YAMLParseError`; it is not a mandate to rewrite external files.
-([Obsidian Vault API](https://docs.obsidian.md/Plugins/Vault),
-[Obsidian API definitions](https://github.com/obsidianmd/obsidian-api/blob/master/obsidian.d.ts))
+That is the exact policy line backlog-mcp should not cross: steal file truth
+and derived indexing; reject watcher-triggered metadata insertion.
 
-Obsidian Linter demonstrates the correct separation: normalization is a
-user-enabled plugin action with configurable rules, not an automatic property
-of indexing.
+Obsidian's core Vault APIs provide explicit read/transform/write and
+frontmatter-mutation surfaces. Core documentation supports file-backed storage
+and cache invalidation, but it does not establish a Basic-Memory-style generic
+graph reconciler.
+([Vault API](https://docs.obsidian.md/Plugins/Vault),
+[API definitions](https://github.com/obsidianmd/obsidian-api/blob/master/obsidian.d.ts))
+
+Obsidian Linter is a separate, user-enabled plugin with explicit rules and
+actions. It is evidence for separating diagnosis/fix from indexing, not an
+Obsidian core policy.
 ([Obsidian Linter](https://github.com/platers/obsidian-linter))
 
-**Steal:** files as truth, derived caches, native editing, explicit structured
-write helpers, explicit lint/fix commands.
+**Steal:** explicit structured write helpers and explicit lint/fix actions.
 
-**Reject:** watcher-triggered frontmatter injection or formatting.
+**Reject:** automatic formatting or frontmatter repair as a side effect of
+watching.
 
-## Finding 5 — Managed API writes buy history and invariants by giving up file-native truth
+## Mem0 and Letta: managed surfaces buy control
 
-Mem0 mutations go through identified API operations. Its per-memory history
-records add/update/delete events, old and new values, input, timestamps,
-metadata, and user attribution.
-([Mem0 history API](https://docs.mem0.ai/api-reference/memory/history-memory),
-[Mem0 memory operations](https://docs.mem0.ai/core-concepts/memory-operations/add))
+Mem0 exposes identified add/update/delete operations and per-memory history
+containing event type, old/new values, input, timestamps, metadata, and user
+identity.
+([Mem0 memory history](https://docs.mem0.ai/api-reference/memory/history-memory))
 
-Letta's standard memory blocks and archival passages are likewise managed
-through agent tools and APIs. Blocks may be read-only, carry limits, and expose
-managed mutation tools. Its ordinary filesystem document surface is primarily
-a read/search interface.
-([Letta memory blocks](https://docs.letta.com/guides/core-concepts/memory/memory-blocks),
-[Letta context hierarchy](https://docs.letta.com/guides/core-concepts/memory/context-hierarchy))
+Letta memory blocks are managed API objects with size limits, explicit update
+operations, and optional read-only enforcement. Updating a block replaces the
+managed value.
+([Letta memory blocks](https://docs.letta.com/guides/core-concepts/memory/memory-blocks))
 
-Letta Code's newer MemFS mode is the revealing exception: it syncs memory
-blocks to local Markdown and uses Git/worktrees for history and collaboration,
-but conflict resolution becomes part of the design.
+Letta Code's MemFS is the useful counterexample: memory becomes a normal local
+Git repository, direct file editing is supported, and multi-agent work uses
+worktrees. Conflict handling then becomes part of the product.
 ([Letta Code](https://github.com/letta-ai/letta-code),
-[lettabot MemFS configuration](https://github.com/letta-ai/lettabot/blob/main/docs/configuration.md#memory-filesystem-memfs))
+[MemFS configuration](https://github.com/letta-ai/lettabot/blob/main/docs/configuration.md#memory-filesystem-memfs))
 
-**Implication:** managed writes genuinely buy validation, audit fidelity, and
-stable mutation semantics. They should be retained only where those properties
-justify leaving the native edit path.
+**Implication:** managed APIs genuinely buy validation, limits, attribution,
+and stable mutation semantics. They earn a place only when those guarantees
+justify leaving the native file path.
 
-## Finding 6 — A watcher observes state, not intent
+## Parcel and editor diagnostics: observe state; separate fixes
 
-Parcel watcher events carry an absolute path and a `create`, `update`, or
-`delete` type. Events are batched and coalesced; a rename appears as delete plus
-create, and transient create/delete pairs may disappear. The API also supports
-snapshots and changes-since queries, with backend-specific implementation
-details.
-([`@parcel/watcher`](https://github.com/parcel-bundler/watcher))
+Parcel watcher events contain a path and `create`/`update`/`delete` kind.
+Events are throttled and coalesced; rename is represented as delete plus
+create, and transient pairs may disappear.
+([Parcel watcher](https://github.com/parcel-bundler/watcher#watching))
 
-It does not provide:
+The watcher does not carry:
 
-- file contents;
-- an edit diff;
-- writer identity;
-- a tool-use ID;
-- a logical transaction boundary.
+- file contents or a reliable diff;
+- writer/session identity;
+- a logical transaction boundary;
+- a substrate validation result.
 
-**Implication:** reconcile current bytes after a quiet window. Do not infer
-rename identity, operation order, or attribution from the event batch.
+VS Code's extension API reports diagnostics independently from code actions
+and formatting providers.
+([programmatic language features](https://code.visualstudio.com/api/language-extensions/programmatic-language-features))
 
-## Finding 7 — Diagnostics and fixes are separate product concepts
-
-Language-server and IDE APIs commonly report diagnostics separately from code
-actions and formatting. VS Code's public extension API is a clear example:
-diagnostic collections report problems, while code actions and formatting are
-explicit mutation providers.
-([VS Code programmatic language features](https://code.visualstudio.com/api/language-extensions/programmatic-language-features))
-
-**Implication:** a malformed document should receive a revision-bound
-diagnostic with path, hash, rule, message, and optional location. Repair is a
-separate explicit command. Reconciliation never acts as a fixer.
+**Implication:** reconcile current bytes and report problems. A repair is a
+separate explicit action.
 
 ---
 
@@ -389,444 +328,296 @@ separate explicit command. Reconciliation never acts as a fixer.
 
 ## R1. Native file editing is the default existing-document lane
 
-An agent or human editing an existing document should normally use the native
-editor already available in the harness or IDE.
-
-backlog-mcp documentation and tool descriptions do not teach
-`write_resource` as the ordinary way to change prose. This keeps the agent in
-its trained edit path and removes the alternative-tool smell from the common
-workflow.
+Humans and agents normally edit an existing document with their native editor.
 
 Native editing is lenient in timing, not in interpretation:
 
-- the file may be temporarily invalid immediately after the editor writes it;
-- the watcher validates and reconciles after the write;
-- invalid bytes remain the source of truth and are diagnosed;
-- no invalid projection is silently presented as canonical.
+- the file may be temporarily invalid immediately after a write;
+- the watcher requests full reconciliation;
+- reconciliation withdraws an invalid typed projection and reports why;
+- the original file remains authoritative and unchanged.
 
-Creation and semantic lifecycle changes remain owned by the substrate's
-declared intents or canonical create/update surfaces. This ADR does not turn
-arbitrary file creation into a replacement for identity allocation.
+Creation, identity allocation, and semantic lifecycle transitions remain owned
+by substrate intents and canonical create/update surfaces. Native editing does
+not invent a second creation policy.
 
-## R2. Hooks enrich native edits; they never own correctness
+## R2. Reconciliation validates after write and never repairs source
 
-Every supported harness adapter may install:
+Every non-empty watcher batch requests the existing full reconciliation.
+Reconciliation:
 
-1. a session-start hook that reports the harness, session ID, cwd, and optional
-   agent/subagent identity;
-2. a successful post-tool hook that reports native file-edit intent.
+- reads current bytes;
+- runs ADR 0112 discovery and ADR 0113 claim/validation;
+- refreshes typed and generic projections;
+- replaces the current diagnostic set for the home.
 
-Both hooks feed a bounded, local path/hash attribution buffer consumed by the
-existing full-reconciliation boundary. The post-tool hook never writes the
-document and never creates a second validation path.
+It never:
 
-If a hook is absent, late, duplicated, malformed, or unavailable, the watcher
-still reconciles the same final bytes. The only lost property is attribution
-fidelity.
+- adds, removes, or reorders frontmatter;
+- rewrites YAML or Markdown;
+- persists inferred identity, date, or status;
+- moves or renames a document;
+- runs a formatter or fixer.
 
-Post-write hooks cannot retroactively make a write strict. They may return
-diagnostic feedback to the agent after reconciliation, but they cannot claim
-the file was validated before mutation.
+Startup/full reconciliation remains the backstop for coalesced or missed
+events. Parcel snapshots stay deferred until measured recovery cost requires
+them.
 
-## R3. Hook installation is explicit, idempotent, inspectable, and removable
+## R3. Diagnostics are derived disclosure, not a new storage system
 
-The intended CLI shape follows Herdr:
+Phase one should thread diagnostics already produced by discovery, substrate
+claiming, and canonical validation through the reconciliation result and
+active `LocalRuntime`.
+
+The minimum diagnostic shape is:
+
+- home;
+- source path;
+- severity;
+- stable code;
+- message;
+- optional line/column and substrate type.
+
+The runtime replaces the home diagnostic set on every full pass, so stale
+diagnostics disappear when the file is fixed. Persist diagnostics only if a
+real cross-process CLI/viewer need appears; do not create a revision database
+preemptively.
+
+Minimum disclosure:
+
+- `backlog-mcp diagnostics`;
+- viewer/API projection from the active runtime.
+
+Concise hook feedback can reuse that surface later.
+
+## R4. Hooks enrich attribution; they never own correctness
+
+Hook support is adapter-by-adapter.
+
+An adapter may use:
+
+- `SessionStart` only when needed to establish home/session metadata;
+- successful `PostToolUse`/`AfterTool` events for native Edit/Write intent.
+
+A post-edit adapter may append a best-effort operation-log entry containing
+the harness, session, path, native tool name, and exact tool input. It does
+not derive the operation from a watcher event.
+
+The watcher never synthesizes journal entries. Therefore no path/hash
+correlation buffer, managed-write in-flight marker, delayed classification,
+fallback journal entry, or duplicate-suppression protocol is required.
+
+If a hook is absent or fails:
+
+- reconciliation still converges;
+- diagnostics still appear;
+- only exact native-edit attribution is missing.
+
+Do not implement a hook adapter until the diagnostic lane is useful and one
+documented harness is selected.
+
+## R5. Hook installation is explicit and reversible
+
+Follow the Herdr operating shape:
 
 ```text
-backlog-mcp hooks install claude
-backlog-mcp hooks install gemini
+backlog-mcp hooks install <harness>
 backlog-mcp hooks status
-backlog-mcp hooks uninstall claude
+backlog-mcp hooks uninstall <harness>
 ```
 
 Rules:
 
-- no hook installation during package install, MCP startup, or project scan;
+- no installation during npm install, server startup, or project discovery;
 - preserve unrelated user configuration;
-- generated shims identify backlog-mcp ownership and version;
+- identify backlog-mcp-owned entries/files;
 - reinstall replaces only owned artifacts;
-- config changes are previewed or summarized;
-- uninstall removes only owned entries and files;
-- harness trust/approval remains visible to the user;
-- hook commands have a short timeout and do not make a successful native edit
-  fail because backlog-mcp is unavailable.
+- uninstall removes only owned artifacts;
+- show harness trust/approval behavior;
+- hook failure never makes a completed native edit fail.
 
-Version one implements only harnesses whose native edit payload and config
-merge are verified. There is no empty "universal hooks framework."
+Version one contains one concrete adapter, not a universal hooks framework.
 
-## R4. Watcher reconciliation validates after write and never mutates source
+## R6. `write_resource` remains only as the strict managed lane
 
-The watcher continues to convert non-empty event batches into ADR 0112
-full-reconciliation requests. Full reconciliation compares current documents
-with prior derived hashes, discovers and validates through ADR 0112/0113, and
-atomically replaces derived indexes and revision-bound diagnostics. Hashes
-support stale-result rejection and optional attribution correlation; they do
-not create a second per-path correctness path.
+Use the managed editor when the caller explicitly wants:
 
-The reconciler does not:
+- exact anchored replacement/insert/append semantics;
+- complete postimage substrate validation before success;
+- canonical serialization;
+- synchronous validation failure;
+- one best-effort, exactly attributed operation-log append attempt.
 
-- add or reorder frontmatter;
-- rewrite YAML;
-- format Markdown;
-- infer and persist identity/date/status;
-- move or rename a file;
-- apply a suggested fix.
+Its documentation should say:
 
-Startup/full reconciliation remains the correctness boundary and the backstop
-for dropped watcher events. Parcel snapshots may accelerate recovery later;
-they are not required for correctness.
+> Use when you want backlog-mcp to validate and canonically persist an existing
+> entity edit before reporting success. For ordinary repository prose edits,
+> use your native Edit tool; reconciliation will update indexes and
+> diagnostics afterward.
 
-## R5. Diagnostics are revision-bound derived state
+The cost remains explicit:
 
-A diagnostic contains at least:
-
-```ts
-interface DocumentDiagnostic {
-  homeKey: string;
-  sourcePath: string;
-  contentHash: string;
-  severity: 'error' | 'warning';
-  code: string;
-  message: string;
-  line?: number;
-  column?: number;
-  substrateType?: string;
-}
-```
-
-Diagnostics live under the home's control directory, outside the watched
-source tree. A diagnostic is displayed only while its `contentHash` matches the
-current document.
-
-Minimum read surfaces:
-
-- concise hook feedback after a native agent edit;
-- `backlog-mcp diagnostics` for humans and unsupported harnesses;
-- viewer/API projection when the docs-native runtime is active.
-
-A syntactically malformed frontmatter document remains byte-preserved,
-readable, and searchable as a generic document with a diagnostic; it has no
-typed projection. A parseable but noncanonical claimed document receives ADR
-0113's lenient, lossless projection plus canonical-schema diagnostics.
-Previously indexed canonical data must not remain silently current after the
-source becomes invalid.
-
-## R6. `write_resource` is retained only as the strict canonical edit lane
-
-`write_resource` remains available for an agent that explicitly wants:
-
-- exact anchored edit semantics;
-- full postimage substrate validation before success;
-- canonical managed serialization;
-- synchronous error reporting;
-- exact actor/tool/operation attribution;
-- no watcher-correlation ambiguity.
-
-Its description must say when to choose it:
-
-> Use when you want backlog-mcp to validate and canonically persist an
-> existing entity edit before reporting success. For ordinary repository prose
-> edits, use your native Edit tool; the watcher will reconcile and diagnose
-> afterward.
-
-The price is explicit:
-
-| Cost | Why it remains acceptable |
+| Cost | Why it may still be worth paying |
 |---|---|
-| Extra tool schema/tokens | Deferred/tool-search discovery should keep it out of the ordinary path where supported. |
-| A second edit choice | The choice is guarantee-based: native convenience versus strict pre-return validation. |
-| Less harness-native behavior | The lane is selected for validation, not edit fluency. |
-| Canonical reserialization | Managed writes are intentionally canonical; external formatting is preserved only by the native lane. |
+| Extra tool schema/context | The caller selects it for a stronger guarantee. |
+| A second edit choice | The choice is native convenience versus strict pre-return validation. |
+| Canonical serialization | Managed writes intentionally produce backlog-mcp's canonical form. |
+| Non-native edit path | It is an escape hatch, not the default workflow. |
 
-If deferred tool discovery is unavailable, Goga may still choose to remove the
-MCP registration and retain only the core/CLI strict editor. That is a product
-surface choice, not an architecture change.
+Goga may choose to keep it MCP-visible, defer it behind tool discovery, or
+retain only core/CLI access. That is a product-surface choice; the strict core
+boundary remains useful in every option.
 
-## R7. External messy frontmatter is indexed and diagnosed, never upgraded uninvited
+## R7. Messy external frontmatter is indexed and diagnosed, never upgraded uninvited
 
-The posture is:
+The native lane:
 
-- preserve the exact file;
-- claim it only through explicit folder/identity/substrate rules;
-- derive useful title and chronology through the lenient read adapter;
-- expose unknown fields losslessly;
-- keep syntactically malformed frontmatter generic and diagnosed;
-- project parseable but noncanonical claimed documents leniently and diagnose
-  the canonical gap;
-- refuse an ordinary strict body edit until canonical adoption is separately
-  authorized.
+- preserves exact bytes;
+- derives useful title/identity/chronology when possible;
+- preserves unknown metadata in the read projection;
+- keeps malformed frontmatter generic and diagnosed;
+- never canonicalizes the document.
 
-backlog-mcp does not copy Basic Memory's default frontmatter injection.
+For a parseable but noncanonical document, this ADR recommends:
 
-This ruling explicitly supersedes the automatic-adoption clause in ADR 0113
-R4, which says any backlog-mcp mutation adopts an external document into
-canonical form. Calling a body-edit operation is consent to change the requested
-body text; it is not consent to reorder frontmatter, relocate unknown fields,
-or remove external aliases. Canonical adoption requires a separately named,
-previewable action.
+- an ordinary strict body edit rejects with canonical diagnostics;
+- canonical adoption requires a separately named, previewable action;
+- only that explicit action may move aliases/unknown metadata or reserialize
+  frontmatter.
 
-This is a proposed narrow supersession, not an unnoticed contradiction. Goga
-must accept or reject it at the human decision gate. Canonical-adoption UX is
-out of scope here and remains owned by ADR 0113.
+This recommendation narrows ADR 0113 R4. It is a human decision gate, not an
+implicit implementation change.
 
-## R8. The operation log distinguishes exact managed writes from observed native edits
+## R8. ADR 0094's completeness claim is scoped to managed writes
 
-ADR 0094 is amended, not discarded.
+The operation journal remains exact for writes that pass through backlog-mcp
+core.
 
-### Managed lane
+It is not a complete history of arbitrary filesystem changes:
 
-The existing invariant remains:
+- unsupported editors may leave no actor/tool entry;
+- hooks are best-effort;
+- watcher events do not contain sufficient evidence to reconstruct intent.
 
-- write and log happen in one core operation;
-- actor and exact parameters are known;
-- failure/no-op produces no mutation entry;
-- one success entry is attempted with exact attribution.
+Do not weaken the exact managed journal by adding coarse watcher-derived
+operations. A future separate "document reconciled" activity stream may exist
+if users need it, but it is not the mutation journal.
 
-“One core operation” is ADR 0094's call-boundary invariant, not crash-atomic
-coupling between Markdown persistence and the JSONL append.
+## R9. One validator serves both lanes
 
-The current `OperationStorage.append()` swallows append failures, so neither
-ADR 0094 nor this ADR may call the journal durable or promise an entry after
-I/O failure. The strict lane buys an exact attribution payload and one append
-attempt; durable transaction semantics are a separate problem. The managed
-logger must report `logged` or `failed` to the correlation marker so
-reconciliation can classify the observed transition honestly. An append
-failure does not roll back or misreport the already-persisted Markdown write.
+There is one project substrate registry:
 
-### Native lane
+- managed writes call it before persistence;
+- reconciliation uses it after native persistence to produce typed
+  projections and diagnostics.
 
-The log records the reconciliation that made a changed source document visible:
+There is no hook validator, watcher validator, MCP validator, or repair
+validator.
 
-```ts
-interface ObservedDocumentMutation {
-  kind: 'document-reconciled';
-  sourcePath: string;
-  beforeHash?: string;
-  afterHash?: string;
-  validation: 'canonical' | 'diagnosed';
-  attribution:
-    | {
-        status: 'hook-attributed';
-        harness: string;
-        sessionId: string;
-        toolUseId?: string;
-        toolName?: string;
-      }
-    | { status: 'unknown' };
-}
-```
+## R10. This work is local-only
 
-The bounded attribution buffer accepts hook metadata keyed by canonical path
-and expected postimage hash. Full reconciliation consumes a matching record as
-`hook-attributed`; an absent, late, or mismatched record is truthfully
-`unknown`. Observed reconciliations use this attribution union rather than the
-mandatory managed-write `Actor` contract.
-
-An uninitialized home establishes its current path/hash baseline without
-emitting mutation entries. Only transitions from a previously observed
-revision are journal candidates. If the derived baseline is missing or
-untrusted, full reconciliation rebuilds it without pretending that every
-existing file was newly edited.
-
-The log does not claim:
-
-- one entry per keystroke or tool call;
-- an exact diff when multiple edits coalesced;
-- attribution derived from timing alone;
-- transactional coupling between the filesystem write and journal append.
-
-Hook and watcher do not each append an entry. Reconciliation appends once for
-the observed state transition.
-
-The local managed-write boundary computes the canonical postimage and hash,
-then establishes a runtime-owned in-flight marker keyed by canonical path and
-postimage hash before persistent bytes become visible. Reconciliation always
-updates derived state, but delays observed-entry classification while a
-matching marker is in flight:
-
-- if the managed append succeeds, reconciliation emits no duplicate observed
-  entry;
-- if the managed operation or append fails after the bytes became visible,
-  reconciliation may attempt one observed fallback entry with truthful
-  attribution;
-- an unmatched or expired marker never suppresses reconciliation or hides a
-  transition.
-
-Correlation never relies on timing alone. The marker coordinates audit
-classification; it is not a lock, transaction, or second source of truth.
-
-## R9. Strict and lenient lanes share one validator and one reconciliation model
-
-There is one substrate compiler and one project registry.
-
-- The strict lane validates the postimage before persistence.
-- The lenient lane parses losslessly, then runs the same canonical validator to
-  produce diagnostics after persistence.
-
-There is not a hook validator, watcher validator, MCP validator, and CLI
-validator. Transport adapters normalize input and call the shared core.
-
-## R10. This work is local-only and does not extend D1
-
-Hook installation, native filesystem watching, derived file diagnostics, and
-path/hash correlation target the local runtime.
-
-The remote/D1 code remains a constrained satellite. No parity adapter, remote
-hook relay, or hosted filesystem abstraction is required.
+Hook installation, filesystem watching, and diagnostic disclosure target the
+local runtime. No D1 parity adapter, remote relay, or hosted filesystem design
+is required.
 
 ---
 
-# Part 4 — Options and recommendation
+# Part 4 — Options
 
-## Option A — Remove `write_resource`; native edits plus hooks/watcher only
+## Option A — Remove `write_resource`
 
-**Pros**
+Native edits plus watcher diagnostics only.
 
-- smallest tool list;
-- no alternative-tool choice;
-- all editors use the same file-native path.
+**Benefit:** smallest tool list and one ordinary edit path.
 
-**Cons**
-
-- no opt-in pre-write substrate validation;
-- operation attribution is harness-dependent;
-- strict failure is available only after the file is already invalid;
-- unsupported harnesses lose intent-rich logging.
-
-**Verdict:** coherent, but gives up a useful guarantee to save one tool.
+**Cost:** no opt-in pre-write substrate validation; exact attribution depends
+on harness hooks.
 
 ## Option B — Keep `write_resource` as the required agent write path
 
-**Pros**
+**Benefit:** exact anchored intent and strict validation.
 
-- exact operation capture;
-- strict validation;
-- predictable activity rendering;
-- harness-independent behavior.
-
-**Cons**
-
-- duplicates native Edit;
-- spends tool tokens and agent choice on every session;
-- keeps agents outside their trained edit path;
-- treats ordinary repository files as if they require a remote API.
-
-**Verdict:** rejects the docs-native north star.
+**Cost:** preserves the alternative-tool smell and rejects docs-native use.
 
 ## Option C — Native by default; strict managed lane on demand
 
-**Pros**
+**Benefit:** ordinary editing stays native while strict validation remains
+available.
 
-- ordinary edits are native and cheap;
-- humans, scripts, and agents share one source-of-truth workflow;
-- hooks improve attribution without becoming mandatory;
-- strict validation remains available when it is worth the price;
-- external messy files stay lossless and unmolested.
+**Cost:** two lanes must be explained honestly.
 
-**Cons**
+**Recommendation:** Option C.
 
-- two lanes must be explained honestly;
-- native validation is after the write;
-- operation-log fidelity differs by lane;
-- hook adapters are harness-specific.
+## Option D — Native edits plus semantic intents; remove generic strict editing
 
-**Verdict:** **recommended.** The lanes are complementary because their
-guarantees differ; they are not two names for the same operation.
+ADR 0113/0106.5 intents may eventually cover enough real workflows that a
+generic managed body editor is unnecessary.
 
-## Option D — Native edits plus substrate semantic intents; delete generic strict editing
-
-Phase D of ADR 0113 and ADR 0106.5 may eventually make semantic intents rich
-enough that a generic strict body editor is unnecessary.
-
-**Verdict:** plausible later simplification. Do not delete the strict escape
-hatch before the intent set proves it covers real use.
+**Disposition:** revisit after actual intent usage. Do not delete the strict
+escape hatch based on theoretical coverage.
 
 ---
 
 # Part 5 — Smallest engineering plan
 
-This is a design document. No phase starts until Goga selects the direction.
+No engineering begins until Goga selects an option.
 
-## Phase A — diagnostics in the existing reconcile path
+## Phase A — disclose diagnostics from existing reconciliation
 
-- Extend the existing `BacklogService`/`LocalRuntime` full-reconciliation
-  boundary with revision-bound diagnostics and observed-change logging.
-- Reuse ADR 0112 discovery and ADR 0113 registry validation.
-- Persist revision-bound diagnostics outside `docs/`.
-- Ensure invalid files remain readable and are never rewritten.
-- Append one honest observed-reconciliation operation.
-- Establish an initial path/hash baseline without synthesizing history.
-- Expose `backlog-mcp diagnostics`.
+- Preserve discovery/claim/validation diagnostics through the local runtime.
+- Replace the current in-memory diagnostic set on each full pass.
+- Expose `backlog-mcp diagnostics` and a viewer/API projection.
+- Prove malformed documents remain byte-identical and generic-searchable.
+- Prove fixing a document clears its diagnostic and restores typed projection.
 
-This phase works without any hook.
+No hooks, persistence layer, history stream, or source mutation.
 
-## Phase B — one proven hook adapter
+## Phase B — reprice the strict lane
 
-- Add the normalized session/edit hook envelope.
-- Implement explicit install/status/uninstall for Claude Code first, because
-  its `Edit`/`Write` payload and session attribution are documented.
-- Feed hook metadata into a bounded path/hash attribution buffer consumed by
-  full reconciliation.
-- Return concise post-write diagnostics to the agent.
-- Measure missed correlation, duplicate suppression, and hook latency before
-  adding another harness.
+- Rewrite `write_resource` documentation around strict guarantees.
+- Apply Goga's MCP visibility choice.
+- Make logging language accurately say "best-effort append attempt."
+- Resolve the ADR 0113 R4 canonical-adoption consent question.
 
-Do not create adapters for undocumented surfaces.
+## Phase C — one hook adapter, only if attribution demand remains
 
-## Phase C — reprice the strict lane
+- Select one harness with documented native edit payloads.
+- Implement explicit install/status/uninstall.
+- Append exact hook-observed native edit intent best-effort.
+- Measure hook latency, missed events, and usefulness before a second adapter.
 
-- Rewrite the `write_resource` description around strict guarantees.
-- Use deferred Tool Search registration where the transport supports it.
-- Keep the core/CLI strict editor even if Goga removes default MCP exposure.
-- Establish the managed path/hash correlation marker before persistence so a
-  watcher event cannot double-log the same postimage.
-- Make the best-effort append outcome observable to that marker without
-  claiming rollback or transactionality.
-- Verify strict edits reject a non-canonical external document without
-  rewriting it.
+No shared hook framework until a second concrete adapter creates common code.
 
 ---
 
 # Acceptance criteria
 
-The selected design is successful when:
+The selected direction is successful when:
 
-1. an agent can use its native Edit tool on a docs-native entity and the viewer,
-   search index, and diagnostics converge without a backlog-specific edit call;
-2. the same edit made in an ordinary human editor converges through the same
-   reconcile path;
-3. a malformed frontmatter edit leaves the file byte-for-byte unchanged after
-   reconciliation and surfaces a revision-bound diagnostic;
-4. fixing the file clears the diagnostic and restores the canonical typed
-   projection;
-5. a supported hook attributes the reconciled mutation to the correct
-   harness/session/tool use;
-6. an unsupported, late, or failed hook still produces a truthful
-   observed-reconciliation entry with unknown attribution;
-7. watcher plus hook produces one operation entry, not two;
-8. a managed write followed by its watcher event produces one exact managed
-   append attempt, not a second observed-reconciliation append attempt;
-9. `write_resource` rejects an invalid postimage before persistence and logs
-   one successful strict edit when the best-effort journal append succeeds;
-10. the strict tool is not described as the ordinary prose-edit path;
-11. no implementation writes frontmatter or formatting during discovery,
-    watching, validation, or diagnostic generation;
-12. startup/full reconciliation repairs derived state after missed events;
-13. an uninitialized or rebuilt baseline does not synthesize mutation history
-    for pre-existing documents;
-14. no D1 code is added or expanded.
+1. a native agent Edit and a human editor change converge through the same
+   reconciliation path;
+2. search/viewer state reflects the final Markdown;
+3. malformed frontmatter remains byte-for-byte unchanged and surfaces a
+   diagnostic;
+4. fixing the source clears the diagnostic and restores typed projection;
+5. reconciliation never writes frontmatter, formatting, identity, or inferred
+   values;
+6. strict managed edits reject an invalid postimage before persistence;
+7. strict managed edits attempt one exact attributed journal append;
+8. hook absence does not affect correctness;
+9. a future supported hook records exact native tool intent without watcher
+   reconstruction;
+10. no D1 code is added or expanded.
 
 ## Human decision gate
 
 Goga chooses:
 
-1. select Option A, B, C, or D; this ADR recommends Option C;
-2. if selecting Option C, choose whether `write_resource` remains MCP-visible
-   by default, deferred behind Tool Search, or core/CLI-only;
-3. if selecting Option C, accept or reject the proposed supersession of ADR
-   0113's automatic-adoption clause;
-4. authorize the first hook adapter after the Phase A diagnostics boundary is
+1. Option A, B, C, or D — this ADR recommends C;
+2. whether the strict editor is MCP-visible, deferred, or core/CLI-only;
+3. whether to accept the separate-consent correction to ADR 0113 R4;
+4. whether attribution demand justifies one hook adapter after diagnostics are
    proven.
 
-Until then, this ADR is evidence and a proposed ruling set—not an engineering
-mandate.
+Until those choices are made, this ADR is evidence and a proposed ruling set,
+not an engineering mandate.
