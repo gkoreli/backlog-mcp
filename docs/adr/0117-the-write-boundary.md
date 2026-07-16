@@ -1,7 +1,7 @@
 ---
 title: "0117. The Write Boundary — Native Editing, Diagnostics, and Strict Managed Writes"
 date: 2026-07-16
-status: Proposed
+status: Accepted (goga, 2026-07-16)
 spawned_by: "PROMPT 0002 item 7 — docs/prompts/0002-operating-principles-directives.md"
 extends:
   - 0094-transport-agnostic-operation-logging.md

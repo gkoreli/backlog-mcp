@@ -1,7 +1,7 @@
 ---
 title: "The Amnesia Test: Cold-Open and Compaction Recovery Are the Same Capability"
 date: 2026-07-16
-status: Proposed
+status: Accepted (goga, 2026-07-16)
 author: granite (aime orchestrator), from direct operational evidence
 relates_to:
   - ../NORTH-STAR.md

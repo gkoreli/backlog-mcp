@@ -1,7 +1,7 @@
 ---
 title: "0119. Agent Substrate — Durable Identity, Derived Work Correlation"
 date: 2026-07-16
-status: Proposed
+status: Accepted (goga, 2026-07-16)
 ---
 
 # 0119. Agent Substrate — Durable Identity, Derived Work Correlation
