@@ -65,29 +65,39 @@ export function registerRecall(program: Command): void {
     .option('--budget <tokens>', 'Approximate token budget — results packed to fit', parseInt)
     .action((queryParts: string[], opts) => {
       const deps = cliRuntimeDependencies(program);
-      // ADR 0105: explicit --context wins; else per-repo config / env default.
-      const context = resolveContext({ explicit: opts.context });
-      const params: RecallParams = {
+      const baseParams: RecallParams = {
         query: queryParts.join(' '),
-        ...(context !== undefined ? { context } : {}),
         ...(opts.tags !== undefined ? { tags: opts.tags } : {}),
         ...(opts.layers !== undefined ? { layers: opts.layers } : {}),
         ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
         ...(opts.full !== undefined ? { full: opts.full } : {}),
         ...(opts.budget !== undefined ? { token_budget: opts.budget } : {}),
       };
-      return deps.home === 'all'
-        ? runAcrossHomes(
+      if (deps.home === 'all') {
+        const context = resolveContext({ explicit: opts.context });
+        return runAcrossHomes(
             (coordinator, selection) => coordinator.recall(
-              params,
+              {
+                ...baseParams,
+                ...(context === undefined ? {} : { context }),
+              },
               selection,
             ),
             format,
             program.opts().json,
             deps,
-          )
-        : run(
+          );
+      }
+      return run(
             async (runtime) => {
+              const context = resolveContext({
+                explicit: opts.context,
+                ...(runtime.home === undefined ? {} : { home: runtime.home }),
+              });
+              const params = {
+                ...baseParams,
+                ...(context === undefined ? {} : { context }),
+              };
               const result = await recall(
                 params,
                 { memoryComposer: runtime.memoryComposer },

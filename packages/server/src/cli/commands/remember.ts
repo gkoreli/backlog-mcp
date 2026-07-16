@@ -29,7 +29,10 @@ export function registerRemember(program: Command): void {
     .action((contentParts: string[], opts) => run(
       async (runtime) => {
         // ADR 0105: explicit --context wins; else per-repo config / env default.
-        const context = resolveContext({ explicit: opts.context });
+        const context = resolveContext({
+          explicit: opts.context,
+          ...(runtime.home === undefined ? {} : { home: runtime.home }),
+        });
         const result = await remember(
         {
           content: contentParts.join(' '),

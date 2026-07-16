@@ -28,39 +28,6 @@ function createService(): IBacklogService {
   } as unknown as IBacklogService;
 }
 
-function createLegacyRuntime(): CliRuntime {
-  const service = createService();
-  const operationLogger = createOperationLogger('/legacy/operations.jsonl');
-  const memoryComposer = new MemoryComposer();
-  const usageTracker = new MemoryUsageTracker({
-    getService: function getService() {
-      return service;
-    },
-  });
-
-  return {
-    service,
-    writeContext: {
-      actor: { type: 'user', name: 'legacy-user' },
-      operationLog: operationLogger,
-      memoryComposer,
-    },
-    memoryComposer,
-    usageTracker,
-    operationLogger,
-    readUsageLines: function readLegacyUsage() {
-      return [];
-    },
-    readIdentity: function readLegacyIdentity() {
-      return undefined;
-    },
-    resolveSourcePath: function resolveLegacySource() {
-      return 'legacy source';
-    },
-    close: vi.fn(async function closeLegacy(): Promise<void> {}),
-  };
-}
-
 interface FakeLocalGraph {
   runtime: LocalRuntime;
   service: IBacklogService;
@@ -138,34 +105,25 @@ function adaptFakeLocalRuntime(runtime: LocalRuntime): AppRequestRuntime {
 }
 
 describe('direct CLI invocation runtime', function describeCliRuntime() {
-  it('keeps the legacy bundle as the unflagged default', async function defaultsLegacy() {
-    const legacyRuntime = createLegacyRuntime();
-    const createLegacy = vi.fn(function createLegacy() {
-      return legacyRuntime;
-    });
+  it('uses the docs-native global home by default without a feature flag', async function defaultsGlobal() {
+    const graph = createFakeLocalGraph('global-default');
     const createLocal = vi.fn(function createLocal() {
-      return createFakeLocalGraph('unused').runtime;
+      return graph.runtime;
     });
 
     const selected = await createCliRuntime({
       env: {},
-      createLegacyRuntime: createLegacy,
       createLocalRuntime: createLocal,
+      adaptLocalRuntime: adaptFakeLocalRuntime,
     });
 
-    expect(selected).toBe(legacyRuntime);
-    expect(createLegacy).toHaveBeenCalledOnce();
-    expect(createLocal).not.toHaveBeenCalled();
-  });
-
-  it('rejects explicit home selection while docs-native remains disabled', async function rejectsDormantSelection() {
-    await expect(createCliRuntime({
-      env: {},
-      home: 'project',
-      projectRoot: '/workspace/repo',
-    })).rejects.toThrow(
-      'CLI home selection requires BACKLOG_DOCS_NATIVE=1',
-    );
+    expect(createLocal).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'global',
+    }));
+    expect(graph.start).toHaveBeenCalledOnce();
+    expect(selected.home?.kind).toBe('global');
+    await selected.close();
+    expect(graph.stop).toHaveBeenCalledOnce();
   });
 
   it('parses all but rejects it on ordinary single-home runtime construction', async function reservesAllForReads() {
@@ -186,7 +144,7 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
       projectRoot: '/workspace/repo',
     });
     await expect(createCliRuntime({
-      env: { BACKLOG_DOCS_NATIVE: '1' },
+      env: {},
       home: 'all',
       projectRoot: '/workspace/repo',
     })).rejects.toThrow(
@@ -196,7 +154,7 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
 
   it('rejects contradictory explicit docs-native selection', async function rejectsContradictorySelection() {
     await expect(createCliRuntime({
-      env: { BACKLOG_DOCS_NATIVE: '1' },
+      env: {},
       home: 'global',
       projectRoot: '/workspace/repo',
     })).rejects.toThrow(
@@ -214,7 +172,6 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
 
     const selected = await createCliRuntime({
       env: {
-        BACKLOG_DOCS_NATIVE: '1',
         BACKLOG_HOME: 'global',
       },
       home: 'project',
@@ -291,7 +248,7 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
       },
       false,
       {
-        env: { BACKLOG_DOCS_NATIVE: '1' },
+        env: {},
         home: 'all',
         createLocalRuntime: function createLocal(home) {
           const graph = createFakeLocalGraph(home.kind);
@@ -327,7 +284,7 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
       },
       false,
       {
-        env: { BACKLOG_DOCS_NATIVE: '1' },
+        env: {},
         home: 'all',
         projectRoot: '/workspace/project',
         createLocalRuntime: function createLocal(home) {
@@ -364,7 +321,6 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
       false,
       {
         env: {
-          BACKLOG_DOCS_NATIVE: '1',
           BACKLOG_PROJECT_ROOT: '/workspace/success',
         },
         createLocalRuntime: function createLocal() {
@@ -393,7 +349,6 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
       false,
       {
         env: {
-          BACKLOG_DOCS_NATIVE: '1',
           BACKLOG_PROJECT_ROOT: '/workspace/failure',
         },
         createLocalRuntime: function createLocal() {

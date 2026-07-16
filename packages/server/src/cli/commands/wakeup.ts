@@ -97,35 +97,44 @@ export function registerWakeup(program: Command): void {
     .option('--evidence-chars <n>', 'Max chars of evidence per completion', parseInt)
     .action((opts) => {
       const deps = cliRuntimeDependencies(program);
-      // ADR 0105: flag wins; else fall back to per-repo config / env default.
-      const scope = resolveContext({ explicit: opts.scope });
-      const params: WakeupParams = {
-        ...(scope !== undefined ? { scope } : {}),
+      const baseParams: WakeupParams = {
         ...(opts.maxCompletions !== undefined ? { maxCompletions: opts.maxCompletions } : {}),
         ...(opts.maxActivity !== undefined ? { maxActivity: opts.maxActivity } : {}),
         ...(opts.maxKnowledge !== undefined ? { maxKnowledge: opts.maxKnowledge } : {}),
         ...(opts.maxConstraints !== undefined ? { maxConstraints: opts.maxConstraints } : {}),
         ...(opts.evidenceChars !== undefined ? { evidenceSnippetChars: opts.evidenceChars } : {}),
       };
-      return deps.home === 'all'
-        ? runAcrossHomes(
+      if (deps.home === 'all') {
+        const scope = resolveContext({ explicit: opts.scope });
+        return runAcrossHomes(
             (coordinator, selection) => coordinator.wakeup(
-              params,
+              {
+                ...baseParams,
+                ...(scope === undefined ? {} : { scope }),
+              },
               selection,
             ),
             formatAcrossHomes,
             program.opts().json,
             deps,
-          )
-        : run(
-            (runtime) => wakeup(runtime.service, {
-              ...params,
+          );
+      }
+      return run(
+            (runtime) => {
+              const scope = resolveContext({
+                explicit: opts.scope,
+                ...(runtime.home === undefined ? {} : { home: runtime.home }),
+              });
+              return wakeup(runtime.service, {
+              ...baseParams,
+              ...(scope === undefined ? {} : { scope }),
               readIdentity: runtime.readIdentity,
               readOperations: (options) => runtime.operationLogger.read(options),
               ...(runtime.mintMemoryEntry === undefined
                 ? {}
                 : { mintMemoryEntry: runtime.mintMemoryEntry }),
-            }),
+              });
+            },
             format,
             program.opts().json,
             deps,

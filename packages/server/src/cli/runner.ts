@@ -14,23 +14,14 @@ import type {
   HomeReadRuntimeSelection,
   HomeReadSelection,
 } from '../core/home-read-coordinator.types.js';
-import { operationLogger, envActor } from '../operations/logger.js';
-import {
-  defaultMemoryComposer,
-  defaultMemoryStore,
-  defaultUsageTracker,
-  readUsageLines,
-} from '../memory/bootstrap.js';
+import { envActor } from '../operations/logger.js';
 import { createLocalAppRequestRuntime } from '../server/local-app-request-runtime.js';
-import { BACKLOG_DOCS_NATIVE_ENV_VAR } from '../server/docs-native-dev-runtime.js';
 import { validateLocalRuntimeSelection } from '../server/local-runtime-request-resolver.js';
-import { BacklogService } from '../storage/local/backlog-service.js';
 import {
   createLocalRuntime,
   type LocalRuntime,
 } from '../storage/local/local-runtime.js';
-import { resolveSourcePath } from '../utils/resolve-source-path.js';
-import { paths } from '../utils/paths.js';
+import { resolveLegacyDataRoot } from '../utils/legacy-data-root.js';
 import type {
   CliRunnerDependencies,
   CliRuntime,
@@ -55,38 +46,6 @@ function isBacklogEventType(type: string): type is BacklogEventType {
     || type === 'resource_changed';
 }
 
-/**
- * Build the legacy process-global bundle used by direct CLI commands.
- *
- * This remains the default until Phase E migrates data and removes the
- * temporary docs-native selection flag.
- */
-export function createLegacyCliRuntime(
-  actor = envActor(),
-): CliRuntime {
-  const service = BacklogService.getInstance();
-  return {
-    service,
-    writeContext: {
-      actor,
-      operationLog: operationLogger,
-      memoryComposer: defaultMemoryComposer,
-    },
-    memoryComposer: defaultMemoryComposer,
-    mintMemoryEntry: function mintMemoryEntry(memory) {
-      return defaultMemoryStore.toMemoryEntry(memory);
-    },
-    usageTracker: defaultUsageTracker,
-    operationLogger,
-    readUsageLines,
-    readIdentity: function readLegacyIdentity() {
-      return readIdentityFile(join(paths.backlogDataDir, IDENTITY_FILENAME));
-    },
-    resolveSourcePath,
-    close: async function closeLegacyRuntime(): Promise<void> {},
-  };
-}
-
 async function createDocsNativeCliRuntime(
   deps: CliRunnerDependencies,
 ): Promise<CliRuntime> {
@@ -109,10 +68,14 @@ async function createDocsNativeCliRuntime(
     cwd: deps.cwd ?? process.cwd(),
     env,
   });
-  const localRuntimeFactory = deps.createLocalRuntime ?? createLocalRuntime;
   const adaptLocalRuntime = deps.adaptLocalRuntime
     ?? createLocalAppRequestRuntime;
-  const localRuntime: LocalRuntime = localRuntimeFactory(home);
+  const localRuntime: LocalRuntime = deps.createLocalRuntime?.(home)
+    ?? createLocalRuntime(home, {
+      ...(home.kind === 'global'
+        ? { legacyRoot: resolveLegacyDataRoot(env) }
+        : {}),
+    });
 
   try {
     await localRuntime.start();
@@ -176,24 +139,13 @@ export async function createCliRuntime(
       'CLI home "all" is read-only; use search, recall, or wakeup',
     );
   }
-  const env = deps.env ?? process.env;
-  if (env[BACKLOG_DOCS_NATIVE_ENV_VAR] !== '1') {
-    if (deps.home !== undefined || deps.projectRoot !== undefined) {
-      throw new BacklogHomeResolutionError(
-        'CLI home selection requires BACKLOG_DOCS_NATIVE=1 until the Phase E cutover',
-      );
-    }
-    return deps.createLegacyRuntime?.()
-      ?? createLegacyCliRuntime(deps.actor?.() ?? envActor());
-  }
   return createDocsNativeCliRuntime(deps);
 }
 
 /**
  * Read explicit home selection from the root CLI command.
  *
- * The temporary docs-native flag remains the Phase C activation gate; these
- * options are the caller-facing selection surface that survives Phase E.
+ * Home selection remains caller-scoped and separate from entity context.
  */
 export function cliRuntimeDependencies(
   program: Pick<Command, 'opts'>,
@@ -265,9 +217,8 @@ function throwRunError(error: unknown): never {
 /**
  * Run one bounded global-plus-project read and close every acquired runtime.
  *
- * The temporary docs-native flag remains load-bearing until Phase E removes
- * the legacy graph. Missing projects are reported by the coordinator rather
- * than preventing the global home from serving.
+ * Missing projects are reported by the coordinator rather than preventing the
+ * global home from serving.
  */
 export async function runAcrossHomes<R>(
   handler: (
@@ -279,11 +230,6 @@ export async function runAcrossHomes<R>(
   deps: CliRunnerDependencies,
 ): Promise<void> {
   const env = deps.env ?? process.env;
-  if (env[BACKLOG_DOCS_NATIVE_ENV_VAR] !== '1') {
-    throw new BacklogHomeResolutionError(
-      'CLI home "all" requires BACKLOG_DOCS_NATIVE=1 until the Phase E cutover',
-    );
-  }
 
   const {
     home: _home,

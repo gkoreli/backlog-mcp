@@ -41,7 +41,6 @@ export interface CliRunnerDependencies {
   home?: CliHomeSelector;
   projectRoot?: string;
   actor?: () => Actor;
-  createLegacyRuntime?: () => CliRuntime;
   createLocalRuntime?: (home: BacklogHome) => LocalRuntime;
   adaptLocalRuntime?: (runtime: LocalRuntime) => AppRequestRuntime;
 }
