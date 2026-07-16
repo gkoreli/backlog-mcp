@@ -74,8 +74,7 @@ function parseStoredDocument(
     const parsedMarkdown = matter(document.content, {});
     const data = parsedMarkdown.data as Record<string, unknown>;
     const claim = registry.getStorageClaim(claimed.type);
-    const substrate = registry.getSubstrate(claimed.type);
-    if (claim === undefined || substrate === undefined) return undefined;
+    if (claim === undefined) return undefined;
 
     const id = formatStorageDisplayId(claim, claimed.storageKey);
     const title = stringField(data, 'title')
@@ -90,17 +89,6 @@ function parseStoredDocument(
       title,
       ...(content ? { content } : {}),
     };
-
-    if (substrate.kind === 'compiled') {
-      const result = substrate.validateWrite(projection);
-      if (!result.ok) return undefined;
-      return {
-        entity: result.entity,
-        sourcePath: document.sourcePath,
-        identity: document.identity,
-        markdown: document.content,
-      };
-    }
 
     return {
       entity: projection,
@@ -203,15 +191,37 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     private readonly registry: ProjectSubstrateRegistry,
   ) {}
 
-  private documents(): StoredEntityDocument[] {
+  private discoverClaims() {
     const discovery = discoverDocuments({
       documentsDir: this.home.documentsDir,
     });
-    const claims = claimSubstrateDocuments({
+    return claimSubstrateDocuments({
       homeKey: this.home.root,
       documents: discovery.documents,
       substrates: this.registry.listSubstrates(),
     });
+  }
+
+  private assertNoClaimCollisions(type: SubstrateType): void {
+    const collisions = this.discoverClaims().diagnostics.filter(
+      function matchesType(diagnostic) {
+        return diagnostic.type === type;
+      },
+    );
+    if (collisions.length === 0) return;
+
+    const sourcePaths = collisions.flatMap(function getSources(diagnostic) {
+      return diagnostic.sourcePaths;
+    }).sort();
+    throw new SubstrateWriteError(type, [{
+      code: 'shape',
+      path: '/id',
+      message: `duplicate document identities: ${sourcePaths.join(', ')}`,
+    }]);
+  }
+
+  private documents(): StoredEntityDocument[] {
+    const claims = this.discoverClaims();
     const documents: StoredEntityDocument[] = [];
 
     for (const claimed of claims.claimed) {
@@ -284,6 +294,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     }
     const entity = validation.entity;
     const claim = this.claimFor(entity);
+    this.assertNoClaimCollisions(entity.type);
     const target = this.resolveClaimedPath(sourcePath, claim);
     validateWriteIdentity(entity, target.sourcePath, claim);
     mkdirSync(dirname(target.absolutePath), { recursive: true });
@@ -434,6 +445,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   }
 
   getMaxId(type: SubstrateType): number {
+    this.assertNoClaimCollisions(type);
     let maxId = 0;
 
     for (const document of this.iterateDocuments()) {

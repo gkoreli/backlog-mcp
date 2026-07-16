@@ -158,10 +158,30 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
       'tasks/UNKNOWN-0001.md',
       '---\ntype: unknown\nid: UNKNOWN-0001\ntitle: Unknown\ncreated_at: now\nupdated_at: now\n---',
     );
+    writeRawDocument(
+      home,
+      'tasks/TASK-0005-external.md',
+      [
+        '---',
+        'type: task',
+        'id: TASK-0005',
+        'title: External task',
+        'status: external-state',
+        'created_at: not-canonical',
+        'updated_at: not-canonical',
+        'external_note: preserved',
+        '---',
+        'External body',
+      ].join('\n'),
+    );
 
     expect(Array.from(storage.iterateDocuments()).map(function getId(document) {
       return document.entity.id;
-    })).toEqual(['TASK-0001', 'TASK-0004']);
+    })).toEqual(['TASK-0001', 'TASK-0004', 'TASK-0005']);
+    expect(storage.get('TASK-0005')).toMatchObject({
+      status: 'external-state',
+      external_note: 'preserved',
+    });
     expect(storage.get('TASK-0002')).toBeUndefined();
     expect(storage.getDocumentBySourcePath('README.md')).toBeUndefined();
   });
@@ -230,6 +250,22 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
 
     expect(storage.get('REQ-0001')).toBeUndefined();
     expect(storage.list({ type: 'requirement' })).toEqual([]);
+    expect(function allocateCollidingRequirement() {
+      storage.getMaxId('requirement');
+    }).toThrow(/duplicate document identities/);
+    expect(function writeIntoCollidingRequirementType() {
+      storage.add({
+        id: 'REQ-0002',
+        type: 'requirement',
+        title: 'Blocked by collision',
+        content: 'Requirement body.',
+        status: 'intake',
+        compliance: 'unchecked',
+      });
+    }).toThrow(/duplicate document identities/);
+    expect(existsSync(
+      join(home.documentsDir, 'requirements', 'REQ-0002.md'),
+    )).toBe(false);
   });
 
   it('rejects explicit paths outside the entity claim and missing claims', function rejectsInvalidClaims() {

@@ -118,6 +118,9 @@ async function allocateEntityId(
   try {
     return await service.allocateId(type);
   } catch (error) {
+    if (error instanceof SubstrateWriteError) {
+      throw new ValidationError(error.message);
+    }
     if (
       error instanceof Error
       && error.message.startsWith('No storage claim for entity type:')
