@@ -1,16 +1,18 @@
 # backlog-mcp
 
-Context & memory engineering for AI agents. A markdown-backed storage engine your agents write to and humans read — works with any MCP client (Claude, Cursor, Codex, Kiro, …).
+**Context & memory engineering for AI agents.** A markdown-backed storage engine your agents write to and humans read — **one core, many consumers:** any MCP client (Claude, Cursor, Codex, Kiro, …), the CLI, the web viewer, and external orchestrators all read and write the same store.
 
-**Your backlog is your agent's memory.** Agents orient at session start (`wakeup`), recall past decisions, remember what's durable, and expand any entity's neighborhood on demand — alongside the working backlog of tasks, epics, artifacts, and more. Every item is a plain markdown file with YAML frontmatter, so a human can read, edit, and diff everything with no tool installed. A real-time web viewer shows what agents are doing.
+**Your backlog is your agent's memory.** Agents orient at session start (`wakeup`), recall past decisions, remember what's durable, and expand any entity's neighborhood on demand — alongside the working backlog of tasks, epics, artifacts, and more. Every item is a plain markdown file with YAML frontmatter, so a human can read, edit, and diff everything with no tool installed.
+
+This is **agent-first**, and that is the whole difference. Agents mutate the store through tools; the human steers the agents and edits the files directly; the real-time web viewer is **read-only — a window into agent memory, never an editor.** It is not a human-facing notes app an agent happens to poke at — it is agent memory you can *see*, including the agent's own contradictions.
 
 Three ideas do the work:
 
-- **Substrates** — one declaration per type drives its schema, validation, storage, UI, and agent hints. Most durable knowledge in a project is expressible this way (tasks, memories, crons… and, on the roadmap, ADRs and requirements).
+- **Substrates** — one declaration per type drives its schema, validation, storage, UI, and agent hints. Most durable knowledge in a project is expressible this way (tasks, memories, crons… and, on the roadmap, ADRs and requirements). A project can even **declare its own substrate types as data** — a JSON definition plus a bounded JSON Schema, no code — validated and stored through the same registry.
 - **Progressive disclosure** — agent context expands like a filesystem: names first, shape on demand, full content only when opened. A dense ~600-token wakeup briefing → memory stubs → `backlog_get` hydration.
 - **Docs-native, local-first** — plain markdown on your disk, in your git. Your files, local hybrid (BM25 + vector) search and embeddings — no cloud required.
 
-Runs locally out of the box. A constrained Cloudflare Workers + D1 mode also exists (see [Self-Hosting](#self-hosting-on-cloudflare-optional)), but local-first *is* the architecture — the remote mode is retained, not evolved.
+Local-first *is* the architecture; remoteness is meant to be reached by **syncing local stores**, not by a remote database. A legacy Cloudflare Workers + D1 mode still exists but is descoped — retained, not evolved (see [Self-hosting](#self-hosting-legacy-descoped)).
 
 > **Quick start**: Tell your LLM: `Add backlog-mcp to .mcp.json and use it to track tasks`
 
@@ -20,11 +22,12 @@ Runs locally out of the box. A constrained Cloudflare Workers + D1 mode also exi
 
 ## What's Inside
 
-This is a monorepo with 3 packages:
+This is a monorepo with 4 packages:
 
 | Package | npm | What it does |
 |---------|-----|-------------|
 | [`packages/server`](packages/server) | [`backlog-mcp`](https://www.npmjs.com/package/backlog-mcp) | MCP server, HTTP API, CLI |
+| [`packages/memory`](packages/memory) | — | Hybrid search (Orama BM25 + vector) and memory retrieval/ranking |
 | [`packages/viewer`](packages/viewer) | — | Web UI built on [`@nisli/core`](https://github.com/gkoreli/nisli) |
 | [`packages/shared`](packages/shared) | — | Shared entity types and ID utilities |
 
@@ -45,59 +48,11 @@ Add to your MCP config (`.mcp.json` or your MCP client config):
 }
 ```
 
-## Self-Hosting on Cloudflare (Optional)
+## Self-hosting (legacy, descoped)
 
-> **Constrained mode.** The Workers + D1 build is a satellite, not the growth path: it lacks local embeddings, hybrid search/RAG parity, and agentic memory. Local-first is the primary architecture; use this only if you specifically need an always-on remote endpoint.
+A Cloudflare Workers + D1 build exists for an always-on remote endpoint, but it is **descoped** — retained, not evolved. It lacks local embeddings, hybrid-search/RAG parity, and agentic memory, and no new capability targets it. Local-first is the architecture; remoteness is meant to be reached by **syncing local stores**, not by promoting a remote database to the source of truth.
 
-Host your own always-on remote backlog for free using Cloudflare Workers + D1.
-Accessible from any device or MCP client — no local server process required.
-
-**Prerequisites**: Cloudflare account (free tier is enough), `wrangler` CLI, a GitHub OAuth App.
-
-```bash
-# 1. Clone and install
-git clone https://github.com/gkoreli/backlog-mcp.git
-cd backlog-mcp
-pnpm install
-
-# 2. Create the D1 database
-cd packages/server
-npx wrangler d1 create backlog
-# Copy the database_id into packages/server/wrangler.jsonc
-
-# 3. Apply the D1 migrations
-npx wrangler d1 execute backlog --remote --file=migrations/0001_initial.sql
-npx wrangler d1 execute backlog --remote --file=migrations/0002_oauth_refresh_tokens.sql
-
-# 4. Set secrets
-npx wrangler secret put JWT_SECRET          # any strong random string
-npx wrangler secret put API_KEY             # your personal API key (for Claude Desktop)
-npx wrangler secret put GITHUB_CLIENT_ID    # GitHub OAuth App client ID
-npx wrangler secret put GITHUB_CLIENT_SECRET
-npx wrangler secret put ALLOWED_GITHUB_USERNAMES  # comma-separated: "you,youralt"
-
-# 5. Deploy
-npx wrangler deploy
-```
-
-**GitHub OAuth App setup**: go to GitHub → Settings → Developer settings → OAuth Apps → New.
-Set the callback URL to `https://<your-worker>.workers.dev/oauth/github/callback`.
-
-Once deployed, add to your MCP client config:
-
-```json
-{
-  "mcpServers": {
-    "backlog": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://<your-worker>.workers.dev/mcp"]
-    }
-  }
-}
-```
-
-Claude.ai and ChatGPT can connect directly via the remote MCP URL — no local process needed.
-GitHub OAuth sessions use rotating refresh tokens so clients can renew access without daily re-authentication.
+If you specifically need the legacy remote mode, its Workers config lives in `packages/server/wrangler.jsonc` and its schema in `packages/server/migrations/`. Deploy with `npx wrangler deploy` from `packages/server`, then point an MCP client at it via `mcp-remote https://<your-worker>.workers.dev/mcp`.
 
 ---
 
@@ -134,6 +89,8 @@ The viewer UI is built with [Nisli](https://github.com/gkoreli/nisli) (`@nisli/c
 
 **Status values:** `open`, `in_progress`, `blocked`, `done`, `cancelled`
 
+Beyond the built-ins, a project can **declare its own substrate types as data** — a versioned JSON definition plus a bounded JSON Schema (Draft 2020-12), never executable code. Built-in and project-defined types share one project-scoped registry, so the catalog grows without touching storage, search, or the viewer (ADR 0113).
+
 Example task file:
 
 ```markdown
@@ -141,8 +98,7 @@ Example task file:
 id: TASK-0001
 title: Fix authentication flow
 status: open
-epic_id: EPIC-0002
-parent_id: FLDR-0001
+parent_id: EPIC-0002
 references:
   - url: https://github.com/org/repo/issues/123
     title: Related issue
@@ -174,7 +130,7 @@ Retrieval is one language: **orient** (`wakeup`) → **ask** (`recall` / `search
 backlog_list                              # Active tasks (open, in_progress, blocked)
 backlog_list status=["done"]              # Completed tasks
 backlog_list type="epic"                  # Only epics
-backlog_list epic_id="EPIC-0002"          # Tasks in an epic
+backlog_list parent_id="EPIC-0002"        # Tasks in an epic
 backlog_list parent_id="FLDR-0001"        # Items in a folder
 backlog_list query="authentication"       # Search across all fields
 backlog_list counts=true                  # Include counts by status/type
@@ -193,7 +149,7 @@ backlog_get id="TASK-0001" context=true   # Item + neighborhood stubs (parent/ch
 
 ```
 backlog_create title="Fix bug"
-backlog_create title="Fix bug" content="Details..." epic_id="EPIC-0002"
+backlog_create title="Fix bug" content="Details..." parent_id="EPIC-0002"
 backlog_create title="Q1 Goals" type="epic"
 backlog_create title="Research notes" type="artifact" parent_id="TASK-0001"
 backlog_create title="v2.0 Release" type="milestone" due_date="2026-03-01"
@@ -276,7 +232,7 @@ Sample outputs:
 ```
 $ npx backlog-mcp status
 Server is running on port 3030
-Version: 0.44.0
+Version: 0.59.0
 Data directory: /Users/you/.backlog
 Task count: 451
 Uptime: 3515s
@@ -321,7 +277,8 @@ pnpm dev            # Vite dev server (SPA + API on one port, HMR)
 
 ```
 packages/
-├── server/       # MCP server, substrates, memory, hybrid search, storage
+├── server/       # MCP server, substrates, memory, storage
+├── memory/       # Hybrid search (Orama BM25 + vector), memory retrieval/ranking
 ├── viewer/       # Web UI built with @nisli/core
 └── shared/       # Entity types, ID utilities
 docs/
