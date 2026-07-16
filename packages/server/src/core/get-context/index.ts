@@ -1,0 +1,10 @@
+export { composeContextStubs } from './context-stubs.js';
+export type { ComposeContextDeps } from './context-stubs.js';
+export { taskToContextEntity, toStub } from './entity-stub.js';
+export { expandRelations } from './relational-expansion.js';
+export type { RelationalExpansionDeps, RelationalExpansionResult } from './relational-expansion.js';
+export { traverseCrossReferences, extractEntityIds, buildReverseReferenceIndex, lookupReverseReferences } from './cross-reference-traversal.js';
+export type { CrossReferenceTraversalDeps, CrossReferenceTraversalResult } from './cross-reference-traversal.js';
+export { enrichSemantic } from './semantic-enrichment.js';
+export type { SemanticEnrichmentDeps, SemanticEnrichmentResult } from './semantic-enrichment.js';
+export type { ContextStub, ContextStubs, ContextEntity, ContextResource, Fidelity } from './types.js';

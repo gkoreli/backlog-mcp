@@ -13,6 +13,7 @@ import type { Status, EntityType, Reference, EditOperation } from '@backlog-mcp/
 import type { MemoryComposer, MemoryLayer } from '@backlog-mcp/memory';
 import type { ResourceContent } from '../resources/manager.js';
 import type { Actor, IOperationLog } from '../operations/types.js';
+import type { ContextStubs } from './get-context/types.js';
 
 export type { Actor, IOperationLog } from '../operations/types.js';
 export type { MemoryEntry, MemoryResult, RecallQuery, MemoryLayer } from '@backlog-mcp/memory';
@@ -104,6 +105,14 @@ export interface ListResult {
 
 export interface GetParams {
   ids: string[];
+  /**
+   * Expand each entity's relational neighborhood as stubs (ADR 0114 R-1).
+   * Ignored for resource URIs; degrades to no context when the service
+   * lacks sync storage access (remote/D1).
+   */
+  context?: boolean;
+  /** Relational expansion depth when context is set: 1 (default) or 2. */
+  depth?: number;
 }
 
 export interface GetItem {
@@ -111,6 +120,8 @@ export interface GetItem {
   content: string | null;
   /** Present only for resource URIs — transport uses this for formatting */
   resource?: ResourceContent;
+  /** Role-grouped relational stubs — present only when requested via GetParams.context */
+  context?: ContextStubs;
 }
 
 export interface GetResult {

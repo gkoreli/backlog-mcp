@@ -1,5 +1,7 @@
 export { listItems } from './list.js';
 export { getItems } from './get.js';
+export { composeContextStubs } from './get-context/index.js';
+export type { ComposeContextDeps, ContextStub, ContextStubs } from './get-context/index.js';
 export { createItem } from './create.js';
 export { updateItem } from './update.js';
 export { deleteItem } from './delete.js';
