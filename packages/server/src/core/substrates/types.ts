@@ -1,5 +1,10 @@
 import type { RuntimeSubstrateDefinition } from '@backlog-mcp/shared';
+import type {
+  DiscoveredDocument,
+  DiscoveredSubstrateDeclaration,
+} from '../document-discovery.types.js';
 import type { SubstrateStorageClaim } from '../../storage/substrate-storage-catalog.contract.js';
+import type { ProjectSubstrateRegistry } from './project-substrate-registry.js';
 
 export type SubstrateDefinitionIssueCode =
   | 'compile'
@@ -56,3 +61,45 @@ export type CompileSubstrateDefinitionResult =
     ok: false;
     diagnostic: SubstrateDefinitionDiagnostic;
   };
+
+export interface CreateProjectSubstrateRegistryParams {
+  packaged: readonly CompiledSubstrateDefinition[];
+  project: readonly CompiledSubstrateDefinition[];
+}
+
+export interface CreateProjectSubstrateRegistryResult {
+  registry: ProjectSubstrateRegistry;
+  diagnostics: readonly SubstrateDefinitionDiagnostic[];
+}
+
+export interface LoadSubstrateDefinitionsParams {
+  packagedDefinitions: readonly CompileSubstrateDefinitionParams[];
+  declarations: readonly DiscoveredSubstrateDeclaration[];
+}
+
+export type LoadSubstrateDefinitionsResult = CreateProjectSubstrateRegistryResult;
+
+export interface ClaimedSubstrateDocument {
+  document: DiscoveredDocument;
+  type: string;
+  semanticKey: string;
+}
+
+export interface SubstrateDocumentCollisionDiagnostic {
+  code: 'duplicate-substrate-document';
+  homeKey: string;
+  type: string;
+  semanticKey: string;
+  sourcePaths: readonly string[];
+}
+
+export interface ClaimSubstrateDocumentsParams {
+  homeKey: string;
+  documents: readonly DiscoveredDocument[];
+  substrates: readonly CompiledSubstrateDefinition[];
+}
+
+export interface ClaimSubstrateDocumentsResult {
+  claimed: readonly ClaimedSubstrateDocument[];
+  diagnostics: readonly SubstrateDocumentCollisionDiagnostic[];
+}

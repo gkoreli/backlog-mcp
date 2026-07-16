@@ -1103,10 +1103,10 @@ The important consequences are:
   composed compiled/runtime registry with validation and collision diagnostics.
 - Add `packages/server/src/core/substrates/load-substrate-definitions.ts`:
   injected-read loader for the opaque definition paths discovered by ADR 0112.
-- Add packaged definitions under
-  `packages/server/src/substrate-definitions/{adr,requirement,prompt}.json`;
-  import/bundle them so npm consumers receive them without a runtime node_modules
-  path assumption.
+- Add packaged ADR, Requirement, and Prompt definition data under
+  `packages/server/src/substrate-definitions/`; embed it through a TypeScript data
+  module so npm consumers receive it without runtime asset-path or filesystem
+  assumptions. Project-authored definitions remain JSON.
 
 ### Phase B — open the core and storage contracts
 
