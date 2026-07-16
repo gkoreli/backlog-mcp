@@ -25,3 +25,44 @@ export type {
   WriteContext, Actor, IOperationLog,
   MemoryLayer,
 } from './types.js';
+export {
+  BACKLOG_CONTROL_DIR,
+  BACKLOG_DOCUMENTS_DIR,
+  BACKLOG_HOME_ENV_VAR,
+  BACKLOG_PROJECT_ROOT_ENV_VAR,
+  BacklogHomeResolutionError,
+  createBacklogHome,
+  discoverProjectRoot,
+  isPathWithin,
+  resolveBacklogHome,
+} from './backlog-home.js';
+export type {
+  BacklogHome,
+  BacklogHomeDeps,
+  BacklogHomeSelector,
+  CreateBacklogHomeParams,
+  DiscoverProjectRootParams,
+  ResolveBacklogHomeParams,
+} from './backlog-home.types.js';
+export { discoverDocuments } from './document-discovery.js';
+export type {
+  DiscoverDocumentsParams,
+  DiscoveredDocument,
+  DiscoveredSubstrateDeclaration,
+  DiscoveryChronology,
+  DocumentDiscoveryDependencies,
+  DocumentDiscoveryDiagnostic,
+  DocumentDiscoveryDiagnosticCode,
+  DocumentDiscoveryResult,
+  DocumentDiscoveryStat,
+  DocumentFormat,
+} from './document-discovery.types.js';
+export {
+  normalizeDocumentSourcePath,
+  parseDocumentIdentity,
+} from './document-identity.js';
+export type {
+  DocumentDateSource,
+  DocumentIdentity,
+  ParseDocumentIdentityParams,
+} from './document-identity.types.js';
