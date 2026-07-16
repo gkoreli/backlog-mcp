@@ -10,7 +10,7 @@ import { normalizeOperationEntry } from '../operations/mutation.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';
 import { detectContradictions, contradictsFor } from '../core/contradictions.js';
 import { usageSeries, hasUsage } from '../core/usage-series.js';
-import type { Entity, Memory } from '@backlog-mcp/shared';
+import type { AnyEntity, Entity, Memory } from '@backlog-mcp/shared';
 import {
   BACKLOG_HOME_HEADER,
   BACKLOG_PROJECT_ROOT_HEADER,
@@ -34,6 +34,7 @@ import {
   withSearchHomeProvenance,
 } from './home-provenance.js';
 import { selectMcpRequestRuntime } from './mcp-request-runtime.js';
+import { asBuiltinEntity } from '../core/substrates/index.js';
 // Note: paths.ts and operations/index.ts are NOT imported here — they pull in
 // Node.js modules (import.meta.url, fs, path) that break the Workers bundle.
 // name/version and the MCP server wrapper are injected via AppDeps.
@@ -148,19 +149,20 @@ function errorMessage(error: unknown): string {
 
 function withMintedMemoryUsage(
   runtime: AppRequestRuntime,
-  entity: Entity,
-): Entity {
+  entity: AnyEntity,
+): AnyEntity {
+  const builtin = asBuiltinEntity(entity);
   if (
-    (entity.type ?? 'task') !== 'memory'
+    builtin?.type !== 'memory'
     || runtime.mintMemoryEntry === undefined
   ) {
     return entity;
   }
 
-  const memory = { ...(entity as Memory) };
+  const memory = { ...builtin };
   delete memory.usage_count;
   delete memory.last_used_at;
-  const entry = runtime.mintMemoryEntry(entity as Memory);
+  const entry = runtime.mintMemoryEntry(builtin);
   const metadata = entry.metadata ?? {};
   memory.usage_count = typeof metadata.usageCount === 'number'
     ? metadata.usageCount
