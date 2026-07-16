@@ -33,12 +33,14 @@ pnpm search:eval -- \
   --queries queries.jsonl \
   --qrels qrels.jsonl \
   --output report.json \
+  --baseline-version 1 \
   --warmups 2 \
   --repetitions 5
 ```
 
 Defaults are one full-query-set warmup and three measured repetitions. Use
-`--warmups 0` when the first measured query must be cold. Run
+`--warmups 0` to skip that query-set warmup; this is not a claim that process,
+model, or operating-system caches are cold. Run
 `node scripts/search-eval.mjs --help` or `pnpm search:eval -- --help` for the
 CLI summary.
 
@@ -138,13 +140,14 @@ must have at least one qrel.
 ## Report
 
 The report records the Git commit and runner hash, corpus/query/qrel hashes and
-counts, explicit evaluated surfaces and limitations, environment and package versions,
+counts, explicit evaluated surfaces and limitations, environment and package
+versions,
 fixed MiniLM correctness metadata, BM25 and hybrid index duration/cache bytes,
 separate lexical-ready and semantic-ready timings, whether the model came from
 the existing Transformers.js cache or was downloaded during the run (including
-downloaded bytes), hashes for the required cached model files, cold-start to
-first-result and first-result-after-ready probes, an explicit cold-run flag,
-phase-boundary RSS samples, raw
+downloaded bytes), hashes for the required cached model files,
+service-build-to-first-result and first-result-after-ready probes, whether
+query warmups were skipped, phase-boundary RSS samples, raw
 ranked IDs and timings for every query,
 repeat-determinism checks, first measured query latency, warm p50/p95 latency,
 and overall/per-class nDCG@10, MRR@10, success@1, Recall@20, and unjudged@10.
@@ -166,3 +169,7 @@ recall-affecting ranking change may ship until baseline v2 adds at least four
 reviewed memory-recall queries against Goga's real global memory corpus after
 Phase E migration places it under `~/.backlog/docs`. Synthetic memories may
 never be used to manufacture that evidence.
+
+The runner enforces this boundary: v1 rejects recall queries, while v2 and
+later require at least four reviewed recall queries and at least one real
+memory entity in the selected corpus.
