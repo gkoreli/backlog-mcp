@@ -211,6 +211,7 @@ describe('docs-native viewer provenance', function describeViewerProvenance() {
     expect(await statusResponse.json()).toMatchObject({
       home: 'project',
       home_id: PROJECT_ROOT,
+      dataDir: `${PROJECT_ROOT}/docs`,
     });
     expect(await countResponse.json()).toMatchObject({
       count: 1,

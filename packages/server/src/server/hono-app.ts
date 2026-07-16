@@ -329,7 +329,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       version: deps?.version ?? '0.0.0',
       mode: deps?.db ? 'cloudflare-worker' : 'local',
       taskCount: counts.total_tasks + counts.total_epics,
-      dataDir: deps?.dataDir,
+      dataDir: runtime.home?.documentsDir ?? deps?.dataDir,
       port: parseInt(c.req.header('host')?.split(':')[1] ?? '0'),
       uptime: Math.floor((Date.now() - startTime) / 1000),
       ...getHomeProvenance(runtime),
