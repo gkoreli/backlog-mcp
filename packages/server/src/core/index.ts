@@ -120,3 +120,24 @@ export type {
   SubstrateDefinitionIssueCode,
   SubstrateWriteValidationResult,
 } from './substrates/index.js';
+export {
+  DocsNativeMigrationError,
+  migrateDocsNative,
+  planDocsNativeMigration,
+} from './migrate-docs-native.js';
+export type {
+  DocsNativeMigrationAction,
+  DocsNativeMigrationCategory,
+  DocsNativeMigrationConfig,
+  DocsNativeMigrationConfigSource,
+  DocsNativeMigrationDirectoryEntry,
+  DocsNativeMigrationDiscard,
+  DocsNativeMigrationFileSystem,
+  DocsNativeMigrationIssue,
+  DocsNativeMigrationIssueCode,
+  DocsNativeMigrationMove,
+  DocsNativeMigrationPlan,
+  DocsNativeMigrationReport,
+  MigrateDocsNativeParams,
+  PlanDocsNativeMigrationParams,
+} from './migrate-docs-native.types.js';
