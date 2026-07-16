@@ -8,6 +8,7 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0119. Agent Substrate — Durable Identity, Derived Work Correlation](./0119-agent-substrate-and-derived-correlation.md) **[Proposed; design-only]** - Define Agent as a project-authored ADR 0113 substrate containing durable identity only; derive task/thread track record from explicit operation-journal attribution and Git trailers, with Aime remaining an external client and no orchestration, stored aggregates, scoring, or new MCP tool. - 2026-07-16
 - [0116. Search & RAG Uplift — Measure the Corpus, Then Improve the Pressure Point](./0116-search-and-rag-uplift.md) **[Proposed]** - Keep search local and simple: measure real queries, make BM25 trustworthy first, and change fusion/model/chunking/reranking only when the checked-in corpus proves the pressure point. - 2026-07-16
 - [0115. Memory Experience Uplift — Provenance-Bearing Recall Stubs, Golden Recall Suite, Honest Clocks](./0115-memory-experience-uplift.md) **[Proposed]** - Make recall stubs trustworthy without hydration: add provenance (title, age, usage, correction lineage), a golden recall test suite, and honest clocks. - 2026-07-16
 - [0114. Memory vs Context — Tool-Surface Disposition](./0114-memory-context-surface-disposition.md) **[Proposed]** - Fold backlog_context into the memory verbs: retire the tool but keep hydration by giving backlog_get a context option returning the focal entity plus neighbor stubs — one retrieval language. - 2026-07-16
