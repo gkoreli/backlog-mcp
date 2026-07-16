@@ -1,5 +1,10 @@
 import { join } from 'node:path';
-import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
+import {
+  nextEntityId,
+  type Entity,
+  type Status,
+  type EntityType,
+} from '@backlog-mcp/shared';
 import { FilesystemStorage } from './filesystem-storage.js';
 import type {
   DocumentStorageAdapter,
@@ -71,6 +76,7 @@ export class BacklogService implements IBacklogService {
   private readonly storage: StorageAdapter;
   private readonly search: OramaSearchService;
   private readonly resourceManager: BacklogServiceDependencies['resourceManager'];
+  private readonly allocateEntityId: BacklogServiceDependencies['allocateId'];
   private searchReady = false;
   private pendingOps: PendingSearchOperation[] = [];
 
@@ -78,6 +84,7 @@ export class BacklogService implements IBacklogService {
     this.storage = dependencies.storage;
     this.search = dependencies.search;
     this.resourceManager = dependencies.resourceManager;
+    this.allocateEntityId = dependencies.allocateId;
   }
 
   static getInstance(): BacklogService {
@@ -287,6 +294,13 @@ export class BacklogService implements IBacklogService {
 
   async getMaxId(type?: EntityType): Promise<number> {
     return this.storage.getMaxId(type);
+  }
+
+  /** Allocate an id through this runtime's storage identity policy. */
+  async allocateId(type: EntityType): Promise<string> {
+    const currentMaxId = await this.getMaxId(type);
+    return this.allocateEntityId?.(type, currentMaxId)
+      ?? nextEntityId(currentMaxId, type);
   }
 
   flush(): void {

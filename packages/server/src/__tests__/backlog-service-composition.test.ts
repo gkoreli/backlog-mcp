@@ -156,6 +156,22 @@ describe('BacklogService composition', function describeComposition() {
     expect(await service.list()).toEqual([entity]);
   });
 
+  it('defaults allocation to the legacy formatter when no runtime allocator is injected', async function defaultsAllocation() {
+    const entity = createEntity({
+      id: 'TASK-0004',
+      title: 'Existing task',
+    });
+    const documentsDir = uniquePath('allocation-docs');
+    mkdirSync(documentsDir, { recursive: true });
+    const service = new BacklogService({
+      storage: new MemoryStorage([entity]),
+      search: createSearch('allocation-cache'),
+      resourceManager: new ResourceManager(documentsDir),
+    });
+
+    await expect(service.allocateId('task')).resolves.toBe('TASK-0005');
+  });
+
   it('reconciles added, removed, and updated entities and resources together', async function reconcilesFullHome() {
     const cachePath = join(uniquePath('reconcile-cache'), 'search-index.json');
     const staleSearch = new OramaSearchService({

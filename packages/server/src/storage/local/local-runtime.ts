@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { MemoryComposer } from '@backlog-mcp/memory';
+import type { EntityType } from '@backlog-mcp/shared';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
 import { createDefaultComposer } from '../../memory/bootstrap.js';
 import {
@@ -19,6 +20,7 @@ import type {
 } from './docs-tree-watcher.contract.js';
 import type { LocalRuntimeDependencies } from './local-runtime.types.js';
 import { ParcelDocsTreeWatcher } from './parcel-docs-tree-watcher.js';
+import { nextStorageDocumentId } from '../storage-identity.js';
 
 const SEARCH_HALF_LIFE_DAYS = 30;
 
@@ -160,10 +162,14 @@ export function createLocalRuntime(
   const storage = new DocsNativeFilesystemStorage(home, catalog);
   const search = deps.createSearch?.(home) ?? createSearch(home);
   const resourceManager = new ResourceManager(home.documentsDir);
+  function allocateId(type: EntityType, currentMaxId: number): string {
+    return nextStorageDocumentId(catalog, type, currentMaxId);
+  }
   const service = new BacklogService({
     storage,
     search,
     resourceManager,
+    allocateId,
   });
   const operationLogger = createOperationLogger(
     join(home.controlDir, 'state', 'operations.jsonl'),

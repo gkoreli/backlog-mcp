@@ -111,6 +111,17 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     expect(memo!.content).toContain('runtime-clean');
   });
 
+  it('R1: memory ids use the service-owned allocator when available', async () => {
+    service.allocateId = async function allocateMemoryId(type) {
+      expect(type).toBe(EntityType.Memory);
+      return 'MEMO-00009';
+    };
+
+    await store.store(entry({ id: 'x', content: 'Claim-shaped memory id' }));
+
+    expect(await service.get('MEMO-00009')).toBeDefined();
+  });
+
   // ── R2: Ranked ─────────────────────────────────────────────────────
 
   it('R2: recall ranks by relevance through the production pipeline', async () => {

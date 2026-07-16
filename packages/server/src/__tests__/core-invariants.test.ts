@@ -231,6 +231,14 @@ describe('core/createItem', () => {
     expect((await createItem(svc, { title: 'E', type: 'epic' as any }, testCtx())).id).toBe('EPIC-0001');
   });
 
+  it('uses a service-owned allocator when available', async () => {
+    const svc = mockService();
+    svc.allocateId = vi.fn(async () => 'TASK-00009');
+
+    expect((await createItem(svc, { title: 'Claim-shaped' }, testCtx())).id).toBe('TASK-00009');
+    expect(svc.getMaxId).not.toHaveBeenCalled();
+  });
+
   it('sets parent_id when provided', async () => {
     const svc = mockService();
     await createItem(svc, { title: 'Child', parent_id: 'EPIC-0001' }, testCtx());

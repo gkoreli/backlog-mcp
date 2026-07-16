@@ -12,7 +12,9 @@ import type { Entity } from '@backlog-mcp/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { createBacklogHome } from '../core/backlog-home.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';
+import { createItem } from '../core/create.js';
 import { createEntity } from '../storage/entity-factory.js';
+import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
 import type {
   DocsTreeReconcileCallback,
   DocsTreeWatcher,
@@ -20,6 +22,10 @@ import type {
   DocsTreeWatcherSubscription,
 } from '../storage/local/docs-tree-watcher.contract.js';
 import { createLocalRuntime } from '../storage/local/local-runtime.js';
+import type {
+  SubstrateStorageCatalog,
+  SubstrateStorageClaim,
+} from '../storage/substrate-storage-catalog.contract.js';
 
 class FakeDocsTreeWatcher implements DocsTreeWatcher {
   private onReconcile: DocsTreeReconcileCallback | undefined;
@@ -80,6 +86,50 @@ function writeEntity(
 }
 
 describe('LocalRuntime', function describeLocalRuntime() {
+  it('mints and writes ids from the runtime storage claim', async function createsClaimShapedId() {
+    const home = createHome('claim-allocation');
+    const builtinCatalog = new BuiltinSubstrateStorageCatalog();
+    const taskClaim: Readonly<SubstrateStorageClaim> = {
+      type: 'task',
+      folder: 'tasks',
+      identity: {
+        strategy: 'prefixed-number',
+        prefix: 'TASK',
+        minimumDigits: 4,
+        displayTemplate: 'TASK-0{key}',
+      },
+    };
+    const catalog: SubstrateStorageCatalog = {
+      getStorageClaim(type): Readonly<SubstrateStorageClaim> | undefined {
+        return type === 'task'
+          ? taskClaim
+          : builtinCatalog.getStorageClaim(type);
+      },
+    };
+    const runtime = createLocalRuntime(home, {
+      catalog,
+      watcher: new FakeDocsTreeWatcher(),
+      createSearch: createBm25Search,
+    });
+
+    const result = await createItem(
+      runtime.service,
+      { title: 'Claim-shaped task' },
+      {
+        actor: { type: 'agent', name: 'quartz' },
+        operationLog: runtime.operationLogger,
+      },
+    );
+
+    expect(result.id).toBe('TASK-00001');
+    expect(runtime.service.getSync(result.id)?.title).toBe(
+      'Claim-shaped task',
+    );
+    expect(existsSync(
+      join(home.documentsDir, 'tasks', 'TASK-00001.md'),
+    )).toBe(true);
+  });
+
   it('owns docs, search, resources, memory, and operation state for one home', async function ownsPerHomeGraph() {
     const home = createHome('owned-graph');
     const watcher = new FakeDocsTreeWatcher();
