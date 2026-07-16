@@ -258,6 +258,24 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     expect(storage.get('ADR 0003')?.content).toContain('Edited body.');
   });
 
+  it('does not mistake body whitespace for frontmatter adoption', function scopesAdoptionToFrontmatter() {
+    const { storage } = createStorage('body-whitespace-is-not-adoption');
+    const task = buildEntity({
+      id: 'TASK-0001',
+      title: 'Whitespace task',
+      content: '\nLeading body\n\nTrailing body  \n',
+    });
+    storage.add(task);
+
+    const stored = storage.get('TASK-0001');
+    if (stored === undefined) throw new Error('expected stored task');
+
+    expect(function saveCanonicalFrontmatter() {
+      storage.save({ ...stored, title: 'Updated task' });
+    }).not.toThrow();
+    expect(storage.get('TASK-0001')?.title).toBe('Updated task');
+  });
+
   it('quarantines duplicate semantic identities after substrate claim', function quarantinesDuplicateClaims() {
     const { home, storage } = createStorage('duplicate-claim');
     writeRawDocument(

@@ -107,13 +107,15 @@ function serializeEntity(entity: AnyEntity): string {
   return matter.stringify(typeof content === 'string' ? content : '', frontmatter);
 }
 
-function isCanonicalDocument(
+function hasCanonicalFrontmatter(
   document: StoredEntityDocument,
   registry: ProjectSubstrateRegistry,
 ): boolean {
   const validation = registry.validateWrite(document.entity);
-  return validation.ok
-    && serializeEntity(validation.entity) === document.markdown;
+  if (!validation.ok) return false;
+
+  const canonical = serializeEntity(validation.entity);
+  return matter(document.markdown, {}).matter === matter(canonical, {}).matter;
 }
 
 function normalizeWritableSourcePath(sourcePath: string): string {
@@ -407,7 +409,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     if (
       existing !== undefined
       && options?.canonicalAdoption !== true
-      && !isCanonicalDocument(existing, this.registry)
+      && !hasCanonicalFrontmatter(existing, this.registry)
     ) {
       throw new Error(
         `Canonical adoption requires separate explicit consent: ${entity.id}`,
