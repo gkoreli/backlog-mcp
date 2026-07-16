@@ -21,6 +21,8 @@ export function registerWriteResourceTool(server: McpServer, service: IBacklogSe
  * The \`old_str\` parameter should match EXACTLY one or more consecutive lines from the original body. Be mindful of whitespaces!
  * If the \`old_str\` parameter is not unique in the body, the replacement will not be performed. Include enough context to make it unique.
  * The \`new_str\` parameter should contain the edited lines that should replace the \`old_str\``,
+      // Claude Code owns MCP deferral; this strict lane is not exempted into
+      // the always-loaded baseline.
       _meta: {
         'anthropic/alwaysLoad': false,
       },
