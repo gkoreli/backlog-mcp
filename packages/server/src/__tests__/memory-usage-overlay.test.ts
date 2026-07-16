@@ -180,6 +180,13 @@ describe('MemoryUsageOverlay', function describeMemoryUsageOverlay() {
     });
 
     const lines = overlay.readLines();
+    lines.push(JSON.stringify({
+      ts: NOW_ISO,
+      type: 'usage_summary',
+      id: 'MEMO-0001',
+      memory_id: 'MEMO-0001',
+      usage_count: 1,
+    }));
     expect(lines.slice(0, 2)).toEqual([recallLine, expandLine]);
     expect(demandCounts(lines, { windowDays: 1, now: NOW }).get('MEMO-0001'))
       .toBe(1);

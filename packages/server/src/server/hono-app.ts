@@ -367,7 +367,10 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
     const results = await runtime.service.list({ status, query: q || undefined, limit });
     return c.json(results.map(function addProvenance(result) {
-      return withEntityHomeProvenance(runtime, result);
+      return withEntityHomeProvenance(
+        runtime,
+        withMintedMemoryUsage(runtime, result),
+      );
     }));
   });
 

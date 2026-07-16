@@ -266,6 +266,12 @@ describe('createApp request runtimes', function describeRequestRuntimes() {
         [BACKLOG_PROJECT_ROOT_HEADER]: '/workspace/project',
       },
     });
+    const listResponse = await app.request('/tasks?filter=all', {
+      headers: {
+        [BACKLOG_HOME_HEADER]: 'project',
+        [BACKLOG_PROJECT_ROOT_HEADER]: '/workspace/project',
+      },
+    });
 
     expect(await response.json()).toMatchObject({
       id: memory.id,
@@ -273,6 +279,13 @@ describe('createApp request runtimes', function describeRequestRuntimes() {
       last_used_at: '2026-07-16T12:00:00.000Z',
       raw: '# Project memory',
     });
+    expect(await listResponse.json()).toEqual([
+      expect.objectContaining({
+        id: memory.id,
+        usage_count: 3,
+        last_used_at: '2026-07-16T12:00:00.000Z',
+      }),
+    ]);
     expect(memory).toMatchObject({
       usage_count: 89,
       last_used_at: '2026-01-01T00:00:00.000Z',

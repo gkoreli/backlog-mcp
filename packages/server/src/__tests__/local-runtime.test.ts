@@ -2,10 +2,12 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import matter from 'gray-matter';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { Entity, Memory } from '@backlog-mcp/shared';
@@ -13,6 +15,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createBacklogHome } from '../core/backlog-home.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';
 import { createEntity as createEntityCore } from '../core/create.js';
+import { recall } from '../core/recall.js';
 import { updateEntity as updateEntityCore } from '../core/update.js';
 import { buildEntity } from '../storage/entity-factory.js';
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
@@ -101,6 +104,40 @@ function writeEntity(
   mkdirSync(dirname(absolutePath), { recursive: true });
   const { content, ...frontmatter } = entity;
   writeFileSync(absolutePath, matter.stringify(content ?? '', frontmatter));
+}
+
+function snapshotFiles(root: string): Map<string, string> {
+  const snapshot = new Map<string, string>();
+  function walk(directory: string): void {
+    for (const name of readdirSync(directory).sort()) {
+      const path = join(directory, name);
+      if (statSync(path).isDirectory()) {
+        walk(path);
+        continue;
+      }
+      const relativePath = relative(root, path).split(sep).join('/');
+      snapshot.set(relativePath, readFileSync(path).toString('base64'));
+    }
+  }
+  if (existsSync(root)) walk(root);
+  return snapshot;
+}
+
+function changedPaths(
+  before: ReadonlyMap<string, string>,
+  after: ReadonlyMap<string, string>,
+): string[] {
+  return [...new Set([...before.keys(), ...after.keys()])]
+    .filter(function changed(path) {
+      return before.get(path) !== after.get(path);
+    })
+    .sort();
+}
+
+function ignoredByRecommendedControlLayout(path: string): boolean {
+  return path === '.backlog-mcp/config.local.json'
+    || path.startsWith('.backlog-mcp/cache/')
+    || path.startsWith('.backlog-mcp/state/');
 }
 
 describe('LocalRuntime', function describeLocalRuntime() {
@@ -379,6 +416,54 @@ describe('LocalRuntime', function describeLocalRuntime() {
       join(home.controlDir, 'state', 'memory-usage.jsonl'),
       'utf-8',
     )).toContain('"type":"expand"');
+
+    await runtime.stop();
+  });
+
+  it('keeps project Git status clean after recall and expand under the recommended ignore layout', async function keepsProjectGitClean() {
+    const home = createHome('git-clean-read-telemetry');
+    const runtime = createLocalRuntime(home, {
+      watcher: new FakeDocsTreeWatcher(),
+      createSearch: createBm25Search,
+    });
+    await runtime.start();
+    writeFileSync(
+      join(home.controlDir, '.gitignore'),
+      'config.local.json\ncache/\nstate/\n',
+    );
+    const stored = await runtime.memoryComposer.store({
+      id: 'transient',
+      title: 'Git-clean project memory',
+      content: 'Read telemetry must remain ignored project state',
+      layer: 'semantic',
+      source: 'test',
+      createdAt: Date.now(),
+    });
+    const markdownBeforeRead = await runtime.service.getMarkdown(stored.id);
+    const before = snapshotFiles(home.root);
+
+    const result = await recall(
+      { query: 'ignored project state' },
+      { memoryComposer: runtime.memoryComposer },
+    );
+    runtime.usageTracker.recordRecall(
+      result.query,
+      result.items.map(function itemId(item) {
+        return item.id;
+      }),
+    );
+    await runtime.usageTracker.recordExpand(stored.id);
+
+    const changed = changedPaths(before, snapshotFiles(home.root));
+    expect(changed).toEqual([
+      '.backlog-mcp/state/memory-usage.jsonl',
+    ]);
+    expect(changed.filter(function unignored(path) {
+      return !ignoredByRecommendedControlLayout(path);
+    })).toEqual([]);
+    expect(await runtime.service.getMarkdown(stored.id)).toBe(
+      markdownBeforeRead,
+    );
 
     await runtime.stop();
   });

@@ -43,6 +43,25 @@ describe('usageSeries', () => {
     expect(s).toHaveLength(5);
   });
 
+  it('ignores usage summary checkpoints even if they carry event-shaped ids', () => {
+    const lines = [
+      JSON.stringify({ ts: iso(0), type: 'expand', id: 'MEMO-0001' }),
+      JSON.stringify({
+        ts: iso(0),
+        type: 'usage_summary',
+        id: 'MEMO-0001',
+        memory_id: 'MEMO-0001',
+        usage_count: 8,
+      }),
+    ];
+
+    expect(usageSeries(
+      lines,
+      'MEMO-0001',
+      { windowDays: 1, now: NOW },
+    )).toEqual([1]);
+  });
+
   it('returns an all-zero array of windowDays length when nothing matches', () => {
     const s = usageSeries([], 'MEMO-0001', { windowDays: 7, now: NOW });
     expect(s).toEqual([0, 0, 0, 0, 0, 0, 0]);

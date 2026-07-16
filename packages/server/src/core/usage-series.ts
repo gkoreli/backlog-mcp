@@ -49,6 +49,7 @@ export function usageSeries(
     } catch {
       continue; // skip malformed lines
     }
+    if (event.type === 'usage_summary') continue;
     if (!touches(event, id)) continue;
     const ts = event.ts ? Date.parse(event.ts) : NaN;
     if (Number.isNaN(ts)) continue;
