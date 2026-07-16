@@ -1,10 +1,16 @@
 # backlog-mcp
 
-A task backlog MCP server for LLM agents. Works with any MCP client — Claude, Kiro, Cursor, Codex, etc.
+Context & memory engineering for AI agents. A markdown-backed storage engine your agents write to and humans read — works with any MCP client (Claude, Cursor, Codex, Kiro, …).
 
-Agents create tasks, track progress, attach artifacts, and search across everything. Humans get a real-time web viewer to see what agents are doing.
+**Your backlog is your agent's memory.** Agents orient at session start (`wakeup`), recall past decisions, remember what's durable, and expand any entity's neighborhood on demand — alongside the working backlog of tasks, epics, artifacts, and more. Every item is a plain markdown file with YAML frontmatter, so a human can read, edit, and diff everything with no tool installed. A real-time web viewer shows what agents are doing.
 
-Runs locally out of the box. Can also be self-hosted on Cloudflare Workers + D1 for a free, always-on remote backlog accessible from any device or MCP client.
+Three ideas do the work:
+
+- **Substrates** — one declaration per type drives its schema, validation, storage, UI, and agent hints. Most durable knowledge in a project is expressible this way (tasks, memories, crons… and, on the roadmap, ADRs and requirements).
+- **Progressive disclosure** — agent context expands like a filesystem: names first, shape on demand, full content only when opened. A dense ~600-token wakeup briefing → memory stubs → `backlog_get` hydration.
+- **Docs-native, local-first** — plain markdown on your disk, in your git. Your files, local hybrid (BM25 + vector) search and embeddings — no cloud required.
+
+Runs locally out of the box. A constrained Cloudflare Workers + D1 mode also exists (see [Self-Hosting](#self-hosting-on-cloudflare-optional)), but local-first *is* the architecture — the remote mode is retained, not evolved.
 
 > **Quick start**: Tell your LLM: `Add backlog-mcp to .mcp.json and use it to track tasks`
 
@@ -40,6 +46,8 @@ Add to your MCP config (`.mcp.json` or your MCP client config):
 ```
 
 ## Self-Hosting on Cloudflare (Optional)
+
+> **Constrained mode.** The Workers + D1 build is a satellite, not the growth path: it lacks local embeddings, hybrid search/RAG parity, and agentic memory. Local-first is the primary architecture; use this only if you specifically need an always-on remote endpoint.
 
 Host your own always-on remote backlog for free using Cloudflare Workers + D1.
 Accessible from any device or MCP client — no local server process required.
@@ -110,9 +118,9 @@ Features:
 
 The viewer UI is built with [Nisli](https://github.com/gkoreli/nisli) (`@nisli/core`) and styled with **Tsa** (ცა, Georgian for "sky") — our design system that pairs with Nisli.
 
-## Entity Types
+## Substrates (Entity Types)
 
-5 entity types, all stored as markdown files with YAML frontmatter:
+7 built-in substrate types, each declared once and stored as markdown files with YAML frontmatter. New types cost one declaration — the catalog is open-ended by design.
 
 | Type | Prefix | Purpose |
 |------|--------|---------|
@@ -121,6 +129,8 @@ The viewer UI is built with [Nisli](https://github.com/gkoreli/nisli) (`@nisli/c
 | Folder | `FLDR-0001` | Organizational containers |
 | Artifact | `ARTF-0001` | Attached outputs (research, designs, logs) |
 | Milestone | `MLST-0001` | Time-bound targets with due dates |
+| Cron | `CRON-0001` | Scheduled-intake descriptors (executed by an external scheduler) |
+| Memory | `MEMO-0001` | Durable agent memories — recalled, decayed, superseded, ranked by usage |
 
 **Status values:** `open`, `in_progress`, `blocked`, `done`, `cancelled`
 
@@ -144,6 +154,19 @@ The authentication flow has an issue where...
 ```
 
 ## MCP Tools
+
+### Memory (the core loop)
+
+Four verbs, zero ceremony — orient, ask, keep, correct. Memories are first-class entities (`MEMO-` ids), hidden from plain `list`/`search` by design; `recall` is their dedicated read surface.
+
+```
+backlog_wakeup                            # Orient: one dense briefing (active work, top knowledge)
+backlog_recall query="how do we release?" # Ask: hybrid-ranked recall, returns stubs to expand
+backlog_remember content="..." layer="procedural"   # Keep: one durable, atomic fact
+backlog_forget id="MEMO-0042"             # Correct: soft-expire (stays auditable in the viewer)
+```
+
+Retrieval is one language: **orient** (`wakeup`) → **ask** (`recall` / `search`) → **expand** (`backlog_get id=… context=true`).
 
 ### backlog_list
 
@@ -298,7 +321,7 @@ pnpm dev            # Vite dev server (SPA + API on one port, HMR)
 
 ```
 packages/
-├── server/       # MCP server, search, context hydration, storage
+├── server/       # MCP server, substrates, memory, hybrid search, storage
 ├── viewer/       # Web UI built with @nisli/core
 └── shared/       # Entity types, ID utilities
 docs/
