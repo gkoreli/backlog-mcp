@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { EntityType, parseEntityNum, type Entity } from '@backlog-mcp/shared';
@@ -76,7 +77,11 @@ vi.mock('@huggingface/transformers', () => {
   };
 });
 
-const CACHE_PATH = join(tmpdir(), 'backlog-mcp-search-relevance-v1.json');
+const CORPUS_HASH = createHash('sha256')
+  .update(JSON.stringify(SEARCH_RELEVANCE_ENTITIES))
+  .digest('hex')
+  .slice(0, 12);
+const CACHE_PATH = join(tmpdir(), `backlog-mcp-search-relevance-v1-${CORPUS_HASH}.json`);
 const EXPECTED_CLASSES: RelevanceQueryClass[] = [
   'navigation',
   'exact-title',
@@ -95,7 +100,7 @@ const EXPECTED_CLASSES: RelevanceQueryClass[] = [
  */
 const CONTROL_SCORES = {
   overall: {
-    ndcgAt10: 0.9297939474226957,
+    ndcgAt10: 0.931142028796415,
     reciprocalRank: 0.9583333333333333,
     successAt1: 0.95,
     recallAt20: 0.9625,
@@ -103,8 +108,8 @@ const CONTROL_SCORES = {
   },
   byClass: {
     navigation: { ndcgAt10: 0.9917319412712956, reciprocalRank: 1, recallAt20: 1 },
-    'exact-title': { ndcgAt10: 0.9580651337563856, reciprocalRank: 1, recallAt20: 1 },
-    lexical: { ndcgAt10: 0.9799150609510381, reciprocalRank: 1, recallAt20: 1 },
+    'exact-title': { ndcgAt10: 0.9694005353245091, reciprocalRank: 1, recallAt20: 1 },
+    lexical: { ndcgAt10: 0.9793643103726692, reciprocalRank: 1, recallAt20: 1 },
     compound: { ndcgAt10: 0.9091071852180448, reciprocalRank: 0.8666666666666666, recallAt20: 1 },
     filtered: { ndcgAt10: 0.8029638126034537, reciprocalRank: 1, recallAt20: 0.9 },
     aboutness: { ndcgAt10: 0.9965684455813479, reciprocalRank: 1, recallAt20: 1 },

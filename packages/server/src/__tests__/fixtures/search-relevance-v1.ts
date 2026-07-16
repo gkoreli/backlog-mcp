@@ -478,12 +478,12 @@ const RAW_SEARCH_RELEVANCE_QUERIES: DraftJudgedRelevanceQuery[] = [
   { id: 'nav-05', class: 'navigation', surface: 'search', query: 'Search and RAG uplift', judgments: judgments(['EPIC-0001', 3], ['TASK-0002', 1]) },
 
   { id: 'title-01', class: 'exact-title', surface: 'search', query: 'Build judged relevance fixture', judgments: judgments(['TASK-0002', 3], ['TASK-0028', 1]) },
-  { id: 'title-02', class: 'exact-title', surface: 'search', query: 'Write atomic search snapshots', judgments: judgments(['TASK-0005', 3], ['TASK-0026', 2]) },
+  { id: 'title-02', class: 'exact-title', surface: 'search', query: 'Write atomic search snapshots', judgments: judgments(['TASK-0005', 3], ['TASK-0026', 1]) },
   { id: 'title-03', class: 'exact-title', surface: 'search', query: 'Show per-home search readiness', judgments: judgments(['TASK-0010', 3], ['TASK-0004', 1]) },
   { id: 'title-04', class: 'exact-title', surface: 'search', query: 'Apply bounded recall usage multiplier', judgments: judgments(['TASK-0017', 3], ['TASK-0018', 1]) },
   { id: 'title-05', class: 'exact-title', surface: 'search', query: 'Keep search storage decoupled', judgments: judgments(['TASK-0016', 3], ['TASK-0005', 1]) },
 
-  { id: 'lex-01', class: 'lexical', surface: 'search', query: 'local embedding retry', judgments: judgments(['TASK-0004', 3], ['TASK-0019', 2], ['TASK-0012', 1]) },
+  { id: 'lex-01', class: 'lexical', surface: 'search', query: 'local embedding retry', judgments: judgments(['TASK-0004', 3], ['TASK-0019', 1], ['TASK-0012', 1]) },
   { id: 'lex-02', class: 'lexical', surface: 'search', query: 'resource frontmatter normalization', judgments: judgments(['TASK-0006', 3], ['TASK-0020', 1]) },
   { id: 'lex-03', class: 'lexical', surface: 'search', query: 'first search bootstrap latency', judgments: judgments(['TASK-0012', 3], ['TASK-0004', 1]) },
   { id: 'lex-04', class: 'lexical', surface: 'search', query: 'temporary file rename snapshot', judgments: judgments(['TASK-0005', 3], ['TASK-0026', 2]) },
@@ -517,7 +517,7 @@ const RAW_SEARCH_RELEVANCE_QUERIES: DraftJudgedRelevanceQuery[] = [
   { id: 'recall-02', class: 'memory-recall', surface: 'recall', query: 'recall saturation protocol', options: { layers: ['procedural'], tags: ['recall-stress'], limit: 20 }, judgments: stressJudgments(), expectedFailure: 'post-filter-overfetch' },
   { id: 'recall-03', class: 'memory-recall', surface: 'recall', query: 'how do we publish a release', options: { layers: ['procedural'], tags: ['release'], limit: 20 }, judgments: judgments(['MEMO-0006', 3]) },
   { id: 'recall-04', class: 'memory-recall', surface: 'recall', query: 'docs home watcher reconciliation', options: { context: 'FLDR-0001', tags: ['watcher'], limit: 20 }, judgments: judgments(['MEMO-0005', 3], ['MEMO-0009', 0]) },
-  { id: 'recall-05', class: 'memory-recall', surface: 'recall', query: 'how does recall usage ranking work', options: { tags: ['ranking'], limit: 20 }, judgments: judgments(['MEMO-0003', 3], ['MEMO-0010', 2]) },
+  { id: 'recall-05', class: 'memory-recall', surface: 'recall', query: 'how does recall usage ranking work', options: { tags: ['ranking'], limit: 20 }, judgments: judgments(['MEMO-0003', 3], ['MEMO-0010', 1]) },
 ];
 
 const CLASS_RATIONALE: Record<RelevanceQueryClass, string> = {
@@ -569,14 +569,14 @@ const CLASS_PROVENANCE: Record<RelevanceQueryClass, string[]> = {
 };
 
 /**
- * Initial judgments are deliberately attributable. Beryl's domain review is
- * required before changing the assessor string or treating these qrels as a
- * production MiniLM benchmark rather than the deterministic CI control.
+ * Initial judgments are deliberately attributable and carry Beryl's
+ * independent domain review. They remain the deterministic CI control, not a
+ * production MiniLM quality baseline.
  */
 export const SEARCH_RELEVANCE_QUERIES: JudgedRelevanceQuery[] =
   RAW_SEARCH_RELEVANCE_QUERIES.map(query => ({
     ...query,
-    assessor: 'chert-initial-pending-beryl-review',
+    assessor: 'chert-initial; reviewed:beryl 2026-07-16',
     rationale: `${CLASS_RATIONALE[query.class]} Expected judgments: ${query.judgments.map(judgment => `${judgment.id}=grade${judgment.grade}`).join(', ')}.`,
     provenance: CLASS_PROVENANCE[query.class],
   }));

@@ -98,7 +98,7 @@ export function recallAt(
       .map(judgment => judgment.id),
   );
   if (relevant.size === 0) return 0;
-  const retrieved = new Set(rankedIds.slice(0, cutoff).filter(id => relevant.has(id)));
+  const retrieved = new Set(uniqueRankedIds(rankedIds, cutoff).filter(id => relevant.has(id)));
   return retrieved.size / relevant.size;
 }
 

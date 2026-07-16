@@ -43,6 +43,7 @@ describe('ranked retrieval evaluation', () => {
 
   it('deduplicates retrieved ids when computing recall', () => {
     expect(recallAt(['A', 'A', 'B'], JUDGMENTS, 20)).toBe(1);
+    expect(recallAt(['A', 'A', 'B'], JUDGMENTS, 2)).toBe(1);
   });
 
   it('deduplicates ranked ids before computing nDCG', () => {
