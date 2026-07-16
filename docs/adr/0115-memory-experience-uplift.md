@@ -181,6 +181,13 @@ off raw service.list entities (pre-existing pattern, deepened by R-4).
 Fixing that seam is a precondition of 0112 Phase D — project-home wakeup
 would otherwise report uses:0.
 
+**Status update (2026-07-16, same thread): the exception is closed.**
+`toMemoryEntry` is exported from the store and wakeup's knowledge fold
+consumes minted `MemoryEntry`s (sorting alone stays on the raw entity's
+`updated_at` — ordering, not provenance). The store's malformed-date guard
+is thereby the single policy on every read surface, and the CLI wakeup
+text output now renders the R-4 provenance (age + uses).
+
 ## Non-goals
 
 - No new tools, no schema changes to the memory substrate — every signal

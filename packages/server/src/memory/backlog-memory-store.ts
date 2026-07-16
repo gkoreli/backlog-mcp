@@ -103,7 +103,7 @@ export class BacklogMemoryStore implements MemoryStore {
     }
 
     await service.add(memory as Entity);
-    return this.toMemoryEntry(memory as Memory);
+    return toMemoryEntry(memory as Memory);
   }
 
   /** Soft-expire a memory by id (no-op if missing, not a memory, or already expired). */
@@ -143,7 +143,7 @@ export class BacklogMemoryStore implements MemoryStore {
       // Bounded usage multiplier (ADR 0092.9 R-15): reorders, never hides.
       // Applied over the full filtered candidate set BEFORE truncation so
       // the multiplier has room to reorder (Mem0's widened-pool lesson).
-      results.push({ entry: this.toMemoryEntry(m), score: hit.score * usageFactor(m, now) });
+      results.push({ entry: toMemoryEntry(m), score: hit.score * usageFactor(m, now) });
     }
     results.sort((a, b) => b.score - a.score);
     return results.slice(0, limit);
@@ -192,31 +192,41 @@ export class BacklogMemoryStore implements MemoryStore {
     }).length;
   }
 
-  private toMemoryEntry(m: Memory): MemoryEntry {
-    return {
-      id: m.id,
-      title: m.title,
-      content: m.content,
-      layer: (m.layer ?? 'episodic') as MemoryLayer,
-      source: m.source ?? 'unknown',
-      ...(m.parent_id ? { context: m.parent_id } : {}),
-      ...(m.tags ? { tags: [...m.tags] } : {}),
-      // Corrupt created_at reads as "now" (age 0), matching wakeup's guard —
-      // never epoch, which would grant a broken record ~56 years of "age".
-      createdAt: Number.isNaN(Date.parse(m.created_at)) ? Date.now() : Date.parse(m.created_at),
-      ...(m.valid_until ? { expiresAt: Date.parse(m.valid_until) } : {}),
-      metadata: {
-        ...(m.entity_refs?.[0] ? { entity_id: m.entity_refs[0] } : {}),
-        ...(m.entity_refs ? { entity_refs: [...m.entity_refs] } : {}),
-        ...(m.supersedes ? { supersedes: m.supersedes } : {}),
-        ...(m.state_key ? { state_key: m.state_key } : {}),
-        ...(m.kind ? { memory_kind: m.kind } : {}),
-        ...(m.occurred_at ? { occurred_at: m.occurred_at } : {}),
-        ...(m.derived === true ? { derived: true } : {}),
-        usageCount: m.usage_count ?? 0,
-        ...(m.last_used_at ? { last_used_at: m.last_used_at } : {}),
-        ...(m.tags?.includes('completion') ? { kind: 'completion' } : m.tags?.includes('artifact') ? { kind: 'artifact' } : {}),
-      },
-    };
-  }
+}
+
+/**
+ * Mint a MemoryEntry from a memory entity — THE store boundary for
+ * provenance/usage signals (ADR 0115 R-5): every read surface (recall,
+ * wakeup) consumes memories through this function, never by parsing
+ * frontmatter fields directly. Containment here is what lets ADR 0112's
+ * project-home overlay swap the storage of usage state without touching
+ * stub shapes or usageFactor.
+ */
+export function toMemoryEntry(m: Memory): MemoryEntry {
+  return {
+    id: m.id,
+    title: m.title,
+    content: m.content,
+    layer: (m.layer ?? 'episodic') as MemoryLayer,
+    source: m.source ?? 'unknown',
+    ...(m.parent_id ? { context: m.parent_id } : {}),
+    ...(m.tags ? { tags: [...m.tags] } : {}),
+    // Corrupt created_at reads as "now" (age 0) — the single malformed-date
+    // policy for all read surfaces; never epoch, which would grant a broken
+    // record ~56 years of "age".
+    createdAt: Number.isNaN(Date.parse(m.created_at)) ? Date.now() : Date.parse(m.created_at),
+    ...(m.valid_until ? { expiresAt: Date.parse(m.valid_until) } : {}),
+    metadata: {
+      ...(m.entity_refs?.[0] ? { entity_id: m.entity_refs[0] } : {}),
+      ...(m.entity_refs ? { entity_refs: [...m.entity_refs] } : {}),
+      ...(m.supersedes ? { supersedes: m.supersedes } : {}),
+      ...(m.state_key ? { state_key: m.state_key } : {}),
+      ...(m.kind ? { memory_kind: m.kind } : {}),
+      ...(m.occurred_at ? { occurred_at: m.occurred_at } : {}),
+      ...(m.derived === true ? { derived: true } : {}),
+      usageCount: m.usage_count ?? 0,
+      ...(m.last_used_at ? { last_used_at: m.last_used_at } : {}),
+      ...(m.tags?.includes('completion') ? { kind: 'completion' } : m.tags?.includes('artifact') ? { kind: 'artifact' } : {}),
+    },
+  };
 }

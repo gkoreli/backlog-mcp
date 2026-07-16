@@ -44,7 +44,10 @@ function format(result: WakeupResult): string {
       `  ${e.id.padEnd(12)} ${(e.status ?? '-').padEnd(12)} ${e.title}`,
     )),
     ...section('knowledge', result.knowledge.map(k =>
-      `  ${k.id.padEnd(12)} [${k.layer}]${k.kind ? ` (${k.kind})` : ''} ${k.title}${k.source_ref ? ` ← ${k.source_ref}` : ''}`,
+      // Provenance inline (ADR 0115 R-4): age + usage let a human weigh a
+      // knowledge line's authority at a glance, same grammar as recall stubs.
+      `  ${k.id.padEnd(12)} [${k.layer}]${k.kind ? ` (${k.kind})` : ''} ${k.title}` +
+      ` · ${k.age_days}d${k.uses > 0 ? ` · used ${k.uses}×` : ' · never used'}${k.source_ref ? ` ← ${k.source_ref}` : ''}`,
     )),
     ...section('recent completions', result.recent.completions.map(c =>
       c.evidence_snippet
