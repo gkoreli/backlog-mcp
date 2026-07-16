@@ -1085,9 +1085,10 @@ ADR 0113.1 specializes the Requirement flagship: recall remains the memory corpu
 while Requirements use wakeup, search, and get. The definition contract retains a
 bounded recall projection for a future substrate whose declared semantics genuinely
 belong in recall; no current packaged document is injected into `MemoryComposer`.
-Phase C compiles the registry wakeup descriptor but does not consume it. ADR 0113.1
-owns the later wakeup consumer, including Requirement constraint ordering, caps, and
-truncation counts, so those semantics are not duplicated in the generic compiler.
+Phase C compiles the registry wakeup descriptor but does not consume it. The named
+Phase C.2 below sequences that consumer work under ADR 0113.1 ownership, so
+Requirement ordering, caps, and truncation semantics are not duplicated in the
+generic compiler.
 
 Requirement defaults intentionally appear in two roles, not two write authorities:
 JSON Schema `default` values document the lenient read expectation, while the capture
@@ -1188,9 +1189,8 @@ The important consequences are:
   strings while preserving `resource` as a document-kind sentinel.
 - Index declared searchable fields without rebuilding the Orama schema per substrate;
   flatten them into existing searchable text plus generic type/status facets.
-- Compile registry-declared wakeup sections. Defer the runtime wakeup consumer and
-  Requirement ordering/truncation behavior to ADR 0113.1, which owns that disclosure
-  surface.
+- Compile registry-declared wakeup sections. Sequence the runtime wakeup consumer and
+  Requirement ordering/truncation behavior in Phase C.2 under ADR 0113.1 ownership.
 - Expose runtime substrate documents to recall/search and role-grouped
   `get(context: true)` stubs per ADR 0114; do not create a Requirement-only retrieval
   stack.
@@ -1206,6 +1206,25 @@ Phase C keeps four search-boundary semantics explicit:
 4. Runtime type and status filters accept strings because project definitions supply
    their vocabulary. An unknown value therefore returns no matches. A substrate with
    no declared status indexes the empty facet and never fabricates Task's `open` state.
+
+### Phase C.2 — wakeup disclosure consumer
+
+This is a named follow-on phase, not an implicit part of the completed Phase C stack.
+Onyx owns the consumer swap because ADR 0113.1 owns the interim relation table and the
+Requirement constraint projection being replaced. Phase C.2 must:
+
+1. wire wakeup to consume registry-declared sections while keeping Requirement
+   constraint ordering, per-section caps, and truncation counts in transport-free core;
+2. reserve built-in wakeup-section names before project compilation, mirroring the
+   `STATIC_TOOL_NAMES` collision pattern, before the registry consumer replaces ADR
+   0113.1's interim edge table; and
+3. graduate ADR 0113.1's two cold-open proof cases—decisions in the briefing and
+   vision surfacing—from pending specifications to passing tests.
+
+The sequencing is deliberate: it keeps today's verified compiler/search stack honest
+without bolting a coordination-heavy consumer swap onto the Phase E merge train, while
+making the last mile to the Cold-Open Test an explicit roadmap thread rather than
+unnamed debt.
 
 ### Phase D — semantic intents and viewer registry
 
@@ -1247,8 +1266,8 @@ dependencies:
 - thread identity normalization;
 - substrate-specific workflow transitions;
 - relation target/cardinality validation;
-- compiled Requirement wakeup descriptor validation; consumer ordering and truncation
-  tests remain with ADR 0113.1;
+- compiled Requirement wakeup descriptor validation; Phase C.2 owns consumer ordering,
+  truncation, built-in name reservation, and cold-open proof tests;
 - generated intent names/descriptions and safe operation mapping;
 - viewer fallback for unknown runtime types without Task misclassification.
 
