@@ -214,7 +214,18 @@ describe('compileSubstrateDefinition', function describeCompiler() {
   });
 
   it('does not coerce values, remove unknown fields, or mutate candidates', () => {
-    const result = compile();
+    const schema = {
+      ...BASE_SCHEMA,
+      properties: {
+        ...BASE_SCHEMA.properties,
+        status: {
+          type: 'string',
+          enum: ['intake', 'done'],
+          default: 'intake',
+        },
+      },
+    };
+    const result = compile(createDefinition(schema));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const candidate = {
@@ -231,6 +242,14 @@ describe('compileSubstrateDefinition', function describeCompiler() {
       title: 'Candidate',
       unknown: true,
     });
+
+    const withoutDefault = {
+      id: '0001',
+      type: 'adr',
+      title: 'No mutation',
+    };
+    expect(result.substrate.validateWrite(withoutDefault)).toEqual({ ok: true });
+    expect(withoutDefault).not.toHaveProperty('status');
   });
 
   it('allows resolved local definitions and rejects remote, unresolved, and cyclic refs', () => {

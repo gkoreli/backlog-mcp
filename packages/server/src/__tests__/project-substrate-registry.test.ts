@@ -113,6 +113,37 @@ describe('ProjectSubstrateRegistry', function describeRegistry() {
     });
   });
 
+  it('enforces the packaged Requirement field contract and human-authority invariants', () => {
+    const requirement = PACKAGED_RESULT.registry.getSubstrate('requirement');
+    if (!requirement) throw new Error('missing packaged Requirement substrate');
+    const base = {
+      id: 'REQ-0001',
+      type: 'requirement',
+      title: 'Protect the vision',
+      content: 'Architecture work must preserve product intent.',
+      created_at: '2026-07-16T10:00:00.000Z',
+      updated_at: '2026-07-16T10:00:00.000Z',
+      status: 'building',
+    };
+
+    expect(requirement.validateWrite({
+      ...base,
+      compliance: 'unchecked',
+      domain: ['fleet', 'requirements'],
+    })).toEqual({ ok: true });
+    expect(requirement.validateWrite({
+      ...base,
+      compliance: 'at_risk',
+    }).ok).toBe(false);
+    expect(requirement.validateWrite({
+      ...base,
+      compliance: 'satisfied',
+      checked_at: '2026-07-16T11:00:00.000Z',
+      checked_by: 'goga',
+      violated_by: ['ADR-9999'],
+    }).ok).toBe(false);
+  });
+
   it('quarantines duplicate project types without a load-order winner', () => {
     const left = compileDefinition({
       sourcePath: 'substrates/decision-a.json',
