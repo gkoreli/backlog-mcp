@@ -193,8 +193,8 @@ function createRuntime(
       root: id === 'global' ? '/global' : id,
       documentsDir: id === 'global' ? '/global/docs' : `${id}/docs`,
       controlDir: id === 'global'
-        ? '/global/.backlog-mcp'
-        : `${id}/.backlog-mcp`,
+        ? '/global'
+        : `${id}/.backlog`,
     },
     service: createService(options),
     ...(options.composer === undefined

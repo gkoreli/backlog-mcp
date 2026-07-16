@@ -37,7 +37,7 @@ repo/
 │   ├── substrates/               ← optional declarations; ADR 0113 owns contents
 │   ├── NORTH-STAR.md
 │   └── NAMING.md
-└── .backlog-mcp/                 ← local control plane and derived state
+└── .backlog/                     ← local control plane and derived state
 ```
 
 The global backlog remains, but it becomes another home with the same shape:
@@ -45,7 +45,9 @@ The global backlog remains, but it becomes another home with the same shape:
 ```text
 ~/.backlog/
 ├── docs/                         ← global documents
-└── .backlog-mcp/                 ← global config/cache/operational state
+├── cache/                        ← disposable derived indexes
+├── state/                        ← local operational telemetry
+└── config.json                   ← optional global configuration
 ```
 
 This is not a sync feature. Project files are the backlog. No import copy, no
@@ -147,8 +149,8 @@ Defaults:
 
 | Home | Root | Committed/readable truth | Local control state |
 |---|---|---|---|
-| Global | `~/.backlog` | `~/.backlog/docs` | `~/.backlog/.backlog-mcp` |
-| Project | repository/workspace root | `<root>/docs` | `<root>/.backlog-mcp` |
+| Global | `~/.backlog` | `~/.backlog/docs` | `~/.backlog` (control collapses into the home root) |
+| Project | repository/workspace root | `<root>/docs` | `<root>/.backlog` |
 
 `documentsDir` is configuration, not architecture. A repository may select
 another open directory, including an existing documentation folder with a
@@ -205,20 +207,24 @@ are not followed by default.
 ### R-3 — Open documents are truth; hidden state is only control or derivation
 
 Project content belongs in the visible documentation tree. `.backlog`,
-`.backlog-mcp`, database blobs, and search indexes must never become the only
+database blobs, and search indexes must never become the only
 place where a project decision, requirement, prompt, task, or memory exists.
 
-The split is:
+The project split is:
 
 ```text
 docs/                         truth: commit, review, grep, edit, link
-.backlog-mcp/config.json      optional committed configuration
-.backlog-mcp/config.local.json local override
-.backlog-mcp/cache/           disposable derived indexes
-.backlog-mcp/state/           local operational telemetry
+.backlog/config.json          optional committed configuration
+.backlog/config.local.json    local override
+.backlog/cache/               disposable derived indexes
+.backlog/state/               local operational telemetry
 ```
 
-Recommended `.backlog-mcp/.gitignore`:
+The global home uses the same documents/control split without nesting the
+control plane: `~/.backlog/docs/` is truth while `config.json`, `cache/`, and
+`state/` live directly under `~/.backlog/`.
+
+Recommended project `.backlog/.gitignore`:
 
 ```gitignore
 config.local.json
@@ -232,7 +238,7 @@ document truth; deleting them loses telemetry, not project artifacts.
 
 Most importantly, a read must not dirty the repository. Project-mode recall
 usage, `last_used_at`, and usage counts live in the local usage overlay under
-`.backlog-mcp/state/`; they are not flushed back into committed memory
+`.backlog/state/`; they are not flushed back into committed memory
 frontmatter. This deliberately changes the current ADR 0092.9 implementation,
 which updates a memory entity after usage
 (`packages/server/src/memory/usage-tracker.ts:80-99`).
@@ -472,7 +478,8 @@ It:
    `~/.backlog/docs/`.
 2. Moves generic resources into the new document tree without rewriting their
    content.
-3. Moves local config/telemetry into `~/.backlog/.backlog-mcp/`.
+3. Moves local config/telemetry into `~/.backlog/` (`state/`, `cache/`, and
+   `config.json` inline beside `docs/`).
 4. Discards and rebuilds search caches.
 5. Emits a deterministic plan/report before mutation and refuses identity
    collisions.
@@ -598,8 +605,8 @@ Update:
 - per-home Orama cache paths and resource indexes;
 - memory store construction per runtime;
 - usage tracker to keep project read telemetry in
-  `.backlog-mcp/state/memory-usage.jsonl` without saving memory frontmatter;
-- operation log to `.backlog-mcp/state/operations.jsonl`;
+  the home's `state/memory-usage.jsonl` without saving memory frontmatter;
+- operation log to the home's `state/operations.jsonl`;
 - `search`, `recall`, and `wakeup` result types with `home` and `source_path`;
 - explicit `home: all` rank fusion and grouped wakeup output.
 

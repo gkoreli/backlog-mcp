@@ -18,7 +18,7 @@ function writeConfig(
 }
 
 describe('findConfigDir', () => {
-  it('finds .backlog-mcp in the start dir', () => {
+  it('finds .backlog in the start dir', () => {
     writeConfig('/config/start', 'config.json', '{}');
     expect(findConfigDir('/config/start')).toBe(`/config/start/${CONFIG_DIR}`);
   });

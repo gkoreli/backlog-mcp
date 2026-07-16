@@ -120,8 +120,8 @@ describe('/mcp explicit tool home selection', function describeMcpRouting() {
         root: id === 'global' ? '/global' : id,
         documentsDir: id === 'global' ? '/global/docs' : `${id}/docs`,
         controlDir: id === 'global'
-          ? '/global/.backlog-mcp'
-          : `${id}/.backlog-mcp`,
+          ? '/global'
+          : `${id}/.backlog`,
       };
     }
     function searchService(id: string): IBacklogService {
@@ -256,7 +256,7 @@ describe('/mcp explicit tool home selection', function describeMcpRouting() {
           id: 'global',
           root: '/global',
           documentsDir: '/global/docs',
-          controlDir: '/global/.backlog-mcp',
+          controlDir: '/global',
         },
         service: globalService,
       };

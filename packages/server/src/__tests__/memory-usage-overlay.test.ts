@@ -13,7 +13,7 @@ const NOW_ISO = '2026-07-16T12:00:00.000Z';
 const NOW = Date.parse(NOW_ISO);
 
 function controlDir(name: string): string {
-  return join(tmpdir(), 'memory-usage-overlay', name, '.backlog-mcp');
+  return join(tmpdir(), 'memory-usage-overlay', name, '.backlog');
 }
 
 function usageLogPath(projectControlDir: string): string {

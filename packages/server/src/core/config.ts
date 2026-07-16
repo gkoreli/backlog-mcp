@@ -1,4 +1,4 @@
-/** Per-repository caller defaults discovered from `.backlog-mcp/`. */
+/** Per-repository caller defaults discovered from `.backlog/`. */
 
 import { existsSync, readFileSync } from 'node:fs';
 import {
@@ -11,7 +11,7 @@ import {
 } from 'node:path';
 import { z } from 'zod';
 
-export const CONFIG_DIR = '.backlog-mcp';
+export const CONFIG_DIR = '.backlog';
 export const CONFIG_FILE = 'config.json';
 export const CONFIG_LOCAL_FILE = 'config.local.json';
 export const SCOPE_ENV_VAR = 'BACKLOG_SCOPE';
@@ -54,7 +54,7 @@ function isPathWithin(root: string, candidate: string): boolean {
 }
 
 /**
- * Find the nearest `.backlog-mcp/` without crossing the nearest VCS boundary
+ * Find the nearest `.backlog/` without crossing the nearest VCS boundary
  * or an optional inclusive `stopDir`.
  */
 export function findConfigDir(
@@ -92,7 +92,7 @@ function tryLoad(path: string, deps: ConfigFsDeps): RepoConfig | undefined {
 
 /**
  * Load the merged repo config (config.local.json overlaid on config.json).
- * Returns `{}` when no `.backlog-mcp/` exists or both files are absent/invalid.
+ * Returns `{}` when no `.backlog/` exists or both files are absent/invalid.
  */
 export function loadRepoConfig(
   cwd: string,

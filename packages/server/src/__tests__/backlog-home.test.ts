@@ -29,9 +29,9 @@ function writeRepoConfig(
   root: string,
   config: Record<string, unknown>,
 ): void {
-  mkdirSync(`${root}/.backlog-mcp`, { recursive: true });
+  mkdirSync(`${root}/.backlog`, { recursive: true });
   writeFileSync(
-    `${root}/.backlog-mcp/config.json`,
+    `${root}/.backlog/config.json`,
     JSON.stringify(config),
   );
 }
@@ -47,7 +47,7 @@ describe('backlog home construction', () => {
       id: 'global',
       root: '/users/quartz/.backlog',
       documentsDir: '/users/quartz/.backlog/docs',
-      controlDir: '/users/quartz/.backlog/.backlog-mcp',
+      controlDir: '/users/quartz/.backlog',
     });
   });
 
@@ -67,7 +67,7 @@ describe('backlog home construction', () => {
       id: '/physical/project',
       root: '/physical/project',
       documentsDir: '/physical/project/docs',
-      controlDir: '/physical/project/.backlog-mcp',
+      controlDir: '/physical/project/.backlog',
     });
   });
 
@@ -99,8 +99,8 @@ describe('isPathWithin', () => {
 
 describe('discoverProjectRoot', () => {
   it('returns the nearest config marker', () => {
-    mkdirSync('/discovery/config-root/.backlog-mcp', { recursive: true });
-    mkdirSync('/discovery/config-root/packages/app/.backlog-mcp', { recursive: true });
+    mkdirSync('/discovery/config-root/.backlog', { recursive: true });
+    mkdirSync('/discovery/config-root/packages/app/.backlog', { recursive: true });
     mkdirSync('/discovery/config-root/packages/app/src', { recursive: true });
 
     expect(discoverProjectRoot({
@@ -110,7 +110,7 @@ describe('discoverProjectRoot', () => {
   });
 
   it('does not cross the nearest VCS boundary for enclosing config', () => {
-    mkdirSync('/discovery/config-priority/.backlog-mcp', { recursive: true });
+    mkdirSync('/discovery/config-priority/.backlog', { recursive: true });
     mkdirSync('/discovery/config-priority/packages/app/.git', { recursive: true });
     mkdirSync('/discovery/config-priority/packages/app/src', { recursive: true });
 
@@ -132,7 +132,7 @@ describe('discoverProjectRoot', () => {
 
   it('includes stopDir but never walks above it', () => {
     mkdirSync('/discovery/bounded/.git', { recursive: true });
-    mkdirSync('/discovery/bounded/apps/inside/.backlog-mcp', { recursive: true });
+    mkdirSync('/discovery/bounded/apps/inside/.backlog', { recursive: true });
     mkdirSync('/discovery/bounded/apps/inside/src', { recursive: true });
     mkdirSync('/discovery/bounded/apps/outside/src', { recursive: true });
 

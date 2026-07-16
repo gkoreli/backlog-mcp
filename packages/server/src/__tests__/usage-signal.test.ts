@@ -157,7 +157,7 @@ function createProjectTrackerFixture(
     save,
   } as unknown as IBacklogService;
   const overlay = new MemoryUsageOverlay(
-    join(tmpdir(), 'usage-signal-project', name, '.backlog-mcp'),
+    join(tmpdir(), 'usage-signal-project', name, '.backlog'),
   );
   overlay.set(memory.id, summary);
   const tracker = new MemoryUsageTracker({

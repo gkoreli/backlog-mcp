@@ -121,7 +121,7 @@ function createRuntime(): AppRequestRuntime {
     id: PROJECT_ROOT,
     root: PROJECT_ROOT,
     documentsDir: `${PROJECT_ROOT}/docs`,
-    controlDir: `${PROJECT_ROOT}/.backlog-mcp`,
+    controlDir: `${PROJECT_ROOT}/.backlog`,
   };
 
   return {

@@ -135,9 +135,9 @@ function changedPaths(
 }
 
 function ignoredByRecommendedControlLayout(path: string): boolean {
-  return path === '.backlog-mcp/config.local.json'
-    || path.startsWith('.backlog-mcp/cache/')
-    || path.startsWith('.backlog-mcp/state/');
+  return path === '.backlog/config.local.json'
+    || path.startsWith('.backlog/cache/')
+    || path.startsWith('.backlog/state/');
 }
 
 describe('LocalRuntime', function describeLocalRuntime() {
@@ -456,7 +456,7 @@ describe('LocalRuntime', function describeLocalRuntime() {
 
     const changed = changedPaths(before, snapshotFiles(home.root));
     expect(changed).toEqual([
-      '.backlog-mcp/state/memory-usage.jsonl',
+      '.backlog/state/memory-usage.jsonl',
     ]);
     expect(changed.filter(function unignored(path) {
       return !ignoredByRecommendedControlLayout(path);
