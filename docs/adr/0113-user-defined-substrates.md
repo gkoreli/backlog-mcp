@@ -128,9 +128,13 @@ contains:
 | `hint` and `ui` | Agent discovery text and allowlisted presentation metadata. |
 
 The meta-schema accepts a deliberately bounded JSON Schema subset: JSON primitives,
-objects, arrays, enums/const, required properties, numeric/string bounds, safe-gated
-patterns paired with `maxLength`, formats from a fixed allowlist,
+objects, arrays, enums/const, required properties, numeric/string bounds, formats
+from a fixed allowlist,
 `oneOf`/`anyOf`/`allOf`, and local `#/$defs` references.
+
+Project-authored `pattern` is excluded from v1. JavaScript's native regex engine has
+no reliable compile-time safety proof, and heuristic checkers leave ReDoS bypasses.
+A future measured need may add patterns behind an isolated or linear-time engine.
 
 The following are rejected:
 

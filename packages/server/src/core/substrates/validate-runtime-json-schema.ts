@@ -1,5 +1,4 @@
 import type { SubstrateDefinitionIssue } from './types.js';
-import safeRegex from 'safe-regex2';
 
 const DRAFT_2020_12_URI = 'https://json-schema.org/draft/2020-12/schema';
 const MAX_ARRAY_ITEMS = 1_000;
@@ -7,8 +6,6 @@ const MAX_CONTAINER_ITEMS = 256;
 const MAX_DEPTH = 32;
 const MAX_ENUM_VALUES = 64;
 const MAX_NODES = 4_096;
-const MAX_PATTERN_LENGTH = 256;
-const MAX_PATTERN_INPUT_LENGTH = 512;
 const MAX_SCHEMA_BRANCHES = 16;
 
 const ALLOWED_FORMATS = new Set(['date', 'date-time']);
@@ -101,45 +98,18 @@ function isPrimitive(value: unknown): boolean {
     || typeof value === 'string';
 }
 
-function isUnsafePattern(pattern: string): boolean {
-  if (pattern.length > MAX_PATTERN_LENGTH) return true;
-  const hasLookaround = /\(\?(?:[=!]|<[=!])/u.test(pattern);
-  const hasBackReference = /\\[1-9]/u.test(pattern);
-  const hasQuantifiedAlternation = /\((?:[^()[\]\\]|\\.|\[[^\]]*\])*\|(?:[^()[\]\\]|\\.|\[[^\]]*\])*\)[+*{]/u
-    .test(pattern);
-  return hasLookaround
-    || hasBackReference
-    || hasQuantifiedAlternation
-    || !safeRegex(pattern);
-}
-
 function validatePattern(
   schema: Record<string, unknown>,
   path: string,
   issues: SubstrateDefinitionIssue[],
 ): void {
   if (schema.pattern === undefined) return;
-  const patternPath = childPath(path, 'pattern');
-  if (typeof schema.pattern !== 'string') {
-    addIssue(issues, 'shape', patternPath, 'pattern must be a string');
-    return;
-  }
-  if (isUnsafePattern(schema.pattern)) {
-    addIssue(issues, 'unsafe', patternPath, 'pattern is invalid or outside the safe subset');
-  }
-  if (
-    typeof schema.maxLength !== 'number'
-    || !Number.isInteger(schema.maxLength)
-    || schema.maxLength < 0
-    || schema.maxLength > MAX_PATTERN_INPUT_LENGTH
-  ) {
-    addIssue(
-      issues,
-      'unsafe',
-      childPath(path, 'maxLength'),
-      `patterned strings require maxLength at most ${MAX_PATTERN_INPUT_LENGTH}`,
-    );
-  }
+  addIssue(
+    issues,
+    'unsupported',
+    childPath(path, 'pattern'),
+    'project-authored patterns are not supported by the native regex engine',
+  );
 }
 
 function validateEnum(
@@ -227,7 +197,12 @@ function validateArrayBounds(
   path: string,
   issues: SubstrateDefinitionIssue[],
 ): void {
-  if (schema.type !== 'array' && schema.uniqueItems !== true) return;
+  const appliesToArrays = schema.type === 'array'
+    || schema.items !== undefined
+    || schema.minItems !== undefined
+    || schema.maxItems !== undefined
+    || schema.uniqueItems !== undefined;
+  if (!appliesToArrays) return;
   if (
     typeof schema.maxItems !== 'number'
     || !Number.isInteger(schema.maxItems)

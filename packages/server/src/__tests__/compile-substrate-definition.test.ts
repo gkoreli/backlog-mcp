@@ -298,7 +298,7 @@ describe('compileSubstrateDefinition', function describeCompiler() {
     });
   });
 
-  it('rejects unsupported keywords, unknown formats, and unsafe patterns', () => {
+  it('rejects unsupported keywords, unknown formats, and project-authored patterns', () => {
     const unsupportedSchema = {
       ...BASE_SCHEMA,
       $id: 'urn:project-schema',
@@ -320,15 +320,11 @@ describe('compileSubstrateDefinition', function describeCompiler() {
           expect.objectContaining({ path: '/schema/properties/date/format' }),
           expect.objectContaining({
             path: '/schema/properties/code/pattern',
-            code: 'unsafe',
+            code: 'unsupported',
           }),
           expect.objectContaining({
             path: '/schema/properties/ambiguous/pattern',
-            code: 'unsafe',
-          }),
-          expect.objectContaining({
-            path: '/schema/properties/unbounded/maxLength',
-            code: 'unsafe',
+            code: 'unsupported',
           }),
         ]),
       },
@@ -388,6 +384,27 @@ describe('compileSubstrateDefinition', function describeCompiler() {
       },
     };
     expect(compile(createDefinition(schema))).toMatchObject({
+      ok: false,
+      diagnostic: {
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            code: 'unsafe',
+            path: '/schema/properties/tags/maxItems',
+          }),
+        ]),
+      },
+    });
+
+    const implicitArraySchema = {
+      ...BASE_SCHEMA,
+      properties: {
+        ...BASE_SCHEMA.properties,
+        tags: {
+          items: { type: 'string', maxLength: 40 },
+        },
+      },
+    };
+    expect(compile(createDefinition(implicitArraySchema))).toMatchObject({
       ok: false,
       diagnostic: {
         issues: expect.arrayContaining([
