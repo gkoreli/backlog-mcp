@@ -10,15 +10,16 @@ import {
   sep,
 } from 'node:path';
 import { z } from 'zod';
+import type { BacklogHome } from './backlog-home.types.js';
 
 export const CONFIG_DIR = '.backlog';
 export const CONFIG_FILE = 'config.json';
 export const CONFIG_LOCAL_FILE = 'config.local.json';
-export const SCOPE_ENV_VAR = 'BACKLOG_SCOPE';
+export const CONTEXT_ENV_VAR = 'BACKLOG_CONTEXT';
 export const VCS_CONFIG_BOUNDARY = '.git';
 
 /**
- * Repository defaults keep home selection separate from entity-subtree scope.
+ * Home defaults keep home selection separate from entity-subtree context.
  * Unknown keys remain available to newer readers.
  */
 export const RepoConfigSchema = z.looseObject({
@@ -26,8 +27,8 @@ export const RepoConfigSchema = z.looseObject({
   home: z.enum(['global', 'project']).optional(),
   /** Project documents directory, relative to the project root by default. */
   documentsDir: z.string().optional(),
-  /** Default scope container id (e.g. "FLDR-0001") for wakeup/recall/remember. */
-  scope: z.string().optional(),
+  /** Default context container id (e.g. "FLDR-0001") for wakeup/recall/remember. */
+  context: z.string().optional(),
 });
 
 export type RepoConfig = z.infer<typeof RepoConfigSchema>;
@@ -106,8 +107,24 @@ export function loadRepoConfig(
   return { ...base, ...local };
 }
 
-export interface ResolveScopeParams {
-  /** Caller-supplied scope (CLI flag / MCP param). Wins over everything. */
+/**
+ * Load one resolved home's configuration.
+ *
+ * Project homes merge the committed base with a machine-local override.
+ * The private global home has one flat config file and no collaboration layer.
+ */
+export function loadHomeConfig(
+  home: BacklogHome,
+  deps: ConfigFsDeps = realFs,
+): RepoConfig {
+  const base = tryLoad(join(home.controlDir, CONFIG_FILE), deps) ?? {};
+  if (home.kind === 'global') return base;
+  const local = tryLoad(join(home.controlDir, CONFIG_LOCAL_FILE), deps) ?? {};
+  return { ...base, ...local };
+}
+
+export interface ResolveContextParams {
+  /** Caller-supplied context (CLI flag / MCP param). Wins over everything. */
   explicit?: string;
   /** Working directory to discover config from. Defaults to process.cwd(). */
   cwd?: string;
@@ -116,16 +133,20 @@ export interface ResolveScopeParams {
   /** Inclusive upper discovery boundary. */
   stopDir?: string;
   deps?: ConfigFsDeps;
+  /** Resolved home when its config file should be read directly. */
+  home?: BacklogHome;
 }
 
 /**
- * Resolve the effective default scope per ADR 0105 precedence:
- *   explicit > BACKLOG_SCOPE env > config.local.json > config.json > undefined
+ * Resolve the effective default context per ADR 0112.3 precedence:
+ *   explicit > BACKLOG_CONTEXT env > home config > undefined
  *
  * A blank/whitespace-only value at any layer is treated as absent so an empty
- * env export or `"scope": ""` doesn't shadow a lower layer.
+ * env export or `"context": ""` doesn't shadow a lower layer.
  */
-export function resolveScope(params: ResolveScopeParams = {}): string | undefined {
+export function resolveContext(
+  params: ResolveContextParams = {},
+): string | undefined {
   const clean = (v: string | undefined): string | undefined => {
     const t = v?.trim();
     return t ? t : undefined;
@@ -135,9 +156,12 @@ export function resolveScope(params: ResolveScopeParams = {}): string | undefine
   if (explicit) return explicit;
 
   const env = params.env ?? process.env;
-  const fromEnv = clean(env[SCOPE_ENV_VAR]);
+  const fromEnv = clean(env[CONTEXT_ENV_VAR]);
   if (fromEnv) return fromEnv;
 
+  if (params.home !== undefined) {
+    return clean(loadHomeConfig(params.home, params.deps).context);
+  }
   const cwd = params.cwd ?? process.cwd();
-  return clean(loadRepoConfig(cwd, params.deps, params.stopDir).scope);
+  return clean(loadRepoConfig(cwd, params.deps, params.stopDir).context);
 }

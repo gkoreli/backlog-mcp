@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { recall } from '../../core/recall.js';
-import { resolveScope } from '../../core/config.js';
+import { resolveContext } from '../../core/config.js';
 import type { RecallParams, RecallResult } from '../../core/types.js';
 import type { CrossHomeRecallResult } from '../../core/home-read-coordinator.types.js';
 import {
@@ -66,7 +66,7 @@ export function registerRecall(program: Command): void {
     .action((queryParts: string[], opts) => {
       const deps = cliRuntimeDependencies(program);
       // ADR 0105: explicit --context wins; else per-repo config / env default.
-      const context = resolveScope({ explicit: opts.context });
+      const context = resolveContext({ explicit: opts.context });
       const params: RecallParams = {
         query: queryParts.join(' '),
         ...(context !== undefined ? { context } : {}),

@@ -24,7 +24,7 @@
  *     `backlog_forget` sets `valid_until: now` rather than deleting.
  *   - `usage_count` is the echo/fizzle surface (ADR 0092 Phase 4). Global
  *     homes persist it in frontmatter; project homes keep it in the local
- *     `.backlog-mcp/state/` overlay so reads never dirty committed Markdown
+ *     `.backlog/state/` overlay so reads never dirty committed Markdown
  *     (ADR 0112 R-3).
  *   - `supersedes` records correction lineage: `remember({ supersedes })`
  *     expires the old memory and links the new one to it.

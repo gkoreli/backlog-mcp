@@ -91,9 +91,10 @@ The present code cannot express this model without a deliberate refactor:
   `$BACKLOG_DATA_DIR/.cache/search-index.json`
   (`packages/server/src/storage/local/backlog-service.ts:26-30`).
 - ADR 0105 correctly identified that a detached shared MCP server cannot use
-  its own cwd as the caller's project, but its `BACKLOG_SCOPE` environment
-  workaround is still process-wide. The first bridge that starts the detached
-  server supplies its environment; later clients reuse that process
+  its own cwd as the caller's project, but its process-wide environment
+  workaround (now named `BACKLOG_CONTEXT`) is still process-wide. The first
+  bridge that starts the detached server supplies its environment; later
+  clients reuse that process
   (`packages/server/src/cli/server-manager.ts:48-62`). One process environment
   therefore cannot safely represent N simultaneous projects.
 - The local bridge does know the caller's cwd, but currently forwards no

@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { wakeup } from '../../core/wakeup.js';
-import { resolveScope } from '../../core/config.js';
+import { resolveContext } from '../../core/config.js';
 import type { WakeupParams, WakeupResult } from '../../core/types.js';
 import type { CrossHomeWakeupResult } from '../../core/home-read-coordinator.types.js';
 import {
@@ -98,7 +98,7 @@ export function registerWakeup(program: Command): void {
     .action((opts) => {
       const deps = cliRuntimeDependencies(program);
       // ADR 0105: flag wins; else fall back to per-repo config / env default.
-      const scope = resolveScope({ explicit: opts.scope });
+      const scope = resolveContext({ explicit: opts.scope });
       const params: WakeupParams = {
         ...(scope !== undefined ? { scope } : {}),
         ...(opts.maxCompletions !== undefined ? { maxCompletions: opts.maxCompletions } : {}),

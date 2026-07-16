@@ -3,9 +3,11 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import {
   CONFIG_DIR,
   findConfigDir,
+  loadHomeConfig,
   loadRepoConfig,
-  resolveScope,
+  resolveContext,
 } from '../core/config.js';
+import { createBacklogHome } from '../core/backlog-home.js';
 
 function writeConfig(
   root: string,
@@ -64,21 +66,21 @@ describe('loadRepoConfig', () => {
     expect(loadRepoConfig('/config/missing')).toEqual({});
   });
 
-  it('reads docs-native home configuration and scope', () => {
+  it('reads docs-native home configuration and context', () => {
     writeConfig(
       '/config/read',
       'config.json',
       JSON.stringify({
         home: 'project',
         documentsDir: 'handbook',
-        scope: 'FLDR-0001',
+        context: 'FLDR-0001',
       }),
     );
 
     expect(loadRepoConfig('/config/read')).toMatchObject({
       home: 'project',
       documentsDir: 'handbook',
-      scope: 'FLDR-0001',
+      context: 'FLDR-0001',
     });
   });
 
@@ -89,7 +91,7 @@ describe('loadRepoConfig', () => {
       JSON.stringify({
         home: 'global',
         documentsDir: 'docs',
-        scope: 'FLDR-0001',
+        context: 'FLDR-0001',
       }),
     );
     writeConfig(
@@ -98,14 +100,14 @@ describe('loadRepoConfig', () => {
       JSON.stringify({
         home: 'project',
         documentsDir: 'notes',
-        scope: 'FLDR-9999',
+        context: 'FLDR-9999',
       }),
     );
 
     expect(loadRepoConfig('/config/local')).toMatchObject({
       home: 'project',
       documentsDir: 'notes',
-      scope: 'FLDR-9999',
+      context: 'FLDR-9999',
     });
   });
 
@@ -113,11 +115,11 @@ describe('loadRepoConfig', () => {
     writeConfig(
       '/config/unknown',
       'config.json',
-      '{"scope":"FLDR-0001","future":42}',
+      '{"context":"FLDR-0001","future":42}',
     );
 
     expect(loadRepoConfig('/config/unknown'))
-      .toMatchObject({ scope: 'FLDR-0001', future: 42 });
+      .toMatchObject({ context: 'FLDR-0001', future: 42 });
   });
 
   it('degrades gracefully on malformed JSON', () => {
@@ -131,48 +133,71 @@ describe('loadRepoConfig', () => {
   });
 });
 
-describe('resolveScope precedence', () => {
+describe('loadHomeConfig', () => {
+  it('loads one flat global config without applying config.local.json', () => {
+    const home = createBacklogHome({
+      kind: 'global',
+      root: '/config/global-home',
+      controlDir: '/config/global-home',
+    });
+    mkdirSync(home.root, { recursive: true });
+    writeFileSync(
+      '/config/global-home/config.json',
+      '{"context":"FLDR-GLOBAL"}',
+    );
+    writeFileSync(
+      '/config/global-home/config.local.json',
+      '{"context":"FLDR-LOCAL"}',
+    );
+
+    expect(loadHomeConfig(home)).toMatchObject({
+      context: 'FLDR-GLOBAL',
+    });
+  });
+});
+
+describe('resolveContext precedence', () => {
   beforeAll(() => {
     writeConfig(
       '/config/scope',
       'config.json',
-      '{"scope":"FLDR-CONFIG","home":"project"}',
+      '{"context":"FLDR-CONFIG","home":"project"}',
     );
   });
 
-  it('keeps explicit entity scope distinct from home configuration', () => {
-    expect(resolveScope({
+  it('keeps explicit entity context distinct from home configuration', () => {
+    expect(resolveContext({
       explicit: 'FLDR-EXPLICIT',
-      env: { BACKLOG_SCOPE: 'FLDR-ENV' },
+      env: { BACKLOG_CONTEXT: 'FLDR-ENV' },
       cwd: '/config/scope',
     })).toBe('FLDR-EXPLICIT');
   });
 
-  it('uses caller environment before config scope', () => {
-    expect(resolveScope({
-      env: { BACKLOG_SCOPE: 'FLDR-ENV' },
+  it('uses caller environment before config context', () => {
+    expect(resolveContext({
+      env: { BACKLOG_CONTEXT: 'FLDR-ENV' },
       cwd: '/config/scope',
     })).toBe('FLDR-ENV');
   });
 
-  it('uses config scope when caller defaults are absent', () => {
-    expect(resolveScope({
+  it('uses config context when caller defaults are absent', () => {
+    expect(resolveContext({
       env: {},
       cwd: '/config/scope',
     })).toBe('FLDR-CONFIG');
   });
 
-  it('returns undefined when no scope is configured', () => {
-    expect(resolveScope({
+  it('returns undefined when no context is configured', () => {
+    expect(resolveContext({
       env: {},
       cwd: '/config/no-scope',
     })).toBeUndefined();
   });
 
   it('treats blank values as absent and falls through', () => {
-    expect(resolveScope({
+    expect(resolveContext({
       explicit: '   ',
-      env: { BACKLOG_SCOPE: '' },
+      env: { BACKLOG_CONTEXT: '' },
       cwd: '/config/scope',
     })).toBe('FLDR-CONFIG');
   });

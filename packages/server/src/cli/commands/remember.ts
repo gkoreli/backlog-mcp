@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { remember } from '../../core/remember.js';
-import { resolveScope } from '../../core/config.js';
+import { resolveContext } from '../../core/config.js';
 import type { RememberResult } from '../../core/types.js';
 import { cliRuntimeDependencies, run } from '../runner.js';
 
@@ -29,7 +29,7 @@ export function registerRemember(program: Command): void {
     .action((contentParts: string[], opts) => run(
       async (runtime) => {
         // ADR 0105: explicit --context wins; else per-repo config / env default.
-        const context = resolveScope({ explicit: opts.context });
+        const context = resolveContext({ explicit: opts.context });
         const result = await remember(
         {
           content: contentParts.join(' '),
