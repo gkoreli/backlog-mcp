@@ -16,12 +16,12 @@ relates_to:
 
 # 0117. The Write Boundary — Native Editing, Diagnostics, and Strict Managed Writes
 
-**Status:** Proposed — research and rulings only. Goga chooses the product
-direction before engineering.
+**Status:** Proposed — research and delegated rulings recorded. Goga accepts
+or amends on read before engineering begins.
 
-## Decision summary
+## Decision
 
-Recommend two deliberately unequal lanes:
+Select two deliberately unequal lanes:
 
 1. **Native Edit is the default lane.** Humans and agents edit the
    authoritative Markdown with the editor already available to them. The
@@ -31,7 +31,9 @@ Recommend two deliberately unequal lanes:
 2. **Managed edit is the strict lane.** `write_resource` remains only for a
    caller that explicitly wants anchored editing, complete postimage
    validation before success, canonical serialization, and one best-effort
-   operation-log append with exact tool input and actor attribution.
+   operation-log append with exact tool input and actor attribution. At the MCP
+   boundary it is deferred behind tool discovery, not loaded into every
+   session's baseline context.
 
 Hooks are optional diagnostic enrichment. A supported harness may report a
 successful native Edit/Write call after it occurs, but hooks do not validate
@@ -48,10 +50,18 @@ The recommendation preserves ADR 0113's governing law:
 - backlog-mcp's managed writes are strict and canonical;
 - neither rule authorizes heuristic mutation of a user's file.
 
-It proposes one narrow correction to ADR 0113 R4: editing a document body is
+It makes one narrow correction to ADR 0113 R4: editing a document body is
 not sufficient consent to adopt noncanonical frontmatter. Canonical adoption
-should be a separately named, previewable action. Goga must explicitly accept
-or reject that correction.
+is a separately named, previewable action.
+
+Granite issued these three rulings on 2026-07-16 with Goga's delegated
+architecture authority:
+
+1. select Option C — native by default, strict on demand;
+2. keep the strict lane deferred at the MCP boundary;
+3. accept separate consent as substrate law, narrowing ADR 0113 R4.
+
+The ADR remains Proposed so Goga can accept or amend the record directly.
 
 This ADR is chartered by
 [PROMPT 0002 item 7](../prompts/0002-operating-principles-directives.md)
@@ -74,6 +84,14 @@ PROMPT 0002 captures the unresolved conflict directly. Goga dislikes an
 alternative to native Edit and the heuristics required to make direct edits
 look canonical, but recognizes that `write_resource` protects substrate
 validity.
+
+> "i don't like that backlog-mcp is just an alternative tool to what already
+> exists, aka Edit file. All the agentic harnesses already come with the Edit
+> tool natively… we will get rid of the wasted tokens… but at the same time…
+> write_resource actually protects and enforces the substrate's schema
+> validity… That introduces lots of heurestics and i kinda don't like that…
+> And it mutate's user's files… Maybe its a problem we shouldn't solve and just
+> leave it alone."
 
 The answer should not hide either side:
 
@@ -471,9 +489,10 @@ The cost remains explicit:
 | Canonical serialization | Managed writes intentionally produce backlog-mcp's canonical form. |
 | Non-native edit path | It is an escape hatch, not the default workflow. |
 
-Goga may choose to keep it MCP-visible, defer it behind tool discovery, or
-retain only core/CLI access. That is a product-surface choice; the strict core
-boundary remains useful in every option.
+At the MCP boundary this tool is deferred behind the existing discovery
+mechanism. It does not tax every session's baseline context, but an agent may
+discover it when a schema-critical edit needs pre-return validation. The
+strict core/CLI boundary remains available to local operators.
 
 ## R7. Messy external frontmatter is indexed and diagnosed, never upgraded uninvited
 
@@ -492,8 +511,9 @@ For a parseable but noncanonical document, this ADR recommends:
 - only that explicit action may move aliases/unknown metadata or reserialize
   frontmatter.
 
-This recommendation narrows ADR 0113 R4. It is a human decision gate, not an
-implicit implementation change.
+This ruling narrows ADR 0113 R4: a general body edit is not canonical-adoption
+consent. The separate action remains design-only until its own implementation
+phase is approved.
 
 ## R8. ADR 0094's completeness claim is scoped to managed writes
 
@@ -553,7 +573,8 @@ available.
 
 **Cost:** two lanes must be explained honestly.
 
-**Recommendation:** Option C.
+**Selected:** Option C, by Granite's delegated architecture ruling on
+2026-07-16. Goga may amend while the ADR remains Proposed.
 
 ## Option D — Native edits plus semantic intents; remove generic strict editing
 
@@ -567,7 +588,7 @@ escape hatch based on theoretical coverage.
 
 # Part 5 — Smallest engineering plan
 
-No engineering begins until Goga selects an option.
+No engineering begins until a phase receives an explicit GO.
 
 ## Phase A — disclose diagnostics from existing reconciliation
 
@@ -617,15 +638,15 @@ The selected direction is successful when:
    diagnostic feedback without claiming journal completeness;
 10. no D1 code is added or expanded.
 
-## Human decision gate
+## Ruling record and remaining gate
 
-Goga chooses:
+Resolved by Granite under delegated authority on 2026-07-16:
 
-1. Option A, B, C, or D — this ADR recommends C;
-2. whether the strict editor is MCP-visible, deferred, or core/CLI-only;
-3. whether to accept the separate-consent correction to ADR 0113 R4;
-4. whether immediate edit-aware diagnostics justify one hook adapter after
-   ordinary watcher diagnostics are proven.
+- Option C selected;
+- strict MCP lane deferred behind tool discovery;
+- separate canonical-adoption consent accepted.
 
-Until those choices are made, this ADR is evidence and a proposed ruling set,
-not an engineering mandate.
+One implementation gate remains intentionally empirical: after ordinary
+watcher diagnostics are proven, decide whether immediate edit-aware feedback
+justifies one harness adapter. Until a phase receives a GO, this ADR is a
+Proposed direction—not an engineering mandate.
