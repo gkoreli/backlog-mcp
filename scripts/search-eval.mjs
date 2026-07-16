@@ -24,6 +24,7 @@ const HELP = `Usage:
     --queries <queries.jsonl> \\
     --qrels <qrels.jsonl> \\
     --output <report.json> \\
+    [--baseline-version N] \\
     [--warmups N] \\
     [--repetitions N]
 
@@ -34,6 +35,7 @@ Required:
   --output       Durable JSON report destination
 
 Optional:
+  --baseline-version Evidence version (default: 1; v1 is search-only)
   --warmups      Full-query-set warmup passes (default: 1)
   --repetitions  Measured full-query-set passes (default: 3)
   --help         Show this help
@@ -42,7 +44,12 @@ Run "pnpm build" before executing a benchmark.
 `;
 
 const REQUIRED_ARGUMENTS = ['project-root', 'queries', 'qrels', 'output'];
-const VALUE_ARGUMENTS = new Set([...REQUIRED_ARGUMENTS, 'warmups', 'repetitions']);
+const VALUE_ARGUMENTS = new Set([
+  ...REQUIRED_ARGUMENTS,
+  'baseline-version',
+  'warmups',
+  'repetitions',
+]);
 const MEMORY_LAYERS = new Set(['episodic', 'semantic', 'procedural']);
 const MODEL_METADATA = {
   id: 'Xenova/all-MiniLM-L6-v2',
@@ -147,6 +154,11 @@ function parseArguments(argv) {
     queries: resolve(values.queries),
     qrels: resolve(values.qrels),
     output: resolve(values.output),
+    baselineVersion: requirePositiveInteger(
+      values['baseline-version'],
+      'baseline-version',
+      1,
+    ),
     warmups: requireNonnegativeInteger(values.warmups, 'warmups', 1),
     repetitions: requirePositiveInteger(values.repetitions, 'repetitions', 3),
   };
@@ -307,7 +319,9 @@ function corpusSnapshot(entityDocuments, resources) {
   ].sort(function compareCorpusRecords(left, right) {
     const leftId = left.kind === 'entity' ? left.document.entity.id : left.resource.id;
     const rightId = right.kind === 'entity' ? right.document.entity.id : right.resource.id;
-    return String(leftId).localeCompare(String(rightId));
+    const leftKey = String(leftId);
+    const rightKey = String(rightId);
+    return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
   });
   return Buffer.from(records.map(stableJsonLine).join(''));
 }
@@ -319,7 +333,7 @@ function countEntityTypes(entityDocuments) {
     counts[type] = (counts[type] ?? 0) + 1;
   }
   return Object.fromEntries(Object.entries(counts).sort(function compareTypes(left, right) {
-    return left[0].localeCompare(right[0]);
+    return left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0;
   }));
 }
 
@@ -625,7 +639,7 @@ async function benchmarkMode({
   metrics,
 }) {
   const rssSamples = [];
-  const coldStart = process.hrtime.bigint();
+  const serviceBuildStart = process.hrtime.bigint();
   recordRss(rssSamples, 'before_index');
   const searchService = new OramaSearchService({ cachePath, hybridSearch });
   const adapter = new BenchmarkServiceAdapter(searchService);
@@ -647,7 +661,9 @@ async function benchmarkMode({
   const firstResultStart = process.hrtime.bigint();
   await retrieve(firstQuery, adapter, memoryStore);
   const firstResultAfterReady = roundMilliseconds(durationMilliseconds(firstResultStart));
-  const coldStartToFirstResult = roundMilliseconds(durationMilliseconds(coldStart));
+  const serviceBuildToFirstResult = roundMilliseconds(
+    durationMilliseconds(serviceBuildStart),
+  );
 
   for (let index = 0; index < warmups; index += 1) {
     await runQuerySet(queries, adapter, memoryStore);
@@ -667,7 +683,7 @@ async function benchmarkMode({
     hybrid_active: hybridActive,
     build_duration_ms: indexDuration,
     startup_ms: {
-      cold_start_to_first_result: coldStartToFirstResult,
+      service_build_to_first_result: serviceBuildToFirstResult,
       first_result_after_ready: firstResultAfterReady,
       probe_query_id: firstQuery.id,
     },
@@ -816,6 +832,18 @@ async function main() {
   const corpus = loadProductCorpus(args, runtime);
   const corpusInput = corpusSnapshot(corpus.entityDocuments, corpus.resources);
   const queries = validateQueries(queryInput.records);
+  const recallQueries = queries.filter(query => query.surface === 'recall');
+  if (args.baselineVersion === 1 && recallQueries.length > 0) {
+    fail('Baseline v1 is search-only; real-memory recall evidence begins in v2');
+  }
+  if (args.baselineVersion >= 2) {
+    if (recallQueries.length < 4) {
+      fail('Baseline v2+ requires at least four reviewed memory-recall queries');
+    }
+    if ((countEntityTypes(corpus.entityDocuments).memory ?? 0) === 0) {
+      fail('Baseline v2+ requires a real memory corpus; synthetic memories are not evidence');
+    }
+  }
   const qrels = validateQrels(
     qrelInput.records,
     new Set(queries.map(query => query.id)),
@@ -869,7 +897,7 @@ async function main() {
       : 'downloaded';
     const report = {
       schema_version: 1,
-      baseline_version: 1,
+      baseline_version: args.baselineVersion,
       generated_at: new Date().toISOString(),
       runner: 'scripts/search-eval.mjs',
       inputs: {
@@ -900,7 +928,7 @@ async function main() {
       settings: {
         warmups: args.warmups,
         repetitions: args.repetitions,
-        cold_run: args.warmups === 0,
+        query_warmups_skipped: args.warmups === 0,
       },
       environment: buildEnvironment(repoRoot),
       provenance: {
