@@ -10,14 +10,27 @@ each version says why it mattered on the road to the north star
 (`docs/NORTH-STAR.md` — *your backlog is your agent's memory*). This changelog
 begins at 0.57.0 — earlier history lives in git.
 
-## [Unreleased]
+## [0.61.0] — 2026-07-16
 
-*The global backlog and the project's docs start behaving like one memory: a single
-question now draws on both. And wakeup begins carrying the product requirements an
-agent must not derail — the line of the Cold-Open briefing that protects the vision
-itself, and one of the founding asks of the vision prompt.*
+*The flip: the repo's docs folder IS the backlog now, by default, with one explicit
+migration. The global backlog and the project's docs behave like one memory — a
+single question draws on both, the viewer shows which home you're in, and wakeup
+carries the product requirements an agent must not derail — one of the founding
+asks of the vision prompt.*
 
 ### Added
+- **The viewer shows and switches homes (ADR 0112.4).** A provenance badge in the
+  viewer chrome always says which backlog home you're looking at — the server's
+  answer, not the URL's claim — and switching is a URL rewrite offering only the
+  homes the session legitimately knows (never a workspace scan). Spotlight gains
+  an opt-in "all homes" search: provenance-badged, rank-fused results that
+  navigate into their home on click; browsing stays one home at a time.
+- **Project-declared document types are searchable (ADR 0113 Phase C).** ADR,
+  requirement, and prompt documents enter the shared search index through
+  server-owned projections — a substrate is searchable only via its declared
+  fields, raw entities can never be indexed directly, and memories stay excluded
+  from generic search. Malformed documents in claimed folders remain visible as
+  plain resources instead of vanishing.
 - **Repository docs are now the production backlog (ADR 0112 Phase E).** The
   CLI, detached server, and Vite dev app all use per-home docs-native runtimes
   by default: a request from a project reads and writes that repository's
