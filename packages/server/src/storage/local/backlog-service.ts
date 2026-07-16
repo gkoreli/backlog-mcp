@@ -1,13 +1,63 @@
 import { join } from 'node:path';
 import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
 import { FilesystemStorage } from './filesystem-storage.js';
-import type { StorageAdapter } from '../storage-adapter.js';
-import { OramaSearchService, type UnifiedSearchResult, type SearchableType, type SearchSnippet } from '@backlog-mcp/memory/search';
-import type { Resource } from '@backlog-mcp/memory/search';
+import type {
+  DocumentStorageAdapter,
+  StorageAdapter,
+} from '../storage-adapter.js';
+import {
+  OramaSearchService,
+  type SearchableType,
+  type UnifiedSearchResult,
+} from '@backlog-mcp/memory/search';
 import { resourceManager } from '../../resources/manager.js';
 import { paths } from '../../utils/paths.js';
 import { logger } from '../../utils/logger.js';
 import type { IBacklogService } from '../backlog-service.contract.js';
+import type {
+  BacklogReconciliationResult,
+  BacklogServiceDependencies,
+  SearchReconciliationStats,
+} from './backlog-service.types.js';
+
+type PendingSearchOperation = {
+  op: 'add' | 'update' | 'remove';
+  entity?: Entity;
+  id?: string;
+};
+
+function isDocumentStorageAdapter(
+  storageAdapter: StorageAdapter,
+): storageAdapter is DocumentStorageAdapter {
+  return 'iterateDocuments' in storageAdapter
+    && typeof storageAdapter.iterateDocuments === 'function';
+}
+
+/**
+ * Typed entity Markdown is indexed through the entity collection. Excluding
+ * its source path here prevents one document from appearing again as a
+ * generic resource in docs-native homes.
+ */
+function listIndexableResources(
+  storageAdapter: StorageAdapter,
+  manager: BacklogServiceDependencies['resourceManager'],
+) {
+  const resources = manager.list();
+  if (!isDocumentStorageAdapter(storageAdapter)) return resources;
+
+  const entitySourcePaths = new Set(
+    Array.from(storageAdapter.iterateDocuments(), function getSourcePath(document) {
+      return document.sourcePath;
+    }),
+  );
+  return resources.filter(function isGenericResource(resource) {
+    return !entitySourcePaths.has(resource.path);
+  });
+}
+
+function hasChanges(stats: SearchReconciliationStats): boolean {
+  return stats.added + stats.removed + stats.updated > 0;
+}
 
 /**
  * Composes a StorageAdapter + SearchService + ResourceManager.
@@ -16,47 +66,89 @@ import type { IBacklogService } from '../backlog-service.contract.js';
  * Depends on the StorageAdapter *interface* (not the concrete class) so the
  * local path mirrors the D1 path's dependency inversion (ADR 0106.3 §A).
  */
-class BacklogService implements IBacklogService {
-  private static instance: BacklogService;
-  private storage: StorageAdapter = new FilesystemStorage();
-  private search: OramaSearchService;
+export class BacklogService implements IBacklogService {
+  private static instance: BacklogService | undefined;
+  private readonly storage: StorageAdapter;
+  private readonly search: OramaSearchService;
+  private readonly resourceManager: BacklogServiceDependencies['resourceManager'];
   private searchReady = false;
-  private pendingOps: Array<{ op: 'add' | 'update' | 'remove'; entity?: Entity; id?: string }> = [];
+  private pendingOps: PendingSearchOperation[] = [];
 
-  private constructor() {
-    this.search = new OramaSearchService({
-      cachePath: join(paths.backlogDataDir, '.cache', 'search-index.json'),
-      halfLifeDays: 30,  // ADR-0092.1 Phase 1 — recent work ranks above old work
-    });
+  constructor(dependencies: BacklogServiceDependencies) {
+    this.storage = dependencies.storage;
+    this.search = dependencies.search;
+    this.resourceManager = dependencies.resourceManager;
   }
 
   static getInstance(): BacklogService {
     if (!BacklogService.instance) {
-      BacklogService.instance = new BacklogService();
+      BacklogService.instance = new BacklogService({
+        storage: new FilesystemStorage(),
+        search: new OramaSearchService({
+          cachePath: join(
+            paths.backlogDataDir,
+            '.cache',
+            'search-index.json',
+          ),
+          // ADR-0092.1 Phase 1 — recent work ranks above old work.
+          halfLifeDays: 30,
+        }),
+        resourceManager,
+      });
     }
     return BacklogService.instance;
   }
 
   private async ensureSearchReady(): Promise<void> {
     if (this.searchReady) return;
-    const allEntities = Array.from(this.storage.iterateEntities());
-    await this.search.index(allEntities);
-    const stats = await this.search.reconcile(allEntities);
-    if (stats.added + stats.removed + stats.updated > 0) {
-      logger.info('Search index reconciled', { added: stats.added, removed: stats.removed, updated: stats.updated });
-    }
-    // Drain any mutations that occurred before first search (ADR-0101 Phase 2)
-    for (const op of this.pendingOps) {
-      if (op.op === 'add' && op.entity) await this.search.addDocument(op.entity);
-      else if (op.op === 'update' && op.entity) await this.search.updateDocument(op.entity);
-      else if (op.op === 'remove' && op.id) await this.search.removeDocument(op.id);
+    await this.reconcile();
+  }
+
+  private async drainPendingOperations(): Promise<void> {
+    for (const operation of this.pendingOps) {
+      if (operation.op === 'add' && operation.entity) {
+        await this.search.addDocument(operation.entity);
+      } else if (operation.op === 'update' && operation.entity) {
+        await this.search.updateDocument(operation.entity);
+      } else if (operation.op === 'remove' && operation.id) {
+        await this.search.removeDocument(operation.id);
+      }
     }
     this.pendingOps = [];
-    const resources = resourceManager.list();
-    if (resources.length > 0) {
-      await this.search.indexResources(resources);
+  }
+
+  /**
+   * Reconcile the complete home view into its search index.
+   *
+   * This is the watcher-facing refresh boundary: entity and generic-resource
+   * drift are repaired together, including stale removals and native edits.
+   */
+  async reconcile(): Promise<BacklogReconciliationResult> {
+    const allEntities = Array.from(this.storage.iterateEntities());
+    if (!this.searchReady) {
+      await this.search.index(allEntities);
     }
+    const entityStats = await this.search.reconcile(allEntities);
+    if (hasChanges(entityStats)) {
+      logger.info('Search index reconciled', entityStats);
+    }
+
+    await this.drainPendingOperations();
+
+    const resources = listIndexableResources(
+      this.storage,
+      this.resourceManager,
+    );
+    const resourceStats = await this.search.reconcileResources(resources);
+    if (hasChanges(resourceStats)) {
+      logger.info('Resource search index reconciled', resourceStats);
+    }
+
     this.searchReady = true;
+    return {
+      entities: entityStats,
+      resources: resourceStats,
+    };
   }
 
   getFilePath(id: string): string | null {
@@ -134,7 +226,7 @@ class BacklogService implements IBacklogService {
    */
   getResource(uri: string): { content: string; frontmatter?: Record<string, any>; mimeType: string } | undefined {
     try {
-      return resourceManager.read(uri);
+      return this.resourceManager.read(uri);
     } catch {
       return undefined;
     }
@@ -202,5 +294,4 @@ class BacklogService implements IBacklogService {
   }
 }
 
-export { BacklogService };
 export const storage: BacklogService = BacklogService.getInstance();
