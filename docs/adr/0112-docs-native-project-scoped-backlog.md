@@ -555,6 +555,11 @@ Replace ambient paths with constructor-injected home descriptors:
   coalesces large change bursts such as Git checkouts, and can query changes
   since a saved snapshot.
 
+Until the Phase E migration and default cutover ship atomically, the Vite dev
+entry may select this runtime only through temporary
+`BACKLOG_DOCS_NATIVE=1` scaffolding. This flag is not a supported configuration
+surface and is deleted in Phase E.
+
 Generic documents share the search/read graph but remain distinct from typed
 entity writes. Watch notifications only trigger reconciliation; startup/full
 reconciliation remains the correctness boundary, so dropped watcher events

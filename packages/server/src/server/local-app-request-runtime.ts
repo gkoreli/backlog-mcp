@@ -1,0 +1,69 @@
+import {
+  readFileSync,
+  realpathSync,
+  statSync,
+} from 'node:fs';
+import {
+  isAbsolute,
+  join,
+  resolve,
+} from 'node:path';
+import { isPathWithin } from '../core/backlog-home.js';
+import type { LocalRuntime } from '../storage/local/local-runtime.js';
+import type { AppRequestRuntime } from './app-request-runtime.types.js';
+
+function containedFile(
+  root: string,
+  requestedPath: string,
+): string | undefined {
+  try {
+    const candidate = isAbsolute(requestedPath)
+      ? resolve(requestedPath)
+      : resolve(root, requestedPath);
+    if (!isPathWithin(root, candidate)) return undefined;
+
+    const canonicalRoot = realpathSync(root);
+    const canonicalFile = realpathSync(candidate);
+    if (!isPathWithin(canonicalRoot, canonicalFile)) return undefined;
+    return statSync(canonicalFile).isFile() ? canonicalFile : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function createReadLocalFile(runtime: LocalRuntime) {
+  return function readLocalFile(filePath: string): string | null {
+    const contained = containedFile(runtime.home.documentsDir, filePath);
+    return contained === undefined ? null : readFileSync(contained, 'utf-8');
+  };
+}
+
+function createResolveSourcePath(runtime: LocalRuntime) {
+  return function resolveSourcePath(sourcePath: string): string {
+    const contained = containedFile(runtime.home.root, sourcePath);
+    if (contained === undefined) {
+      throw new Error(
+        `Source path must be a file inside backlog home ${runtime.home.root}: ${sourcePath}`,
+      );
+    }
+    return readFileSync(contained, 'utf-8');
+  };
+}
+
+/** Adapt one started local runtime to the dependencies consumed by Hono. */
+export function createLocalAppRequestRuntime(
+  runtime: LocalRuntime,
+): AppRequestRuntime {
+  return {
+    home: runtime.home,
+    service: runtime.service,
+    operationLog: runtime.operationLogger,
+    operationLogger: runtime.operationLogger,
+    eventBus: runtime.eventBus,
+    memoryComposer: runtime.memoryComposer,
+    resourceManager: runtime.resourceManager,
+    readLocalFile: createReadLocalFile(runtime),
+    resolveSourcePath: createResolveSourcePath(runtime),
+    identityPath: join(runtime.home.documentsDir, 'identity.md'),
+  };
+}

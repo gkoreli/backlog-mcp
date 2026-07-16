@@ -5,7 +5,11 @@
  * vite.config plugin can mount it directly — no @hono imports needed at root.
  */
 import { getRequestListener } from '@hono/node-server';
+import { createDocsNativeDevRuntimeResolver } from './server/docs-native-dev-runtime.js';
 import { createNodeApp } from './server/node-app.js';
 
-const app = createNodeApp({ skipStatic: true });
+const app = createNodeApp({
+  skipStatic: true,
+  resolveRuntime: createDocsNativeDevRuntimeResolver(process.env),
+});
 export const handler = getRequestListener(app.fetch);

@@ -12,6 +12,7 @@ import { paths } from '../utils/paths.js';
 import { logger } from '../utils/logger.js';
 import { resolveSourcePath } from '../utils/resolve-source-path.js';
 import { setViewerCacheHeaders } from '../utils/viewer-cache.js';
+import type { CreateNodeAppOptions } from './node-app.types.js';
 
 function readLocalFile(filePath: string): string | null {
   if (!existsSync(filePath)) return null;
@@ -34,7 +35,7 @@ function readLocalFile(filePath: string): string | null {
  *
  * Transport-free: no listener, no process handlers. The caller owns the server.
  */
-export function createNodeApp(options?: { skipStatic?: boolean }): Hono {
+export function createNodeApp(options: CreateNodeAppOptions = {}): Hono {
   const service = BacklogService.getInstance();
   return createApp(service, {
     name: paths.packageJson.name,
@@ -53,6 +54,7 @@ export function createNodeApp(options?: { skipStatic?: boolean }): Hono {
     readUsageLines,
     resolveSourcePath,
     identityPath: join(paths.backlogDataDir, 'identity.md'),
+    resolveRuntime: options.resolveRuntime,
     logError: (message, data) => logger.error(message, data),
   });
 }
