@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { editItem } from '../../core/edit.js';
 import type { EditOperation } from '@backlog-mcp/shared';
-import { run, cliWriteContext } from '../runner.js';
+import { run } from '../runner.js';
 
 function formatResult(r: { success: boolean; message?: string; error?: string }) {
   if (!r.success) {
@@ -12,7 +12,15 @@ function formatResult(r: { success: boolean; message?: string; error?: string })
 }
 
 function editAction(id: string, operation: EditOperation, json: boolean) {
-  return run((s) => editItem(s, { id, operation }, cliWriteContext()), formatResult, json);
+  return run(
+    (runtime) => editItem(
+      runtime.service,
+      { id, operation },
+      runtime.writeContext,
+    ),
+    formatResult,
+    json,
+  );
 }
 
 export function registerEdit(program: Command): void {

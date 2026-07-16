@@ -28,7 +28,7 @@ export function registerContradictions(program: Command): void {
     .command('contradictions')
     .description('Live memories that share a state_key — the R-2 invariant breached, flagged for human adjudication (ADR 0092.13)')
     .action(() => run(
-      (s) => detectContradictions(s),
+      (runtime) => detectContradictions(runtime.service),
       format,
       program.opts().json,
     ));

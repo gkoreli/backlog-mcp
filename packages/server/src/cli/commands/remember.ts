@@ -1,8 +1,6 @@
 import type { Command } from 'commander';
 import { remember } from '../../core/remember.js';
 import { resolveScope } from '../../core/config.js';
-import { defaultMemoryComposer, defaultUsageTracker } from '../../memory/bootstrap.js';
-import { envActor } from '../../operations/logger.js';
 import type { RememberResult } from '../../core/types.js';
 import { run } from '../runner.js';
 
@@ -29,7 +27,7 @@ export function registerRemember(program: Command): void {
     .option('--supersedes <id>', 'MEMO- id this memory replaces')
     .option('--derived', 'Mark as inference (consolidator output) — requires --refs')
     .action((contentParts: string[], opts) => run(
-      async () => {
+      async (runtime) => {
         // ADR 0105: explicit --context wins; else per-repo config / env default.
         const context = resolveScope({ explicit: opts.context });
         const result = await remember(
@@ -47,13 +45,22 @@ export function registerRemember(program: Command): void {
           ...(opts.supersedes !== undefined ? { supersedes: opts.supersedes } : {}),
           ...(opts.derived !== undefined ? { derived: opts.derived } : {}),
         },
-        { memoryComposer: defaultMemoryComposer, actorName: envActor().name },
+        {
+          memoryComposer: runtime.memoryComposer,
+          actorName: runtime.writeContext.actor.name,
+        },
         );
         // Citation signal (ADR 0092.9 R-14): cited MEMO- ids were useful.
-        await defaultUsageTracker.recordCitations(
-          [contentParts.join(' ')],
-          ((opts.refs as string[] | undefined) ?? []).filter(r => r !== result.id),
-        );
+        if (runtime.usageTracker !== undefined) {
+          await runtime.usageTracker.recordCitations(
+            [contentParts.join(' ')],
+            ((opts.refs as string[] | undefined) ?? []).filter(
+              function excludeCreatedMemory(ref) {
+                return ref !== result.id;
+              },
+            ),
+          );
+        }
         return result;
       },
       format,

@@ -26,7 +26,7 @@ export function registerList(program: Command): void {
     .option('--counts', 'Include counts')
     .option('--limit <n>', 'Max items', parseInt)
     .action((opts) => run(
-      (s) => listItems(s, {
+      (runtime) => listItems(runtime.service, {
         status: opts.status,
         type: opts.type,
         epic_id: opts.epic,

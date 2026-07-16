@@ -1,7 +1,6 @@
 import type { Command } from 'commander';
 import { recall } from '../../core/recall.js';
 import { resolveScope } from '../../core/config.js';
-import { defaultMemoryComposer, defaultUsageTracker } from '../../memory/bootstrap.js';
 import type { RecallResult } from '../../core/types.js';
 import { run } from '../runner.js';
 
@@ -42,7 +41,7 @@ export function registerRecall(program: Command): void {
     .option('--full', 'Return full memory bodies instead of stubs')
     .option('--budget <tokens>', 'Approximate token budget — results packed to fit', parseInt)
     .action((queryParts: string[], opts) => run(
-      async () => {
+      async (runtime) => {
         // ADR 0105: explicit --context wins; else per-repo config / env default.
         const context = resolveScope({ explicit: opts.context });
         const result = await recall(
@@ -55,10 +54,13 @@ export function registerRecall(program: Command): void {
           ...(opts.full !== undefined ? { full: opts.full } : {}),
           ...(opts.budget !== undefined ? { token_budget: opts.budget } : {}),
         },
-        { memoryComposer: defaultMemoryComposer },
+        { memoryComposer: runtime.memoryComposer },
         );
         // Recall demand log (ADR 0092.9 R-16) — weak signal, JSONL only.
-        defaultUsageTracker.recordRecall(queryParts.join(' '), result.items.map(i => i.id));
+        runtime.usageTracker?.recordRecall(
+          queryParts.join(' '),
+          result.items.map(i => i.id),
+        );
         return result;
       },
       format,

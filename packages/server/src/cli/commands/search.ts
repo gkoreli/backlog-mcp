@@ -25,7 +25,7 @@ export function registerSearch(program: Command): void {
     .option('--content', 'Include full content')
     .option('--scores', 'Include relevance scores')
     .action((query, opts) => run(
-      (s) => searchItems(s, {
+      (runtime) => searchItems(runtime.service, {
         query,
         types: opts.types,
         status: opts.status,

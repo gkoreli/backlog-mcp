@@ -1,6 +1,5 @@
 import type { Command } from 'commander';
 import { forget } from '../../core/forget.js';
-import { defaultMemoryComposer } from '../../memory/bootstrap.js';
 import type { ForgetResult } from '../../core/types.js';
 import { run } from '../runner.js';
 
@@ -20,7 +19,7 @@ export function registerForget(program: Command): void {
     .option('--older-than <iso>', 'Memories created before this ISO date')
     .option('--expired', 'GC: hard-delete already-expired memories')
     .action((opts) => run(
-      () => forget(
+      (runtime) => forget(
         {
           ...(opts.ids !== undefined ? { ids: opts.ids } : {}),
           ...(opts.context !== undefined ? { context: opts.context } : {}),
@@ -28,7 +27,7 @@ export function registerForget(program: Command): void {
           ...(opts.olderThan !== undefined ? { older_than: opts.olderThan } : {}),
           ...(opts.expired !== undefined ? { expired: opts.expired } : {}),
         },
-        { memoryComposer: defaultMemoryComposer },
+        { memoryComposer: runtime.memoryComposer },
       ),
       format,
       program.opts().json,

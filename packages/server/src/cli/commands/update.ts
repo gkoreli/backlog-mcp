@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { updateItem } from '../../core/update.js';
-import { run, cliWriteContext } from '../runner.js';
+import { run } from '../runner.js';
 
 export function registerUpdate(program: Command): void {
   program
@@ -14,7 +14,7 @@ export function registerUpdate(program: Command): void {
     .option('--blocked-reason <text...>', 'Blocked reasons')
     .option('--due-date <date>', 'Due date (use "" to clear)')
     .action((id, opts) => run(
-      (s) => updateItem(s, {
+      (runtime) => updateItem(runtime.service, {
         id,
         title: opts.title,
         status: opts.status,
@@ -23,7 +23,7 @@ export function registerUpdate(program: Command): void {
         evidence: opts.evidence,
         blocked_reason: opts.blockedReason,
         due_date: opts.dueDate === '' ? null : opts.dueDate,
-      }, cliWriteContext()),
+      }, runtime.writeContext),
       (r) => `Updated ${r.id}`,
       program.opts().json,
     ));

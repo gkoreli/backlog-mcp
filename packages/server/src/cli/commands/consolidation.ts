@@ -1,6 +1,5 @@
 import type { Command } from 'commander';
 import { consolidationCandidates } from '../../core/consolidation.js';
-import { readUsageLines } from '../../memory/bootstrap.js';
 import type { ConsolidationCandidatesResult } from '../../core/types.js';
 import { run } from '../runner.js';
 
@@ -33,13 +32,17 @@ export function registerConsolidation(program: Command): void {
     .option('--context <id>', 'Restrict to one context (e.g. FLDR-0001)')
     .option('--limit <n>', 'Max bundles (default 10)', parseInt)
     .action((opts) => run(
-      (s) => consolidationCandidates(s, {
+      (runtime) => consolidationCandidates(runtime.service, {
         ...(opts.minCount !== undefined ? { min_count: opts.minCount } : {}),
         ...(opts.minAgeDays !== undefined ? { min_age_days: opts.minAgeDays } : {}),
         ...(opts.minDemand !== undefined ? { min_demand: opts.minDemand } : {}),
         ...(opts.context !== undefined ? { context: opts.context } : {}),
         ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
-      }, { readUsageLines }),
+      }, {
+        ...(runtime.readUsageLines === undefined
+          ? {}
+          : { readUsageLines: runtime.readUsageLines }),
+      }),
       format,
       program.opts().json,
     ));

@@ -1,25 +1,8 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import type { Command } from 'commander';
 import { wakeup } from '../../core/wakeup.js';
 import { resolveScope } from '../../core/config.js';
 import type { WakeupResult } from '../../core/types.js';
-import { operationLogger } from '../../operations/logger.js';
-import { paths } from '../../utils/paths.js';
 import { run } from '../runner.js';
-
-const IDENTITY_FILENAME = 'identity.md';
-
-function readIdentityFile(): string | undefined {
-  const path = join(paths.backlogDataDir, IDENTITY_FILENAME);
-  if (!existsSync(path)) return undefined;
-  try {
-    const raw = readFileSync(path, 'utf-8').trim();
-    return raw.length > 0 ? raw : undefined;
-  } catch {
-    return undefined;
-  }
-}
 
 function section(title: string, body: string[]): string[] {
   if (body.length === 0) return [];
@@ -80,17 +63,17 @@ export function registerWakeup(program: Command): void {
     .option('--max-knowledge <n>', 'Max knowledge items (semantic/procedural memories)', parseInt)
     .option('--evidence-chars <n>', 'Max chars of evidence per completion', parseInt)
     .action((opts) => run(
-      (s) => {
+      (runtime) => {
         // ADR 0105: flag wins; else fall back to per-repo config / env default.
         const scope = resolveScope({ explicit: opts.scope });
-        return wakeup(s, {
+        return wakeup(runtime.service, {
         ...(scope !== undefined ? { scope } : {}),
         ...(opts.maxCompletions !== undefined ? { maxCompletions: opts.maxCompletions } : {}),
         ...(opts.maxActivity !== undefined ? { maxActivity: opts.maxActivity } : {}),
         ...(opts.maxKnowledge !== undefined ? { maxKnowledge: opts.maxKnowledge } : {}),
         ...(opts.evidenceChars !== undefined ? { evidenceSnippetChars: opts.evidenceChars } : {}),
-        readIdentity: readIdentityFile,
-        readOperations: (o) => operationLogger.read(o),
+        readIdentity: runtime.readIdentity,
+        readOperations: (options) => runtime.operationLogger.read(options),
         });
       },
       format,
