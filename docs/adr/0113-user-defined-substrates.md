@@ -1073,10 +1073,23 @@ source type, field, cardinality, target allow-list, and optional inverse role, s
 `get(context: true)` never reopens project definitions or hardcodes ADR/Requirement
 edges. `resource` remains reserved as the generic-document search sentinel.
 
+Search crosses the package boundary through a branded `SearchEntityDocument`: the
+server registry selects bounded named field values, and the memory package only
+flattens that projection into one fixed `search_text` property alongside generic
+type/status/parent facets. The Orama schema is not rebuilt per substrate. Claimed
+substrate Markdown is excluded from the generic-resource lane even when search is
+disabled, so one source document never appears twice or bypasses its declaration.
+Built-in documents retain their existing dedicated search fields and ranking path.
+
 ADR 0113.1 specializes the Requirement flagship: recall remains the memory corpus,
 while Requirements use wakeup, search, and get. The definition contract retains a
 bounded recall projection for a future substrate whose declared semantics genuinely
 belong in recall; no current packaged document is injected into `MemoryComposer`.
+
+Requirement defaults intentionally appear in two roles, not two write authorities:
+JSON Schema `default` values document the lenient read expectation, while the capture
+intent materializes the same values on canonical writes. Ajv does not mutate reads or
+writes with defaults; the explicit intent plan remains the operational authority.
 
 ## Prompt substrate candidate
 

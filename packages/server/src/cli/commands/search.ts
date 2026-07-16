@@ -43,7 +43,7 @@ export function registerSearch(program: Command): void {
   program
     .command('search <query>')
     .description('Search backlog items')
-    .option('--types <types...>', 'Filter by type (task, epic, resource)')
+    .option('--types <types...>', 'Filter by substrate type or resource')
     .option('--status <status...>', 'Filter by status')
     .option('--sort <mode>', 'Sort: relevant or recent')
     .option('--limit <n>', 'Max results', parseInt)

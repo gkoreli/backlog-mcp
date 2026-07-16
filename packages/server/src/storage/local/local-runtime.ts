@@ -221,6 +221,7 @@ export function createLocalRuntime(
     storage,
     search,
     resourceManager,
+    getSearchFields: substrateRegistry.getSearchFields.bind(substrateRegistry),
     allocateId,
   });
   const operationLogger = createOperationLogger(

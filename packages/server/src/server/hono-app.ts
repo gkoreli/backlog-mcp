@@ -430,7 +430,6 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     const limit = parseInt(c.req.query('limit') ?? '20', 10);
     const types = c.req.query('types')?.split(',');
     const sort = c.req.query('sort');
-
     // home=all — cross-home discovery (ADR 0112.4 §3): read-only, fused via
     // the shipped coordinator (rrf merge, provenance-stamped per row). Same
     // machinery the MCP search tool uses; the coordinator resolves exactly
@@ -444,7 +443,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
         {
           query: q,
           limit,
-          ...(types === undefined ? {} : { types: types as Array<'task' | 'epic' | 'resource'> }),
+          ...(types === undefined ? {} : { types }),
           ...(sort === undefined ? {} : { sort: sort as 'relevant' | 'recent' }),
         },
         selection.projectRoot === undefined ? undefined : { projectRoot: selection.projectRoot },
@@ -465,7 +464,11 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     }
 
     const runtime = await resolveSelectedRuntime(selection);
-    const results = await runtime.service.searchUnified(q, { types: types as Array<'task' | 'epic' | 'resource'> | undefined, sort, limit });
+    const results = await runtime.service.searchUnified(q, {
+      types,
+      sort,
+      limit,
+    });
     return c.json(results.map(function addProvenance(result) {
       return withSearchHomeProvenance(runtime, result);
     }));

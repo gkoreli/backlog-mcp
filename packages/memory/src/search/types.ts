@@ -1,4 +1,7 @@
-import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
+import type {
+  AnyEntity,
+  SubstrateType,
+} from '@backlog-mcp/shared';
 
 /**
  * Resource document for search indexing
@@ -13,15 +16,33 @@ export interface Resource {
 /**
  * Document types that can be searched
  */
-export type SearchableType = 'task' | 'epic' | 'folder' | 'artifact' | 'milestone' | 'cron' | 'memory' | 'resource';
+export type SearchableType = SubstrateType | 'resource';
+
+export interface SearchEntityField {
+  name: string;
+  value: unknown;
+}
+
+/**
+ * Registry-projected entity document.
+ *
+ * The server chooses declared fields; the search package remains unaware of
+ * substrate definitions and only flattens this bounded named projection.
+ */
+export interface SearchEntityDocument {
+  kind: 'entity-document';
+  entity: AnyEntity;
+  fields: readonly SearchEntityField[];
+}
+
+export type IndexableEntity = AnyEntity | SearchEntityDocument;
 
 /**
  * Search filter options
  */
 export interface SearchFilters {
-  status?: Status[];
-  type?: EntityType;
-  epic_id?: string;
+  status?: string[];
+  type?: SubstrateType;
   parent_id?: string;
 }
 
@@ -45,7 +66,7 @@ export interface SearchOptions {
 export interface SearchResult {
   id: string;
   score: number;
-  task: Entity;
+  task: AnyEntity;
 }
 
 /**
@@ -76,7 +97,7 @@ export interface SearchSnippet {
  * Separates the item from metadata (score, type) for type safety.
  */
 export interface UnifiedSearchResult {
-  item: Entity | Resource;
+  item: AnyEntity | Resource;
   score: number;
   type: SearchableType;
   /** Server-side snippet. Present when the search service generates it. */
@@ -89,17 +110,17 @@ export interface UnifiedSearchResult {
  */
 export interface SearchService {
   /** Build/rebuild index from tasks */
-  index(tasks: Entity[]): Promise<void>;
+  index(tasks: IndexableEntity[]): Promise<void>;
 
   /** Search tasks by query string */
   search(query: string, options?: SearchOptions): Promise<SearchResult[]>;
 
   /** Add single document to index */
-  addDocument(task: Entity): Promise<void>;
+  addDocument(task: IndexableEntity): Promise<void>;
 
   /** Remove document from index */
   removeDocument(id: string): Promise<void>;
 
   /** Update document in index */
-  updateDocument(task: Entity): Promise<void>;
+  updateDocument(task: IndexableEntity): Promise<void>;
 }

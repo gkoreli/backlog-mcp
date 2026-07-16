@@ -210,9 +210,16 @@ describe('LocalRuntime', function describeLocalRuntime() {
             type: { const: 'decision' },
             title: { type: 'string' },
             summary: { type: 'string' },
+            private_note: { type: 'string' },
           },
           required: ['id', 'type', 'title', 'summary'],
           additionalProperties: false,
+        },
+        disclosure: {
+          search: {
+            enabled: true,
+            fields: ['title', 'summary'],
+          },
         },
       }),
     );
@@ -230,7 +237,10 @@ describe('LocalRuntime', function describeLocalRuntime() {
       {
         title: 'Runtime decision',
         type: 'decision',
-        fields: { summary: 'Initial summary' },
+        fields: {
+          summary: 'Initial summary',
+          private_note: 'hiddenambermarker',
+        },
       },
       context,
       CREATE_ATTRIBUTION,
@@ -250,6 +260,27 @@ describe('LocalRuntime', function describeLocalRuntime() {
       type: 'decision',
       summary: 'Updated summary',
     });
+    const searchResults = await runtime.service.searchUnified(
+      'Updated summary',
+    );
+    expect(searchResults).toHaveLength(1);
+    expect(searchResults[0]).toMatchObject({
+      type: 'decision',
+      item: {
+        id: created.id,
+        summary: 'Updated summary',
+      },
+      snippet: {
+        matched_fields: ['summary'],
+      },
+    });
+    expect(await runtime.service.searchUnified('hiddenambermarker')).toEqual([]);
+    expect((await runtime.service.searchUnified(
+      'Updated summary',
+      { types: ['decision'] },
+    )).map(function resultId(result) {
+      return result.item.id;
+    })).toEqual([created.id]);
     expect(existsSync(
       join(home.documentsDir, 'decisions', '001.md'),
     )).toBe(true);

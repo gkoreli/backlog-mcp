@@ -1,5 +1,9 @@
-import type { Entity } from '@backlog-mcp/shared';
-import type { Resource, SearchSnippet } from './types.js';
+import type { AnyEntity } from '@backlog-mcp/shared';
+import type {
+  Resource,
+  SearchEntityField,
+  SearchSnippet,
+} from './types.js';
 import { compoundWordTokenizer } from './tokenizer.js';
 
 // ── Server-side snippet generation (ADR-0073) ──────────────────────
@@ -15,15 +19,41 @@ const SNIPPET_WINDOW = 120; // chars of context around match
 /**
  * Generate a plain-text snippet for a task, showing where the query matched.
  */
-export function generateTaskSnippet(task: Entity, query: string): SearchSnippet {
+export function generateTaskSnippet(task: AnyEntity, query: string): SearchSnippet {
+  const record = task as Record<string, unknown>;
+  const references = Array.isArray(record.references)
+    ? record.references.flatMap(function referenceText(reference) {
+      if (typeof reference === 'string') return [reference];
+      if (typeof reference !== 'object' || reference === null) return [];
+      const value = reference as Record<string, unknown>;
+      return [`${typeof value.title === 'string' ? value.title : ''} ${typeof value.url === 'string' ? value.url : ''}`];
+    }).join(' ')
+    : '';
   const fields: { name: string; value: string }[] = [
     { name: 'title', value: task.title },
-    { name: 'content', value: task.content || '' },
-    { name: 'evidence', value: (task.evidence || []).join(' ') },
-    { name: 'blocked_reason', value: (task.blocked_reason || []).join(' ') },
-    { name: 'references', value: (task.references || []).map(r => `${r.title || ''} ${r.url}`).join(' ') },
+    { name: 'content', value: typeof task.content === 'string' ? task.content : '' },
+    { name: 'evidence', value: textValue(record.evidence) },
+    { name: 'blocked_reason', value: textValue(record.blocked_reason) },
+    { name: 'references', value: references },
   ];
   return generateSnippetFromFields(fields, query);
+}
+
+/** Generate a snippet from the exact registry-projected substrate fields. */
+export function generateEntitySnippet(
+  entity: AnyEntity,
+  fields: readonly SearchEntityField[],
+  query: string,
+): SearchSnippet {
+  const projected = fields.map(function textField(field) {
+    return { name: field.name, value: textValue(field.value) };
+  });
+  return generateSnippetFromFields(
+    projected.length > 0
+      ? projected
+      : [{ name: 'title', value: entity.title }],
+    query,
+  );
 }
 
 /**
@@ -95,4 +125,23 @@ function generateSnippetFromFields(
   }
 
   return { field: firstField, text: firstText, matched_fields: matchedFields };
+}
+
+function textValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (
+    typeof value === 'string'
+    || typeof value === 'number'
+    || typeof value === 'boolean'
+  ) {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(textValue).filter(Boolean).join(' ');
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '';
+  }
 }

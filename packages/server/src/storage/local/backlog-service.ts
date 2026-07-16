@@ -1,9 +1,8 @@
 import {
   EntityType,
-  STATUSES,
   nextEntityId,
   type AnyEntity,
-  type Entity,
+  type RuntimeEntity,
   type Status,
   type SubstrateType,
 } from '@backlog-mcp/shared';
@@ -13,6 +12,8 @@ import type {
 } from '../storage-adapter.js';
 import {
   OramaSearchService,
+  type IndexableEntity,
+  type SearchEntityDocument,
   type SearchableType,
   type UnifiedSearchResult,
 } from '@backlog-mcp/memory/search';
@@ -30,7 +31,7 @@ import type {
 
 type PendingSearchOperation = {
   op: 'add' | 'update' | 'remove';
-  entity?: Entity;
+  entity?: IndexableEntity;
   id?: string;
 };
 
@@ -39,17 +40,6 @@ function isDocumentStorageAdapter(
 ): storageAdapter is DocumentStorageAdapter {
   return 'iterateDocuments' in storageAdapter
     && typeof storageAdapter.iterateDocuments === 'function';
-}
-
-function builtinStatuses(statuses: readonly string[] | undefined): Status[] | undefined {
-  if (statuses === undefined) return undefined;
-  const allowed = new Set<string>(STATUSES);
-  if (statuses.some(function isUnknownStatus(status) {
-    return !allowed.has(status);
-  })) {
-    return undefined;
-  }
-  return statuses as Status[];
 }
 
 /**
@@ -66,14 +56,35 @@ function listIndexableResources(
 
   const entitySourcePaths = new Set(Array.from(
     storageAdapter.iterateDocuments(),
-  ).flatMap(function getCompiledSourcePath(document) {
-    return asBuiltinEntity(document.entity) === undefined
-      ? []
-      : [document.sourcePath];
+  ).map(function getCompiledSourcePath(document) {
+    return document.sourcePath;
   }));
   return resources.filter(function isGenericResource(resource) {
     return !entitySourcePaths.has(resource.path);
   });
+}
+
+function createSearchDocument(
+  entity: AnyEntity,
+  getSearchFields:
+    | ((type: SubstrateType) => readonly string[] | undefined)
+    | undefined,
+): IndexableEntity | undefined {
+  const builtin = asBuiltinEntity(entity);
+  if (builtin !== undefined) return builtin;
+  const type = typeof entity.type === 'string' ? entity.type : undefined;
+  if (!type) return undefined;
+  const fields = getSearchFields?.(type);
+  if (!fields) return undefined;
+  const record = entity as RuntimeEntity;
+  const document: SearchEntityDocument = {
+    kind: 'entity-document',
+    entity,
+    fields: fields.map(function projectField(name) {
+      return { name, value: record[name] };
+    }),
+  };
+  return document;
 }
 
 function hasChanges(stats: SearchReconciliationStats): boolean {
@@ -91,6 +102,7 @@ export class BacklogService implements IBacklogService {
   private readonly storage: StorageAdapter;
   private readonly search: OramaSearchService;
   private readonly resourceManager: BacklogServiceDependencies['resourceManager'];
+  private readonly getSearchFields: BacklogServiceDependencies['getSearchFields'];
   private readonly allocateEntityId: BacklogServiceDependencies['allocateId'];
   private searchReady = false;
   private pendingOps: PendingSearchOperation[] = [];
@@ -99,6 +111,7 @@ export class BacklogService implements IBacklogService {
     this.storage = dependencies.storage;
     this.search = dependencies.search;
     this.resourceManager = dependencies.resourceManager;
+    this.getSearchFields = dependencies.getSearchFields;
     this.allocateEntityId = dependencies.allocateId;
   }
 
@@ -128,9 +141,9 @@ export class BacklogService implements IBacklogService {
    */
   async reconcile(): Promise<BacklogReconciliationResult> {
     const allEntities = Array.from(this.storage.iterateEntities()).flatMap(
-      function getBuiltinEntity(entity) {
-        const builtin = asBuiltinEntity(entity);
-        return builtin === undefined ? [] : [builtin];
+      (entity) => {
+        const document = createSearchDocument(entity, this.getSearchFields);
+        return document === undefined ? [] : [document];
       },
     );
     if (!this.searchReady) {
@@ -185,18 +198,10 @@ export class BacklogService implements IBacklogService {
     const { query, ...storageFilter } = filter ?? {};
 
     if (query) {
-      if (
-        storageFilter.type !== undefined
-        && !isBuiltinSubstrateType(storageFilter.type)
-      ) {
-        return [];
-      }
-      const status = builtinStatuses(storageFilter.status);
-      if (storageFilter.status !== undefined && status === undefined) return [];
       await this.ensureSearchReady();
       const results = await this.search.search(query, {
         filters: {
-          status,
+          status: storageFilter.status,
           type: storageFilter.type,
           parent_id: storageFilter.parent_id,
         },
@@ -221,8 +226,8 @@ export class BacklogService implements IBacklogService {
     types?: SearchableType[];
     limit?: number;
     sort?: 'relevant' | 'recent';
-    /** Filter by status (tasks/epics only) */
-    status?: Status[];
+    /** Filter by canonical status string. */
+    status?: string[];
     /** Scope to parent (epic/folder) */
     parent_id?: string;
   }): Promise<UnifiedSearchResult[]> {
@@ -268,12 +273,12 @@ export class BacklogService implements IBacklogService {
 
   async add(candidate: AnyEntity): Promise<AnyEntity> {
     const entity = this.storage.add(candidate);
-    const builtin = asBuiltinEntity(entity);
-    if (builtin !== undefined) {
+    const document = createSearchDocument(entity, this.getSearchFields);
+    if (document !== undefined) {
       if (this.searchReady) {
-        this.search.addDocument(builtin);
+        this.search.addDocument(document);
       } else {
-        this.pendingOps.push({ op: 'add', entity: builtin });
+        this.pendingOps.push({ op: 'add', entity: document });
       }
     }
     return entity;
@@ -281,12 +286,12 @@ export class BacklogService implements IBacklogService {
 
   async save(candidate: AnyEntity): Promise<AnyEntity> {
     const entity = this.storage.save(candidate);
-    const builtin = asBuiltinEntity(entity);
-    if (builtin !== undefined) {
+    const document = createSearchDocument(entity, this.getSearchFields);
+    if (document !== undefined) {
       if (this.searchReady) {
-        this.search.updateDocument(builtin);
+        this.search.updateDocument(document);
       } else {
-        this.pendingOps.push({ op: 'update', entity: builtin });
+        this.pendingOps.push({ op: 'update', entity: document });
       }
     }
     return entity;

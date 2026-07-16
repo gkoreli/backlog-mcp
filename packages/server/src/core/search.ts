@@ -1,4 +1,4 @@
-import type { Entity } from '@backlog-mcp/shared';
+import type { AnyEntity } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { Resource, SearchableType } from '@backlog-mcp/memory/search';
 import { ValidationError, type SearchParams, type SearchResult, type SearchResultItem } from './types.js';
@@ -32,13 +32,21 @@ export async function searchItems(service: IBacklogService, params: SearchParams
       return item;
     }
 
-    const task = r.item as Entity;
-    const item: SearchResultItem = { id: task.id, title: task.title, type: r.type, status: task.status };
-    const parentId = task.parent_id;
+    const entity = r.item as AnyEntity;
+    const status = typeof entity.status === 'string' ? entity.status : undefined;
+    const item: SearchResultItem = {
+      id: entity.id,
+      title: entity.title,
+      type: r.type,
+      ...(status === undefined ? {} : { status }),
+    };
+    const parentId = entity.parent_id;
     if (parentId) item.parent_id = parentId;
     if (r.snippet) { item.snippet = r.snippet.text; item.matched_fields = r.snippet.matched_fields; }
     if (include_scores) item.score = Math.round(r.score * 1000) / 1000;
-    if (include_content) item.content = task.content;
+    if (include_content && typeof entity.content === 'string') {
+      item.content = entity.content;
+    }
     return item;
   });
 

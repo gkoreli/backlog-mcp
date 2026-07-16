@@ -205,8 +205,8 @@ export interface DeleteResult {
 
 export interface SearchParams {
   query: string;
-  types?: Array<'task' | 'epic' | 'folder' | 'artifact' | 'milestone' | 'cron' | 'memory' | 'resource'>;
-  status?: Status[];
+  types?: string[];
+  status?: string[];
   parent_id?: string;
   sort?: 'relevant' | 'recent';
   limit?: number;
@@ -218,7 +218,7 @@ export interface SearchResultItem {
   id: string;
   title: string;
   type: string;
-  status?: Status;
+  status?: string;
   parent_id?: string;
   path?: string;
   snippet?: string;

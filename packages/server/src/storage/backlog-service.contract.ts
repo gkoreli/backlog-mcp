@@ -9,7 +9,6 @@
  */
 import type {
   AnyEntity,
-  Status,
   SubstrateType,
 } from '@backlog-mcp/shared';
 import type { UnifiedSearchResult, SearchableType } from '@backlog-mcp/memory/search';
@@ -35,7 +34,7 @@ export interface IBacklogService {
   allocateId?(type: SubstrateType): Promise<string>;
   searchUnified(query: string, options?: {
     types?: SearchableType[];
-    status?: Status[];
+    status?: string[];
     parent_id?: string;
     sort?: string;
     limit?: number;

@@ -9,10 +9,11 @@ export type OramaDoc = {
   content: string;
   status: string;
   type: string;
-  epic_id: string;
+  parent_id: string;
   evidence: string;
   blocked_reason: string;
   references: string;
+  search_text: string;
   path: string;
   updated_at: string;  // ADR-0080: for native sortBy
 };
@@ -29,10 +30,11 @@ export const schema = {
   content: 'string',
   status: 'enum',
   type: 'enum',
-  epic_id: 'enum',
+  parent_id: 'enum',
   evidence: 'string',
   blocked_reason: 'string',
   references: 'string',
+  search_text: 'string',
   path: 'string',
   updated_at: 'string',  // ADR-0080: enables native sortBy for "recent" mode
 } as const;
@@ -46,12 +48,12 @@ export type OramaInstance = import('@orama/orama').Orama<typeof schema>;
 export type OramaInstanceWithEmbeddings = import('@orama/orama').Orama<typeof schemaWithEmbeddings>;
 
 /** Bump when tokenizer or schema changes to force index rebuild. */
-export const INDEX_VERSION = 5;  // ADR-0106.4: entity body field renamed description→content (forces rebuild)
+export const INDEX_VERSION = 6;  // ADR-0113 Phase C: runtime substrate search projection
 
 // ── Search constants ────────────────────────────────────────────────
 
 /**
- * Text-searchable properties (ADR-0079). Excludes enum fields (status, type, epic_id)
+ * Text-searchable properties (ADR-0079). Excludes enum fields (status, type, parent_id)
  * which are filtered via `where` clause, not full-text searched.
  * Also excludes updated_at which is only used for sorting.
  *
@@ -61,19 +63,19 @@ export const INDEX_VERSION = 5;  // ADR-0106.4: entity body field renamed descri
  * queries are handled *before* BM25 by the query-intent parser (id_lookup
  * short-circuit), which is both exact and cheaper.
  */
-export const TEXT_PROPERTIES = ['title', 'content', 'evidence', 'blocked_reason', 'references', 'path'] as const;
+export const TEXT_PROPERTIES = ['title', 'content', 'evidence', 'blocked_reason', 'references', 'search_text', 'path'] as const;
 
 /**
  * Properties that should NOT have sort indexes (ADR-0080).
  * Only `updated_at` needs a sort index for native "recent" mode.
  */
-export const UNSORTABLE_PROPERTIES = ['id', 'title', 'content', 'evidence', 'blocked_reason', 'references', 'path'] as const;
+export const UNSORTABLE_PROPERTIES = ['id', 'title', 'content', 'evidence', 'blocked_reason', 'references', 'search_text', 'path'] as const;
 
 /**
  * Facet configuration for enum fields (ADR-0080).
  * Orama returns counts per value automatically for enum facets.
  */
-export const ENUM_FACETS = { status: {}, type: {}, epic_id: {} } as const;
+export const ENUM_FACETS = { status: {}, type: {}, parent_id: {} } as const;
 
 // ── Where clause builder ────────────────────────────────────────────
 
@@ -84,14 +86,13 @@ export const ENUM_FACETS = { status: {}, type: {}, epic_id: {} } as const;
  * Precedence (ADR-0083 #6, documented behavior): when both `filters.type` and
  * `docTypes` are provided, `docTypes` wins — it is the caller-facing tool
  * parameter, while `filters.type` may come from parsed query intent. Same for
- * `parent_id` over `epic_id` (parent_id is the ADR-0098 canonical name).
+ * `parent_id` is the canonical containment filter.
  */
 export function buildWhereClause(filters?: SearchOptions['filters'], docTypes?: import('./types.js').SearchableType[]): Record<string, any> | undefined {
   const where: Record<string, any> = {};
   if (filters?.status?.length) where.status = { in: filters.status };
   if (filters?.type) where.type = { eq: filters.type };
-  if (filters?.epic_id) where.epic_id = { eq: filters.epic_id };
-  if (filters?.parent_id) where.epic_id = { eq: filters.parent_id };
+  if (filters?.parent_id) where.parent_id = { eq: filters.parent_id };
   if (docTypes?.length) where.type = { in: docTypes };
   return Object.keys(where).length > 0 ? where : undefined;
 }

@@ -18,7 +18,7 @@
  *   - Separates task/epic results from resource results for cleaner budgeting.
  */
 
-import type { Entity } from '@backlog-mcp/shared';
+import type { AnyEntity, Entity } from '@backlog-mcp/shared';
 import type { Resource, SearchableType } from '@backlog-mcp/memory/search';
 import type { ContextEntity, ContextResource } from './types.js';
 import { taskToContextEntity } from './entity-stub.js';
@@ -29,7 +29,7 @@ export interface SemanticEnrichmentDeps {
     types?: SearchableType[];
     limit?: number;
   }) => Promise<Array<{
-    item: Entity | Resource;
+    item: AnyEntity | Resource;
     score: number;
     type: SearchableType;
   }>>;

@@ -1,5 +1,18 @@
 // Types
-export type { SearchService, SearchOptions, SearchFilters, SearchResult, UnifiedSearchResult, SearchSnippet, Resource, ResourceSearchResult, SearchableType } from './types.js';
+export type {
+  IndexableEntity,
+  Resource,
+  ResourceSearchResult,
+  SearchEntityDocument,
+  SearchEntityField,
+  SearchFilters,
+  SearchOptions,
+  SearchResult,
+  SearchService,
+  SearchSnippet,
+  SearchableType,
+  UnifiedSearchResult,
+} from './types.js';
 
 // Orama implementation
 export { OramaSearchService, type OramaSearchOptions } from './orama-search-service.js';

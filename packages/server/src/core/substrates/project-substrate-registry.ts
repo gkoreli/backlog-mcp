@@ -57,6 +57,10 @@ export class ProjectSubstrateRegistry implements SubstrateStorageCatalog {
     return this.#substrates.get(type)?.disclosure;
   }
 
+  getSearchFields(type: string): readonly string[] | undefined {
+    return this.#substrates.get(type)?.disclosure.search?.fields;
+  }
+
   listDisclosureRelations(): readonly CompiledDisclosureRelation[] {
     return [...this.#substrates.values()]
       .flatMap(function substrateRelations(substrate) {

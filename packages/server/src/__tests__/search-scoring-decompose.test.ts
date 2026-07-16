@@ -32,10 +32,11 @@ function taskToDoc(task: Entity): OramaDoc {
     content: task.content || '',
     status: task.status,
     type: task.type || 'task',
-    epic_id: task.parent_id ?? task.epic_id ?? '',
+    parent_id: task.parent_id ?? '',
     evidence: (task.evidence || []).join(' '),
     blocked_reason: (task.blocked_reason || []).join(' '),
     references: (task.references || []).map(r => `${r.title || ''} ${r.url}`).join(' '),
+    search_text: '',
     path: '',
     updated_at: task.updated_at || '',
   };

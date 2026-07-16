@@ -8,6 +8,7 @@ export interface BacklogServiceDependencies {
   storage: StorageAdapter;
   search: OramaSearchService;
   resourceManager: ResourceManager;
+  getSearchFields?: (type: SubstrateType) => readonly string[] | undefined;
   allocateId?: (type: SubstrateType, currentMaxId: number) => string;
 }
 

@@ -100,7 +100,13 @@ export class D1BacklogService implements IBacklogService {
   // Simplified searchUnified for cloud mode — returns task/epic entities only
   async searchUnified(
     query: string,
-    options?: { limit?: number; status?: Status[] },
+    options?: {
+      types?: string[];
+      status?: string[];
+      parent_id?: string;
+      sort?: string;
+      limit?: number;
+    },
   ): Promise<Array<{ item: Entity; score: number; type: 'task' | 'epic' }>> {
     const results = await this.storage.search(query, options?.limit ?? 20);
     return results.map((task) => ({

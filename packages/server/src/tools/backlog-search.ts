@@ -1,7 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
-import { STATUSES } from '@backlog-mcp/shared';
 import { searchItems } from '../core/search.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
 import {
@@ -21,12 +20,12 @@ export function registerBacklogSearchTool(
   server.registerTool(
     'backlog_search',
     {
-      description: 'Search across all backlog content — tasks, epics, and resources. Returns relevance-ranked results with match context. Use this for discovery; use backlog_list for filtering by status/type.',
+      description: 'Search across all indexed backlog substrates and generic resources. Returns relevance-ranked results with match context. Use this for discovery; use backlog_list for filtering by status/type.',
       inputSchema: z.object({
         ...BACKLOG_READ_HOME_INPUT_FIELDS,
         query: z.string().describe('Search query. Supports keywords, phrases, and natural language. Fuzzy matching and semantic similarity are applied automatically.'),
-        types: z.array(z.enum(['task', 'epic', 'resource'])).optional().describe('Filter results by type. Default: all types. Example: ["task", "epic"] to exclude resources.'),
-        status: z.array(z.enum(STATUSES)).optional().describe('Filter tasks/epics by status. Default: all statuses. Example: ["open", "in_progress"] for active work only.'),
+        types: z.array(z.string().min(1)).optional().describe('Filter by substrate type or "resource". Default: all searchable types.'),
+        status: z.array(z.string().min(1)).optional().describe('Filter entities by canonical substrate status. Default: all statuses.'),
         parent_id: z.string().optional().describe('Scope search to items under a specific parent. Example: "EPIC-0001"'),
         sort: z.enum(['relevant', 'recent']).optional().describe('Sort mode. "relevant" (default) ranks by search relevance. "recent" ranks by last updated.'),
         limit: z.number().min(1).max(100).optional().describe('Max results to return. Default: 20, max: 100.'),
