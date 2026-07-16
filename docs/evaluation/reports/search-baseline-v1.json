@@ -1,0 +1,2323 @@
+{
+  "schema_version": 1,
+  "baseline_version": 1,
+  "generated_at": "2026-07-16T23:41:47.820Z",
+  "runner": "scripts/search-eval.mjs",
+  "inputs": {
+    "corpus": {
+      "project_root": "/Users/goga/Documents/goga/backlog-mcp-wt-0116",
+      "documents_dir": "/Users/goga/Documents/goga/backlog-mcp-wt-0116/docs",
+      "home_id": "/Users/goga/Documents/goga/backlog-mcp-wt-0116",
+      "sha256": "94965dbd50d60ddaf250c4c5b09d0f605a3419fbc2d46740024eb0f4742cd57c",
+      "count": 165,
+      "entity_count": 143,
+      "resource_count": 22,
+      "entity_types": {
+        "adr": 141,
+        "prompt": 2
+      }
+    },
+    "queries": {
+      "path": "/Users/goga/Documents/goga/backlog-mcp-wt-0116/docs/evaluation/search-queries-v1.jsonl",
+      "sha256": "e001fd8bb72b83d6a03c53c5b7049de64740ecc56046195a1c244939d3d80186",
+      "count": 24
+    },
+    "qrels": {
+      "path": "/Users/goga/Documents/goga/backlog-mcp-wt-0116/docs/evaluation/search-qrels-v1.jsonl",
+      "sha256": "e5d638745da3f15accc9763919eb5744be8b0a3df56250cc3dd5aa4c792f13d3",
+      "count": 235
+    }
+  },
+  "scope": {
+    "surfaces": [
+      "search"
+    ],
+    "recall_classes": [],
+    "recall_limitation": "Absent — blocked pending a real memory corpus after global Phase E migration into ~/.backlog/docs; this report is not recall evidence."
+  },
+  "settings": {
+    "warmups": 1,
+    "repetitions": 5,
+    "query_warmups_skipped": false
+  },
+  "environment": {
+    "node": "v24.18.0",
+    "platform": "darwin",
+    "os_release": "25.5.0",
+    "arch": "arm64",
+    "cpu": "Apple M5",
+    "cpu_count": 10,
+    "ram_bytes": 25769803776,
+    "packages": {
+      "backlog-mcp": "0.60.0",
+      "@backlog-mcp/memory": "0.46.0",
+      "@huggingface/transformers": "3.8.1",
+      "@orama/orama": "3.1.18",
+      "onnxruntime-node": "1.21.0"
+    }
+  },
+  "provenance": {
+    "git_commit": "7dcd471a2643cc93049b4d12a414740d6bd80525",
+    "runner_sha256": "318a6b9f95f0b6b435d4d36acffaed1578f37d41366d041e65edf169c4838a74",
+    "corpus_membership_ruling": "Beryl domain ruling, 2026-07-16: record after ADR 0113 Phase C so packaged substrate documents are members of the measured corpus.",
+    "query_assessors": [
+      "chert-initial; reviewed:beryl 2026-07-16"
+    ],
+    "qrel_assessors": [
+      "chert-initial; reviewed:beryl 2026-07-16"
+    ],
+    "query_sources": {
+      "nav-01": [
+        "fleet:granite 2026-07-16 — ADR 0116 Phase 2 assignment"
+      ],
+      "nav-02": [
+        "fleet:granite 2026-07-16 — ADR 0106.5 Phase D assignment"
+      ],
+      "nav-03": [
+        "fleet:granite 2026-07-16 — re-prime north-star source review"
+      ],
+      "nav-04": [
+        "fleet:granite 2026-07-16 — 0112.2 control-dir rename notice"
+      ],
+      "lex-01": [
+        "fleet:granite 2026-07-16 — 0116 historical search ADR disposition"
+      ],
+      "lex-02": [
+        "fleet:beryl 2026-07-16 — fusion fact-check against ADR 0081"
+      ],
+      "lex-03": [
+        "fleet:granite 2026-07-16 — north-star 0112 thread assignment"
+      ],
+      "lex-04": [
+        "fleet:beryl 2026-07-16 — recall usage multiplier constraint"
+      ],
+      "filter-01": [
+        "fleet:granite 2026-07-16 — founding prompts and operating principles re-prime"
+      ],
+      "filter-02": [
+        "fleet:granite 2026-07-16 — north-star founding prompt review"
+      ],
+      "filter-03": [
+        "fleet:granite 2026-07-16 — 0116 ranking phase assignment"
+      ],
+      "filter-04": [
+        "fleet:granite 2026-07-16 — baseline-first sequencing correction"
+      ],
+      "about-01": [
+        "fleet:granite 2026-07-16 — founder anti-tool-bloat nuance"
+      ],
+      "about-02": [
+        "fleet:granite 2026-07-16 — local-first north-star re-prime"
+      ],
+      "about-03": [
+        "fleet:granite 2026-07-16 — fixture-gates-ranking directive"
+      ],
+      "about-04": [
+        "fleet:beryl 2026-07-16 — usage multiplier domain law"
+      ],
+      "tail-01": [
+        "fleet:beryl 2026-07-16 — cross-home RRF ruling review"
+      ],
+      "tail-02": [
+        "fleet:basalt 2026-07-16 — relate-and-transition compensation ruling"
+      ],
+      "tail-03": [
+        "fleet:basalt 2026-07-16 — reserved collision and quarantine seam"
+      ],
+      "tail-04": [
+        "fleet:beryl 2026-07-16 — recall-path usage multiplier contract"
+      ],
+      "resource-01": [
+        "fleet:granite 2026-07-16 — north-star re-prime"
+      ],
+      "resource-02": [
+        "fleet:granite 2026-07-16 — architecture audit acceptance"
+      ],
+      "resource-03": [
+        "fleet:beryl 2026-07-16 — overfetch design-note obligation"
+      ],
+      "resource-04": [
+        "fleet:beryl 2026-07-16 — qrel protocol ruling"
+      ]
+    }
+  },
+  "model": {
+    "id": "Xenova/all-MiniLM-L6-v2",
+    "revision": "default-main-unpinned",
+    "dimensions": 384,
+    "dtype": "fp32",
+    "max_tokens": 512,
+    "trained_window_tokens": 256,
+    "document_prefix": "",
+    "query_prefix": "",
+    "pooling": "mean",
+    "post_pool_transform": "none",
+    "normalize": true,
+    "model_source": "cache",
+    "cache_path": "/Users/goga/Documents/goga/backlog-mcp-wt-0116/node_modules/.pnpm/@huggingface+transformers@3.8.1/node_modules/@huggingface/transformers/.cache/Xenova/all-MiniLM-L6-v2",
+    "cache_complete_before": true,
+    "cache_complete_after": true,
+    "cache_bytes_before": 91100283,
+    "cache_bytes_after": 91100283,
+    "required_file_sha256": {
+      "config.json": "7135149f7cffa1a573466c6e4d8423ed73b62fd2332c575bf738a0d033f70df7",
+      "tokenizer.json": "da0e79933b9ed51798a3ae27893d3c5fa4a201126cef75586296df9b4d2c62a0",
+      "tokenizer_config.json": "9261e7d79b44c8195c1cada2b453e55b00aeb81e907a6664974b4d7776172ab3",
+      "onnx/model.onnx": "759c3cd2b7fe7e93933ad23c4c9181b7396442a2ed746ec7c1d46192c469c46e"
+    }
+  },
+  "readiness_ms": {
+    "lexical_ready": 1356.896,
+    "semantic_ready": 9105.486
+  },
+  "modes": {
+    "bm25": {
+      "mode": "bm25",
+      "hybrid_active": false,
+      "build_duration_ms": 1356.896,
+      "startup_ms": {
+        "service_build_to_first_result": 1641.685,
+        "first_result_after_ready": 161.649,
+        "probe_query_id": "nav-01"
+      },
+      "cache_bytes": 10654091,
+      "rss": {
+        "before_bytes": 305463296,
+        "after_bytes": 368361472,
+        "peak_sampled_bytes": 445349888,
+        "samples": [
+          {
+            "phase": "before_index",
+            "bytes": 305463296
+          },
+          {
+            "phase": "after_index",
+            "bytes": 445349888
+          },
+          {
+            "phase": "after_warmups",
+            "bytes": 312442880
+          },
+          {
+            "phase": "after_repetition_1",
+            "bytes": 312836096
+          },
+          {
+            "phase": "after_repetition_2",
+            "bytes": 313147392
+          },
+          {
+            "phase": "after_repetition_3",
+            "bytes": 313442304
+          },
+          {
+            "phase": "after_repetition_4",
+            "bytes": 313868288
+          },
+          {
+            "phase": "after_repetition_5",
+            "bytes": 314064896
+          },
+          {
+            "phase": "after_flush",
+            "bytes": 368361472
+          }
+        ]
+      },
+      "deterministic_repeat_check": true,
+      "overall": {
+        "queryCount": 24,
+        "ndcgAt10": 0.8425045513229547,
+        "reciprocalRank": 0.8530092592592592,
+        "successAt1": 0.8333333333333334,
+        "recallAt20": 0.9583333333333334,
+        "unjudged_at_10": 0
+      },
+      "by_class": {
+        "aboutness": {
+          "queryCount": 4,
+          "ndcgAt10": 0.5283085282079398,
+          "reciprocalRank": 0.5277777777777778,
+          "successAt1": 0.5,
+          "recallAt20": 0.75,
+          "unjudged_at_10": 0
+        },
+        "filtered": {
+          "queryCount": 4,
+          "ndcgAt10": 0.963113752728177,
+          "reciprocalRank": 1,
+          "successAt1": 1,
+          "recallAt20": 1,
+          "unjudged_at_10": 0
+        },
+        "lexical": {
+          "queryCount": 4,
+          "ndcgAt10": 0.9530457277804869,
+          "reciprocalRank": 1,
+          "successAt1": 1,
+          "recallAt20": 1,
+          "unjudged_at_10": 0
+        },
+        "navigation": {
+          "queryCount": 4,
+          "ndcgAt10": 0.8174891427734345,
+          "reciprocalRank": 0.7777777777777778,
+          "successAt1": 0.75,
+          "recallAt20": 1,
+          "unjudged_at_10": 0
+        },
+        "resource": {
+          "queryCount": 4,
+          "ndcgAt10": 0.9934626425677221,
+          "reciprocalRank": 1,
+          "successAt1": 1,
+          "recallAt20": 1,
+          "unjudged_at_10": 0
+        },
+        "tail": {
+          "queryCount": 4,
+          "ndcgAt10": 0.7996075138799665,
+          "reciprocalRank": 0.8125,
+          "successAt1": 0.75,
+          "recallAt20": 1,
+          "unjudged_at_10": 0
+        }
+      },
+      "first_measured_query": {
+        "query_id": "nav-01",
+        "duration_ms": 40.845
+      },
+      "warm_query_latency_ms": {
+        "p50": 30.563,
+        "p95": 49.871
+      },
+      "queries": [
+        {
+          "query_id": "nav-01",
+          "class": "navigation",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0113.1",
+            "ADR 0080",
+            "ADR 0119",
+            "ADR 0009",
+            "ADR 0079",
+            "ADR 0115",
+            "ADR 0020",
+            "ADR 0021",
+            "ADR 0116",
+            "ADR 0031",
+            "ADR 0112.1",
+            "ADR 0113",
+            "ADR 0073",
+            "ADR 0114",
+            "ADR 0117",
+            "ADR 0081",
+            "ADR 0110",
+            "ADR 0016",
+            "ADR 0106.1",
+            "ADR 0118"
+          ],
+          "timings_ms": [
+            40.845,
+            35.31,
+            35.584,
+            35.512,
+            35.62
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.3010299956639812,
+            "reciprocalRank": 0.1111111111111111,
+            "successAt1": 0,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "nav-02",
+          "class": "navigation",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0106.5",
+            "ADR 0117",
+            "ADR 0106",
+            "ADR 0118.1",
+            "ADR 0114",
+            "ADR 0113.1",
+            "ADR 0095",
+            "ADR 0113",
+            "ADR 0118",
+            "ADR 0082",
+            "ADR 0107",
+            "ADR 0010",
+            "ADR 0092.2",
+            "ADR 0087",
+            "ADR 0086",
+            "ADR 0092.3",
+            "ADR 0097",
+            "ADR 0094",
+            "ADR 0092.4",
+            "ADR 0092.13"
+          ],
+          "timings_ms": [
+            37.01,
+            33.255,
+            33.388,
+            33.716,
+            33.606
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9828422279067397,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "nav-03",
+          "class": "navigation",
+          "surface": "search",
+          "ranked_ids": [
+            "PROMPT 0002",
+            "PROMPT 0001"
+          ],
+          "timings_ms": [
+            1.245,
+            1.046,
+            1.052,
+            1.103,
+            1.059
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "nav-04",
+          "class": "navigation",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0112.2",
+            "ADR 0112.3",
+            "ADR 0112.4",
+            "ADR 0112.1",
+            "ADR 0112",
+            "ADR 0034",
+            "ADR 0105",
+            "ADR 0090.1",
+            "ADR 0097",
+            "ADR 0114",
+            "ADR 0115",
+            "ADR 0102",
+            "ADR 0012",
+            "ADR 0094",
+            "ADR 0098",
+            "ADR 0107",
+            "ADR 0119",
+            "ADR 0020",
+            "ADR 0022",
+            "ADR 0117"
+          ],
+          "timings_ms": [
+            29.572,
+            27.658,
+            27.649,
+            28.143,
+            27.745
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9860843475230173,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "lex-01",
+          "class": "lexical",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0041",
+            "ADR 0038",
+            "ADR 0116",
+            "ADR 0050",
+            "ADR 0092.12",
+            "ADR 0074",
+            "ADR 0086",
+            "ADR 0070",
+            "ADR 0069",
+            "ADR 0083",
+            "ADR 0077",
+            "ADR 0078",
+            "ADR 0076",
+            "ADR 0092.3",
+            "ADR 0092.11",
+            "ADR 0097.1",
+            "ADR 0105",
+            "ADR 0036",
+            "ADR 0092.14",
+            "ADR 0092.10"
+          ],
+          "timings_ms": [
+            31.041,
+            30.135,
+            30.125,
+            30.247,
+            30.787
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9828422279067397,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "lex-02",
+          "class": "lexical",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0081",
+            "ADR 0092.1",
+            "ADR 0083",
+            "ADR 0116",
+            "ADR 0112.1",
+            "ADR 0089",
+            "ADR 0092.2",
+            "ADR 0113",
+            "ADR 0065",
+            "ADR 0040",
+            "ADR 0084",
+            "ADR 0092.4",
+            "ADR 0011",
+            "ADR 0104",
+            "ADR 0112",
+            "ADR 0033",
+            "ADR 0043",
+            "ADR 0052",
+            "ADR 0095",
+            "ADR 0059"
+          ],
+          "timings_ms": [
+            32.275,
+            31.858,
+            31.812,
+            31.778,
+            32.211
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9343833073557141,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "lex-03",
+          "class": "lexical",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0112",
+            "ADR 0119",
+            "ADR 0113",
+            "ADR 0117",
+            "ADR 0105",
+            "ADR 0112.2",
+            "ADR 0113.1",
+            "ADR 0097",
+            "ADR 0107",
+            "ADR 0106.1",
+            "ADR 0085",
+            "ADR 0112.4",
+            "ADR 0112.3",
+            "ADR 0114",
+            "ADR 0020",
+            "ADR 0092.1",
+            "ADR 0021",
+            "ADR 0035",
+            "ADR 0112.1",
+            "ADR 0053"
+          ],
+          "timings_ms": [
+            34.19,
+            34.961,
+            33.779,
+            34.022,
+            34.567
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9321921138466336,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "lex-04",
+          "class": "lexical",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0092.9",
+            "ADR 0092.10",
+            "ADR 0092.14",
+            "ADR 0092.2",
+            "ADR 0092",
+            "ADR 0092.1",
+            "ADR 0092.3",
+            "ADR 0092.4",
+            "ADR 0092.8",
+            "ADR 0092.6",
+            "ADR 0092.7",
+            "ADR 0115",
+            "ADR 0092.5",
+            "ADR 0092.11",
+            "ADR 0114",
+            "ADR 0092.12",
+            "ADR 0117",
+            "ADR 0118",
+            "ADR 0112",
+            "ADR 0097"
+          ],
+          "timings_ms": [
+            30.524,
+            32.239,
+            30.563,
+            30.553,
+            30.703
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9627652620128605,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "filter-01",
+          "class": "filtered",
+          "surface": "search",
+          "ranked_ids": [
+            "PROMPT 0002"
+          ],
+          "timings_ms": [
+            0.524,
+            0.58,
+            0.509,
+            0.536,
+            0.548
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "filter-02",
+          "class": "filtered",
+          "surface": "search",
+          "ranked_ids": [
+            "PROMPT 0001",
+            "PROMPT 0002"
+          ],
+          "timings_ms": [
+            1.226,
+            1.215,
+            1.134,
+            1.18,
+            1.257
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "filter-03",
+          "class": "filtered",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0050",
+            "ADR 0051",
+            "ADR 0038",
+            "ADR 0083",
+            "ADR 0073",
+            "ADR 0047",
+            "ADR 0080",
+            "ADR 0079",
+            "ADR 0116",
+            "ADR 0048",
+            "ADR 0052",
+            "ADR 0072",
+            "ADR 0043",
+            "ADR 0049",
+            "ADR 0039",
+            "ADR 0040",
+            "ADR 0081",
+            "ADR 0042",
+            "ADR 0101",
+            "ADR 0062"
+          ],
+          "timings_ms": [
+            24.78,
+            25.776,
+            24.726,
+            24.91,
+            24.991
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.852455010912708,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "filter-04",
+          "class": "filtered",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0116",
+            "ADR 0117",
+            "ADR 0092.3",
+            "ADR 0118.1",
+            "ADR 0092.2",
+            "ADR 0113.1",
+            "ADR 0114",
+            "ADR 0112",
+            "ADR 0106",
+            "ADR 0113",
+            "ADR 0112.4",
+            "ADR 0112.1",
+            "ADR 0119",
+            "ADR 0097",
+            "ADR 0106.5",
+            "ADR 0107",
+            "ADR 0115",
+            "ADR 0112.2",
+            "ADR 0112.3"
+          ],
+          "timings_ms": [
+            28.866,
+            35.947,
+            28.621,
+            29.244,
+            28.944
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "about-01",
+          "class": "aboutness",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0016",
+            "ADR 0117",
+            "ADR 0112",
+            "ADR 0092.2",
+            "ADR 0107",
+            "ADR 0097.1",
+            "ADR 0097",
+            "ADR 0037",
+            "ADR 0106.5",
+            "ADR 0074",
+            "ADR 0106.1",
+            "ADR 0089",
+            "ADR 0095",
+            "ADR 0086",
+            "ADR 0092.3",
+            "ADR 0079",
+            "ADR 0066",
+            "ADR 0119",
+            "ADR 0021",
+            "ADR 0010"
+          ],
+          "timings_ms": [
+            42.208,
+            43.963,
+            42.14,
+            42.397,
+            42.342
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.41197929700876057,
+            "reciprocalRank": 0.1111111111111111,
+            "successAt1": 0,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "about-02",
+          "class": "aboutness",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0112",
+            "ADR 0092.3",
+            "ADR 0116",
+            "ADR 0106.3",
+            "ADR 0089",
+            "ADR 0107",
+            "ADR 0092.2",
+            "ADR 0005",
+            "ADR 0118",
+            "ADR 0117",
+            "ADR 0072",
+            "ADR 0013.7",
+            "ADR 0106.5",
+            "ADR 0106.1",
+            "ADR 0097.1",
+            "ADR 0081",
+            "ADR 0097",
+            "ADR 0113",
+            "ADR 0092.13",
+            "ADR 0092.7"
+          ],
+          "timings_ms": [
+            40.58,
+            40.886,
+            41.141,
+            40.669,
+            41
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.8653283271541885,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "about-03",
+          "class": "aboutness",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0051",
+            "ADR 0050",
+            "ADR 0003",
+            "ADR 0002",
+            "ADR 0048",
+            "ADR 0099",
+            "ADR 0082",
+            "ADR 0012",
+            "ADR 0021",
+            "ADR 0064",
+            "ADR 0097",
+            "ADR 0110",
+            "ADR 0113.1",
+            "ADR 0053",
+            "ADR 0102",
+            "ADR 0026",
+            "ADR 0094",
+            "ADR 0100",
+            "ADR 0112.2",
+            "ADR 0098"
+          ],
+          "timings_ms": [
+            28.484,
+            28.739,
+            28.976,
+            28.601,
+            28.425
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.20058342686518504,
+            "reciprocalRank": 0,
+            "successAt1": 0,
+            "recallAt20": 0
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "about-04",
+          "class": "aboutness",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0115",
+            "ADR 0114",
+            "ADR 0092.3",
+            "ADR 0118",
+            "ADR 0092.2",
+            "ADR 0118.1",
+            "ADR 0092.9",
+            "ADR 0092.7",
+            "ADR 0092.4",
+            "ADR 0092.1",
+            "ADR 0092.5",
+            "ADR 0092.6",
+            "ADR 0092.14",
+            "ADR 0073",
+            "ADR 0112",
+            "ADR 0105",
+            "ADR 0092.8",
+            "ADR 0107",
+            "ADR 0092",
+            "ADR 0092.12"
+          ],
+          "timings_ms": [
+            31.975,
+            31.66,
+            32.261,
+            32.101,
+            31.805
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.6353430618036251,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "tail-01",
+          "class": "tail",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0116",
+            "ADR 0092.4",
+            "ADR 0100",
+            "ADR 0092.9",
+            "ADR 0021",
+            "ADR 0097",
+            "ADR 0113",
+            "ADR 0092.5",
+            "ADR 0107",
+            "ADR 0074",
+            "ADR 0092.1",
+            "ADR 0112",
+            "ADR 0118",
+            "ADR 0069",
+            "ADR 0016",
+            "ADR 0092",
+            "ADR 0076",
+            "ADR 0001",
+            "ADR 0073",
+            "ADR 0119"
+          ],
+          "timings_ms": [
+            49.871,
+            49.267,
+            49.794,
+            49.482,
+            54.681
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "tail-02",
+          "class": "tail",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0117",
+            "ADR 0094",
+            "ADR 0113.1",
+            "ADR 0106.5",
+            "ADR 0116",
+            "ADR 0095",
+            "ADR 0037",
+            "ADR 0021",
+            "ADR 0087",
+            "ADR 0010",
+            "ADR 0054",
+            "ADR 0029",
+            "ADR 0092.2",
+            "ADR 0092",
+            "ADR 0086",
+            "ADR 0092.3",
+            "ADR 0107",
+            "ADR 0092.4",
+            "ADR 0013",
+            "ADR 0011"
+          ],
+          "timings_ms": [
+            34.348,
+            34.314,
+            34.367,
+            34.415,
+            49.272
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.577776584870653,
+            "reciprocalRank": 0.25,
+            "successAt1": 0,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "tail-03",
+          "class": "tail",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0113",
+            "ADR 0119",
+            "ADR 0106.5",
+            "ADR 0118",
+            "ADR 0021",
+            "ADR 0116",
+            "ADR 0107",
+            "ADR 0112",
+            "ADR 0097",
+            "ADR 0118.1",
+            "ADR 0100",
+            "ADR 0092.4",
+            "ADR 0074",
+            "ADR 0092.5",
+            "ADR 0106",
+            "ADR 0089",
+            "ADR 0113.1",
+            "ADR 0117",
+            "ADR 0069",
+            "ADR 0092.9"
+          ],
+          "timings_ms": [
+            50.47,
+            50.084,
+            50.311,
+            50.439,
+            51.181
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9251811795845271,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "tail-04",
+          "class": "tail",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0092.3",
+            "ADR 0114",
+            "ADR 0092.9",
+            "ADR 0116",
+            "ADR 0115",
+            "ADR 0092.2",
+            "ADR 0092.1",
+            "ADR 0118",
+            "ADR 0092.10",
+            "ADR 0092.6",
+            "ADR 0112",
+            "ADR 0092.5",
+            "ADR 0016",
+            "ADR 0093",
+            "ADR 0112.1",
+            "ADR 0101",
+            "ADR 0092",
+            "ADR 0092.14",
+            "ADR 0092.13",
+            "ADR 0092.11"
+          ],
+          "timings_ms": [
+            34.502,
+            34.932,
+            34.836,
+            34.667,
+            35.12
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.6954722910646864,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "resource-01",
+          "class": "resource",
+          "surface": "search",
+          "ranked_ids": [
+            "mcp://backlog/NORTH-STAR.md",
+            "mcp://backlog/proposals/architecture-audit-2026-07.md",
+            "mcp://backlog/proposals/amnesia-test-continuity-engine-2026-07.md",
+            "mcp://backlog/adr/0106.4-STEP0-AUDIT.md",
+            "mcp://backlog/adr/README.md",
+            "mcp://backlog/adr/0106.2-STEP0-AUDIT.md",
+            "mcp://backlog/proposals/uplift-idea-garden-2026-07.md",
+            "mcp://backlog/proposals/naming-and-positioning.md",
+            "mcp://backlog/adr/0106.4-DELEGATION-BRIEF.md",
+            "mcp://backlog/proposals/recall-overfetch-note-2026-07.md",
+            "mcp://backlog/adr/0008-task-labels-and-sprint-management.md",
+            "mcp://backlog/proposals/container-routing-at-intake-2026-07.md",
+            "mcp://backlog/adr/0106.4-entity-body-rename-description-to-content.md",
+            "mcp://backlog/adr/0106.2-DELEGATION-BRIEF.md",
+            "mcp://backlog/adr/0008-task-attached-resources.md",
+            "mcp://backlog/adr/0018-local-llm-optimization-layer.md",
+            "mcp://backlog/adr/0106.2-task-as-entity-rot-cleanup.md",
+            "mcp://backlog/evaluation/README.md",
+            "mcp://backlog/evaluation/JUDGING.md",
+            "mcp://backlog/proposals/semantic-contradiction-detection-2026-07.md"
+          ],
+          "timings_ms": [
+            17.877,
+            17.877,
+            18.93,
+            17.997,
+            18.271
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9811441106287355,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "resource-02",
+          "class": "resource",
+          "surface": "search",
+          "ranked_ids": [
+            "mcp://backlog/proposals/architecture-audit-2026-07.md",
+            "mcp://backlog/proposals/uplift-idea-garden-2026-07.md",
+            "mcp://backlog/adr/README.md",
+            "mcp://backlog/proposals/semantic-contradiction-detection-2026-07.md",
+            "mcp://backlog/proposals/container-routing-at-intake-2026-07.md",
+            "mcp://backlog/proposals/recall-overfetch-note-2026-07.md",
+            "mcp://backlog/adr/0106.2-STEP0-AUDIT.md",
+            "mcp://backlog/adr/0106.4-STEP0-AUDIT.md",
+            "mcp://backlog/proposals/naming-and-positioning.md",
+            "mcp://backlog/adr/0106.4-entity-body-rename-description-to-content.md",
+            "mcp://backlog/NORTH-STAR.md",
+            "mcp://backlog/adr/0106.2-task-as-entity-rot-cleanup.md",
+            "mcp://backlog/adr/0018-local-llm-optimization-layer.md",
+            "mcp://backlog/adr/0008-task-attached-resources.md",
+            "mcp://backlog/adr/0018-restore-flexible-static-file-serving.md",
+            "mcp://backlog/proposals/amnesia-test-continuity-engine-2026-07.md",
+            "mcp://backlog/adr/0008-task-labels-and-sprint-management.md",
+            "mcp://backlog/evaluation/JUDGING.md",
+            "mcp://backlog/evaluation/README.md",
+            "mcp://backlog/adr/0106.4-DELEGATION-BRIEF.md"
+          ],
+          "timings_ms": [
+            17.456,
+            17.795,
+            17.816,
+            18.13,
+            17.869
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "resource-03",
+          "class": "resource",
+          "surface": "search",
+          "ranked_ids": [
+            "mcp://backlog/proposals/recall-overfetch-note-2026-07.md",
+            "mcp://backlog/proposals/uplift-idea-garden-2026-07.md",
+            "mcp://backlog/evaluation/README.md",
+            "mcp://backlog/proposals/amnesia-test-continuity-engine-2026-07.md",
+            "mcp://backlog/evaluation/JUDGING.md",
+            "mcp://backlog/adr/0106.4-entity-body-rename-description-to-content.md",
+            "mcp://backlog/adr/README.md",
+            "mcp://backlog/adr/0018-local-llm-optimization-layer.md",
+            "mcp://backlog/proposals/semantic-contradiction-detection-2026-07.md",
+            "mcp://backlog/NORTH-STAR.md",
+            "mcp://backlog/framework-adr/README.md",
+            "mcp://backlog/adr/0008-task-attached-resources.md",
+            "mcp://backlog/proposals/container-routing-at-intake-2026-07.md",
+            "mcp://backlog/proposals/architecture-audit-2026-07.md",
+            "mcp://backlog/adr/0106.2-task-as-entity-rot-cleanup.md",
+            "mcp://backlog/adr/0106.2-DELEGATION-BRIEF.md",
+            "mcp://backlog/proposals/naming-and-positioning.md",
+            "mcp://backlog/adr/0106.2-STEP0-AUDIT.md",
+            "mcp://backlog/adr/0008-task-labels-and-sprint-management.md",
+            "mcp://backlog/adr/0106.4-STEP0-AUDIT.md"
+          ],
+          "timings_ms": [
+            19.862,
+            18.371,
+            18.308,
+            21.298,
+            18.74
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "resource-04",
+          "class": "resource",
+          "surface": "search",
+          "ranked_ids": [
+            "mcp://backlog/evaluation/JUDGING.md",
+            "mcp://backlog/evaluation/README.md",
+            "mcp://backlog/proposals/uplift-idea-garden-2026-07.md",
+            "mcp://backlog/proposals/semantic-contradiction-detection-2026-07.md",
+            "mcp://backlog/proposals/architecture-audit-2026-07.md",
+            "mcp://backlog/proposals/recall-overfetch-note-2026-07.md",
+            "mcp://backlog/adr/0106.2-DELEGATION-BRIEF.md",
+            "mcp://backlog/NORTH-STAR.md",
+            "mcp://backlog/adr/0106.2-STEP0-AUDIT.md",
+            "mcp://backlog/adr/0106.4-STEP0-AUDIT.md",
+            "mcp://backlog/adr/README.md",
+            "mcp://backlog/adr/0106.2-task-as-entity-rot-cleanup.md",
+            "mcp://backlog/adr/0106.4-DELEGATION-BRIEF.md",
+            "mcp://backlog/proposals/container-routing-at-intake-2026-07.md",
+            "mcp://backlog/proposals/amnesia-test-continuity-engine-2026-07.md",
+            "mcp://backlog/proposals/naming-and-positioning.md",
+            "mcp://backlog/adr/0106.4-entity-body-rename-description-to-content.md",
+            "mcp://backlog/adr/0018-local-llm-optimization-layer.md"
+          ],
+          "timings_ms": [
+            16.333,
+            15.644,
+            15.894,
+            16.21,
+            15.81
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.992706459642153,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        }
+      ]
+    },
+    "hybrid": {
+      "mode": "hybrid",
+      "hybrid_active": true,
+      "build_duration_ms": 9105.486,
+      "startup_ms": {
+        "service_build_to_first_result": 9206.464,
+        "first_result_after_ready": 50.373,
+        "probe_query_id": "nav-01"
+      },
+      "cache_bytes": 12006135,
+      "rss": {
+        "before_bytes": 368754688,
+        "after_bytes": 671301632,
+        "peak_sampled_bytes": 712671232,
+        "samples": [
+          {
+            "phase": "before_index",
+            "bytes": 368754688
+          },
+          {
+            "phase": "after_index",
+            "bytes": 712671232
+          },
+          {
+            "phase": "after_warmups",
+            "bytes": 666877952
+          },
+          {
+            "phase": "after_repetition_1",
+            "bytes": 610304000
+          },
+          {
+            "phase": "after_repetition_2",
+            "bytes": 575586304
+          },
+          {
+            "phase": "after_repetition_3",
+            "bytes": 575586304
+          },
+          {
+            "phase": "after_repetition_4",
+            "bytes": 576438272
+          },
+          {
+            "phase": "after_repetition_5",
+            "bytes": 578043904
+          },
+          {
+            "phase": "after_flush",
+            "bytes": 671301632
+          }
+        ]
+      },
+      "deterministic_repeat_check": true,
+      "overall": {
+        "queryCount": 24,
+        "ndcgAt10": 0.8632634249029177,
+        "reciprocalRank": 0.8535879629629629,
+        "successAt1": 0.8333333333333334,
+        "recallAt20": 1,
+        "unjudged_at_10": 0
+      },
+      "by_class": {
+        "aboutness": {
+          "queryCount": 4,
+          "ndcgAt10": 0.571655537146818,
+          "reciprocalRank": 0.53125,
+          "successAt1": 0.5,
+          "recallAt20": 1,
+          "unjudged_at_10": 0
+        },
+        "filtered": {
+          "queryCount": 4,
+          "ndcgAt10": 0.9674501527969264,
+          "reciprocalRank": 1,
+          "successAt1": 1,
+          "recallAt20": 1,
+          "unjudged_at_10": 0
+        },
+        "lexical": {
+          "queryCount": 4,
+          "ndcgAt10": 0.9838363382552958,
+          "reciprocalRank": 1,
+          "successAt1": 1,
+          "recallAt20": 1,
+          "unjudged_at_10": 0
+        },
+        "navigation": {
+          "queryCount": 4,
+          "ndcgAt10": 0.8231260255166538,
+          "reciprocalRank": 0.7777777777777778,
+          "successAt1": 0.75,
+          "recallAt20": 1,
+          "unjudged_at_10": 0
+        },
+        "resource": {
+          "queryCount": 4,
+          "ndcgAt10": 0.9871342622470832,
+          "reciprocalRank": 1,
+          "successAt1": 1,
+          "recallAt20": 1,
+          "unjudged_at_10": 0
+        },
+        "tail": {
+          "queryCount": 4,
+          "ndcgAt10": 0.8463782334547292,
+          "reciprocalRank": 0.8125,
+          "successAt1": 0.75,
+          "recallAt20": 1,
+          "unjudged_at_10": 0
+        }
+      },
+      "first_measured_query": {
+        "query_id": "nav-01",
+        "duration_ms": 43.26
+      },
+      "warm_query_latency_ms": {
+        "p50": 35.115,
+        "p95": 52.746
+      },
+      "queries": [
+        {
+          "query_id": "nav-01",
+          "class": "navigation",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0113.1",
+            "ADR 0115",
+            "ADR 0080",
+            "ADR 0119",
+            "ADR 0009",
+            "ADR 0079",
+            "ADR 0020",
+            "ADR 0021",
+            "ADR 0116",
+            "ADR 0113",
+            "ADR 0031",
+            "ADR 0112.1",
+            "ADR 0117",
+            "ADR 0073",
+            "ADR 0114",
+            "ADR 0118",
+            "ADR 0081",
+            "ADR 0106.5",
+            "ADR 0110",
+            "ADR 0016"
+          ],
+          "timings_ms": [
+            43.26,
+            42.317,
+            42.271,
+            42.033,
+            42.105
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.3010299956639812,
+            "reciprocalRank": 0.1111111111111111,
+            "successAt1": 0,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "nav-02",
+          "class": "navigation",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0106.5",
+            "ADR 0106",
+            "ADR 0117",
+            "ADR 0114",
+            "ADR 0118.1",
+            "ADR 0113.1",
+            "ADR 0095",
+            "ADR 0113",
+            "ADR 0092.2",
+            "ADR 0092.3",
+            "ADR 0087",
+            "ADR 0118",
+            "ADR 0082",
+            "ADR 0107",
+            "ADR 0010",
+            "ADR 0086",
+            "ADR 0097",
+            "ADR 0094",
+            "ADR 0092.4",
+            "ADR 0119"
+          ],
+          "timings_ms": [
+            43.517,
+            43.721,
+            46.52,
+            43.327,
+            43.416
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "nav-03",
+          "class": "navigation",
+          "surface": "search",
+          "ranked_ids": [
+            "PROMPT 0002",
+            "PROMPT 0001"
+          ],
+          "timings_ms": [
+            2.12,
+            2.132,
+            2.201,
+            2.065,
+            2.07
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "nav-04",
+          "class": "navigation",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0112.2",
+            "ADR 0112.3",
+            "ADR 0112.4",
+            "ADR 0112",
+            "ADR 0112.1",
+            "ADR 0034",
+            "ADR 0105",
+            "ADR 0090.1",
+            "ADR 0097",
+            "ADR 0114",
+            "ADR 0053",
+            "ADR 0115",
+            "ADR 0102",
+            "ADR 0012",
+            "ADR 0094",
+            "ADR 0098",
+            "ADR 0107",
+            "ADR 0119",
+            "ADR 0020",
+            "ADR 0022"
+          ],
+          "timings_ms": [
+            33.317,
+            31.838,
+            33.285,
+            31.191,
+            31.325
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9914741064026341,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "lex-01",
+          "class": "lexical",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0041",
+            "ADR 0116",
+            "ADR 0038",
+            "ADR 0050",
+            "ADR 0069",
+            "ADR 0086",
+            "ADR 0092.12",
+            "ADR 0074",
+            "ADR 0092.3",
+            "ADR 0077",
+            "ADR 0070",
+            "ADR 0083",
+            "ADR 0078",
+            "ADR 0076",
+            "ADR 0001",
+            "ADR 0092.11",
+            "ADR 0081",
+            "ADR 0097.1",
+            "ADR 0105",
+            "ADR 0092.4"
+          ],
+          "timings_ms": [
+            41.387,
+            40.079,
+            41.567,
+            38.784,
+            38.82
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "lex-02",
+          "class": "lexical",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0081",
+            "ADR 0116",
+            "ADR 0092.1",
+            "ADR 0083",
+            "ADR 0112.1",
+            "ADR 0089",
+            "ADR 0092.2",
+            "ADR 0084",
+            "ADR 0113",
+            "ADR 0065",
+            "ADR 0040",
+            "ADR 0072",
+            "ADR 0092.4",
+            "ADR 0011",
+            "ADR 0104",
+            "ADR 0112",
+            "ADR 0033",
+            "ADR 0043",
+            "ADR 0052",
+            "ADR 0095"
+          ],
+          "timings_ms": [
+            37.302,
+            36.228,
+            37.714,
+            35.211,
+            34.922
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9884819477308039,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "lex-03",
+          "class": "lexical",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0112",
+            "ADR 0105",
+            "ADR 0112.2",
+            "ADR 0119",
+            "ADR 0113",
+            "ADR 0097",
+            "ADR 0085",
+            "ADR 0117",
+            "ADR 0112.4",
+            "ADR 0107",
+            "ADR 0112.3",
+            "ADR 0113.1",
+            "ADR 0035",
+            "ADR 0114",
+            "ADR 0106.1",
+            "ADR 0068",
+            "ADR 0020",
+            "ADR 0092.1",
+            "ADR 0021",
+            "ADR 0087"
+          ],
+          "timings_ms": [
+            43.226,
+            43.096,
+            44.88,
+            41.771,
+            41.648
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9816878040406388,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "lex-04",
+          "class": "lexical",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0092.9",
+            "ADR 0092.10",
+            "ADR 0092",
+            "ADR 0092.2",
+            "ADR 0092.1",
+            "ADR 0092.3",
+            "ADR 0092.4",
+            "ADR 0092.14",
+            "ADR 0092.8",
+            "ADR 0092.6",
+            "ADR 0092.7",
+            "ADR 0092.5",
+            "ADR 0115",
+            "ADR 0092.12",
+            "ADR 0092.11",
+            "ADR 0118",
+            "ADR 0114",
+            "ADR 0097",
+            "ADR 0117",
+            "ADR 0112"
+          ],
+          "timings_ms": [
+            42.39,
+            42.042,
+            42.417,
+            41.318,
+            41.5
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9651756012497404,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "filter-01",
+          "class": "filtered",
+          "surface": "search",
+          "ranked_ids": [
+            "PROMPT 0002",
+            "PROMPT 0001"
+          ],
+          "timings_ms": [
+            1.823,
+            1.97,
+            2.049,
+            1.848,
+            1.871
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "filter-02",
+          "class": "filtered",
+          "surface": "search",
+          "ranked_ids": [
+            "PROMPT 0001",
+            "PROMPT 0002"
+          ],
+          "timings_ms": [
+            2.168,
+            2.266,
+            2.27,
+            2.187,
+            2.206
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "filter-03",
+          "class": "filtered",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0050",
+            "ADR 0051",
+            "ADR 0038",
+            "ADR 0083",
+            "ADR 0116",
+            "ADR 0073",
+            "ADR 0080",
+            "ADR 0079",
+            "ADR 0052",
+            "ADR 0047",
+            "ADR 0072",
+            "ADR 0048",
+            "ADR 0039",
+            "ADR 0049",
+            "ADR 0081",
+            "ADR 0043",
+            "ADR 0040",
+            "ADR 0042",
+            "ADR 0044",
+            "ADR 0101"
+          ],
+          "timings_ms": [
+            26.428,
+            25.828,
+            25.963,
+            25.776,
+            25.744
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.8698006111877054,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "filter-04",
+          "class": "filtered",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0116",
+            "ADR 0117",
+            "ADR 0092.3",
+            "ADR 0118.1",
+            "ADR 0092.2",
+            "ADR 0113.1",
+            "ADR 0114",
+            "ADR 0112",
+            "ADR 0106",
+            "ADR 0113",
+            "ADR 0112.4",
+            "ADR 0112.1",
+            "ADR 0119",
+            "ADR 0097",
+            "ADR 0106.5",
+            "ADR 0107",
+            "ADR 0115",
+            "ADR 0112.2",
+            "ADR 0112.3"
+          ],
+          "timings_ms": [
+            31.968,
+            30.55,
+            30.414,
+            30.525,
+            30.184
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "about-01",
+          "class": "aboutness",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0117",
+            "ADR 0112",
+            "ADR 0097",
+            "ADR 0092.2",
+            "ADR 0016",
+            "ADR 0074",
+            "ADR 0097.1",
+            "ADR 0106.5",
+            "ADR 0037",
+            "ADR 0107",
+            "ADR 0095",
+            "ADR 0086",
+            "ADR 0119",
+            "ADR 0106",
+            "ADR 0106.1",
+            "ADR 0089",
+            "ADR 0094",
+            "ADR 0092.3",
+            "ADR 0079",
+            "ADR 0092.9"
+          ],
+          "timings_ms": [
+            52.746,
+            52.461,
+            52.333,
+            52.28,
+            52.303
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.49002382560773977,
+            "reciprocalRank": 0.125,
+            "successAt1": 0,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "about-02",
+          "class": "aboutness",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0112",
+            "ADR 0116",
+            "ADR 0107",
+            "ADR 0005",
+            "ADR 0117",
+            "ADR 0092.3",
+            "ADR 0106.3",
+            "ADR 0097",
+            "ADR 0089",
+            "ADR 0113",
+            "ADR 0092.2",
+            "ADR 0118",
+            "ADR 0106.1",
+            "ADR 0097.1",
+            "ADR 0072",
+            "ADR 0013.7",
+            "ADR 0083",
+            "ADR 0106.5",
+            "ADR 0081",
+            "ADR 0032"
+          ],
+          "timings_ms": [
+            48.502,
+            48.856,
+            48.773,
+            48.636,
+            48.657
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9256336454939833,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "about-03",
+          "class": "aboutness",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0051",
+            "ADR 0050",
+            "ADR 0003",
+            "ADR 0002",
+            "ADR 0048",
+            "ADR 0099",
+            "ADR 0082",
+            "ADR 0012",
+            "ADR 0021",
+            "ADR 0064",
+            "ADR 0097",
+            "ADR 0110",
+            "ADR 0113.1",
+            "ADR 0053",
+            "ADR 0102",
+            "ADR 0026",
+            "ADR 0094",
+            "ADR 0116",
+            "ADR 0072",
+            "ADR 0100"
+          ],
+          "timings_ms": [
+            34.83,
+            35.115,
+            34.903,
+            34.921,
+            34.747
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.20058342686518504,
+            "reciprocalRank": 0,
+            "successAt1": 0,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "about-04",
+          "class": "aboutness",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0115",
+            "ADR 0092.3",
+            "ADR 0118",
+            "ADR 0118.1",
+            "ADR 0114",
+            "ADR 0092.2",
+            "ADR 0092.9",
+            "ADR 0092.7",
+            "ADR 0092.4",
+            "ADR 0092.5",
+            "ADR 0092.6",
+            "ADR 0092.12",
+            "ADR 0092.1",
+            "ADR 0092.14",
+            "ADR 0092",
+            "ADR 0092.8",
+            "ADR 0105",
+            "ADR 0092.10",
+            "ADR 0073",
+            "ADR 0112"
+          ],
+          "timings_ms": [
+            33.649,
+            36.983,
+            34.091,
+            34.153,
+            33.775
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.6703812506203638,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "tail-01",
+          "class": "tail",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0116",
+            "ADR 0092.4",
+            "ADR 0100",
+            "ADR 0092.9",
+            "ADR 0021",
+            "ADR 0097",
+            "ADR 0113",
+            "ADR 0092.5",
+            "ADR 0107",
+            "ADR 0074",
+            "ADR 0092.1",
+            "ADR 0112",
+            "ADR 0118",
+            "ADR 0069",
+            "ADR 0016",
+            "ADR 0092",
+            "ADR 0081",
+            "ADR 0076",
+            "ADR 0001",
+            "ADR 0073"
+          ],
+          "timings_ms": [
+            52.233,
+            52.4,
+            52.626,
+            52.966,
+            52.141
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "tail-02",
+          "class": "tail",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0117",
+            "ADR 0113.1",
+            "ADR 0094",
+            "ADR 0106.5",
+            "ADR 0037",
+            "ADR 0087",
+            "ADR 0092.2",
+            "ADR 0095",
+            "ADR 0116",
+            "ADR 0107",
+            "ADR 0021",
+            "ADR 0092.5",
+            "ADR 0115",
+            "ADR 0010",
+            "ADR 0086",
+            "ADR 0054",
+            "ADR 0092.3",
+            "ADR 0029",
+            "ADR 0092",
+            "ADR 0092.4"
+          ],
+          "timings_ms": [
+            46.115,
+            45.299,
+            45.304,
+            45.362,
+            45.163
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.568928646835429,
+            "reciprocalRank": 0.25,
+            "successAt1": 0,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "tail-03",
+          "class": "tail",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0113",
+            "ADR 0106.5",
+            "ADR 0119",
+            "ADR 0112",
+            "ADR 0097",
+            "ADR 0113.1",
+            "ADR 0118",
+            "ADR 0021",
+            "ADR 0116",
+            "ADR 0107",
+            "ADR 0106",
+            "ADR 0118.1",
+            "ADR 0100",
+            "ADR 0092.4",
+            "ADR 0074",
+            "ADR 0092.5",
+            "ADR 0106.1",
+            "ADR 0098",
+            "ADR 0089",
+            "ADR 0117"
+          ],
+          "timings_ms": [
+            55.225,
+            54.734,
+            55.151,
+            56.214,
+            54.993
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.9969985637815049,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "tail-04",
+          "class": "tail",
+          "surface": "search",
+          "ranked_ids": [
+            "ADR 0092.3",
+            "ADR 0092.9",
+            "ADR 0115",
+            "ADR 0114",
+            "ADR 0092.10",
+            "ADR 0118",
+            "ADR 0092.2",
+            "ADR 0092.1",
+            "ADR 0116",
+            "ADR 0092.5",
+            "ADR 0092.6",
+            "ADR 0112",
+            "ADR 0092",
+            "ADR 0092.14",
+            "ADR 0092.12",
+            "ADR 0016",
+            "ADR 0112.1",
+            "ADR 0093",
+            "ADR 0092.11",
+            "ADR 0101"
+          ],
+          "timings_ms": [
+            39.303,
+            39.198,
+            39.091,
+            40.216,
+            39.253
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.8195857232019828,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "resource-01",
+          "class": "resource",
+          "surface": "search",
+          "ranked_ids": [
+            "mcp://backlog/NORTH-STAR.md",
+            "mcp://backlog/proposals/architecture-audit-2026-07.md",
+            "mcp://backlog/proposals/amnesia-test-continuity-engine-2026-07.md",
+            "mcp://backlog/proposals/naming-and-positioning.md",
+            "mcp://backlog/proposals/uplift-idea-garden-2026-07.md",
+            "mcp://backlog/adr/0106.4-STEP0-AUDIT.md",
+            "mcp://backlog/adr/README.md",
+            "mcp://backlog/adr/0106.2-STEP0-AUDIT.md",
+            "mcp://backlog/adr/0106.4-DELEGATION-BRIEF.md",
+            "mcp://backlog/proposals/recall-overfetch-note-2026-07.md",
+            "mcp://backlog/adr/0008-task-labels-and-sprint-management.md",
+            "mcp://backlog/proposals/container-routing-at-intake-2026-07.md",
+            "mcp://backlog/adr/0106.4-entity-body-rename-description-to-content.md",
+            "mcp://backlog/adr/0106.2-DELEGATION-BRIEF.md",
+            "mcp://backlog/adr/0008-task-attached-resources.md",
+            "mcp://backlog/adr/0018-local-llm-optimization-layer.md",
+            "mcp://backlog/adr/0106.2-task-as-entity-rot-cleanup.md",
+            "mcp://backlog/evaluation/README.md",
+            "mcp://backlog/evaluation/JUDGING.md",
+            "mcp://backlog/proposals/semantic-contradiction-detection-2026-07.md"
+          ],
+          "timings_ms": [
+            19.215,
+            19.351,
+            19.214,
+            19.509,
+            19.287
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "resource-02",
+          "class": "resource",
+          "surface": "search",
+          "ranked_ids": [
+            "mcp://backlog/proposals/architecture-audit-2026-07.md",
+            "mcp://backlog/proposals/uplift-idea-garden-2026-07.md",
+            "mcp://backlog/adr/README.md",
+            "mcp://backlog/proposals/container-routing-at-intake-2026-07.md",
+            "mcp://backlog/adr/0106.2-STEP0-AUDIT.md",
+            "mcp://backlog/proposals/semantic-contradiction-detection-2026-07.md",
+            "mcp://backlog/proposals/recall-overfetch-note-2026-07.md",
+            "mcp://backlog/adr/0106.4-STEP0-AUDIT.md",
+            "mcp://backlog/proposals/naming-and-positioning.md",
+            "mcp://backlog/NORTH-STAR.md",
+            "mcp://backlog/adr/0106.4-entity-body-rename-description-to-content.md",
+            "mcp://backlog/adr/0106.2-task-as-entity-rot-cleanup.md",
+            "mcp://backlog/adr/0018-local-llm-optimization-layer.md",
+            "mcp://backlog/adr/0008-task-attached-resources.md",
+            "mcp://backlog/proposals/amnesia-test-continuity-engine-2026-07.md",
+            "mcp://backlog/adr/0018-restore-flexible-static-file-serving.md",
+            "mcp://backlog/adr/0008-task-labels-and-sprint-management.md",
+            "mcp://backlog/evaluation/JUDGING.md",
+            "mcp://backlog/evaluation/README.md",
+            "mcp://backlog/adr/0106.4-DELEGATION-BRIEF.md"
+          ],
+          "timings_ms": [
+            18.983,
+            19.022,
+            19.029,
+            19.057,
+            18.953
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 1,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "resource-03",
+          "class": "resource",
+          "surface": "search",
+          "ranked_ids": [
+            "mcp://backlog/proposals/recall-overfetch-note-2026-07.md",
+            "mcp://backlog/evaluation/JUDGING.md",
+            "mcp://backlog/proposals/uplift-idea-garden-2026-07.md",
+            "mcp://backlog/evaluation/README.md",
+            "mcp://backlog/proposals/amnesia-test-continuity-engine-2026-07.md",
+            "mcp://backlog/adr/0106.4-entity-body-rename-description-to-content.md",
+            "mcp://backlog/adr/README.md",
+            "mcp://backlog/adr/0018-local-llm-optimization-layer.md",
+            "mcp://backlog/proposals/semantic-contradiction-detection-2026-07.md",
+            "mcp://backlog/NORTH-STAR.md",
+            "mcp://backlog/framework-adr/README.md",
+            "mcp://backlog/adr/0008-task-attached-resources.md",
+            "mcp://backlog/proposals/container-routing-at-intake-2026-07.md",
+            "mcp://backlog/proposals/architecture-audit-2026-07.md",
+            "mcp://backlog/adr/0106.2-task-as-entity-rot-cleanup.md",
+            "mcp://backlog/adr/0106.2-DELEGATION-BRIEF.md",
+            "mcp://backlog/proposals/naming-and-positioning.md",
+            "mcp://backlog/adr/0106.2-STEP0-AUDIT.md",
+            "mcp://backlog/adr/0008-task-labels-and-sprint-management.md",
+            "mcp://backlog/adr/0106.4-STEP0-AUDIT.md"
+          ],
+          "timings_ms": [
+            19.909,
+            20.048,
+            19.969,
+            20.224,
+            19.914
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.95583058934618,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        },
+        {
+          "query_id": "resource-04",
+          "class": "resource",
+          "surface": "search",
+          "ranked_ids": [
+            "mcp://backlog/evaluation/JUDGING.md",
+            "mcp://backlog/evaluation/README.md",
+            "mcp://backlog/proposals/uplift-idea-garden-2026-07.md",
+            "mcp://backlog/proposals/semantic-contradiction-detection-2026-07.md",
+            "mcp://backlog/proposals/recall-overfetch-note-2026-07.md",
+            "mcp://backlog/proposals/architecture-audit-2026-07.md",
+            "mcp://backlog/NORTH-STAR.md",
+            "mcp://backlog/adr/README.md",
+            "mcp://backlog/adr/0106.2-STEP0-AUDIT.md",
+            "mcp://backlog/adr/0106.2-DELEGATION-BRIEF.md",
+            "mcp://backlog/adr/0106.4-STEP0-AUDIT.md",
+            "mcp://backlog/proposals/amnesia-test-continuity-engine-2026-07.md",
+            "mcp://backlog/adr/0106.2-task-as-entity-rot-cleanup.md",
+            "mcp://backlog/proposals/container-routing-at-intake-2026-07.md",
+            "mcp://backlog/adr/0106.4-DELEGATION-BRIEF.md",
+            "mcp://backlog/proposals/naming-and-positioning.md",
+            "mcp://backlog/adr/0018-local-llm-optimization-layer.md",
+            "mcp://backlog/adr/0106.4-entity-body-rename-description-to-content.md",
+            "mcp://backlog/adr/0008-task-labels-and-sprint-management.md"
+          ],
+          "timings_ms": [
+            18.495,
+            18.661,
+            18.376,
+            19.242,
+            18.487
+          ],
+          "deterministic": true,
+          "metrics": {
+            "ndcgAt10": 0.992706459642153,
+            "reciprocalRank": 1,
+            "successAt1": 1,
+            "recallAt20": 1
+          },
+          "unjudged_at_10": 0
+        }
+      ]
+    }
+  }
+}
