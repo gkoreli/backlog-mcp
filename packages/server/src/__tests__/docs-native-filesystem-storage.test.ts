@@ -12,6 +12,11 @@ import { EntityType, type Entity } from '@backlog-mcp/shared';
 import { describe, expect, it } from 'vitest';
 import { createBacklogHome } from '../core/backlog-home.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';
+import {
+  createBuiltinSubstrateRegistrations,
+  loadProjectSubstrateDefinitions,
+  ProjectSubstrateRegistry,
+} from '../core/substrates/index.js';
 import { createEntity } from '../storage/entity-factory.js';
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
 import { DocsNativeFilesystemStorage } from '../storage/local/docs-native-filesystem-storage.js';
@@ -27,13 +32,17 @@ const builtinCatalog = new BuiltinSubstrateStorageCatalog();
 function createStorage(
   name: string,
   catalog: SubstrateStorageCatalog = builtinCatalog,
+  registry: ProjectSubstrateRegistry = loadProjectSubstrateDefinitions(
+    [],
+    createBuiltinSubstrateRegistrations(catalog),
+  ).registry,
 ): StorageHarness {
   const root = join(tmpdir(), 'docs-native-storage', name);
   mkdirSync(join(root, 'docs'), { recursive: true });
   const home = createBacklogHome({ kind: 'project', root });
   return {
     home,
-    storage: new DocsNativeFilesystemStorage(home, catalog),
+    storage: new DocsNativeFilesystemStorage(home, registry),
   };
 }
 
@@ -149,12 +158,114 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
       'tasks/UNKNOWN-0001.md',
       '---\ntype: unknown\nid: UNKNOWN-0001\ntitle: Unknown\ncreated_at: now\nupdated_at: now\n---',
     );
+    writeRawDocument(
+      home,
+      'tasks/TASK-0005-external.md',
+      [
+        '---',
+        'type: task',
+        'id: TASK-0005',
+        'title: External task',
+        'status: external-state',
+        'created_at: not-canonical',
+        'updated_at: not-canonical',
+        'external_note: preserved',
+        '---',
+        'External body',
+      ].join('\n'),
+    );
 
     expect(Array.from(storage.iterateDocuments()).map(function getId(document) {
       return document.entity.id;
-    })).toEqual(['TASK-0001']);
+    })).toEqual(['TASK-0001', 'TASK-0004', 'TASK-0005']);
+    expect(storage.get('TASK-0005')).toMatchObject({
+      status: 'external-state',
+      external_note: 'preserved',
+    });
     expect(storage.get('TASK-0002')).toBeUndefined();
     expect(storage.getDocumentBySourcePath('README.md')).toBeUndefined();
+  });
+
+  it('claims bare declarative documents without trusting frontmatter type', function readsBareDeclarativeDocuments() {
+    const { home, storage } = createStorage('bare-declarative');
+    writeRawDocument(
+      home,
+      'adr/0001-human-title.md',
+      '# Human title\n\nDecision body.',
+    );
+    writeRawDocument(
+      home,
+      'adr/2026-07-16-notes.md',
+      '# Chronological note',
+    );
+
+    expect(storage.get('ADR 0001')).toMatchObject({
+      id: 'ADR 0001',
+      type: 'adr',
+      title: 'Human title',
+      content: '# Human title\n\nDecision body.',
+    });
+    expect(storage.getDocumentBySourcePath('adr/2026-07-16-notes.md'))
+      .toBeUndefined();
+  });
+
+  it('preserves external metadata on read but rejects it on canonical write', function separatesReadAndWriteStrictness() {
+    const { home, storage } = createStorage('lenient-read-strict-write');
+    const sourcePath = 'adr/0002-external.md';
+    const markdown = [
+      '---',
+      'legacy_owner: external',
+      '---',
+      '# External ADR',
+      '',
+      'Unchanged source body.',
+    ].join('\n');
+    writeRawDocument(home, sourcePath, markdown);
+
+    const external = storage.get('ADR 0002');
+    expect(external).toMatchObject({
+      legacy_owner: 'external',
+      title: 'External ADR',
+    });
+    if (external === undefined) throw new Error('expected claimed external ADR');
+
+    expect(function saveExternalShape() {
+      storage.save(external);
+    }).toThrow(/additional properties/);
+    expect(readFileSync(join(home.documentsDir, sourcePath), 'utf8')).toBe(markdown);
+  });
+
+  it('quarantines duplicate semantic identities after substrate claim', function quarantinesDuplicateClaims() {
+    const { home, storage } = createStorage('duplicate-claim');
+    writeRawDocument(
+      home,
+      'requirements/REQ-0001-short.md',
+      '# Short identity',
+    );
+    writeRawDocument(
+      home,
+      'requirements/REQ-00001-long.md',
+      '# Long identity',
+    );
+
+    expect(storage.get('REQ-0001')).toBeUndefined();
+    expect(storage.list({ type: 'requirement' })).toEqual([]);
+    expect(function allocateCollidingRequirement() {
+      storage.getMaxId('requirement');
+    }).toThrow(/duplicate document identities/);
+    expect(function writeIntoCollidingRequirementType() {
+      storage.add({
+        id: 'REQ-0002',
+        type: 'requirement',
+        title: 'Blocked by collision',
+        content: 'Requirement body.',
+        status: 'intake',
+        compliance: 'unchecked',
+      });
+    }).toThrow(/duplicate document identities/);
+    expect(existsSync(
+      join(home.documentsDir, 'requirements', 'REQ-0002.md'),
+    )).toBe(false);
   });
 
   it('rejects explicit paths outside the entity claim and missing claims', function rejectsInvalidClaims() {
@@ -179,7 +290,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
         customPrefixTask,
         'tasks/CUSTOM-0012-wrong-prefix.md',
       );
-    }).toThrow(/prefix TASK/);
+    }).toThrow(/filename identity must match/);
     const shortIdentityTask = createEntity({
       id: 'TASK-001',
       title: 'Short identity',
@@ -189,7 +300,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
         shortIdentityTask,
         'tasks/TASK-001-short-identity.md',
       );
-    }).toThrow(/at least 4 digits/);
+    }).toThrow(/filename identity must match/);
 
     const noClaimsCatalog: SubstrateStorageCatalog = {
       getStorageClaim: function getNoStorageClaim() {
@@ -199,6 +310,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     const unclaimedStorage = createStorage(
       'missing-claim',
       noClaimsCatalog,
+      new ProjectSubstrateRegistry([]),
     ).storage;
 
     expect(function addWithoutClaim() {

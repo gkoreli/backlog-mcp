@@ -1,6 +1,9 @@
 import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
 import { TYPE_PREFIXES } from '@backlog-mcp/shared';
-import type { AsyncStorageAdapter, ListFilter } from '../storage-adapter.js';
+import type {
+  AsyncListFilter,
+  AsyncStorageAdapter,
+} from '../storage-adapter.js';
 
 // Type-erased view — adapter handles row mapping for every entity type,
 // so narrowing at each access site would bloat this file without buying
@@ -128,7 +131,7 @@ export class D1Storage implements AsyncStorageAdapter {
     return row?.body ?? null;
   }
 
-  async list(filter?: ListFilter): Promise<Entity[]> {
+  async list(filter?: AsyncListFilter): Promise<Entity[]> {
     const { status, type, epic_id, parent_id, limit = 20 } = filter ?? {};
 
     const conditions: string[] = [];

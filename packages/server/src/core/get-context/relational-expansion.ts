@@ -114,7 +114,7 @@ function traverseAncestors(
   let parentTask: Entity | null = null;
 
   for (let hop = 1; hop <= maxHops; hop++) {
-    const pid = current.parent_id ?? current.epic_id;
+    const pid = current.parent_id;
     if (!pid || visited.has(pid)) break;
 
     const ancestor = getTask(pid);
@@ -232,7 +232,7 @@ export function expandRelations(
   });
 
   // ── Siblings (same parent, excluding focal) ──────────────────────
-  const parentId = focalTask.parent_id ?? focalTask.epic_id;
+  const parentId = focalTask.parent_id;
   let siblings: ContextEntity[] = [];
   if (parentId) {
     const siblingTasks = deps.listTasks({ parent_id: parentId, limit: 50 });

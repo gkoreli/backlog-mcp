@@ -3,6 +3,7 @@ import { parseDocumentIdentity } from '../core/document-identity.js';
 import {
   claimSubstrateDocuments,
   compileSubstrateDefinition,
+  createBuiltinSubstrateRegistrations,
   createProjectSubstrateRegistry,
   loadProjectSubstrateDefinitions,
   loadSubstrateDefinitions,
@@ -12,6 +13,7 @@ import type {
   CompileSubstrateDefinitionParams,
 } from '../core/substrates/types.js';
 import type { DiscoveredDocument } from '../core/document-discovery.types.js';
+import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
 
 function canonicalSchema(type: string): Record<string, unknown> {
   return {
@@ -77,7 +79,10 @@ function document(sourcePath: string): DiscoveredDocument {
   };
 }
 
-const PACKAGED_RESULT = loadProjectSubstrateDefinitions([]);
+const BUILTIN_SUBSTRATES = createBuiltinSubstrateRegistrations(
+  new BuiltinSubstrateStorageCatalog(),
+);
+const PACKAGED_RESULT = loadProjectSubstrateDefinitions([], BUILTIN_SUBSTRATES);
 if (PACKAGED_RESULT.diagnostics.length > 0) {
   throw new Error(JSON.stringify(PACKAGED_RESULT.diagnostics));
 }
@@ -111,6 +116,104 @@ describe('ProjectSubstrateRegistry', function describeRegistry() {
         displayTemplate: 'REQ-{key}',
       },
     });
+  });
+
+  it('enforces the packaged Requirement field contract and human-authority invariants', () => {
+    const base = {
+      id: 'REQ-0001',
+      type: 'requirement',
+      title: 'Protect the vision',
+      content: 'Architecture work must preserve product intent.',
+      created_at: '2026-07-16T10:00:00.000Z',
+      updated_at: '2026-07-16T10:00:00.000Z',
+      status: 'building',
+    };
+
+    const candidate = {
+      ...base,
+      compliance: 'unchecked',
+      domain: ['fleet', 'requirements'],
+    };
+    expect(PACKAGED_RESULT.registry.validateWrite(candidate)).toEqual({
+      ok: true,
+      entity: candidate,
+    });
+    expect(PACKAGED_RESULT.registry.validateWrite({
+      ...base,
+      compliance: 'at_risk',
+    }).ok).toBe(false);
+    expect(PACKAGED_RESULT.registry.validateWrite({
+      ...base,
+      compliance: 'satisfied',
+      checked_at: '2026-07-16T11:00:00.000Z',
+      checked_by: 'goga',
+      violated_by: ['ADR-9999'],
+    }).ok).toBe(false);
+  });
+
+  it('routes compiled Zod substrates through the same registry and preserves defaults', () => {
+    const task = PACKAGED_RESULT.registry.validateWrite({
+      id: 'TASK-0001',
+      type: 'task',
+      title: 'Use the registry',
+      created_at: '2026-07-16T10:00:00.000Z',
+      updated_at: '2026-07-16T10:00:00.000Z',
+    });
+    expect(task).toMatchObject({
+      ok: true,
+      entity: {
+        type: 'task',
+        status: 'open',
+      },
+    });
+
+    const cron = PACKAGED_RESULT.registry.validateWrite({
+      id: 'CRON-0001',
+      type: 'cron',
+      title: 'Invalid cron',
+      schedule: 'not a cron',
+      command: 'run',
+      created_at: '2026-07-16T10:00:00.000Z',
+      updated_at: '2026-07-16T10:00:00.000Z',
+    });
+    expect(cron.ok).toBe(false);
+    expect(PACKAGED_RESULT.registry.validateWrite({
+      id: 'UNKNOWN-0001',
+      type: 'unknown',
+      title: 'Unknown',
+    })).toMatchObject({
+      ok: false,
+      issues: [{
+        path: '/type',
+        message: 'unknown substrate type: unknown',
+      }],
+    });
+  });
+
+  it('quarantines project declarations that shadow compiled built-in types', () => {
+    const shadow = compileDefinition({
+      sourcePath: 'substrates/task.json',
+      type: 'task',
+      folder: 'project-tasks',
+      strategy: 'prefixed-number',
+      prefix: 'PTASK',
+      replaces: 'builtin:task@compiled',
+    });
+    const result = createProjectSubstrateRegistry({
+      builtins: BUILTIN_SUBSTRATES,
+      packaged: [PACKAGED_ADR, PACKAGED_REQUIREMENT, PACKAGED_PROMPT],
+      project: [shadow],
+    });
+
+    expect(result.registry.getStorageClaim('task')?.folder).toBe('tasks');
+    expect(result.diagnostics).toMatchObject([{
+      sourcePath: 'substrates/task.json',
+      type: 'task',
+      issues: [{
+        path: '/type',
+        message: 'compiled substrate type task cannot be replaced by project data',
+      }],
+    }]);
   });
 
   it('quarantines duplicate project types without a load-order winner', () => {

@@ -14,7 +14,11 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
-import type { Entity } from '@backlog-mcp/shared';
+import {
+  EntitySchema,
+  type AnyEntity,
+  type Entity,
+} from '@backlog-mcp/shared';
 import { listItems } from '../core/list.js';
 import { getItems } from '../core/get.js';
 import { createItem } from '../core/create.js';
@@ -69,12 +73,20 @@ function mockService(entities: Entity[] = []): IBacklogService {
       let result = [...store.values()];
       if (filter?.status) result = result.filter(e => filter.status.includes(e.status));
       if (filter?.type) result = result.filter(e => (e.type ?? 'task') === filter.type);
-      if (filter?.parent_id) result = result.filter(e => e.parent_id === filter.parent_id || e.epic_id === filter.parent_id);
+      if (filter?.parent_id) result = result.filter(e => e.parent_id === filter.parent_id);
       if (filter?.limit) result = result.slice(0, filter.limit);
       return result;
     }),
-    add: vi.fn(async (task: Entity) => { store.set(task.id, { ...task }); }),
-    save: vi.fn(async (task: Entity) => { store.set(task.id, { ...task }); }),
+    add: vi.fn(async (candidate: AnyEntity) => {
+      const entity = EntitySchema.parse(candidate);
+      store.set(entity.id, { ...entity });
+      return entity;
+    }),
+    save: vi.fn(async (candidate: AnyEntity) => {
+      const entity = EntitySchema.parse(candidate);
+      store.set(entity.id, { ...entity });
+      return entity;
+    }),
     delete: vi.fn(async (id: string) => { const had = store.has(id); store.delete(id); return had; }),
     counts: vi.fn(async () => ({
       total_tasks: [...store.values()].filter(e => (e.type ?? 'task') === 'task').length,
@@ -123,21 +135,9 @@ describe('core/listItems', () => {
     expect(result.tasks[1].parent_id).toBeUndefined();
   });
 
-  it('resolves parent_id from epic_id alias on entities', async () => {
-    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', epic_id: 'EPIC-0001' })]);
-    const result = await listItems(svc, {});
-    expect(result.tasks[0].parent_id).toBe('EPIC-0001');
-  });
-
-  it('parent_id filter takes precedence over epic_id filter', async () => {
+  it('passes the canonical parent_id filter through unchanged', async () => {
     const svc = mockService();
-    await listItems(svc, { epic_id: 'EPIC-0001', parent_id: 'FLDR-0001' });
-    expect(svc.list).toHaveBeenCalledWith(expect.objectContaining({ parent_id: 'FLDR-0001' }));
-  });
-
-  it('falls back to epic_id when parent_id filter not provided', async () => {
-    const svc = mockService();
-    await listItems(svc, { epic_id: 'EPIC-0001' });
+    await listItems(svc, { parent_id: 'EPIC-0001' });
     expect(svc.list).toHaveBeenCalledWith(expect.objectContaining({ parent_id: 'EPIC-0001' }));
   });
 
@@ -222,8 +222,9 @@ describe('core/createItem', () => {
     const result = await createItem(svc, { title: 'New task' }, testCtx());
     expect(result.id).toBe('TASK-0001');
     expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'TASK-0001', title: 'New task', status: 'open',
+      id: 'TASK-0001', title: 'New task',
     }));
+    await expect(svc.get('TASK-0001')).resolves.toMatchObject({ status: 'open' });
   });
 
   it('generates type-specific ID prefix', async () => {
@@ -243,18 +244,6 @@ describe('core/createItem', () => {
     const svc = mockService();
     await createItem(svc, { title: 'Child', parent_id: 'EPIC-0001' }, testCtx());
     expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({ parent_id: 'EPIC-0001' }));
-  });
-
-  it('parent_id takes precedence over epic_id', async () => {
-    const svc = mockService();
-    await createItem(svc, { title: 'T', epic_id: 'EPIC-0001', parent_id: 'FLDR-0001' }, testCtx());
-    expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({ parent_id: 'FLDR-0001' }));
-  });
-
-  it('sets epic_id for backward compat when only epic_id provided', async () => {
-    const svc = mockService();
-    await createItem(svc, { title: 'T', epic_id: 'EPIC-0001' }, testCtx());
-    expect(svc.add).toHaveBeenCalledWith(expect.objectContaining({ epic_id: 'EPIC-0001' }));
   });
 
   it('accepts pre-resolved content (no source_path in core)', async () => {
@@ -289,32 +278,11 @@ describe('core/updateItem', () => {
     await expect(updateItem(svc, { id: 'TASK-9999' }, testCtx())).rejects.toThrow(NotFoundError);
   });
 
-  it('parent_id takes precedence over epic_id', async () => {
-    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
-    await updateItem(svc, { id: 'TASK-0001', epic_id: 'EPIC-0001', parent_id: 'FLDR-0001' }, testCtx());
-    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ parent_id: 'FLDR-0001' }));
-  });
-
-  it('null parent_id clears both parent_id and epic_id', async () => {
-    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', parent_id: 'EPIC-0001', epic_id: 'EPIC-0001' })]);
+  it('null parent_id clears the canonical relationship field', async () => {
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', parent_id: 'EPIC-0001' })]);
     await updateItem(svc, { id: 'TASK-0001', parent_id: null }, testCtx());
     const saved = (svc.save as any).mock.calls[0][0];
     expect(saved.parent_id).toBeUndefined();
-    expect(saved.epic_id).toBeUndefined();
-  });
-
-  it('null epic_id clears both epic_id and parent_id', async () => {
-    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', parent_id: 'EPIC-0001', epic_id: 'EPIC-0001' })]);
-    await updateItem(svc, { id: 'TASK-0001', epic_id: null }, testCtx());
-    const saved = (svc.save as any).mock.calls[0][0];
-    expect(saved.parent_id).toBeUndefined();
-    expect(saved.epic_id).toBeUndefined();
-  });
-
-  it('setting epic_id also sets parent_id', async () => {
-    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
-    await updateItem(svc, { id: 'TASK-0001', epic_id: 'EPIC-0002' }, testCtx());
-    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ epic_id: 'EPIC-0002', parent_id: 'EPIC-0002' }));
   });
 
   it('null due_date clears the field', async () => {
@@ -399,14 +367,14 @@ describe('core/searchItems', () => {
     expect(r.matched_fields).toEqual(['title']);
   });
 
-  it('includes parent_id from parent_id or epic_id', async () => {
+  it('includes canonical parent_id', async () => {
     const svc = mockService([
       makeEntity({ id: 'TASK-0001', title: 'Test', parent_id: 'FLDR-0001' }),
-      makeEntity({ id: 'TASK-0002', title: 'Test2', epic_id: 'EPIC-0001' }),
+      makeEntity({ id: 'TASK-0002', title: 'Test2' }),
     ]);
     const result = await searchItems(svc, { query: 'test' });
     expect(result.results[0].parent_id).toBe('FLDR-0001');
-    expect(result.results[1].parent_id).toBe('EPIC-0001');
+    expect(result.results[1].parent_id).toBeUndefined();
   });
 
   it('reports hybrid search mode when active', async () => {
@@ -504,8 +472,8 @@ describe('core/createItem — cron entity', () => {
       type: 'cron',
       schedule: '*/30 * * * *',
       command: 'studio-agents check-reviews',
-      enabled: true,
     }));
+    await expect(svc.get('CRON-0001')).resolves.toMatchObject({ enabled: true });
   });
 
   it('respects explicit enabled=false on creation', async () => {

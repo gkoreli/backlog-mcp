@@ -335,6 +335,7 @@ A schema alone does not imply good verbs. Defining `adr` must not automatically 
 A definition may explicitly declare semantic intents using a closed operation algebra:
 
 - `create`;
+- `set-field`;
 - `transition`;
 - `relate`;
 - `relate-and-transition`;
@@ -351,6 +352,26 @@ declaration. Examples:
 - `backlog_supersede_adr`;
 - `backlog_capture_requirement`;
 - `backlog_capture_prompt`.
+
+`set-field` is deliberately narrower than generic update. Version one assigns one
+declaration-fixed scalar value to one canonical scalar field; invocation supplies
+only the entity ID. Compilation rejects `id`, `type`, the workflow field, and declared
+relation fields, and the executor validates the complete post-mutation entity through
+the project registry. Cron therefore declares pause and resume as
+`enabled = false` and `enabled = true`, not as status transitions: `enabled` remains
+independent from workflow status.
+
+`relate-and-transition` may span two entities. Version one does not claim a filesystem
+transaction, batch primitive, or cross-process mutex that the local service does not
+have. The executor loads both preimages, validates every precondition and both
+postimages before writing, writes the source relation first, then applies the target
+transition. If the second write fails it attempts to restore the source preimage.
+Success is published only after both writes; failure reports whether compensation
+succeeded, and failed compensation is an explicit partial failure naming both
+entities. Relation append is deduplicated and an already-completed matching transition
+is accepted so retry is idempotent. A transactional storage implementation may later
+replace this best-effort execution behind the same compiled intent contract if real
+contention or failure evidence justifies it.
 
 The generated tool description is the discovery surface:
 
@@ -1138,7 +1159,8 @@ The important consequences are:
 ### Phase D — semantic intents and viewer registry
 
 - Add `packages/server/src/core/substrates/execute-substrate-intent.ts` for the safe
-  create/transition/relation algebra.
+  create/fixed-assignment/transition/relation algebra, including explicit compensated
+  failure reporting for two-entity operations.
 - Add `packages/server/src/tools/register-substrate-intents.ts` to generate thin,
   deferred semantic tools from explicit intent declarations.
 - Add an HTTP/MCP registry projection endpoint.

@@ -34,7 +34,7 @@ export async function searchItems(service: IBacklogService, params: SearchParams
 
     const task = r.item as Entity;
     const item: SearchResultItem = { id: task.id, title: task.title, type: r.type, status: task.status };
-    const parentId = task.parent_id ?? task.epic_id;
+    const parentId = task.parent_id;
     if (parentId) item.parent_id = parentId;
     if (r.snippet) { item.snippet = r.snippet.text; item.matched_fields = r.snippet.matched_fields; }
     if (include_scores) item.score = Math.round(r.score * 1000) / 1000;

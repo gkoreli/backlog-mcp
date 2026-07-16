@@ -8,28 +8,35 @@ import {
 import { basename, dirname, posix, resolve } from 'node:path';
 import matter from 'gray-matter';
 import {
-  EntitySchema,
   EntityType,
-  type Entity,
-  type Status,
+  type AnyEntity,
+  type RuntimeEntity,
+  type SubstrateType,
 } from '@backlog-mcp/shared';
 import { isPathWithin } from '../../core/backlog-home.js';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
 import { discoverDocuments } from '../../core/document-discovery.js';
-import type { DiscoveredDocument } from '../../core/document-discovery.types.js';
 import {
   normalizeDocumentSourcePath,
   parseDocumentIdentity,
 } from '../../core/document-identity.js';
+import {
+  claimSubstrateDocuments,
+  SubstrateWriteError,
+  type ClaimedSubstrateDocument,
+  type ProjectSubstrateRegistry,
+} from '../../core/substrates/index.js';
 import type {
   DocumentStorageAdapter,
   ListFilter,
   StoredEntityDocument,
 } from '../storage-adapter.js';
-import type {
-  SubstrateStorageCatalog,
-  SubstrateStorageClaim,
-} from '../substrate-storage-catalog.contract.js';
+import {
+  formatStorageDisplayId,
+  matchesStorageDocumentIdentity,
+  storageDocumentSourcePath,
+} from '../storage-identity.js';
+import type { SubstrateStorageClaim } from '../substrate-storage-catalog.contract.js';
 
 const MARKDOWN_EXTENSION = /\.(?:md|markdown)$/iu;
 
@@ -41,35 +48,50 @@ function isSourcePathUnderFolder(sourcePath: string, folder: string): boolean {
     && !posix.isAbsolute(relativePath);
 }
 
+function firstHeading(content: string): string | undefined {
+  const heading = /^\s*#\s+(.+?)\s*$/mu.exec(content)?.[1]?.trim();
+  return heading || undefined;
+}
+
+function stringField(
+  data: Record<string, unknown>,
+  field: string,
+): string | undefined {
+  const value = data[field];
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
 function parseStoredDocument(
-  document: DiscoveredDocument,
-  catalog: SubstrateStorageCatalog,
+  claimed: ClaimedSubstrateDocument,
+  registry: ProjectSubstrateRegistry,
 ): StoredEntityDocument | undefined {
+  const document = claimed.document;
   if (document.format !== 'markdown' || document.content === undefined) {
     return undefined;
   }
 
   try {
     const parsedMarkdown = matter(document.content, {});
-    const type = parsedMarkdown.data.type;
-    if (typeof type !== 'string') return undefined;
+    const data = parsedMarkdown.data as Record<string, unknown>;
+    const claim = registry.getStorageClaim(claimed.type);
+    if (claim === undefined) return undefined;
 
-    const claim = catalog.getStorageClaim(type);
-    if (
-      claim === undefined
-      || !isSourcePathUnderFolder(document.sourcePath, claim.folder)
-    ) {
-      return undefined;
-    }
-
-    const result = EntitySchema.safeParse({
-      ...parsedMarkdown.data,
-      content: parsedMarkdown.content.trim(),
-    });
-    if (!result.success) return undefined;
+    const id = formatStorageDisplayId(claim, claimed.storageKey);
+    const title = stringField(data, 'title')
+      ?? firstHeading(parsedMarkdown.content)
+      ?? document.identity.slug
+      ?? id;
+    const content = parsedMarkdown.content.trim();
+    const projection: RuntimeEntity = {
+      ...data,
+      id,
+      type: claimed.type,
+      title,
+      ...(content ? { content } : {}),
+    };
 
     return {
-      entity: result.data,
+      entity: projection,
       sourcePath: document.sourcePath,
       identity: document.identity,
       markdown: document.content,
@@ -79,9 +101,9 @@ function parseStoredDocument(
   }
 }
 
-function serializeEntity(entity: Entity): string {
+function serializeEntity(entity: AnyEntity): string {
   const { content, ...frontmatter } = entity;
-  return matter.stringify(content ?? '', frontmatter);
+  return matter.stringify(typeof content === 'string' ? content : '', frontmatter);
 }
 
 function normalizeWritableSourcePath(sourcePath: string): string {
@@ -114,43 +136,14 @@ function canonicalizeThroughExistingAncestor(path: string): string {
 }
 
 function validateWriteIdentity(
-  entity: Entity,
+  entity: AnyEntity,
   sourcePath: string,
   claim: Readonly<SubstrateStorageClaim>,
 ): void {
-  if (claim.identity.strategy !== 'prefixed-number') return;
-
-  const pathKey = parseDocumentIdentity({ sourcePath }).pathKey;
-  if (pathKey !== entity.id) {
+  const identity = parseDocumentIdentity({ sourcePath });
+  if (!matchesStorageDocumentIdentity(claim, entity.id, identity)) {
     throw new Error(
       `Document filename identity must match entity id ${entity.id}: ${sourcePath}`,
-    );
-  }
-
-  const prefix = claim.identity.prefix;
-  const minimumDigits = claim.identity.minimumDigits;
-  if (
-    prefix === undefined
-    || minimumDigits === undefined
-    || !Number.isInteger(minimumDigits)
-    || minimumDigits < 1
-  ) {
-    throw new Error(
-      `Prefixed-number storage claim requires a prefix and minimum digit width: ${claim.type}`,
-    );
-  }
-
-  const prefixWithSeparator = `${prefix}-`;
-  const number = entity.id.startsWith(prefixWithSeparator)
-    ? entity.id.slice(prefixWithSeparator.length)
-    : undefined;
-  if (
-    number === undefined
-    || !/^\d+$/u.test(number)
-    || number.length < minimumDigits
-  ) {
-    throw new Error(
-      `Document identity must use prefix ${prefix} with at least ${minimumDigits} digits: ${entity.id}`,
     );
   }
 }
@@ -173,34 +166,74 @@ function documentSequence(document: StoredEntityDocument): number | undefined {
   return pathSequence ?? numericRoot(document.entity.id);
 }
 
+function sortableTime(document: StoredEntityDocument): number {
+  const updatedAt = document.entity.updated_at;
+  const value = typeof updatedAt === 'string'
+    ? Date.parse(updatedAt)
+    : Number.NaN;
+  if (Number.isFinite(value)) return value;
+
+  const observed = document.identity.observedDate;
+  const observedValue = observed === undefined ? Number.NaN : Date.parse(observed);
+  return Number.isFinite(observedValue) ? observedValue : 0;
+}
+
 /**
  * Docs-native entity storage scoped to one resolved backlog home.
  *
- * Markdown remains authoritative: every read recursively rediscovers the
- * home's documents tree instead of relying on an ambient path or cached view.
+ * Substrate claims select typed documents before frontmatter is interpreted.
+ * Declarative documents stay lenient on read; every managed write passes once
+ * through the strict project registry and serializes its canonical result.
  */
 export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   constructor(
     private readonly home: BacklogHome,
-    private readonly catalog: SubstrateStorageCatalog,
+    private readonly registry: ProjectSubstrateRegistry,
   ) {}
 
-  private documents(): StoredEntityDocument[] {
+  private discoverClaims() {
     const discovery = discoverDocuments({
       documentsDir: this.home.documentsDir,
     });
+    return claimSubstrateDocuments({
+      homeKey: this.home.root,
+      documents: discovery.documents,
+      substrates: this.registry.listSubstrates(),
+    });
+  }
+
+  private assertNoClaimCollisions(type: SubstrateType): void {
+    const collisions = this.discoverClaims().diagnostics.filter(
+      function matchesType(diagnostic) {
+        return diagnostic.type === type;
+      },
+    );
+    if (collisions.length === 0) return;
+
+    const sourcePaths = collisions.flatMap(function getSources(diagnostic) {
+      return diagnostic.sourcePaths;
+    }).sort();
+    throw new SubstrateWriteError(type, [{
+      code: 'shape',
+      path: '/id',
+      message: `duplicate document identities: ${sourcePaths.join(', ')}`,
+    }]);
+  }
+
+  private documents(): StoredEntityDocument[] {
+    const claims = this.discoverClaims();
     const documents: StoredEntityDocument[] = [];
 
-    for (const document of discovery.documents) {
-      const storedDocument = parseStoredDocument(document, this.catalog);
+    for (const claimed of claims.claimed) {
+      const storedDocument = parseStoredDocument(claimed, this.registry);
       if (storedDocument !== undefined) documents.push(storedDocument);
     }
 
     return documents;
   }
 
-  private claimFor(entity: Entity): Readonly<SubstrateStorageClaim> {
-    const claim = this.catalog.getStorageClaim(entity.type);
+  private claimFor(entity: AnyEntity): Readonly<SubstrateStorageClaim> {
+    const claim = this.registry.getStorageClaim(entity.type);
     if (claim === undefined) {
       throw new Error(`No storage claim for entity type: ${entity.type}`);
     }
@@ -251,20 +284,26 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   }
 
   private write(
-    entity: Entity,
+    candidate: AnyEntity,
     sourcePath: string,
     exclusive: boolean,
-  ): void {
-    const validatedEntity = EntitySchema.parse(entity);
-    const claim = this.claimFor(validatedEntity);
+  ): AnyEntity {
+    const validation = this.registry.validateWrite(candidate);
+    if (!validation.ok) {
+      throw new SubstrateWriteError(candidate.type, validation.issues);
+    }
+    const entity = validation.entity;
+    const claim = this.claimFor(entity);
+    this.assertNoClaimCollisions(entity.type);
     const target = this.resolveClaimedPath(sourcePath, claim);
-    validateWriteIdentity(validatedEntity, target.sourcePath, claim);
+    validateWriteIdentity(entity, target.sourcePath, claim);
     mkdirSync(dirname(target.absolutePath), { recursive: true });
     writeFileSync(
       target.absolutePath,
-      serializeEntity(validatedEntity),
+      serializeEntity(entity),
       exclusive ? { flag: 'wx' } : undefined,
     );
+    return entity;
   }
 
   getDocumentById(id: string): StoredEntityDocument | undefined {
@@ -288,13 +327,13 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     yield* this.documents();
   }
 
-  *iterateEntities(): Generator<Entity> {
+  *iterateEntities(): Generator<AnyEntity> {
     for (const document of this.iterateDocuments()) {
       yield document.entity;
     }
   }
 
-  get(id: string): Entity | undefined {
+  get(id: string): AnyEntity | undefined {
     return this.getDocumentById(id)?.entity;
   }
 
@@ -309,54 +348,56 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
       : resolve(this.home.documentsDir, ...document.sourcePath.split('/'));
   }
 
-  list(filter?: ListFilter): Entity[] {
-    const { status, type, epic_id, parent_id, limit = 20 } = filter ?? {};
-    let entities = Array.from(this.iterateEntities());
+  list(filter?: ListFilter): AnyEntity[] {
+    const { status, type, parent_id, limit = 20 } = filter ?? {};
+    let documents = Array.from(this.iterateDocuments());
 
     if (status !== undefined) {
-      entities = entities.filter(function hasSelectedStatus(entity) {
-        return entity.status !== undefined && status.includes(entity.status);
+      documents = documents.filter(function hasSelectedStatus(document) {
+        const entityStatus = document.entity.status;
+        return typeof entityStatus === 'string' && status.includes(entityStatus);
       });
     }
     if (type !== undefined) {
-      entities = entities.filter(function hasSelectedType(entity) {
-        return entity.type === type;
+      documents = documents.filter(function hasSelectedType(document) {
+        return document.entity.type === type;
       });
     }
     if (parent_id !== undefined) {
-      entities = entities.filter(function hasSelectedParent(entity) {
-        return (entity.parent_id ?? entity.epic_id) === parent_id;
-      });
-    } else if (epic_id !== undefined) {
-      entities = entities.filter(function hasSelectedEpic(entity) {
-        return (entity.parent_id ?? entity.epic_id) === epic_id;
+      documents = documents.filter(function hasSelectedParent(document) {
+        return document.entity.parent_id === parent_id;
       });
     }
 
-    entities.sort(function compareUpdatedAt(left, right) {
-      return new Date(right.updated_at).getTime()
-        - new Date(left.updated_at).getTime();
+    documents.sort(function compareDocuments(left, right) {
+      const timeOrder = sortableTime(right) - sortableTime(left);
+      return timeOrder !== 0
+        ? timeOrder
+        : left.sourcePath.localeCompare(right.sourcePath);
     });
-    return entities.slice(0, limit);
+    return documents.slice(0, limit).map(function getEntity(document) {
+      return document.entity;
+    });
   }
 
-  createDocument(entity: Entity, sourcePath: string): void {
-    this.write(entity, sourcePath, true);
+  createDocument(entity: AnyEntity, sourcePath: string): AnyEntity {
+    return this.write(entity, sourcePath, true);
   }
 
-  add(entity: Entity): void {
+  add(entity: AnyEntity): AnyEntity {
     const claim = this.claimFor(entity);
-    this.createDocument(
+    return this.createDocument(
       entity,
-      posix.join(claim.folder, `${entity.id}.md`),
+      storageDocumentSourcePath(claim, entity.id),
     );
   }
 
-  save(entity: Entity): void {
+  save(entity: AnyEntity): AnyEntity {
     const existing = this.getDocumentById(entity.id);
+    const claim = this.claimFor(entity);
     const sourcePath = existing?.sourcePath
-      ?? posix.join(this.claimFor(entity).folder, `${entity.id}.md`);
-    this.write(entity, sourcePath, false);
+      ?? storageDocumentSourcePath(claim, entity.id);
+    return this.write(entity, sourcePath, false);
   }
 
   delete(id: string): boolean {
@@ -373,10 +414,10 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   counts(): {
     total_tasks: number;
     total_epics: number;
-    by_status: Record<Status, number>;
+    by_status: Record<string, number>;
     by_type: Record<string, number>;
   } {
-    const by_status: Record<Status, number> = {
+    const by_status: Record<string, number> = {
       open: 0,
       in_progress: 0,
       blocked: 0,
@@ -388,7 +429,10 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     let total_epics = 0;
 
     for (const entity of this.iterateEntities()) {
-      if (entity.status !== undefined) by_status[entity.status]++;
+      const status = entity.status;
+      if (typeof status === 'string') {
+        by_status[status] = (by_status[status] ?? 0) + 1;
+      }
       by_type[entity.type] = (by_type[entity.type] ?? 0) + 1;
       if (entity.type === EntityType.Epic) {
         total_epics++;
@@ -400,7 +444,8 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     return { total_tasks, total_epics, by_status, by_type };
   }
 
-  getMaxId(type: EntityType = EntityType.Task): number {
+  getMaxId(type: SubstrateType): number {
+    this.assertNoClaimCollisions(type);
     let maxId = 0;
 
     for (const document of this.iterateDocuments()) {

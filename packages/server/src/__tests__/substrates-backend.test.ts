@@ -167,17 +167,6 @@ describe('Substrates Backend', () => {
       expect(children.map(t => t.id).sort()).toEqual(['TASK-0001', 'TASK-0002']);
     });
 
-    it('should filter by parent_id falling back to epic_id', async () => {
-      const task = createEntity({ id: 'TASK-0001', title: 'Old task', epic_id: 'EPIC-0001' });
-      await storage.add(task);
-
-      const task2 = createEntity({ id: 'TASK-0002', title: 'New task', parent_id: 'EPIC-0001' });
-      await storage.add(task2);
-
-      const children = await storage.list({ parent_id: 'EPIC-0001' });
-      expect(children).toHaveLength(2);
-    });
-
     it('should support subtasks (task parented to task)', async () => {
       await storage.add(createEntity({ id: 'TASK-0001', title: 'Parent task' }));
       await storage.add(createEntity({ id: 'TASK-0002', title: 'Subtask 1', parent_id: 'TASK-0001' }));
@@ -189,25 +178,18 @@ describe('Substrates Backend', () => {
   });
 
   // ========================================================================
-  // Backward compatibility: epic_id still works
+  // Canonical writes reject retired relationship aliases.
   // ========================================================================
 
-  describe('backward compatibility - epic_id', () => {
-    it('should still filter by epic_id', async () => {
-      await storage.add(createEntity({ id: 'EPIC-0001', title: 'Epic', type: 'epic' }));
-      await storage.add(createEntity({ id: 'TASK-0001', title: 'Task in epic', epic_id: 'EPIC-0001' }));
-
-      const tasks = await storage.list({ epic_id: 'EPIC-0001' });
-      expect(tasks).toHaveLength(1);
-      expect(tasks[0].id).toBe('TASK-0001');
-    });
-
-    it('should still create tasks with epic_id', async () => {
-      const task = createEntity({ id: 'TASK-0001', title: 'Test', epic_id: 'EPIC-0001' });
-      expect(task.epic_id).toBe('EPIC-0001');
-      await storage.add(task);
-      const retrieved = await storage.get('TASK-0001');
-      expect(retrieved?.epic_id).toBe('EPIC-0001');
+  describe('retired epic_id alias', () => {
+    it('rejects epic_id on canonical creation', () => {
+      expect(function createWithLegacyRelationship() {
+        createEntity({
+          id: 'TASK-0001',
+          title: 'Test',
+          epic_id: 'EPIC-0001',
+        } as never);
+      }).toThrow(/epic_id/);
     });
 
     it('should still generate epic IDs correctly', async () => {

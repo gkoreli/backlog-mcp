@@ -82,7 +82,7 @@ describe('HTTP Server', () => {
     it('should register backlog_list tool', () => {
       // Expected behavior:
       // Tool: backlog_list
-      // Params: status, type, epic_id, counts, limit
+      // Params: status, type, parent_id, counts, limit
       // Returns: { tasks: [...], counts?: {...} }
       expect(true).toBe(true);
     });
@@ -98,7 +98,7 @@ describe('HTTP Server', () => {
     it('should register backlog_create tool', () => {
       // Expected behavior:
       // Tool: backlog_create
-      // Params: title, content, type, epic_id, references
+      // Params: title, content, type, parent_id, references, fields
       // Returns: 'Created {id}'
       expect(true).toBe(true);
     });
@@ -106,7 +106,7 @@ describe('HTTP Server', () => {
     it('should register backlog_update tool', () => {
       // Expected behavior:
       // Tool: backlog_update
-      // Params: id, title, content, status, epic_id, blocked_reason, evidence, references
+      // Params: id, title, status, parent_id, fields, blocked_reason, evidence, references
       // Returns: 'Updated {id}'
       expect(true).toBe(true);
     });

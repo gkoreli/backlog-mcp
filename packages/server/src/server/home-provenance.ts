@@ -1,4 +1,4 @@
-import type { Entity } from '@backlog-mcp/shared';
+import type { AnyEntity } from '@backlog-mcp/shared';
 import type { UnifiedSearchResult } from '@backlog-mcp/memory/search';
 import type { AppRequestRuntime } from './app-request-runtime.types.js';
 import type { HomeProvenance } from './home-provenance.types.js';
@@ -24,10 +24,10 @@ export function getHomeProvenance(
 }
 
 /** Attach selected-home provenance to one entity response. */
-export function withEntityHomeProvenance(
+export function withEntityHomeProvenance<T extends AnyEntity>(
   runtime: AppRequestRuntime,
-  entity: Entity,
-): Entity & Partial<HomeProvenance> {
+  entity: T,
+): T & Partial<HomeProvenance> {
   return {
     ...entity,
     ...getHomeProvenance(runtime, runtime.getSourcePath?.(entity.id)),

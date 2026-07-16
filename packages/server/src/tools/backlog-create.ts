@@ -2,7 +2,6 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { ToolDeps } from './index.js';
-import { ENTITY_TYPES } from '@backlog-mcp/shared';
 import { createItem } from '../core/create.js';
 import { buildWriteContext } from './build-write-context.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
@@ -11,21 +10,21 @@ export function registerBacklogCreateTool(server: McpServer, service: IBacklogSe
   server.registerTool(
     'backlog_create',
     {
-      description: 'Create a new item in the backlog.',
+      description: 'Create one entity through the active project substrate registry.',
       inputSchema: z.object({
         ...BACKLOG_HOME_INPUT_FIELDS,
-        title: z.string().describe('Task title'),
+        title: z.string().describe('Entity title'),
         content: z.string().optional().describe('Item body in markdown'),
         source_path: z.string().optional().describe('Local file path to read as content. Mutually exclusive with content — provide one or the other. Server reads the file directly.'),
-        type: z.enum(ENTITY_TYPES).optional().describe('Type: task (default) or epic'),
-        epic_id: z.string().optional().describe('Parent epic ID to link this task to'),
+        type: z.string().optional().describe('Substrate type. Defaults to task.'),
         parent_id: z.string().optional().describe('Parent ID (any entity). Supports subtasks (task→task), epic membership, folder organization, milestone grouping.'),
         references: z.array(z.object({ url: z.string(), title: z.string().optional() })).optional().describe('Reference links. Formats: external URLs (https://...), task refs (mcp://backlog/tasks/TASK-XXXX.md), resources (mcp://backlog/resources/{path}). Local files must include extension (file:///path/to/file.md)'),
+        fields: z.record(z.string(), z.unknown()).optional().describe('Substrate-specific canonical fields. Identity fields id/type/title are server-owned.'),
         // Cron-only fields — enforced server-side in core/create.ts.
         schedule: z.string().optional().describe('Cron expression (5 fields: min hour dom month dow). Required when type=cron. Not permitted on other types.'),
         command: z.string().optional().describe('Scheduler-invoked command. Required when type=cron. Interpreted by an external scheduler (e.g. studio-agents schedule), not backlog-mcp itself.'),
         enabled: z.boolean().optional().describe('Whether the external scheduler should tick this cron. Defaults to true on cron creation. Separate from status — status answers "does this matter?", enabled answers "should it run?". Not permitted on non-cron types.'),
-      }).refine(
+      }).strict().refine(
         (data) => !(data.content && data.source_path),
         { message: 'Cannot provide both content and source_path — use one or the other' },
       ),

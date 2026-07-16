@@ -42,9 +42,6 @@ export const BaseEntitySchema = z.object({
   content: z.string().optional(),
   status: StatusSchema.optional(),
   parent_id: z.string().optional(),
-  // Legacy field — kept for backward compatibility with tasks created before
-  // parent_id was introduced. New code should use parent_id.
-  epic_id: z.string().optional(),
   references: z.array(ReferenceSchema).optional(),
   // blocked_reason/evidence are semantically task-ish but are widely accessed
   // generically (list filtering, search indexing). Keeping them on the base

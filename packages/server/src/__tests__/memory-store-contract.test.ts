@@ -18,7 +18,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { EntityType, parseEntityNum, type Entity } from '@backlog-mcp/shared';
+import {
+  EntitySchema,
+  EntityType,
+  parseEntityNum,
+  type Entity,
+} from '@backlog-mcp/shared';
 import { MemoryComposer, type MemoryEntry } from '@backlog-mcp/memory';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
@@ -40,11 +45,19 @@ function fakeService(): IBacklogService {
     async list(filter) {
       let out = [...store.values()];
       if (filter?.type) out = out.filter(e => (e.type ?? 'task') === filter.type);
-      if (filter?.parent_id) out = out.filter(e => (e.parent_id ?? e.epic_id) === filter.parent_id);
+      if (filter?.parent_id) out = out.filter(e => e.parent_id === filter.parent_id);
       return out;
     },
-    async add(task) { store.set(task.id, { ...task }); },
-    async save(task) { store.set(task.id, { ...task }); },
+    async add(candidate) {
+      const entity = EntitySchema.parse(candidate);
+      store.set(entity.id, { ...entity });
+      return entity;
+    },
+    async save(candidate) {
+      const entity = EntitySchema.parse(candidate);
+      store.set(entity.id, { ...entity });
+      return entity;
+    },
     async delete(id) { return store.delete(id); },
     async counts() { return { total_tasks: store.size, total_epics: 0, by_status: {}, by_type: {} }; },
     async getMaxId(type) {

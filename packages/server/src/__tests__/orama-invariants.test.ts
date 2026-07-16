@@ -5,7 +5,7 @@
  * migration. They prove (not claim) that:
  *
  * 1. Enum schema fields are NOT text-searchable (no false positives from metadata)
- * 2. Native `where` filtering produces correct results for status, type, epic_id, parent_id
+ * 2. Native `where` filtering produces correct results for status, type, and parent_id
  * 3. `where` filtering never misses results that match (no over-fetch window problem)
  * 4. `insertMultiple` produces identical search results to sequential inserts
  * 5. `properties` restriction prevents metadata field text matching
@@ -86,10 +86,10 @@ describe('Invariant: native where filtering matches old JS filtering (ADR-0079)'
   let service: OramaSearchService;
 
   const tasks: Entity[] = [
-    makeEntity({ id: 'TASK-0001', title: 'Auth feature', status: 'open', epic_id: 'EPIC-0001' }),
-    makeEntity({ id: 'TASK-0002', title: 'Auth bug', status: 'in_progress', epic_id: 'EPIC-0001' }),
-    makeEntity({ id: 'TASK-0003', title: 'Auth refactor', status: 'done', epic_id: 'EPIC-0002' }),
-    makeEntity({ id: 'TASK-0004', title: 'Auth test', status: 'blocked', epic_id: 'EPIC-0001', blocked_reason: ['Waiting'] }),
+    makeEntity({ id: 'TASK-0001', title: 'Auth feature', status: 'open', parent_id: 'EPIC-0001' }),
+    makeEntity({ id: 'TASK-0002', title: 'Auth bug', status: 'in_progress', parent_id: 'EPIC-0001' }),
+    makeEntity({ id: 'TASK-0003', title: 'Auth refactor', status: 'done', parent_id: 'EPIC-0002' }),
+    makeEntity({ id: 'TASK-0004', title: 'Auth test', status: 'blocked', parent_id: 'EPIC-0001', blocked_reason: ['Waiting'] }),
     makeEntity({ id: 'EPIC-0001', title: 'Auth epic', type: 'epic' }),
   ];
 
@@ -122,35 +122,35 @@ describe('Invariant: native where filtering matches old JS filtering (ADR-0079)'
     expect(results.some(r => r.id === 'EPIC-0001')).toBe(true);
   });
 
-  it('epic_id filter', async () => {
-    const results = await service.search('auth', { filters: { epic_id: 'EPIC-0001' } });
+  it('parent_id filter', async () => {
+    const results = await service.search('auth', { filters: { parent_id: 'EPIC-0001' } });
     for (const r of results) {
-      expect(r.task.parent_id ?? r.task.epic_id).toBe('EPIC-0001');
+      expect(r.task.parent_id).toBe('EPIC-0001');
     }
     expect(results.some(r => r.id === 'TASK-0003')).toBe(false); // EPIC-0002
   });
 
-  it('combined status + epic_id filter', async () => {
+  it('combined status + parent_id filter', async () => {
     const results = await service.search('auth', {
-      filters: { status: ['open', 'blocked'], epic_id: 'EPIC-0001' },
+      filters: { status: ['open', 'blocked'], parent_id: 'EPIC-0001' },
     });
     for (const r of results) {
       expect(['open', 'blocked']).toContain(r.task.status);
-      expect(r.task.parent_id ?? r.task.epic_id).toBe('EPIC-0001');
+      expect(r.task.parent_id).toBe('EPIC-0001');
     }
   });
 });
 
-// ── Invariant 3: parent_id takes precedence over epic_id ────────────
+// ── Invariant 3: parent_id is the sole relationship filter ─────────
 
-describe('Invariant: parent_id precedence in where filtering (ADR-0079)', () => {
+describe('Invariant: canonical parent_id where filtering (ADR-0079)', () => {
   let service: OramaSearchService;
 
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await service.index([
-      makeEntity({ id: 'TASK-0001', title: 'Child task', epic_id: 'EPIC-0001', parent_id: 'FLDR-0001' }),
-      makeEntity({ id: 'TASK-0002', title: 'Child task two', epic_id: 'EPIC-0001' }),
+      makeEntity({ id: 'TASK-0001', title: 'Child task', parent_id: 'FLDR-0001' }),
+      makeEntity({ id: 'TASK-0002', title: 'Child task two', parent_id: 'EPIC-0001' }),
     ]);
   });
 
@@ -160,11 +160,9 @@ describe('Invariant: parent_id precedence in where filtering (ADR-0079)', () => 
     expect(results.some(r => r.id === 'TASK-0002')).toBe(false);
   });
 
-  it('epic_id filter does NOT match task whose parent_id overrides epic_id', async () => {
-    const results = await service.search('child', { filters: { epic_id: 'EPIC-0001' } });
-    // TASK-0001 has parent_id=FLDR-0001 which overrides epic_id in the index
+  it('parent_id filter matches only the selected parent', async () => {
+    const results = await service.search('child', { filters: { parent_id: 'EPIC-0001' } });
     expect(results.some(r => r.id === 'TASK-0001')).toBe(false);
-    // TASK-0002 has no parent_id, so epic_id is used
     expect(results.some(r => r.id === 'TASK-0002')).toBe(true);
   });
 });

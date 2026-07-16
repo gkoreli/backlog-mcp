@@ -8,7 +8,6 @@ export function registerUpdate(program: Command): void {
     .description('Update a backlog item')
     .option('--title <text>', 'New title')
     .option('--status <status>', 'New status')
-    .option('--epic <id>', 'Set epic (use "" to clear)')
     .option('--parent <id>', 'Set parent (use "" to clear)')
     .option('--evidence <text...>', 'Evidence entries')
     .option('--blocked-reason <text...>', 'Blocked reasons')
@@ -18,7 +17,6 @@ export function registerUpdate(program: Command): void {
         id,
         title: opts.title,
         status: opts.status,
-        epic_id: opts.epic === '' ? null : opts.epic,
         parent_id: opts.parent === '' ? null : opts.parent,
         evidence: opts.evidence,
         blocked_reason: opts.blockedReason,

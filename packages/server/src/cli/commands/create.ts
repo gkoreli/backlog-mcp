@@ -8,8 +8,7 @@ export function registerCreate(program: Command): void {
     .description('Create a new backlog item')
     .option('--content <text>', 'Content in markdown')
     .option('--source <path>', 'Read content from file')
-    .option('--type <type>', 'Entity type (task, epic, folder, artifact, milestone)')
-    .option('--epic <id>', 'Parent epic ID')
+    .option('--type <type>', 'Substrate type')
     .option('--parent <id>', 'Parent ID')
     .action((title, opts) => run(
       (runtime) => {
@@ -20,7 +19,6 @@ export function registerCreate(program: Command): void {
           title,
           content,
           type: opts.type,
-          epic_id: opts.epic,
           parent_id: opts.parent,
         }, runtime.writeContext);
       },

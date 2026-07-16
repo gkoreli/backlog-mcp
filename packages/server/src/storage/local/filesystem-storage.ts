@@ -1,8 +1,18 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import matter from 'gray-matter';
-import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
-import { TYPE_PREFIXES, isValidEntityId } from '@backlog-mcp/shared';
+import type {
+  AnyEntity,
+  Entity,
+  EntityType,
+  Status,
+  SubstrateType,
+} from '@backlog-mcp/shared';
+import {
+  EntitySchema,
+  TYPE_PREFIXES,
+  isValidEntityId,
+} from '@backlog-mcp/shared';
 import type { StorageAdapter, ListFilter } from '../storage-adapter.js';
 import { paths } from '../../utils/paths.js';
 import { logger } from '../../utils/logger.js';
@@ -31,7 +41,7 @@ export class FilesystemStorage implements StorageAdapter {
     return join(this.entitiesPath, `${id}.md`);
   }
 
-  private entityToMarkdown(entity: Entity): string {
+  private entityToMarkdown(entity: AnyEntity): string {
     const { content, ...frontmatter } = entity;
     return matter.stringify(content || '', frontmatter);
   }
@@ -84,30 +94,33 @@ export class FilesystemStorage implements StorageAdapter {
   }
 
   list(filter?: ListFilter): Entity[] {
-    const { status, type, epic_id, parent_id, limit = 20 } = filter ?? {};
+    const { status, type, parent_id, limit = 20 } = filter ?? {};
     let entities = Array.from(this.iterateEntities());
 
     if (status) entities = entities.filter(t => t.status !== undefined && status.includes(t.status));
     if (type) entities = entities.filter(t => (t.type ?? 'task') === type);
-    if (parent_id) entities = entities.filter(t => (t.parent_id ?? t.epic_id) === parent_id);
-    else if (epic_id) entities = entities.filter(t => (t.parent_id ?? t.epic_id) === epic_id);
+    if (parent_id) entities = entities.filter(t => t.parent_id === parent_id);
 
     return entities
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
       .slice(0, limit);
   }
 
-  add(entity: Entity): void {
+  add(candidate: AnyEntity): Entity {
+    const entity = EntitySchema.parse(candidate);
     this.ensureDir(this.entitiesPath);
     writeFileSync(this.entityFilePath(entity.id), this.entityToMarkdown(entity));
+    return entity;
   }
 
-  save(entity: Entity): void {
-    if (!isValidEntityId(entity.id)) {
-      throw new Error(`Cannot save entity with invalid id: ${String(entity.id)}`);
+  save(candidate: AnyEntity): Entity {
+    if (typeof candidate.id !== 'string' || !isValidEntityId(candidate.id)) {
+      throw new Error(`Cannot save entity with invalid id: ${String(candidate.id)}`);
     }
+    const entity = EntitySchema.parse(candidate);
     this.ensureDir(this.entitiesPath);
     writeFileSync(this.entityFilePath(entity.id), this.entityToMarkdown(entity));
+    return entity;
   }
 
   delete(id: string): boolean {
@@ -153,8 +166,11 @@ export class FilesystemStorage implements StorageAdapter {
     return { total_tasks, total_epics, by_status, by_type };
   }
 
-  getMaxId(type?: EntityType): number {
-    const prefix = TYPE_PREFIXES[type ?? 'task'];
+  getMaxId(type: SubstrateType): number {
+    const prefix = TYPE_PREFIXES[type as EntityType];
+    if (prefix === undefined) {
+      throw new Error(`No legacy storage identity for substrate type: ${type}`);
+    }
     const pattern = new RegExp(`^${prefix}-(\\d{4,})\\.md$`);
     let maxNum = 0;
 

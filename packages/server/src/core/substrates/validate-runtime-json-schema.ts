@@ -17,6 +17,7 @@ const ALLOWED_KEYWORDS = new Set([
   'allOf',
   'anyOf',
   'const',
+  'default',
   'dependentRequired',
   'description',
   'else',

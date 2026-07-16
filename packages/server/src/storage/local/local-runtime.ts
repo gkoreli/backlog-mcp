@@ -2,8 +2,15 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { MemoryComposer } from '@backlog-mcp/memory';
-import type { EntityType } from '@backlog-mcp/shared';
+import type { SubstrateType } from '@backlog-mcp/shared';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
+import { discoverDocuments } from '../../core/document-discovery.js';
+import {
+  createBuiltinSubstrateRegistrations,
+  loadProjectSubstrateDefinitions,
+  type ProjectSubstrateRegistry,
+  type SubstrateDefinitionDiagnostic,
+} from '../../core/substrates/index.js';
 import { LocalEventBus } from '../../events/local-event-bus.js';
 import { createDefaultComposer } from '../../memory/bootstrap.js';
 import {
@@ -59,6 +66,8 @@ export class LocalRuntime {
     readonly operationLogger: OperationLogger,
     readonly eventBus: LocalEventBus,
     readonly memoryComposer: MemoryComposer,
+    readonly substrateRegistry: ProjectSubstrateRegistry,
+    readonly substrateDiagnostics: readonly SubstrateDefinitionDiagnostic[],
     private readonly watcher: DocsTreeWatcher,
     private readonly onWatcherError?: DocsTreeWatcherErrorCallback,
   ) {}
@@ -161,11 +170,18 @@ export function createLocalRuntime(
   deps: LocalRuntimeDependencies = {},
 ): LocalRuntime {
   const catalog = deps.catalog ?? new BuiltinSubstrateStorageCatalog();
-  const storage = new DocsNativeFilesystemStorage(home, catalog);
+  ensureRuntimeDirectories(home);
+  const discovery = discoverDocuments({ documentsDir: home.documentsDir });
+  const definitions = loadProjectSubstrateDefinitions(
+    discovery.declarations,
+    createBuiltinSubstrateRegistrations(catalog),
+  );
+  const substrateRegistry = definitions.registry;
+  const storage = new DocsNativeFilesystemStorage(home, substrateRegistry);
   const search = deps.createSearch?.(home) ?? createSearch(home);
   const resourceManager = new ResourceManager(home.documentsDir);
-  function allocateId(type: EntityType, currentMaxId: number): string {
-    return nextStorageDocumentId(catalog, type, currentMaxId);
+  function allocateId(type: SubstrateType, currentMaxId: number): string {
+    return nextStorageDocumentId(substrateRegistry, type, currentMaxId);
   }
   const service = new BacklogService({
     storage,
@@ -190,6 +206,8 @@ export function createLocalRuntime(
     operationLogger,
     eventBus,
     memoryComposer,
+    substrateRegistry,
+    definitions.diagnostics,
     deps.watcher ?? new ParcelDocsTreeWatcher(),
     deps.onWatcherError,
   );

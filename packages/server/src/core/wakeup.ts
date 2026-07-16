@@ -20,6 +20,7 @@ import type { Entity, Memory } from '@backlog-mcp/shared';
 import { EntityType, getSubstrate, isValidEntityId, parseEntityId } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { toMemoryEntry } from '../memory/backlog-memory-store.js';
+import { asBuiltinEntity } from './substrates/index.js';
 import {
   ValidationError,
   type WakeupParams,
@@ -37,7 +38,7 @@ function toSummary(e: Entity): WakeupEntitySummary {
     status: e.status ?? 'open',
     type: e.type ?? 'task',
   };
-  const parent = e.parent_id ?? e.epic_id;
+  const parent = e.parent_id;
   if (parent) s.parent_id = parent;
   if (e.updated_at) s.updated_at = e.updated_at;
   return s;
@@ -162,12 +163,18 @@ export async function wakeup(
   // L1 Now — active tasks (in_progress | blocked), epics excluded;
   // and current epics as their own section.
   const active = await service.list({ status: ['in_progress', 'blocked'] });
-  const activeTasks = inScope(active.filter(e => e.type !== 'epic'))
+  const activeTasks = inScope(active.flatMap(function getActiveBuiltin(entity) {
+    const builtin = asBuiltinEntity(entity);
+    return builtin === undefined || builtin.type === 'epic' ? [] : [builtin];
+  }))
     .sort(byUpdatedAtDesc)
     .map(toSummary);
 
   const epics = await service.list({ type: EntityType.Epic, status: ['open', 'in_progress'] });
-  const currentEpics = inScope(epics).sort(byUpdatedAtDesc).map(toSummary);
+  const currentEpics = inScope(epics.flatMap(function getEpic(entity) {
+    const builtin = asBuiltinEntity(entity);
+    return builtin?.type === EntityType.Epic ? [builtin] : [];
+  })).sort(byUpdatedAtDesc).map(toSummary);
 
   // L2.5 Knowledge (ADR-0092.5 R-6, after MemPalace's L1 "essential story"):
   // top semantic/procedural memories for the scope — what the agent KNOWS
@@ -175,7 +182,11 @@ export async function wakeup(
   const maxKnowledge = params.maxKnowledge ?? 5;
   let knowledge: WakeupKnowledgeItem[] = [];
   if (maxKnowledge > 0) {
-    const memories = await service.list({ type: EntityType.Memory });
+    const memories = (await service.list({ type: EntityType.Memory }))
+      .flatMap(function getMemory(entity) {
+        const builtin = asBuiltinEntity(entity);
+        return builtin?.type === EntityType.Memory ? [builtin] : [];
+      });
     const now = Date.now();
     const MS_PER_DAY = 24 * 60 * 60 * 1000;
     knowledge = memories
@@ -214,7 +225,10 @@ export async function wakeup(
 
   // L2 Recent — last N done tasks by updated_at, + last N ops from the log.
   const done = await service.list({ status: ['done'] });
-  const completions = inScope(done)
+  const completions = inScope(done.flatMap(function getCompletedBuiltin(entity) {
+    const builtin = asBuiltinEntity(entity);
+    return builtin === undefined ? [] : [builtin];
+  }))
     .sort(byUpdatedAtDesc)
     .slice(0, maxCompletions)
     .map(e => toCompletion(e, snippetChars));

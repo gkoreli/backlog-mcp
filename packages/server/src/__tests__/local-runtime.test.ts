@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createBacklogHome } from '../core/backlog-home.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';
 import { createItem } from '../core/create.js';
+import { updateItem } from '../core/update.js';
 import { createEntity } from '../storage/entity-factory.js';
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
 import type {
@@ -126,8 +127,105 @@ describe('LocalRuntime', function describeLocalRuntime() {
       'Claim-shaped task',
     );
     expect(existsSync(
-      join(home.documentsDir, 'tasks', 'TASK-00001.md'),
+      join(home.documentsDir, 'tasks', 'TASK-0001.md'),
     )).toBe(true);
+  });
+
+  it('loads a project substrate and routes create and update through its schema', async function writesProjectSubstrate() {
+    const home = createHome('project-substrate');
+    mkdirSync(join(home.documentsDir, 'substrates'), { recursive: true });
+    writeFileSync(
+      join(home.documentsDir, 'substrates', 'decision.json'),
+      JSON.stringify({
+        $schema: 'urn:backlog-mcp:schema:substrate-definition:1',
+        definitionVersion: 1,
+        type: 'decision',
+        label: { singular: 'Decision', plural: 'Decisions' },
+        folder: 'decisions',
+        identity: {
+          strategy: 'numbered',
+          minimumDigits: 3,
+          displayTemplate: 'decision-{key}-root',
+        },
+        schema: {
+          $schema: 'https://json-schema.org/draft/2020-12/schema',
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            type: { const: 'decision' },
+            title: { type: 'string' },
+            summary: { type: 'string' },
+          },
+          required: ['id', 'type', 'title', 'summary'],
+          additionalProperties: false,
+        },
+      }),
+    );
+    const runtime = createLocalRuntime(home, {
+      watcher: new FakeDocsTreeWatcher(),
+      createSearch: createBm25Search,
+    });
+    const context = {
+      actor: { type: 'agent' as const, name: 'basalt' },
+      operationLog: runtime.operationLogger,
+    };
+
+    const created = await createItem(
+      runtime.service,
+      {
+        title: 'Runtime decision',
+        type: 'decision',
+        fields: { summary: 'Initial summary' },
+      },
+      context,
+    );
+    await updateItem(
+      runtime.service,
+      {
+        id: created.id,
+        fields: { summary: 'Updated summary' },
+      },
+      context,
+    );
+
+    expect(created.id).toBe('decision-001-root');
+    expect(runtime.service.getSync(created.id)).toMatchObject({
+      type: 'decision',
+      summary: 'Updated summary',
+    });
+    expect(existsSync(
+      join(home.documentsDir, 'decisions', '001.md'),
+    )).toBe(true);
+    const storedPath = join(home.documentsDir, 'decisions', '001.md');
+    const beforeRejectedUpdate = readFileSync(storedPath, 'utf8');
+    await expect(updateItem(
+      runtime.service,
+      {
+        id: created.id,
+        fields: { undeclared: true },
+      },
+      context,
+    )).rejects.toThrow(/additional properties/);
+    expect(readFileSync(storedPath, 'utf8')).toBe(beforeRejectedUpdate);
+
+    await expect(createItem(
+      runtime.service,
+      {
+        title: 'Invalid runtime decision',
+        type: 'decision',
+        fields: { summary: 42 },
+      },
+      context,
+    )).rejects.toThrow(/must be string/);
+    expect(existsSync(
+      join(home.documentsDir, 'decisions', '002.md'),
+    )).toBe(false);
+
+    await expect(createItem(
+      runtime.service,
+      { title: 'Unknown', type: 'unknown' },
+      context,
+    )).rejects.toThrow(/Unknown substrate type/);
   });
 
   it('owns docs, search, resources, memory, and operation state for one home', async function ownsPerHomeGraph() {

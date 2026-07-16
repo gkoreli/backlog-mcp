@@ -20,7 +20,6 @@ export function registerList(program: Command): void {
     .description('List backlog items')
     .option('--status <status...>', 'Filter by status')
     .option('--type <type>', 'Filter by type')
-    .option('--epic <id>', 'Filter by epic')
     .option('--parent <id>', 'Filter by parent')
     .option('--query <text>', 'Search across fields')
     .option('--counts', 'Include counts')
@@ -29,7 +28,6 @@ export function registerList(program: Command): void {
       (runtime) => listItems(runtime.service, {
         status: opts.status,
         type: opts.type,
-        epic_id: opts.epic,
         parent_id: opts.parent,
         query: opts.query,
         counts: opts.counts,

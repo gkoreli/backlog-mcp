@@ -8,7 +8,15 @@
  * ADR-0089 Phase 2: wire up the Cloudflare Worker MCP endpoint.
  */
 
-import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
+import {
+  EntitySchema,
+  EntityType,
+  STATUSES,
+  type AnyEntity,
+  type Entity,
+  type Status,
+  type SubstrateType,
+} from '@backlog-mcp/shared';
 import { D1Storage } from './d1-storage.js';
 import type { IBacklogService } from '../backlog-service.contract.js';
 
@@ -28,27 +36,45 @@ export class D1BacklogService implements IBacklogService {
   }
 
   async list(filter?: {
-    status?: Status[];
-    type?: EntityType;
-    epic_id?: string;
+    status?: string[];
+    type?: SubstrateType;
     parent_id?: string;
     query?: string;
     limit?: number;
   }): Promise<Entity[]> {
     const { query, ...storageFilter } = filter ?? {};
+    const type = storageFilter.type;
+    if (type !== undefined && !Object.values(EntityType).includes(type as EntityType)) {
+      return [];
+    }
+    const allowedStatuses = new Set<string>(STATUSES);
+    if (storageFilter.status?.some(function isUnknownStatus(status) {
+      return !allowedStatuses.has(status);
+    })) {
+      return [];
+    }
+    const builtinFilter = {
+      ...storageFilter,
+      status: storageFilter.status as Status[] | undefined,
+      type: type as EntityType | undefined,
+    };
     if (query) {
       // Use FTS5 search in D1Storage
-      return this.storage.search(query, storageFilter.limit);
+      return this.storage.search(query, builtinFilter.limit);
     }
-    return this.storage.list(storageFilter);
+    return this.storage.list(builtinFilter);
   }
 
-  async add(entity: Entity): Promise<void> {
-    return this.storage.add(entity);
+  async add(candidate: AnyEntity): Promise<Entity> {
+    const entity = EntitySchema.parse(candidate);
+    await this.storage.add(entity);
+    return entity;
   }
 
-  async save(entity: Entity): Promise<void> {
-    return this.storage.save(entity);
+  async save(candidate: AnyEntity): Promise<Entity> {
+    const entity = EntitySchema.parse(candidate);
+    await this.storage.save(entity);
+    return entity;
   }
 
   async delete(id: string): Promise<boolean> {
@@ -64,8 +90,11 @@ export class D1BacklogService implements IBacklogService {
     return this.storage.counts();
   }
 
-  async getMaxId(type?: EntityType): Promise<number> {
-    return this.storage.getMaxId(type);
+  async getMaxId(type: SubstrateType = EntityType.Task): Promise<number> {
+    if (!Object.values(EntityType).includes(type as EntityType)) {
+      throw new Error(`D1 does not support runtime substrate type: ${type}`);
+    }
+    return this.storage.getMaxId(type as EntityType);
   }
 
   // Simplified searchUnified for cloud mode — returns task/epic entities only

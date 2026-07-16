@@ -55,11 +55,15 @@ describe('compileSubstrateDefinition', function describeCompiler() {
         displayTemplate: 'ADR {key}',
       },
     });
-    expect(result.substrate.validateWrite({
+    const candidate = {
       id: '0001',
       type: 'adr',
       title: 'Use markdown',
-    })).toEqual({ ok: true });
+    };
+    expect(result.substrate.validateWrite(candidate)).toEqual({
+      ok: true,
+      entity: candidate,
+    });
     expect(result.substrate.validateWrite({
       id: '0001',
       type: 'requirement',
@@ -191,14 +195,18 @@ describe('compileSubstrateDefinition', function describeCompiler() {
 
     expect(result).toMatchObject({ ok: true });
     if (!result.ok) return;
-    expect(result.substrate.validateWrite({
+    const candidate = {
       id: '0001',
       type: 'adr',
       title: 'Reviewed',
       mode: 'reviewed',
       reviewer: 'Goga',
       tags: ['schema', 'runtime'],
-    })).toEqual({ ok: true });
+    };
+    expect(result.substrate.validateWrite(candidate)).toEqual({
+      ok: true,
+      entity: candidate,
+    });
     expect(result.substrate.validateWrite({
       id: '0001',
       type: 'adr',
@@ -214,7 +222,18 @@ describe('compileSubstrateDefinition', function describeCompiler() {
   });
 
   it('does not coerce values, remove unknown fields, or mutate candidates', () => {
-    const result = compile();
+    const schema = {
+      ...BASE_SCHEMA,
+      properties: {
+        ...BASE_SCHEMA.properties,
+        status: {
+          type: 'string',
+          enum: ['intake', 'done'],
+          default: 'intake',
+        },
+      },
+    };
+    const result = compile(createDefinition(schema));
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const candidate = {
@@ -231,6 +250,17 @@ describe('compileSubstrateDefinition', function describeCompiler() {
       title: 'Candidate',
       unknown: true,
     });
+
+    const withoutDefault = {
+      id: '0001',
+      type: 'adr',
+      title: 'No mutation',
+    };
+    expect(result.substrate.validateWrite(withoutDefault)).toEqual({
+      ok: true,
+      entity: withoutDefault,
+    });
+    expect(withoutDefault).not.toHaveProperty('status');
   });
 
   it('allows resolved local definitions and rejects remote, unresolved, and cyclic refs', () => {

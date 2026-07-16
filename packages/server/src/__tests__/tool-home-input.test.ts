@@ -148,7 +148,9 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
   });
 
   it('strips home fields from backlog_create core and mutation params', async function stripsCreateFields() {
-    const add = vi.fn(async function addEntity(_entity: Entity) {});
+    const add = vi.fn(async function addEntity(entity: Entity) {
+      return entity;
+    });
     const service = {
       allocateId: vi.fn(async function allocateId() {
         return 'TASK-0001';
@@ -176,7 +178,9 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
   });
 
   it('strips home fields from backlog_update core and mutation params', async function stripsUpdateFields() {
-    const save = vi.fn(async function saveEntity(_entity: Entity) {});
+    const save = vi.fn(async function saveEntity(entity: Entity) {
+      return entity;
+    });
     const service = {
       get: vi.fn(async function getEntity() {
         return task();

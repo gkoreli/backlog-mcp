@@ -1,6 +1,7 @@
 import { posix } from 'node:path';
 import {
   RuntimeSubstrateDefinitionSchema,
+  type RuntimeEntity,
   type RuntimeSubstrateDefinition,
 } from '@backlog-mcp/shared';
 import {
@@ -213,7 +214,12 @@ function createWriteValidator(
   validate: ValidateFunction,
 ): (candidate: unknown) => SubstrateWriteValidationResult {
   return function validateWrite(candidate: unknown): SubstrateWriteValidationResult {
-    if (validate(candidate)) return { ok: true };
+    if (validate(candidate)) {
+      return {
+        ok: true,
+        entity: candidate as RuntimeEntity,
+      };
+    }
     return {
       ok: false,
       issues: normalizeAjvIssues(validate.errors),
@@ -290,6 +296,7 @@ export function compileSubstrateDefinition(
   return {
     ok: true,
     substrate: {
+      kind: 'declarative',
       sourcePath: params.sourcePath,
       definition,
       storageClaim: createStorageClaim(definition),

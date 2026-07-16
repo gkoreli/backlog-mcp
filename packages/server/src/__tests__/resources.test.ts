@@ -215,12 +215,13 @@ describe('Lifecycle Management', () => {
     // Create task
     const task = {
       id: 'TASK-9999',
+      type: 'task' as const,
       title: 'Test Task',
       status: 'open' as const,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    storage.add(task);
+    await storage.add(task);
     
     // Create resource
     const resourceDir = join(testDir, 'resources', 'TASK-9999');
@@ -230,7 +231,7 @@ describe('Lifecycle Management', () => {
     expect(existsSync(resourceDir)).toBe(true);
     
     // Delete task
-    storage.delete('TASK-9999');
+    await storage.delete('TASK-9999');
     
     // Resources should be deleted too
     expect(existsSync(resourceDir)).toBe(false);
@@ -241,15 +242,16 @@ describe('Lifecycle Management', () => {
     
     const task = {
       id: 'TASK-9998',
+      type: 'task' as const,
       title: 'Test Task',
       status: 'open' as const,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    storage.add(task);
+    await storage.add(task);
     
     // Delete task (no resources)
-    expect(() => storage.delete('TASK-9998')).not.toThrow();
+    await expect(storage.delete('TASK-9998')).resolves.toBe(true);
   });
 
   it('should resolve resource file paths for task-attached resources', async () => {

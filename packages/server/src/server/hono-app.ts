@@ -267,7 +267,9 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       return withEntityHomeProvenance(runtime, child);
     });
     let parentTitle: string | undefined;
-    const parentId = task.parent_id || task.epic_id;
+    const parentId = typeof task.parent_id === 'string'
+      ? task.parent_id
+      : undefined;
     if (parentId) {
       const parent = await requestService.get(parentId);
       parentTitle = parent?.title;
@@ -393,7 +395,12 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
       if (!taskCache.has(id)) {
         const entity = await requestService.get(id);
-        taskCache.set(id, { title: entity?.title, epicId: entity?.parent_id ?? entity?.epic_id });
+        taskCache.set(id, {
+          title: entity?.title,
+          epicId: typeof entity?.parent_id === 'string'
+            ? entity.parent_id
+            : undefined,
+        });
       }
       const cached = taskCache.get(id);
       if (cached === undefined) {
