@@ -116,7 +116,7 @@ describe('Operations Module', () => {
 
       storage.append(entry1);
       storage.append(entry2);
-      
+
       // Query by date
       const feb4Ops = storage.query({ date: '2026-02-04' });
       const feb5Ops = storage.query({ date: '2026-02-05' });
