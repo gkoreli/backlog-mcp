@@ -5,6 +5,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   renameSync,
   rmSync,
   statSync,
@@ -58,13 +59,20 @@ const MODEL_METADATA = {
   revision: 'unfixed',
   dimensions: 384,
   dtype: 'fp32',
-  max_tokens: 256,
+  max_tokens: 512,
+  trained_window_tokens: 256,
   document_prefix: '',
   query_prefix: '',
   pooling: 'mean',
   post_pool_transform: 'none',
   normalize: true,
 };
+const REQUIRED_MODEL_CACHE_FILES = [
+  'config.json',
+  'tokenizer.json',
+  'tokenizer_config.json',
+  'onnx/model.onnx',
+];
 
 function fail(message) {
   throw new Error(message);
@@ -341,10 +349,10 @@ function fileBytes(path) {
   }
 }
 
-function readPackageVersion(requireFromServer, packageName) {
+function packageRoot(requireFromServer, packageName) {
   try {
     const packagePath = requireFromServer.resolve(`${packageName}/package.json`);
-    return JSON.parse(readFileSync(packagePath, 'utf8')).version ?? 'unknown';
+    return dirname(packagePath);
   } catch {
     try {
       let current = dirname(requireFromServer.resolve(packageName));
@@ -352,14 +360,79 @@ function readPackageVersion(requireFromServer, packageName) {
         const packagePath = join(current, 'package.json');
         if (existsSync(packagePath)) {
           const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
-          if (packageJson.name === packageName) return packageJson.version ?? 'unknown';
+          if (packageJson.name === packageName) return current;
         }
         current = dirname(current);
       }
-      return 'unknown';
+      return undefined;
     } catch {
-      return 'unknown';
+      return undefined;
     }
+  }
+}
+
+function readPackageVersion(requireFromServer, packageName) {
+  const root = packageRoot(requireFromServer, packageName);
+  if (root === undefined) return 'unknown';
+  try {
+    return JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version ?? 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+function directoryBytes(path) {
+  if (!existsSync(path)) return 0;
+  let bytes = 0;
+  for (const entry of readdirSync(path, { withFileTypes: true })) {
+    const entryPath = join(path, entry.name);
+    bytes += entry.isDirectory() ? directoryBytes(entryPath) : fileBytes(entryPath);
+  }
+  return bytes;
+}
+
+function modelCacheSnapshot(cacheDir) {
+  const path = join(cacheDir, ...MODEL_METADATA.id.split('/'));
+  return {
+    path,
+    bytes: directoryBytes(path),
+    complete: REQUIRED_MODEL_CACHE_FILES.every(function modelFileExists(relativePath) {
+      return existsSync(join(path, ...relativePath.split('/')));
+    }),
+  };
+}
+
+function assertModelMetadata(repoRoot) {
+  const source = readFileSync(
+    join(repoRoot, 'packages/memory/src/search/embedding-service.ts'),
+    'utf8',
+  );
+  const expectedSource = [
+    `const MODEL_ID = '${MODEL_METADATA.id}'`,
+    `export const EMBEDDING_DIMENSIONS = ${MODEL_METADATA.dimensions}`,
+    `dtype: '${MODEL_METADATA.dtype}'`,
+    `pooling: '${MODEL_METADATA.pooling}'`,
+    `normalize: ${String(MODEL_METADATA.normalize)}`,
+  ];
+  for (const fragment of expectedSource) {
+    if (!source.includes(fragment)) {
+      fail(`Runner model metadata drifted from embedding-service.ts: ${fragment}`);
+    }
+  }
+}
+
+function assertRuntimeTokenBoundary(modelPath) {
+  const tokenizerConfig = JSON.parse(
+    readFileSync(join(modelPath, 'tokenizer_config.json'), 'utf8'),
+  );
+  const modelConfig = JSON.parse(
+    readFileSync(join(modelPath, 'config.json'), 'utf8'),
+  );
+  if (
+    tokenizerConfig.model_max_length !== MODEL_METADATA.max_tokens
+    || modelConfig.max_position_embeddings !== MODEL_METADATA.max_tokens
+  ) {
+    fail('Runner max_tokens drifted from the cached tokenizer/model boundary');
   }
 }
 
@@ -593,28 +666,40 @@ function writeReportAtomically(outputPath, report) {
 }
 
 async function loadRuntime(repoRoot) {
+  const requireFromServer = createRequire(join(repoRoot, 'packages/server/package.json'));
   const paths = {
     orama: join(repoRoot, 'packages/server/dist/memory/src/search/orama-search-service.mjs'),
     memoryStore: join(repoRoot, 'packages/server/dist/memory/backlog-memory-store.mjs'),
     entitySchema: join(repoRoot, 'packages/server/dist/shared/src/substrates/registry.mjs'),
     metrics: join(repoRoot, 'packages/memory/src/search/evaluation.ts'),
+    transformers: requireFromServer.resolve('@huggingface/transformers'),
   };
   for (const [name, path] of Object.entries(paths)) {
     if (!existsSync(path)) {
       fail(`Missing ${name} runtime at ${path}; run "pnpm build" first`);
     }
   }
-  const [oramaModule, memoryModule, schemaModule, metrics] = await Promise.all([
+  const [
+    oramaModule,
+    memoryModule,
+    schemaModule,
+    metrics,
+    transformersModule,
+  ] = await Promise.all([
     import(pathToFileURL(paths.orama).href),
     import(pathToFileURL(paths.memoryStore).href),
     import(pathToFileURL(paths.entitySchema).href),
     import(pathToFileURL(paths.metrics).href),
+    import(pathToFileURL(paths.transformers).href),
   ]);
   return {
     OramaSearchService: oramaModule.OramaSearchService,
     BacklogMemoryStore: memoryModule.BacklogMemoryStore,
     EntitySchema: schemaModule.EntitySchema,
     metrics,
+    transformersCacheDir:
+      transformersModule.env?.cacheDir
+      ?? transformersModule.default?.env?.cacheDir,
   };
 }
 
@@ -627,6 +712,10 @@ async function main() {
 
   const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
   const runtime = await loadRuntime(repoRoot);
+  assertModelMetadata(repoRoot);
+  if (typeof runtime.transformersCacheDir !== 'string') {
+    fail('Cannot resolve the active Transformers.js filesystem cache');
+  }
   const corpusInput = readJsonLines(args.corpus, 'corpus');
   const queryInput = readJsonLines(args.queries, 'queries');
   const qrelInput = readJsonLines(args.qrels, 'qrels');
@@ -643,6 +732,7 @@ async function main() {
   );
   mkdirSync(benchmarkDirectory, { recursive: true });
   try {
+    const modelCacheBefore = modelCacheSnapshot(runtime.transformersCacheDir);
     const common = {
       entities,
       queries,
@@ -665,6 +755,21 @@ async function main() {
       hybridSearch: true,
       cachePath: join(benchmarkDirectory, 'hybrid-index.json'),
     });
+    const modelCacheAfter = modelCacheSnapshot(runtime.transformersCacheDir);
+    if (!modelCacheAfter.complete) {
+      fail('Hybrid search initialized without a complete MiniLM cache snapshot');
+    }
+    // Transformers.js 3.8.1 enforces these cached runtime values. The model
+    // authors' separately reported 256-token trained window remains metadata.
+    assertRuntimeTokenBoundary(modelCacheAfter.path);
+    const modelDownloadedBytes = Math.max(
+      0,
+      modelCacheAfter.bytes - modelCacheBefore.bytes,
+    );
+    const modelSource = modelCacheBefore.complete
+      && modelCacheAfter.bytes === modelCacheBefore.bytes
+      ? 'cache'
+      : 'downloaded';
     const report = {
       schema_version: 1,
       generated_at: new Date().toISOString(),
@@ -674,9 +779,28 @@ async function main() {
         queries: { path: args.queries, sha256: sha256(queryInput.raw), count: queries.length },
         qrels: { path: args.qrels, sha256: sha256(qrelInput.raw), count: qrels.length },
       },
-      settings: { warmups: args.warmups, repetitions: args.repetitions },
+      settings: {
+        warmups: args.warmups,
+        repetitions: args.repetitions,
+        cold_run: args.warmups === 0,
+      },
       environment: buildEnvironment(repoRoot),
-      model: MODEL_METADATA,
+      model: {
+        ...MODEL_METADATA,
+        model_source: modelSource,
+        cache_path: modelCacheAfter.path,
+        cache_complete_before: modelCacheBefore.complete,
+        cache_complete_after: modelCacheAfter.complete,
+        cache_bytes_before: modelCacheBefore.bytes,
+        cache_bytes_after: modelCacheAfter.bytes,
+        ...(modelSource === 'downloaded'
+          ? { downloaded_bytes: modelDownloadedBytes }
+          : {}),
+      },
+      readiness_ms: {
+        lexical_ready: bm25.build_duration_ms,
+        semantic_ready: hybrid.build_duration_ms,
+      },
       modes: { bm25, hybrid },
     };
     writeReportAtomically(args.output, report);

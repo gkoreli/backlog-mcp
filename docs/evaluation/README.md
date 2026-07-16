@@ -133,9 +133,17 @@ must have at least one qrel.
 
 The report records input hashes and counts, environment and package versions,
 fixed MiniLM correctness metadata, BM25 and hybrid index duration/cache bytes,
-phase-boundary RSS samples, raw ranked IDs and timings for every query,
+separate lexical-ready and semantic-ready timings, whether the model came from
+the existing Transformers.js cache or was downloaded during the run (including
+downloaded bytes), an explicit cold-run flag, phase-boundary RSS samples, raw
+ranked IDs and timings for every query,
 repeat-determinism checks, first measured query latency, warm p50/p95 latency,
 and overall/per-class nDCG@10, MRR@10, success@1, Recall@20, and unjudged@10.
+
+MiniLM's enforced runtime boundary is 512 tokens, while its model card reports
+a 256-token trained window. Tail fixtures should eventually place markers in
+both zones: tokens 257–512 expose potentially degraded embeddings, while
+content after token 512 is absent from the vector entirely.
 
 Reports are durable evidence. The output parent directory is created when
 needed, and the report is written to a temporary sibling before an atomic

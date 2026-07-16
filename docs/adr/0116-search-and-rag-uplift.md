@@ -43,7 +43,8 @@ The problem is not that the system lacks fashionable retrieval components. The
 problem is that it has accumulated plausible ranking decisions without a
 product-corpus quality gate, while its first semantic search can block on model
 download plus full-corpus embedding. Long documents are embedded as one input
-through a model that truncates beyond 256 wordpieces. Search-cache writes are
+through a model whose runtime truncates beyond 512 wordpieces, although the
+model authors report a 256-wordpiece trained window. Search-cache writes are
 non-atomic, embedding failure becomes process-lifetime degradation, and
 resource reconciliation is incomplete.
 
@@ -195,8 +196,14 @@ normalization, fp32, and a 384-dimensional schema
 `packages/memory/src/search/orama-schema.ts:20-49`).
 
 The upstream model card describes all-MiniLM-L6-v2 as a sentence/short-paragraph
-encoder and states that inputs longer than 256 wordpieces are truncated.
+encoder trained with a 256-wordpiece limit.
 ([official model card, Intended uses](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2))
+The exact Transformers.js 3.8.1 conversion used here instead enforces 512 at
+runtime: its cached `tokenizer_config.json` declares `model_max_length: 512`,
+its cached `config.json` declares `max_position_embeddings: 512`, and the
+feature-extraction pipeline requests truncation without overriding that value.
+Therefore tokens 257–512 are encoded outside the model authors' stated trained
+window, while content after token 512 is absent from the vector.
 The Transformers.js conversion's fp32 ONNX is 90.4 MB; the roughly 23 MB artifact
 is int8/quantized, so ADR 0042's size statement does not describe the current
 `dtype: 'fp32'` runtime.
@@ -205,8 +212,9 @@ is int8/quantized, so ADR 0042's size statement does not describe the current
 Current code sends `title + full content` as one embedding input for every
 entity and resource
 (`packages/memory/src/search/orama-search-service.ts:91-150`).
-Therefore content beyond the model limit is absent from the vector, even though
-it remains present in BM25.
+Therefore long-document failure has two measurable zones: potentially degraded
+semantic quality from tokens 257–512, then absent vector content after token
+512. Both remain present in BM25.
 
 **Implication:** truncation is proven; product harm is not. Add tail-content
 queries to the evaluation fixture before introducing chunk records or a larger
@@ -219,7 +227,7 @@ The practical first comparison is among small models that preserve the existing
 
 | Candidate | Primary-source facts | Why it belongs in the experiment |
 |---|---|---|
-| all-MiniLM-L6-v2 | 384d, short-paragraph model, 256-wordpiece truncation; Apache-2.0. ([model card](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)) | Current control. |
+| all-MiniLM-L6-v2 | 384d, short-paragraph model, 256-wordpiece trained window; the current Transformers.js conversion truncates at 512; Apache-2.0. ([model card](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)) | Current control. |
 | Snowflake Arctic Embed S | 33M parameters, 384d, author-reported MTEB retrieval 51.98; Transformers.js-tagged; requires CLS pooling and a query prefix; Apache-2.0. ([model card](https://huggingface.co/Snowflake/snowflake-arctic-embed-s)) | Same schema, retrieval-trained challenger. |
 | BGE small en v1.5 | 384d, 512-token maximum sequence length, MIT; official model materials recommend a retrieval query instruction. ([model card](https://huggingface.co/BAAI/bge-small-en-v1.5)) | Same schema, independent challenger. |
 | Nomic Embed Text v1.5 | long-context/MRL model; 768d default with task prefixes; Apache-2.0. ([paper](https://arxiv.org/abs/2402.01613), [model card](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5)) | Admit only if 512-token candidates still fail tail-content queries. |
@@ -407,7 +415,7 @@ introduced.
 | Resource indexing embeds raw frontmatter and ignores its title | `ResourceManager.list()` reads the complete Markdown string and derives title only from the first H1/filename, while `read()` already uses `gray-matter` (`resources/manager.ts:18-20,36-64,109-133`). | Small relevance defect in the docs-native corpus; the parser already exists. |
 | Embedding failure is permanent and opaque | The first failed attempt is memoized as `false` for the search-service lifetime; the inner embedder retains its failed initialization, the reason is discarded, and no retry path exists (`embedding-service.ts:18-28`; `orama-search-service.ts:67-86`). | Operability risk that Phase 0's offline/failure run must reproduce before availability work ships. |
 | Snapshot is synchronous and non-atomic | Full index/caches are JSON-stringified and written directly with `writeFileSync` (`orama-search-service.ts:155-176`). | Real finding, but recoverable derived-state loss; shelved until an incident or measured rebuild/event-loop budget admits it. |
-| Long documents are one truncated vector | Whole title/content is sent through a 256-wordpiece model (`orama-search-service.ts:91-150`; upstream MiniLM model card). | Blocks semantic retrieval of long ADR/resource tails, if the fixture reproduces it. |
+| Long documents are one bounded vector | Whole title/content is sent through MiniLM; the current runtime truncates after 512 tokens, while quality past its 256-token trained window is unvalidated (`orama-search-service.ts:91-150`; exact Transformers.js cache metadata; upstream MiniLM model card). | Blocks semantic retrieval of long ADR/resource tails, if the fixture reproduces either degraded 257–512 behavior or absent post-512 content. |
 | ADR 0112 needs cross-home composition | R-9 requires per-home indexes plus rank fusion and provenance (`docs/adr/0112-docs-native-project-scoped-backlog.md:408-431,586-597`). | Direct dependency of the docs-native north-star thread. |
 
 ### Findings deliberately shelved
