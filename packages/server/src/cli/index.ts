@@ -17,6 +17,7 @@ import { registerRemember } from './commands/remember.js';
 import { registerForget } from './commands/forget.js';
 import { registerConsolidation } from './commands/consolidation.js';
 import { registerContradictions } from './commands/contradictions.js';
+import { registerMigrateDocsNative } from './commands/migrate-docs-native.js';
 
 const program = new Command()
   .name('backlog-mcp')
@@ -88,6 +89,7 @@ registerRemember(program);
 registerForget(program);
 registerConsolidation(program);
 registerContradictions(program);
+registerMigrateDocsNative(program);
 
 // --- Aliases for common bare-word usage ---
 
