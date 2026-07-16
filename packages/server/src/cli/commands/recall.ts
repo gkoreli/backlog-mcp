@@ -14,12 +14,18 @@ function format(result: RecallResult): string {
     const scoreStr = item.score.toFixed(3);
     const pointer = item.entity_id ? ` → ${item.entity_id}` : '';
     const kindStr = item.kind ? ` [${item.kind}]` : '';
-    lines.push(`  ${scoreStr}  ${item.id}  ${item.digest}${pointer}${kindStr}`);
+    lines.push(`  ${scoreStr}  ${item.id}  ${item.title}${pointer}${kindStr}`);
+    if (item.digest && item.digest !== item.title) lines.push(`         ${item.digest}`);
     if (item.content && item.content !== item.digest) {
       lines.push(...item.content.split('\n').map(l => `         ${l}`));
     }
     if (item.context) lines.push(`         context: ${item.context}`);
-    lines.push(`         ${item.created_at}  by ${item.source}`);
+    // Provenance line (ADR 0115 R-1): weigh trust without hydrating.
+    const provenance = [`${item.age_days}d old`, item.uses > 0 ? `used ${item.uses}×` : 'never used'];
+    if (item.idle_days !== undefined) provenance.push(`idle ${item.idle_days}d`);
+    if (item.supersedes) provenance.push(`corrects ${item.supersedes}`);
+    if (item.derived) provenance.push('derived');
+    lines.push(`         ${provenance.join(' · ')}  by ${item.source}`);
     lines.push('');
   }
   return lines.join('\n');

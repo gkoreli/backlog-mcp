@@ -35,7 +35,7 @@ export function registerBacklogRecallTool(
     'backlog_recall',
     {
       description:
-        'Recall memories — knowledge and episodes captured across sessions. Returns STUBS (id + one-line digest) by default; expand interesting ones with backlog_get(MEMO-id), or pass full:true for bodies. Distinct from backlog_search (live entities). Use to answer "how do we deploy?", "have I hit this before?", "what did I finish about X?". Memories point back to source entities via entity_id.',
+        'Recall memories — knowledge and episodes captured across sessions. Returns STUBS (title + one-line digest + provenance) by default; expand interesting ones with backlog_get(MEMO-id), or pass full:true for bodies. Weigh a stub\'s trust BEFORE hydrating: age_days (on the knowledge\'s own timeline), uses/idle_days (recall demand), supersedes (this is a correction), derived (consolidator inference), kind (current/historical/plan/preference/timeless). Old + never-used = treat as hypothesis, not truth. Distinct from backlog_search (live entities). Use to answer "how do we deploy?", "have I hit this before?", "what did I finish about X?". Memories point back to source entities via entity_id.',
       inputSchema: z.object({
         query: z.string().describe('Free-text query (keyword or phrase).'),
         context: z.string().optional().describe(

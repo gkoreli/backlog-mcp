@@ -319,6 +319,10 @@ export interface WakeupKnowledgeItem {
   title: string;          // digest line, char-bounded
   kind?: string;          // memory kind, when set
   source_ref?: string;    // first entity_ref — the evidence pointer
+  /** Age in whole days: occurred_at ?? created_at (ADR 0115 R-4 — same grammar as recall stubs). */
+  age_days: number;
+  /** Durable usage count. 0 = never earned a recall. */
+  uses: number;
 }
 
 export interface WakeupResult {
@@ -384,8 +388,16 @@ export interface RecallParams {
   token_budget?: number;
 }
 
+/**
+ * A recall stub — provenance-bearing by design (ADR 0115 R-1): every stub
+ * carries cheap authority signals (age, usage, lineage) so a consumer can
+ * weigh trust WITHOUT hydrating. "A stale artifact can be worse than no
+ * memory because it arrives with undeserved authority."
+ */
 export interface RecallItem {
   id: string;
+  /** The first-class human label (0092.3: title and body are both first-class). */
+  title: string;
   /** One-line digest (first line of content, ≤160 chars). Always present. */
   digest: string;
   /** Full memory body — only when ``full: true`` was requested. */
@@ -394,10 +406,20 @@ export interface RecallItem {
   source: string;
   context?: string;
   tags?: string[];
-  created_at: string;   // ISO string (core keeps this API consistent with other result types)
   score: number;
+  /** Age in whole days on the knowledge's own timeline: occurred_at ?? created_at. */
+  age_days: number;
+  /** Durable usage count (ADR 0092.9). 0 = never earned a recall — that too is signal. */
+  uses: number;
+  /** Days since last strong usage event. Present only when uses > 0. */
+  idle_days?: number;
+  /** MEMO- id this memory corrected. Present ⇒ this stub is a v2; its predecessor is expired. */
+  supersedes?: string;
+  /** True ⇒ consolidator inference (cites sources via entity_refs), not primary capture. */
+  derived?: boolean;
   entity_id?: string;   // from metadata.entity_id — convenience pointer back to the canonical entity
-  kind?: string;        // from metadata.kind — e.g. 'completion' | 'artifact'
+  /** Temporal kind (current/historical/plan/preference/timeless); falls back to capture kind (completion/artifact). */
+  kind?: string;
 }
 
 export interface RecallResult {

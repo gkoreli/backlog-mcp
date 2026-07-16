@@ -321,6 +321,23 @@ describe('core/wakeup', () => {
       const k2 = result.knowledge.find(k => k.id === 'MEMO-0002');
       expect(k2?.kind).toBe('timeless');
       expect(result.metadata.knowledge_count).toBe(2);
+      // Provenance (ADR 0115 R-4): same age/usage grammar as recall stubs.
+      expect(typeof k1?.age_days).toBe('number');
+      expect(k1?.uses).toBe(0);
+    });
+
+    it('anchors age_days on occurred_at and surfaces usage_count as uses (ADR 0115 R-4)', async () => {
+      const DAY = 24 * 60 * 60 * 1000;
+      const svc = mockService([
+        mem('MEMO-0001', {
+          usage_count: 4,
+          occurred_at: new Date(Date.now() - 10 * DAY).toISOString(),
+        }),
+      ]);
+      const result = await wakeup(svc);
+      const k = result.knowledge.find(x => x.id === 'MEMO-0001');
+      expect(k?.age_days).toBe(10);
+      expect(k?.uses).toBe(4);
     });
 
     it('excludes expired memories and respects maxKnowledge', async () => {

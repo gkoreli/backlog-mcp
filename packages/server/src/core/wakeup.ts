@@ -179,7 +179,7 @@ export async function wakeup(
     knowledge = memories
       .map(m => m as Entity & {
         layer?: string; kind?: string; valid_until?: string | null;
-        entity_refs?: string[]; usage_count?: number;
+        entity_refs?: string[]; usage_count?: number; occurred_at?: string;
       })
       .filter(m =>
         (m.layer === 'semantic' || m.layer === 'procedural') &&
@@ -189,10 +189,16 @@ export async function wakeup(
       .sort(byUpdatedAtDesc)
       .slice(0, maxKnowledge)
       .map(m => {
+        // Provenance (ADR 0115 R-4): same age/usage grammar as recall stubs,
+        // anchored on the knowledge's own timeline (occurred_at ?? created_at).
+        const occurred = m.occurred_at ? Date.parse(m.occurred_at) : NaN;
+        const anchor = Number.isNaN(occurred) ? Date.parse(m.created_at) : occurred;
         const item: WakeupKnowledgeItem = {
           id: m.id,
           layer: m.layer ?? 'semantic',
           title: m.title.length > 100 ? m.title.slice(0, 99) + '…' : m.title,
+          age_days: Number.isNaN(anchor) ? 0 : Math.max(0, Math.floor((now - anchor) / (24 * 60 * 60 * 1000))),
+          uses: m.usage_count ?? 0,
         };
         if (m.kind) item.kind = m.kind;
         if (m.entity_refs?.[0]) item.source_ref = m.entity_refs[0];
