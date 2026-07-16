@@ -8,6 +8,7 @@ status: accepted
 
 **Date**: 2026-06-19
 **Status**: Accepted
+**Updated**: 2026-07-16 — async markdown derivation migrated to Nisli `resource()`
 
 ## Context
 
@@ -47,7 +48,8 @@ Migrated syntax highlighting from highlight.js to [Shiki](https://shiki.style).
 
 **Integration:**
 - `marked-shiki` as the bridge (async `walkTokens`)
-- `md-block` uses `effect()` + `signal` to handle async `marked.parse()` — async code is a side effect, belongs in effects
+- `md-block` uses Nisli's `resource()` to derive rendered HTML from reactive
+  markdown with stale-result and disconnect guards
 - `resource-viewer` uses the sync `highlight()` function directly (highlighter pre-initialized at startup)
 
 ### 3. Markdown Module Colocation
@@ -87,6 +89,8 @@ All custom marked plugins carried over intact:
 ## Philosophy
 
 - **One render, both themes** — shiki's CSS variable approach means we never render code twice or maintain parallel theme stylesheets
-- **Async is a side effect** — `marked-shiki` makes `marked.parse()` async; we handle that with Nisli's `effect()` pattern, not by pretending async code is sync
+- **Async derivations are resources** — `marked-shiki` makes `marked.parse()`
+  async; `resource(source, loader)` owns that lifecycle without pretending
+  async code is synchronous or manually bridging it through an effect
 - **Colocation over scattering** — everything about markdown rendering lives in `markdown/`, everything about theming lives in `theme/`
 - **Brand identity is invariant** — the tri-color gradient and entity type colors don't change between themes; only surface/text/border colors adapt

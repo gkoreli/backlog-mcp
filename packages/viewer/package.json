@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@backlog-mcp/shared": "workspace:*",
-    "@nisli/core": "^0.51.0",
+    "@nisli/core": "^0.54.0",
     "@orama/highlight": "^0.1.9",
     "@shikijs/engine-javascript": "^4.2.0",
     "@shikijs/langs": "^4.2.0",

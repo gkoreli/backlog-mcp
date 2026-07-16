@@ -11,8 +11,8 @@
  *
  * This ensures Vite only bundles the 12 grammars we use, not all 350+.
  *
- * marked-shiki makes marked.parse() async. Consumers use effect() + signal
- * to handle the Promise naturally.
+ * marked-shiki makes marked.parse() async. Markdown consumers use Nisli's
+ * resource() primitive to own source tracking and stale async work.
  */
 
 import { Marked } from 'marked';
