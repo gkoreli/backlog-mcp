@@ -1,4 +1,5 @@
 import type { Entity, Status, EntityType } from '@backlog-mcp/shared';
+import type { DocumentIdentity } from '../core/document-identity.types.js';
 
 export interface ListFilter {
   status?: Status[];
@@ -31,6 +32,22 @@ export interface StorageAdapter {
   iterateEntities(): Iterable<Entity>;
   /** Absolute path to the entity's markdown file, or null if absent (local-only). */
   getFilePath(id: string): string | null;
+}
+
+/** A validated entity together with its authoritative Markdown provenance. */
+export interface StoredEntityDocument {
+  entity: Entity;
+  sourcePath: string;
+  identity: DocumentIdentity;
+  markdown: string;
+}
+
+/** Local storage contract for path-addressed, docs-native entity documents. */
+export interface DocumentStorageAdapter extends StorageAdapter {
+  getDocumentById(id: string): StoredEntityDocument | undefined;
+  getDocumentBySourcePath(sourcePath: string): StoredEntityDocument | undefined;
+  iterateDocuments(): Iterable<StoredEntityDocument>;
+  createDocument(entity: Entity, sourcePath: string): void;
 }
 
 /**

@@ -1,25 +1,35 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { vol } from 'memfs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, it, expect } from 'vitest';
 import { extractResourceId, extractTargetFilename } from '../operations/resource-id.js';
 import { OperationStorage } from '../operations/storage.js';
-import { operationLogger } from '../operations/logger.js';
+import { createOperationLogger, OperationLogger } from '../operations/logger.js';
+import type { OperationEntry } from '../operations/types.js';
 
-// Mock fs with memfs
-vi.mock('node:fs', async () => {
-  const memfs = await import('memfs');
-  return memfs.fs;
-});
+function operationLogPath(testName: string): string {
+  return join(tmpdir(), 'backlog-mcp-operations-tests', testName, 'operations.jsonl');
+}
+
+function createStorage(testName: string): OperationStorage {
+  return new OperationStorage(operationLogPath(testName));
+}
+
+function createLogger(testName: string): OperationLogger {
+  return new OperationLogger(createStorage(testName));
+}
+
+function createEntry(ts: string, resourceId: string): OperationEntry {
+  return {
+    ts,
+    tool: 'backlog_update',
+    params: { id: resourceId },
+    result: {},
+    resourceId,
+    actor: { type: 'user', name: 'test' },
+  };
+}
 
 describe('Operations Module', () => {
-  beforeEach(() => {
-    vol.reset();
-    vol.mkdirSync('/test-backlog/.internal', { recursive: true });
-  });
-
-  afterEach(() => {
-    vol.reset();
-  });
-
   describe('extractResourceId', () => {
     it('extracts ID from backlog_create result', () => {
       const result = { content: [{ text: 'Created TASK-0042' }] };
@@ -107,66 +117,83 @@ describe('Operations Module', () => {
   });
 
   describe('OperationStorage', () => {
-    it('is tested through logger integration', () => {
-      // Storage is tested indirectly through operationLogger tests
-      expect(true).toBe(true);
-    });
-  });
+    it('appends and reads operation entries', () => {
+      const storage = createStorage('append-and-read');
+      const entry = createEntry('2026-02-04T10:00:00.000Z', 'TASK-0001');
 
-  describe('operationLogger', () => {
-    it('only logs write operations', () => {
-      // backlog_list is a read operation, should not be logged
-      operationLogger.log('backlog_list', { filter: 'active' }, { tasks: [] });
-      const ops = operationLogger.read({ limit: 10 });
-      const listOps = ops.filter(o => o.tool === 'backlog_list');
-      expect(listOps).toHaveLength(0);
-    });
+      storage.append(entry);
 
-    it('includes actor info in logged operations', () => {
-      // This test verifies actor is included - actual values depend on env
-      operationLogger.log('backlog_update', { id: 'TASK-0001' }, { success: true });
-      const ops = operationLogger.read({ taskId: 'TASK-0001', limit: 1 });
-      if (ops.length > 0) {
-        expect(ops[0].actor).toBeDefined();
-        expect(ops[0].actor.type).toMatch(/^(user|agent)$/);
-        expect(ops[0].actor.name).toBeDefined();
-      }
+      expect(storage.readAll()).toEqual([entry]);
     });
 
     it('filters operations by date', () => {
-      // Log operations with different timestamps
-      const storage = new OperationStorage();
-      
-      // Manually append entries with specific dates for testing
-      const entry1 = {
-        ts: '2026-02-04T10:00:00.000Z',
-        tool: 'backlog_update',
-        params: { id: 'TASK-0001' },
-        result: {},
-        resourceId: 'TASK-0001',
-        actor: { type: 'user' as const, name: 'test' },
-      };
-      const entry2 = {
-        ts: '2026-02-05T10:00:00.000Z',
-        tool: 'backlog_update',
-        params: { id: 'TASK-0002' },
-        result: {},
-        resourceId: 'TASK-0002',
-        actor: { type: 'user' as const, name: 'test' },
-      };
-      
-      storage.append(entry1);
-      storage.append(entry2);
-      
-      // Query by date
+      const storage = createStorage('date-filter');
+      storage.append(createEntry('2026-02-04T10:00:00.000Z', 'TASK-0001'));
+      storage.append(createEntry('2026-02-05T10:00:00.000Z', 'TASK-0002'));
+
       const feb4Ops = storage.query({ date: '2026-02-04' });
       const feb5Ops = storage.query({ date: '2026-02-05' });
-      
-      expect(feb4Ops.length).toBe(1);
-      expect(feb4Ops[0].resourceId).toBe('TASK-0001');
-      
-      expect(feb5Ops.length).toBe(1);
-      expect(feb5Ops[0].resourceId).toBe('TASK-0002');
+
+      expect(feb4Ops).toHaveLength(1);
+      expect(feb4Ops[0]?.resourceId).toBe('TASK-0001');
+      expect(feb5Ops).toHaveLength(1);
+      expect(feb5Ops[0]?.resourceId).toBe('TASK-0002');
+    });
+  });
+
+  describe('OperationLogger', () => {
+    it('uses the requested operation log path', () => {
+      const logPath = operationLogPath('factory-path');
+      const logger = createOperationLogger(logPath);
+
+      logger.log('backlog_update', { id: 'TASK-0001' }, { success: true });
+
+      expect(new OperationStorage(logPath).readAll()).toEqual([
+        expect.objectContaining({
+          tool: 'backlog_update',
+          resourceId: 'TASK-0001',
+        }),
+      ]);
+    });
+
+    it('only logs write operations', () => {
+      const logger = createLogger('write-operations-only');
+
+      logger.log('backlog_list', { filter: 'active' }, { tasks: [] });
+      expect(logger.read({ limit: 10 })).toEqual([]);
+
+      logger.log('backlog_update', { id: 'TASK-0001' }, { success: true });
+      expect(logger.read({ limit: 10 })).toEqual([
+        expect.objectContaining({
+          tool: 'backlog_update',
+          resourceId: 'TASK-0001',
+        }),
+      ]);
+    });
+
+    it('includes actor info in logged operations', () => {
+      vi.stubEnv('BACKLOG_ACTOR_TYPE', 'agent');
+      vi.stubEnv('BACKLOG_ACTOR_NAME', 'test-agent');
+      vi.stubEnv('BACKLOG_DELEGATED_BY', 'test-parent');
+      vi.stubEnv('BACKLOG_TASK_CONTEXT', 'TASK-0001');
+
+      try {
+        const logger = createLogger('actor-info');
+        logger.log('backlog_update', { id: 'TASK-0001' }, { success: true });
+
+        expect(logger.read({ taskId: 'TASK-0001', limit: 1 })).toEqual([
+          expect.objectContaining({
+            actor: {
+              type: 'agent',
+              name: 'test-agent',
+              delegatedBy: 'test-parent',
+              taskContext: 'TASK-0001',
+            },
+          }),
+        ]);
+      } finally {
+        vi.unstubAllEnvs();
+      }
     });
   });
 });

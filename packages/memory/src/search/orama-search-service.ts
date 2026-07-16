@@ -710,6 +710,52 @@ export class OramaSearchService implements SearchService {
     return { added, removed, updated };
   }
 
+  /**
+   * Reconcile indexed resources against the current documents tree.
+   * Adds missing resources, removes stale ones, and updates changed content.
+   */
+  async reconcileResources(currentResources: Resource[]): Promise<{ added: number; removed: number; updated: number }> {
+    if (!this.db) return { added: 0, removed: 0, updated: 0 };
+
+    const currentIds = new Set(currentResources.map(resource => resource.id));
+    const cachedIds = new Set(this.resourceCache.keys());
+    let added = 0, removed = 0, updated = 0;
+
+    for (const resource of currentResources) {
+      if (!cachedIds.has(resource.id)) {
+        await this.addResource(resource);
+        added++;
+      }
+    }
+
+    for (const id of cachedIds) {
+      if (!currentIds.has(id)) {
+        await this.removeResource(id);
+        removed++;
+      }
+    }
+
+    for (const resource of currentResources) {
+      if (cachedIds.has(resource.id)) {
+        const cached = this.resourceCache.get(resource.id);
+        const changed = cached
+          && (cached.path !== resource.path
+            || cached.title !== resource.title
+            || cached.content !== resource.content);
+        if (changed) {
+          await this.updateResource(resource);
+          updated++;
+        }
+      }
+    }
+
+    if (added + removed + updated > 0) {
+      this.persistToDisk();
+    }
+
+    return { added, removed, updated };
+  }
+
   // ── Document CRUD ───────────────────────────────────────────────
 
   async addDocument(task: Entity): Promise<void> {

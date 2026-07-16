@@ -48,7 +48,12 @@ export class BacklogMemoryStore implements MemoryStore {
     }
     const service = this.getService();
     const nowIso = new Date(entry.createdAt || Date.now()).toISOString();
-    const id = nextEntityId(await service.getMaxId(EntityType.Memory), EntityType.Memory);
+    const id = service.allocateId === undefined
+      ? nextEntityId(
+        await service.getMaxId(EntityType.Memory),
+        EntityType.Memory,
+      )
+      : await service.allocateId(EntityType.Memory);
 
     const meta = entry.metadata ?? {};
     const entityRefs = Array.isArray(meta.entity_refs)

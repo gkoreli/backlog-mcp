@@ -36,7 +36,9 @@ export async function createItem(
 
   const resolvedType = (type ?? EntityType.Task) as EntityType;
   const resolvedParent = parent_id ?? epic_id;
-  const id = nextEntityId(await service.getMaxId(resolvedType), resolvedType);
+  const id = service.allocateId === undefined
+    ? nextEntityId(await service.getMaxId(resolvedType), resolvedType)
+    : await service.allocateId(resolvedType);
 
   let task;
   try {

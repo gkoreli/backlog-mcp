@@ -29,6 +29,7 @@ export interface IBacklogService {
   delete(id: string): Promise<boolean>;
   counts(): Promise<{ total_tasks: number; total_epics: number; by_status: Record<string, number>; by_type: Record<string, number> }>;
   getMaxId(type?: EntityType): Promise<number>;
+  allocateId?(type: EntityType): Promise<string>;
   searchUnified(query: string, options?: {
     types?: SearchableType[];
     status?: Status[];

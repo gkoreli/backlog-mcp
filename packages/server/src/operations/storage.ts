@@ -4,17 +4,12 @@
  */
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { paths } from '@server/utils/paths.js';
+import { dirname } from 'node:path';
 import { utcToLocalDateKey } from '@server/utils/date.js';
 import type { OperationEntry, OperationFilter } from './types.js';
 
 export class OperationStorage {
-  private logPath: string;
-
-  constructor() {
-    this.logPath = join(paths.backlogDataDir, '.internal', 'operations.jsonl');
-  }
+  constructor(private readonly logPath: string) {}
 
   /**
    * Append an operation entry to the log file.

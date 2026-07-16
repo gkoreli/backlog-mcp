@@ -1,4 +1,12 @@
-export { operationLogger, envActor, type OperationEntry, type Actor, type OperationFilter } from './logger.js';
+export {
+  OperationLogger,
+  createOperationLogger,
+  operationLogger,
+  envActor,
+  type OperationEntry,
+  type Actor,
+  type OperationFilter,
+} from './logger.js';
 export { OperationStorage } from './storage.js';
 export { D1OperationLog } from './d1-operation-log.js';
 export { extractResourceId, extractTargetFilename } from './resource-id.js';
