@@ -182,14 +182,20 @@ supersede, and rank by usage. Use it; don't let each session start cold.
 1. **Wake up once, at session start** — run `backlog_wakeup` (CLI: `backlog
    wakeup`). One dense briefing: active tasks, current epics, top knowledge,
    recent completions, recent activity. Do not re-run it mid-session.
-2. **Recall before starting a task** — `backlog_recall "<topic>"` once for the
-   work at hand. Treat hits as ground truth about THIS project's conventions
-   and decisions; they override your priors. Recall is the read surface —
-   memories are hidden from plain `search`/`list` by design.
-3. **Remember what's durable** — when you learn a non-obvious decision, a
+2. **Ask before starting work** — use `backlog_recall "<topic>"` for learned
+   knowledge and `backlog_search` for the current corpus. Treat memory hits as
+   ground truth about THIS project's conventions and decisions; they override
+   your priors. Memories are hidden from plain `search`/`list` by design.
+3. **Expand when the work becomes specific** — call `backlog_get` for full
+   content. When starting work on an entity, pass `context: true` to include
+   its relational neighborhood (parent, children, siblings, references,
+   referenced-by, and related items) as stubs, then expand only the stubs you
+   need. One retrieval language, with progressive disclosure throughout:
+   orient → ask → expand.
+4. **Remember what's durable** — when you learn a non-obvious decision, a
    gotcha, a convention, or a fact that will matter next session, write it with
    `backlog_remember`. One atomic fact per memory.
-4. **Correct, don't duplicate** — when something you already remembered
+5. **Correct, don't duplicate** — when something you already remembered
    changes, `--supersedes <MEMO-id>` (keeps lineage, expires the old one) or use
    `--state-key <key>` for evolving single-value facts (a new holder auto-closes
    the previous). Never write a contradicting second memory.

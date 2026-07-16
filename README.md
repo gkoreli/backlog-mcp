@@ -163,6 +163,7 @@ backlog_list limit=50                     # Limit results
 ```
 backlog_get id="TASK-0001"                # Single item
 backlog_get id=["TASK-0001","EPIC-0002"]  # Batch get
+backlog_get id="TASK-0001" context=true   # Item + neighborhood stubs (parent/children/siblings/refs/referenced_by/related)
 ```
 
 ### backlog_create
@@ -202,17 +203,6 @@ backlog_search query="design decisions" types=["artifact"]
 backlog_search query="blocked tasks" status=["blocked"] limit=10
 backlog_search query="framework" sort="recent"
 backlog_search query="search ranking" include_content=true
-```
-
-### backlog_context
-
-Get rich context for a task — parent epic, siblings, children, cross-references, reverse references, recent activity, and semantically related items:
-
-```
-backlog_context task_id="TASK-0001"
-backlog_context task_id="TASK-0001" depth=2          # Grandparent/grandchildren
-backlog_context query="search ranking improvements"   # Find by content
-backlog_context task_id="TASK-0001" include_related=false  # Skip semantic search
 ```
 
 ### write_resource
