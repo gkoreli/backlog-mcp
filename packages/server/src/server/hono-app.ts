@@ -41,6 +41,7 @@ import type {
   HomeReadRuntime,
   HomeReadRuntimeSelection,
 } from '../core/home-read-coordinator.types.js';
+import { memoryUsageFieldsFromEntry } from '../memory/memory-entry-usage.js';
 // Note: paths.ts and operations/index.ts are NOT imported here — they pull in
 // Node.js modules (import.meta.url, fs, path) that break the Workers bundle.
 // name/version and the MCP server wrapper are injected via AppDeps.
@@ -238,13 +239,7 @@ function withMintedMemoryUsage(
   delete memory.usage_count;
   delete memory.last_used_at;
   const entry = runtime.mintMemoryEntry(builtin);
-  const metadata = entry.metadata ?? {};
-  memory.usage_count = typeof metadata.usageCount === 'number'
-    ? metadata.usageCount
-    : 0;
-  if (typeof metadata.last_used_at === 'string') {
-    memory.last_used_at = metadata.last_used_at;
-  }
+  Object.assign(memory, memoryUsageFieldsFromEntry(entry));
   return memory;
 }
 

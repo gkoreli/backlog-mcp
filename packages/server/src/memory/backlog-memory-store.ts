@@ -32,6 +32,10 @@ import type {
   MemoryUsageSummaryStore,
 } from './memory-usage.contract.js';
 import { usageFactor } from './usage-signal.js';
+import {
+  memoryEntryUsageMetadata,
+  memoryUsageFieldsFromEntry,
+} from './memory-entry-usage.js';
 
 /** Layers this store persists. 'session' is intentionally absent. */
 const PERSISTED_LAYERS: readonly MemoryLayer[] = ['episodic', 'semantic', 'procedural'];
@@ -230,16 +234,9 @@ function usageSummaryFromEntry(entry: MemoryEntry): {
   usage_count: number;
   last_used_at?: string;
 } {
-  const metadata = entry.metadata ?? {};
-  const lastUsedAt = metadata.last_used_at;
   return {
     created_at: new Date(entry.createdAt).toISOString(),
-    usage_count: typeof metadata.usageCount === 'number'
-      ? metadata.usageCount
-      : 0,
-    ...(typeof lastUsedAt === 'string'
-      ? { last_used_at: lastUsedAt }
-      : {}),
+    ...memoryUsageFieldsFromEntry(entry),
   };
 }
 
@@ -272,8 +269,7 @@ function mintMemoryEntry(
       ...(m.kind ? { memory_kind: m.kind } : {}),
       ...(m.occurred_at ? { occurred_at: m.occurred_at } : {}),
       ...(m.derived === true ? { derived: true } : {}),
-      usageCount,
-      ...(lastUsedAt ? { last_used_at: lastUsedAt } : {}),
+      ...memoryEntryUsageMetadata(usageCount, lastUsedAt),
       ...(m.tags?.includes('completion') ? { kind: 'completion' } : m.tags?.includes('artifact') ? { kind: 'artifact' } : {}),
     },
   };
