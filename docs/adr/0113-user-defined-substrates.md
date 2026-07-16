@@ -155,9 +155,9 @@ invalid. No definition may point at a local module.
 The intended validator is Ajv's Draft 2020-12 build in strict mode, behind the
 meta-schema gate—not direct compilation of arbitrary project JSON. Ajv explicitly
 warns that untrusted schemas can cause excessive compile/validation work and ReDoS,
-so size/depth limits, safe-regex checks, bounded arrays/strings, local refs only, and
-production validation without `allErrors` are part of the contract, not optional
-hardening. See Ajv's official
+so size/depth limits, rejection of project-authored patterns, bounded arrays/strings,
+local refs only, and production validation without `allErrors` are part of the
+contract, not optional hardening. See Ajv's official
 [Draft 2020-12 support](https://ajv.js.org/json-schema.html) and
 [security guidance](https://ajv.js.org/security.html). Date/date-time formats use
 small backlog-mcp-owned validators rather than loading an open format plugin set.
@@ -246,11 +246,11 @@ definition may require the `numbered-threaded` strategy; a Requirement may requi
 substrate meaning/display, and maps thread keys to relations. It does not rebuild a
 universal regex or allocate the number.
 
-Duplicate type keys, identity namespaces, generated intent names, or incompatible
-identity strategies are deterministic load errors. No filesystem-order winner is
-chosen: every conflicting project definition is quarantined and the diagnostic cites
-all source paths. An unaffected packaged/built-in definition remains active unless an
-explicit, valid replacement compiled successfully.
+Duplicate type keys, overlapping folder claims, identity prefixes, generated intent
+names, or incompatible identity strategies are deterministic load errors. No
+filesystem-order winner is chosen: every conflicting project definition is
+quarantined and the diagnostic cites all source paths. An unaffected packaged/built-in
+definition remains active unless an explicit, valid replacement compiled successfully.
 
 ### R4. Reads are lenient and lossless; writes are strict and canonical
 
