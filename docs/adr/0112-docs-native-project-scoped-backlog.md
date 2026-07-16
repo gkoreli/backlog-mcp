@@ -307,9 +307,6 @@ interface DocumentIdentity {
   slug?: string;
   threadRootKey?: string;    // 0023 for 0023.1
   threadParentKey?: string;  // 0023.1 for 0023.1.2
-}
-
-interface DiscoveryChronology {
   observedDate?: string;     // non-authoritative discovery chronology
   dateSource?: 'git-first-add' | 'filesystem-mtime';
 }
