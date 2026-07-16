@@ -2,6 +2,7 @@
 title: "0118. Proactive Recall — Hook-Driven Memory Injection at the Client Boundary"
 date: 2026-06-20
 status: PARKED, ONLY EXPLORATION DO NOT IMPLEMENT ANY TIME SOON
+superseded_in_part_by: 0118.1-intent-gated-recall-lifecycle-hooks.md
 backlog_item: TASK-0694
 folder: FLDR-0001
 continues: 0092.5-agentic-memory-landscape-2026.md
@@ -9,6 +10,14 @@ informs: 0092.3-memory-experience-and-substrate.md
 ---
 
 # 0118. Proactive Recall — Hook-Driven Memory Injection at the Client Boundary
+
+> **Status note (2026-07-16)**: ADR 0118.1 supersedes this ADR's operational
+> decision to recall and inject stubs on every user prompt. This document is
+> preserved as historical evidence for stub-first recall, client-owned hooks,
+> fail-open behavior, and warm-daemon feasibility. The current proposal uses a
+> session-start decision rubric, voluntary intent-gated recall, and lifecycle
+> receipts that never inject memory. It also reverses this ADR's dismissal of
+> a separate REST route for one narrow seam: clients that cannot use MCP.
 
 **Status**: PARKED, ONLY EXPLORATION DO NOT IMPLEMENT ANY TIME SOON — design-first; implementation owned by the operator
 **Problem class**: recall is in the LLM's decision space (a voluntary tool call) when it
