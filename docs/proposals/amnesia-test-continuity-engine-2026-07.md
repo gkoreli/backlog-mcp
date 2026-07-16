@@ -62,6 +62,88 @@ their delivery. The product should own this:
    fresh agent with nothing but `wakeup(operation=...)`, assert it can state its
    goal, its next action, and its constraints without reading anything else.
 
+## Proof that it needs to exist
+
+**1. Harness amnesia is a law of the environment, not an edge case.** Codex
+auto-compacts at 250K tokens; Claude compacts within a 1M window. Any agent that
+works long enough WILL be wiped — the only variables are when and how much is
+lost. Tonight, **six of the nine fleet agents were compacted or context-cleared
+within a single working day** (granite twice — one deliberate self-compact, one
+harness compact; quartz mid-turn at the night's most critical gate; pyrite,
+agate, shale, chert once each). A product that stores agent memory but has no
+answer for the moment the agent's mind is actually erased is solving the easy
+half of its own problem statement.
+
+**2. The user already named the pain, verbatim.** The aime prompt archive
+(PROMPT 0001, 2026-07-16): *"agents continue working and working, and then
+forget what is aime cli, what was north star vision, who are all these fleet
+agents and stuff like that, because they go through compactions and forget who
+they are what they are doing everything, including you."* This proposal is that
+prompt answered on the store side; aime's ADR 0032 is it answered on the
+trigger side. Both halves exist tonight — only the store half is unproductized.
+
+**3. The pressure already forced the solution into existence — three times, by
+hand.** Tenet 9 says build under pressure, never for a theory. The pressure
+test is passed in the strongest possible way: the operation anchor was
+hand-invented tonight (a memory file for granite, a re-anchor message for
+quartz, a brief file for pyrite) because nothing else worked, and all three
+recoveries succeeded — including quartz closing the two-key Phase D gate
+*while amnesiac*. Promoting a thrice-hand-rolled artifact into a substrate is
+the opposite of speculation; it is the definition of extracting a pattern.
+
+**4. Harness summaries drift; deliberate anchors don't.** Concrete incident:
+granite's harness-generated compaction summary stated a ruling as "Goga picks
+before build" for the context-lifecycle thread. Goga's verbatim prompt on disk
+said the opposite — *"delegate the engineering."* The disk anchor corrected the
+summary, and the build proceeded without stalling on a phantom approval. A
+compaction summary is a lossy, unaudited paraphrase produced at the worst
+possible moment; an operation document is curated state written calmly, under
+version control, in advance. Tonight produced a measured instance of the
+former being wrong and the latter fixing it.
+
+**5. Nobody else tests for this.** The verified idea-garden survey shows the
+field building memory *consultation* — Letta's MemFS and sleep-time
+consolidation, Mem0's session-start rubric, claude-mem's search-first indexes.
+None of them state, let alone test, "your agent survives its own harness." The
+lane is empty, and we are already standing in it with evidence.
+
+## Impact if adopted
+
+- **Compaction flips from a loss event into a rhythm.** Tonight quartz ran to
+  86% context mid-gate — degraded, risky, and rescued only by a hand-sent
+  anchor. With recovery guaranteed by the store, the optimal strategy inverts:
+  compact *early and often* (our own doctrine says ~50%), keep every context
+  fresh, and pay ~600 budgeted tokens to re-orient instead of dragging hundreds
+  of thousands of degraded tokens forward. Continuity stops being the reason to
+  fear compaction and becomes the reason to schedule it.
+- **Fleets become durable beyond a session.** Tonight's single point of failure
+  was the orchestrator's hand-rolled anchor. With operation documents as
+  substrate entities, any orchestrator — or its replacement — recovers from the
+  store. That is the difference between a fleet that survives an evening and a
+  fleet that survives a month; long-horizon multi-day operations are only
+  possible on the far side of this.
+- **It feeds aime ADR 0032 cleanly.** The daemon (trigger half) detects
+  compaction and needs content to re-prime with. Today that content is ad-hoc
+  files in a scratchpad. With this proposal it is a `wakeup(operation=...)`
+  call — store-owned, budget-bounded, provenance-bearing. Two projects, one
+  seam, zero coupling.
+- **The demo writes itself.** Kill an agent mid-task. Restart it. One `wakeup`
+  call, and it states its goal, its next action, and its constraints, then
+  continues the work. No surveyed competitor can run that demo. It is the
+  memory-you-can-see differentiator extended to identity-you-can-restore.
+
+## Falsifiability
+
+Evidence that would kill or shrink this proposal: harness compaction summaries
+becoming lossless, structured, and auditable (removes claim 4); context windows
+becoming large and cheap enough that long-horizon agents stop compacting at all
+(removes claim 1); operation documents rotting unmaintained in practice — if
+agents won't keep them current, the briefing lies. The mitigation for the last
+is already product law: provenance stubs (ADR 0115) make staleness visible
+(`age_days` on the operation doc), and the write discipline is
+write-on-state-change, which tonight's orchestrator sustained by hand across an
+entire operation without missing a gate.
+
 ## Why this is ours to win
 
 - The field's convergence (Letta MemFS: git-backed markdown memory; sleep-time
