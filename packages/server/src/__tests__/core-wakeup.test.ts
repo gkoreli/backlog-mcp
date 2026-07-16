@@ -441,6 +441,19 @@ describe('core/wakeup', () => {
       expect(result.metadata.constraints_omitted).toBe(0);
     });
 
+    it('a REQ parented directly to the scope container appears in the scoped wakeup (load-bearing clause)', async () => {
+      // descendantSet deletes the scope id from the filter set, so this
+      // inclusion is carried ONLY by the parent_id === params.scope clause
+      // in the constraints fold. A reviewer already once flagged that clause
+      // as dead code — this test is the protection against the next one.
+      const svc = mockService([
+        makeEntity({ id: 'FLDR-0001', title: 'proj', type: 'folder', status: undefined }),
+        req('REQ-0001', { parent_id: 'FLDR-0001' }),
+      ]);
+      const result = await wakeup(svc, { scope: 'FLDR-0001' });
+      expect(result.constraints.map(c => c.id)).toEqual(['REQ-0001']);
+    });
+
     it('home-wide constraints (no parent_id) survive a scoped wakeup; parented ones follow scope', async () => {
       const svc = mockService([
         makeEntity({ id: 'FLDR-0001', title: 'proj', type: 'folder', status: undefined }),

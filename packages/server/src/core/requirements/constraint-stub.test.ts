@@ -26,6 +26,12 @@ describe('toConstraintStub (ADR 0113.1 R-1)', () => {
     // A far-future checked_at is bad data, not a maximally fresh assessment.
     const future = toConstraintStub(req('REQ-0003', { checked_at: new Date(NOW + 30 * DAY).toISOString() }), NOW);
     expect(future.checked_days_ago).toBeUndefined();
+
+    // ≤1 day of future skew is accepted design (beryl, build review): a
+    // date-only value parses to midnight, so a same-day assessment reads
+    // "checked 0d ago" — more honest than "never assessed".
+    const sameDay = toConstraintStub(req('REQ-0004', { checked_at: new Date(NOW + 6 * 60 * 60 * 1000).toISOString() }), NOW);
+    expect(sameDay.checked_days_ago).toBe(0);
   });
 
   it('caps violation ids at 3 while the count stays complete', () => {
