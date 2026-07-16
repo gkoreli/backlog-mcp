@@ -93,6 +93,33 @@ function compileIntentDefinition(
   return result.substrate;
 }
 
+function compileDisclosureDefinition(
+  options: DefinitionOptions,
+  section: string,
+): CompiledSubstrateDefinition {
+  const params = definition(options);
+  const value = params.value as Record<string, unknown>;
+  const result = compileSubstrateDefinition({
+    ...params,
+    value: {
+      ...value,
+      disclosure: {
+        search: {
+          enabled: true,
+          fields: ['title'],
+        },
+        wakeup: {
+          section,
+          limit: 5,
+          projection: ['id', 'title'],
+        },
+      },
+    },
+  });
+  if (!result.ok) throw new Error(JSON.stringify(result.diagnostic));
+  return result.substrate;
+}
+
 function document(sourcePath: string): DiscoveredDocument {
   return {
     sourcePath,
@@ -150,6 +177,43 @@ describe('ProjectSubstrateRegistry', function describeRegistry() {
       'backlog_capture_requirement',
       'backlog_propose_adr',
       'backlog_supersede_adr',
+    ]);
+  });
+
+  it('projects packaged disclosure and relation edges deterministically', () => {
+    expect(PACKAGED_RESULT.registry.getDisclosure('requirement')).toMatchObject({
+      search: {
+        fields: expect.arrayContaining(['title', 'content', 'compliance']),
+      },
+      get: {
+        relations: ['spawned', 'supersedes', 'violated_by'],
+      },
+      wakeup: {
+        section: 'constraints',
+        limit: 5,
+      },
+    });
+    expect(PACKAGED_RESULT.registry.listDisclosureRelations().map(
+      function relationIdentity(relation) {
+        return [
+          relation.sourceType,
+          relation.field,
+          relation.inverse,
+        ].join(':');
+      },
+    )).toEqual([
+      'adr:backlog_item:',
+      'adr:extends:',
+      'adr:implements:implemented_by',
+      'adr:respects:respected_by',
+      'adr:spawned_by:spawned',
+      'adr:supersedes:superseded_by',
+      'adr:violates:violated_by',
+      'prompt:spawned:spawned_by',
+      'prompt:supersedes:superseded_by',
+      'requirement:spawned:spawned_by',
+      'requirement:supersedes:superseded_by',
+      'requirement:violated_by:violates',
     ]);
   });
 
@@ -408,6 +472,41 @@ describe('ProjectSubstrateRegistry', function describeRegistry() {
         reservedToolNames: ['backlog_delete'],
       });
     }).toThrow('intent tool name backlog_delete is reserved by the consumer');
+  });
+
+  it('quarantines project wakeup-section collisions deterministically', () => {
+    const decision = compileDisclosureDefinition({
+      sourcePath: 'substrates/decision.json',
+      type: 'decision',
+      folder: 'decisions',
+    }, 'attention');
+    const rule = compileDisclosureDefinition({
+      sourcePath: 'substrates/rule.json',
+      type: 'rule',
+      folder: 'rules',
+      strategy: 'prefixed-number',
+      prefix: 'RULE',
+    }, 'attention');
+    const result = createProjectSubstrateRegistry({
+      packaged: [],
+      project: [rule, decision],
+    });
+
+    expect(result.registry.listSubstrates()).toEqual([]);
+    expect(result.diagnostics.map(function sourcePath(diagnostic) {
+      return diagnostic.sourcePath;
+    })).toEqual([
+      'substrates/decision.json',
+      'substrates/rule.json',
+    ]);
+    expect(result.diagnostics.flatMap(function issues(diagnostic) {
+      return diagnostic.issues;
+    })).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: '/disclosure/wakeup/section',
+        message: expect.stringContaining('disclosure.wakeup.section claim collides'),
+      }),
+    ]));
   });
 
   it('loads parsed discovery values without rereading and keeps valid siblings active', () => {

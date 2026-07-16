@@ -11,4 +11,5 @@ export * from './cron.js';
 export * from './memory.js';
 export * from './registry.js';
 export * from './substrate-definition.schema.js';
+export * from './substrate-disclosure.types.js';
 export * from './substrate-intent.types.js';

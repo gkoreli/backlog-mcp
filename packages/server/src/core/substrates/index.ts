@@ -5,6 +5,7 @@ export {
 } from './builtin-entity.js';
 export { SubstrateWriteError } from './substrate-write-error.js';
 export { compileSubstrateDefinition } from './compile-substrate-definition.js';
+export { compileSubstrateDisclosure } from './compile-substrate-disclosure.js';
 export { compileSubstrateIntents } from './compile-substrate-intents.js';
 export {
   createBuiltinSubstrateRegistrations,

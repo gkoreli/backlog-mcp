@@ -16,6 +16,7 @@ import type {
   SubstrateDefinitionIssue,
   SubstrateWriteValidationResult,
 } from './types.js';
+import { compileSubstrateDisclosure } from './compile-substrate-disclosure.js';
 import { compileSubstrateIntents } from './compile-substrate-intents.js';
 import { validateRuntimeJsonSchema } from './validate-runtime-json-schema.js';
 
@@ -277,6 +278,13 @@ export function compileSubstrateDefinition(
 
   const definition = parsed.data;
   const issues = [
+    ...(definition.type === 'resource'
+      ? [{
+        code: 'shape' as const,
+        path: '/type',
+        message: 'resource is reserved for the generic document search sentinel',
+      }]
+      : []),
     ...validateFolder(definition.folder),
     ...validateCanonicalWriteSchema(definition),
     ...validateRuntimeJsonSchema(definition.schema).map(prefixSchemaIssue),
@@ -289,6 +297,10 @@ export function compileSubstrateDefinition(
   );
   if (compiledIntents.issues.length > 0) {
     return failure(params, [...compiledIntents.issues]);
+  }
+  const compiledDisclosure = compileSubstrateDisclosure(definition);
+  if (compiledDisclosure.issues.length > 0) {
+    return failure(params, [...compiledDisclosure.issues]);
   }
 
   let validate: ValidateFunction;
@@ -308,6 +320,8 @@ export function compileSubstrateDefinition(
       kind: 'declarative',
       sourcePath: params.sourcePath,
       definition,
+      disclosure: compiledDisclosure.disclosure,
+      disclosureRelations: compiledDisclosure.relations,
       intents: compiledIntents.intents,
       storageClaim: createStorageClaim(definition),
       validateWrite: createWriteValidator(validate),

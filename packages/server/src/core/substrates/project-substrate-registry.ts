@@ -1,4 +1,6 @@
 import type {
+  CompiledDisclosureRelation,
+  CompiledSubstrateDisclosure,
   CompiledSubstrateIntent,
 } from '@backlog-mcp/shared';
 import type {
@@ -16,7 +18,11 @@ import type {
   SubstrateWriteValidationResult,
 } from './types.js';
 
-type CollisionField = 'folder' | 'identity.prefix' | 'intents.toolName';
+type CollisionField =
+  | 'disclosure.wakeup.section'
+  | 'folder'
+  | 'identity.prefix'
+  | 'intents.toolName';
 
 interface Collision {
   field: CollisionField;
@@ -45,6 +51,24 @@ export class ProjectSubstrateRegistry implements SubstrateStorageCatalog {
 
   getSubstrate(type: string): RegisteredSubstrate | undefined {
     return this.#substrates.get(type);
+  }
+
+  getDisclosure(type: string): CompiledSubstrateDisclosure | undefined {
+    return this.#substrates.get(type)?.disclosure;
+  }
+
+  listDisclosureRelations(): readonly CompiledDisclosureRelation[] {
+    return [...this.#substrates.values()]
+      .flatMap(function substrateRelations(substrate) {
+        return [...substrate.disclosureRelations];
+      })
+      .sort(function compareRelations(left, right) {
+        const typeOrder = left.sourceType.localeCompare(right.sourceType);
+        if (typeOrder !== 0) return typeOrder;
+        const fieldOrder = left.field.localeCompare(right.field);
+        if (fieldOrder !== 0) return fieldOrder;
+        return (left.inverse ?? '').localeCompare(right.inverse ?? '');
+      });
   }
 
   listSubstrates(): readonly RegisteredSubstrate[] {
@@ -127,7 +151,9 @@ function createCollisionIssue(collision: Collision): SubstrateDefinitionIssue {
     ? '/folder'
     : collision.field === 'identity.prefix'
       ? '/identity/prefix'
-      : '/intents';
+      : collision.field === 'intents.toolName'
+        ? '/intents'
+        : '/disclosure/wakeup/section';
   return {
     code: 'shape',
     path,
@@ -154,6 +180,7 @@ function findClaimCollisions(
   const collisions: Collision[] = [];
   const prefixes = new Map<string, RegisteredSubstrate[]>();
   const intentTools = new Map<string, RegisteredSubstrate[]>();
+  const wakeupSections = new Map<string, RegisteredSubstrate[]>();
 
   for (const definition of definitions) {
     const prefix = definition.storageClaim.identity.prefix;
@@ -166,6 +193,12 @@ function findClaimCollisions(
       const toolGroup = intentTools.get(intent.toolName) ?? [];
       toolGroup.push(definition);
       intentTools.set(intent.toolName, toolGroup);
+    }
+    const wakeupSection = definition.disclosure.wakeup?.section;
+    if (wakeupSection) {
+      const sectionGroup = wakeupSections.get(wakeupSection) ?? [];
+      sectionGroup.push(definition);
+      wakeupSections.set(wakeupSection, sectionGroup);
     }
   }
 
@@ -198,6 +231,14 @@ function findClaimCollisions(
     if (sources.length > 1) {
       collisions.push({
         field: 'intents.toolName',
+        sources: sources.sort(compareSources),
+      });
+    }
+  }
+  for (const sources of wakeupSections.values()) {
+    if (sources.length > 1) {
+      collisions.push({
+        field: 'disclosure.wakeup.section',
         sources: sources.sort(compareSources),
       });
     }

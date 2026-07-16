@@ -32,6 +32,7 @@ export {
   RuntimeSubstrateDefinitionSchema,
   RuntimeSubstrateIntentDefinitionSchema,
   SUBSTRATE_DEFINITION_SCHEMA_URI,
+  SubstrateDisclosureDefinitionSchema,
   SubstrateIdentityDefinitionSchema,
   SubstrateRelationDefinitionSchema,
   SubstrateWorkflowDefinitionSchema,
@@ -67,6 +68,7 @@ export {
   type MemoryKind,
   type RuntimeSubstrateDefinition,
   type RuntimeSubstrateIntentDefinition,
+  type SubstrateDisclosureDefinition,
   type SubstrateRelationDefinition,
   type SubstrateIdentityDefinition,
   type SubstrateWorkflowDefinition,
@@ -89,6 +91,15 @@ export type {
   RuntimeEntity,
   SubstrateType,
 } from './runtime-entity.types.js';
+
+export type {
+  CompiledDisclosureRelation,
+  CompiledSubstrateDisclosure,
+  CompiledSubstrateGetDisclosure,
+  CompiledSubstrateRecallDisclosure,
+  CompiledSubstrateSearchDisclosure,
+  CompiledSubstrateWakeupDisclosure,
+} from './substrates/substrate-disclosure.types.js';
 
 export type {
   CompiledFieldBinding,

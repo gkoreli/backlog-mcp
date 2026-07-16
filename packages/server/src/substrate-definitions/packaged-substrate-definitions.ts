@@ -210,6 +210,7 @@ export const PACKAGED_SUBSTRATE_DEFINITIONS = [
         implements: {
           targets: ['adr', 'requirement', 'task'],
           cardinality: 'many',
+          inverse: 'implemented_by',
         },
         backlog_item: {
           targets: ['task', 'epic', 'artifact'],
@@ -218,14 +219,17 @@ export const PACKAGED_SUBSTRATE_DEFINITIONS = [
         spawned_by: {
           targets: ['prompt', 'requirement'],
           cardinality: 'many',
+          inverse: 'spawned',
         },
         respects: {
           targets: ['requirement'],
           cardinality: 'many',
+          inverse: 'respected_by',
         },
         violates: {
           targets: ['requirement'],
           cardinality: 'many',
+          inverse: 'violated_by',
         },
       },
       intents: [
@@ -264,6 +268,31 @@ export const PACKAGED_SUBSTRATE_DEFINITIONS = [
           targetTransition: 'supersede',
         },
       ],
+      disclosure: {
+        search: {
+          enabled: true,
+          fields: ['title', 'content', 'status', 'date'],
+        },
+        get: {
+          context: true,
+          groupByRole: true,
+          relations: [
+            'supersedes',
+            'extends',
+            'implements',
+            'backlog_item',
+            'spawned_by',
+            'respects',
+            'violates',
+          ],
+        },
+        wakeup: {
+          section: 'decisions',
+          includeStatuses: ['proposed', 'living'],
+          limit: 5,
+          projection: ['id', 'title', 'status'],
+        },
+      },
     },
   },
   {
@@ -284,6 +313,39 @@ export const PACKAGED_SUBSTRATE_DEFINITIONS = [
         displayTemplate: 'REQ-{key}',
       },
       schema: REQUIREMENT_SCHEMA,
+      relations: {
+        spawned: {
+          targets: [
+            'adr',
+            'task',
+            'epic',
+            'folder',
+            'artifact',
+            'milestone',
+            'cron',
+          ],
+          cardinality: 'many',
+          inverse: 'spawned_by',
+        },
+        supersedes: {
+          targets: ['requirement'],
+          cardinality: 'many',
+          inverse: 'superseded_by',
+        },
+        violated_by: {
+          targets: [
+            'adr',
+            'task',
+            'epic',
+            'folder',
+            'artifact',
+            'milestone',
+            'cron',
+          ],
+          cardinality: 'many',
+          inverse: 'violates',
+        },
+      },
       intents: [
         {
           verb: 'capture_requirement',
@@ -311,6 +373,37 @@ export const PACKAGED_SUBSTRATE_DEFINITIONS = [
           },
         },
       ],
+      disclosure: {
+        search: {
+          enabled: true,
+          fields: [
+            'title',
+            'content',
+            'status',
+            'compliance',
+            'domain',
+            'check_evidence',
+          ],
+        },
+        get: {
+          context: true,
+          groupByRole: true,
+          relations: ['spawned', 'supersedes', 'violated_by'],
+        },
+        wakeup: {
+          section: 'constraints',
+          limit: 5,
+          projection: [
+            'id',
+            'title',
+            'domain',
+            'status',
+            'compliance',
+            'checked_at',
+            'violated_by',
+          ],
+        },
+      },
     },
   },
   {
@@ -330,6 +423,27 @@ export const PACKAGED_SUBSTRATE_DEFINITIONS = [
         displayTemplate: 'PROMPT {key}',
       },
       schema: PROMPT_SCHEMA,
+      relations: {
+        supersedes: {
+          targets: ['prompt'],
+          cardinality: 'many',
+          inverse: 'superseded_by',
+        },
+        spawned: {
+          targets: [
+            'adr',
+            'requirement',
+            'task',
+            'epic',
+            'folder',
+            'artifact',
+            'milestone',
+            'cron',
+          ],
+          cardinality: 'many',
+          inverse: 'spawned_by',
+        },
+      },
       intents: [
         {
           verb: 'capture_prompt',
@@ -345,6 +459,17 @@ export const PACKAGED_SUBSTRATE_DEFINITIONS = [
           ],
         },
       ],
+      disclosure: {
+        search: {
+          enabled: true,
+          fields: ['title', 'content', 'date', 'uploaded_by'],
+        },
+        get: {
+          context: true,
+          groupByRole: true,
+          relations: ['supersedes', 'spawned'],
+        },
+      },
     },
   },
 ] as const satisfies readonly CompileSubstrateDefinitionParams[];

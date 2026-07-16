@@ -1,5 +1,7 @@
 import type {
   AnyEntity,
+  CompiledDisclosureRelation,
+  CompiledSubstrateDisclosure,
   CompiledSubstrateIntent,
   RuntimeEntity,
   RuntimeSubstrateDefinition,
@@ -50,6 +52,8 @@ export interface CompiledSubstrateDefinition {
   kind: 'declarative';
   sourcePath: string;
   definition: RuntimeSubstrateDefinition;
+  disclosure: CompiledSubstrateDisclosure;
+  disclosureRelations: readonly CompiledDisclosureRelation[];
   intents: readonly CompiledSubstrateIntent[];
   storageClaim: Readonly<SubstrateStorageClaim>;
   validateWrite(candidate: unknown): SubstrateWriteValidationResult;
@@ -59,6 +63,8 @@ export interface CompiledBuiltinSubstrate {
   kind: 'compiled';
   sourcePath: string;
   type: SubstrateType;
+  disclosure: CompiledSubstrateDisclosure;
+  disclosureRelations: readonly CompiledDisclosureRelation[];
   intents: readonly CompiledSubstrateIntent[];
   storageClaim: Readonly<SubstrateStorageClaim>;
   validateWrite(candidate: unknown): SubstrateWriteValidationResult;

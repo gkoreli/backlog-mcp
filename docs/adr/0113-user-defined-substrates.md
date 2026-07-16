@@ -1066,6 +1066,18 @@ get(id, context: true) expand
 the ADRs/tasks it spawned and an ADR can expose respected/violated Requirements without
 a Requirement-specific retrieval stack or the retired `backlog_context` tool.
 
+Compilation resolves disclosure before retrieval sees it. Search fields and wakeup
+projections must name canonical fields; contextual roles must name declared relations.
+The registry exposes a deterministic `CompiledDisclosureRelation` table carrying
+source type, field, cardinality, target allow-list, and optional inverse role, so
+`get(context: true)` never reopens project definitions or hardcodes ADR/Requirement
+edges. `resource` remains reserved as the generic-document search sentinel.
+
+ADR 0113.1 specializes the Requirement flagship: recall remains the memory corpus,
+while Requirements use wakeup, search, and get. The definition contract retains a
+bounded recall projection for a future substrate whose declared semantics genuinely
+belong in recall; no current packaged document is injected into `MemoryComposer`.
+
 ## Prompt substrate candidate
 
 `docs/prompts/0001-tasks-and-vision.md` demonstrates a useful third substrate:

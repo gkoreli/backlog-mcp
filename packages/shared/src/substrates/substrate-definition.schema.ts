@@ -7,6 +7,7 @@ const SUBSTRATE_TYPE_PATTERN = /^[a-z][a-z0-9-]*$/u;
 const FIELD_NAME_PATTERN = /^[a-z][a-z0-9_]*$/u;
 const INTENT_VERB_PATTERN = /^[a-z][a-z0-9_]*$/u;
 const TOOL_NAME_PATTERN = /^[a-z][a-z0-9_-]*$/u;
+const DISCLOSURE_SECTION_PATTERN = /^[a-z][a-z0-9_-]*$/u;
 const IDENTITY_PREFIX_PATTERN = /^[A-Z][A-Z0-9]*$/u;
 const DISPLAY_TEMPLATE_PATTERN = /^[^{}]*\{key\}[^{}]*$/u;
 
@@ -114,6 +115,51 @@ export const RuntimeSubstrateIntentDefinitionSchema = z.discriminatedUnion(
   ],
 );
 
+const DisclosureSearchSchema = z.discriminatedUnion('enabled', [
+  z.object({
+    enabled: z.literal(false),
+  }).strict(),
+  z.object({
+    enabled: z.literal(true),
+    fields: InputNamesSchema.min(1),
+  }).strict(),
+]);
+
+const DisclosureRecallSchema = z.discriminatedUnion('enabled', [
+  z.object({
+    enabled: z.literal(false),
+  }).strict(),
+  z.object({
+    enabled: z.literal(true),
+    projection: InputNamesSchema.min(1),
+  }).strict(),
+]);
+
+const DisclosureGetSchema = z.discriminatedUnion('context', [
+  z.object({
+    context: z.literal(false),
+  }).strict(),
+  z.object({
+    context: z.literal(true),
+    groupByRole: z.literal(true),
+    relations: InputNamesSchema.min(1),
+  }).strict(),
+]);
+
+const DisclosureWakeupSchema = z.object({
+  section: z.string().min(1).max(80).regex(DISCLOSURE_SECTION_PATTERN),
+  includeStatuses: z.array(WorkflowStateSchema).min(1).max(64).optional(),
+  limit: z.number().int().min(1).max(50),
+  projection: InputNamesSchema.min(1),
+}).strict();
+
+export const SubstrateDisclosureDefinitionSchema = z.object({
+  search: DisclosureSearchSchema.optional(),
+  recall: DisclosureRecallSchema.optional(),
+  get: DisclosureGetSchema.optional(),
+  wakeup: DisclosureWakeupSchema.optional(),
+}).strict();
+
 /** Strict version-one envelope for project-authored substrate definitions. */
 export const RuntimeSubstrateDefinitionSchema = z.object({
   $schema: z.literal(SUBSTRATE_DEFINITION_SCHEMA_URI).optional(),
@@ -129,6 +175,7 @@ export const RuntimeSubstrateDefinitionSchema = z.object({
   workflow: SubstrateWorkflowDefinitionSchema.optional(),
   relations: z.record(FieldNameSchema, SubstrateRelationDefinitionSchema).optional(),
   intents: z.array(RuntimeSubstrateIntentDefinitionSchema).max(64).optional(),
+  disclosure: SubstrateDisclosureDefinitionSchema.optional(),
   replaces: z.string().min(1).max(160).optional(),
 }).strict();
 
@@ -154,3 +201,6 @@ export type SubstrateWorkflowTransitionDefinition =
 
 export type SubstrateRelationDefinition =
   z.infer<typeof SubstrateRelationDefinitionSchema>;
+
+export type SubstrateDisclosureDefinition =
+  z.infer<typeof SubstrateDisclosureDefinitionSchema>;

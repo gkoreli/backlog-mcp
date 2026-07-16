@@ -569,6 +569,171 @@ describe('compileSubstrateDefinition', function describeCompiler() {
     });
   });
 
+  it('compiles field-resolved search, get, and wakeup disclosure plans', () => {
+    const schema = {
+      ...BASE_SCHEMA,
+      properties: {
+        ...BASE_SCHEMA.properties,
+        content: { type: 'string', maxLength: 2_000 },
+        status: {
+          type: 'string',
+          enum: ['proposed', 'accepted'],
+        },
+        implements: {
+          type: 'array',
+          items: { type: 'string', maxLength: 200 },
+          maxItems: 20,
+        },
+      },
+    };
+    const result = compile({
+      ...(createDefinition(schema) as Record<string, unknown>),
+      workflow: {
+        field: 'status',
+        initial: ['proposed'],
+        transitions: [{
+          name: 'accept',
+          from: ['proposed'],
+          to: 'accepted',
+        }],
+      },
+      relations: {
+        implements: {
+          targets: ['requirement', 'task'],
+          cardinality: 'many',
+          inverse: 'implemented_by',
+        },
+      },
+      disclosure: {
+        search: {
+          enabled: true,
+          fields: ['title', 'content', 'status'],
+        },
+        get: {
+          context: true,
+          groupByRole: true,
+          relations: ['implements'],
+        },
+        wakeup: {
+          section: 'decisions',
+          includeStatuses: ['proposed'],
+          limit: 5,
+          projection: ['id', 'title', 'status'],
+        },
+      },
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    if (!result.ok) return;
+    expect(result.substrate.disclosure).toEqual({
+      search: {
+        fields: ['title', 'content', 'status'],
+      },
+      get: {
+        relations: ['implements'],
+      },
+      wakeup: {
+        section: 'decisions',
+        includeStatuses: ['proposed'],
+        limit: 5,
+        projection: ['id', 'title', 'status'],
+      },
+    });
+    expect(result.substrate.disclosureRelations).toEqual([{
+      sourceType: 'adr',
+      field: 'implements',
+      cardinality: 'many',
+      targets: ['requirement', 'task'],
+      inverse: 'implemented_by',
+    }]);
+  });
+
+  it.each([
+    {
+      name: 'unknown search field',
+      disclosure: {
+        search: {
+          enabled: true,
+          fields: ['unknown'],
+        },
+      },
+      path: '/disclosure/search/fields',
+    },
+    {
+      name: 'unknown get relation',
+      disclosure: {
+        get: {
+          context: true,
+          groupByRole: true,
+          relations: ['unknown'],
+        },
+      },
+      path: '/disclosure/get/relations',
+    },
+    {
+      name: 'unknown wakeup status',
+      workflow: {
+        field: 'status',
+        initial: ['open'],
+        transitions: [],
+      },
+      disclosure: {
+        wakeup: {
+          section: 'decisions',
+          includeStatuses: ['closed'],
+          limit: 5,
+          projection: ['id', 'title'],
+        },
+      },
+      path: '/disclosure/wakeup/includeStatuses',
+    },
+  ])('rejects invalid disclosure plan: $name', ({ workflow, disclosure, path }) => {
+    const schema = {
+      ...BASE_SCHEMA,
+      properties: {
+        ...BASE_SCHEMA.properties,
+        status: { type: 'string', enum: ['open', 'closed'] },
+      },
+    };
+    const result = compile({
+      ...(createDefinition(schema) as Record<string, unknown>),
+      ...(workflow === undefined ? {} : { workflow }),
+      disclosure,
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      diagnostic: {
+        issues: expect.arrayContaining([
+          expect.objectContaining({ path }),
+        ]),
+      },
+    });
+  });
+
+  it('reserves resource for the generic document search sentinel', () => {
+    const schema = {
+      ...BASE_SCHEMA,
+      properties: {
+        ...BASE_SCHEMA.properties,
+        type: { const: 'resource' },
+      },
+    };
+    expect(compile({
+      ...(createDefinition(schema) as Record<string, unknown>),
+      type: 'resource',
+    })).toMatchObject({
+      ok: false,
+      diagnostic: {
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            path: '/type',
+            message: expect.stringContaining('search sentinel'),
+          }),
+        ]),
+      },
+    });
+  });
+
   it.each([
     {
       name: 'required and optional input overlap',
