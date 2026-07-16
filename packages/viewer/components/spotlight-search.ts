@@ -13,7 +13,7 @@
  * Uses html:inner directive for highlighted search result titles/snippets
  * from @orama/highlight. See ADR 0011 Gap 1 / ADR 0012 / ADR 0071.
  */
-import { signal, computed, effect, component, html, when, each, inject, query, onMount, onCleanup } from '@nisli/core';
+import { signal, computed, effect, component, html, when, each, inject, query, onMount, onCleanup, untrack } from '@nisli/core';
 import { Highlight } from '@orama/highlight';
 import {
   buildApiUrl,
@@ -146,14 +146,16 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
   const recentSearches = signal<RecentSearchItem[]>([]);
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let searchGeneration = 0;
+  let activeRequestHomeId = app.requestHomeId.value;
 
   // ── Recent activity — loaded via query() when spotlight opens ─────
   const activityQuery = query<Task[]>(
-    () => ['spotlight-activity', app.homeId.value, app.isSpotlightOpen.value],
+    () => ['spotlight-activity', app.requestHomeId.value, app.isSpotlightOpen.value],
     () => fetch(buildApiUrl(
       '/tasks',
       { filter: 'all', limit: 15 },
-      app.homeSelection.value,
+      app.requestHomeSelection.value,
     )).then(r => r.json()),
     {
       enabled: () => app.isSpotlightOpen.value,
@@ -188,6 +190,8 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
 
   // ── Actions ───────────────────────────────────────────────────────
   function close() {
+    searchGeneration += 1;
+    isLoading.value = false;
     app.isSpotlightOpen.value = false;
   }
 
@@ -198,23 +202,28 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
   async function doSearch() {
     const q = queryText.value;
     if (q.length < 2) return;
+    const generation = ++searchGeneration;
+    const selection = app.requestHomeSelection.value;
+    const sort = sortMode.value;
+    const filter = typeFilter.value;
 
     isLoading.value = true;
     try {
       const params = new URLSearchParams({
         q,
         limit: '20',
-        sort: sortMode.value,
+        sort,
       });
-      if (typeFilter.value !== 'all') {
-        params.set('types', typeFilter.value);
+      if (filter !== 'all') {
+        params.set('types', filter);
       }
       const response = await fetch(buildApiUrl(
         '/search',
         Object.fromEntries(params),
-        app.homeSelection.value,
+        selection,
       ));
       const apiResults: UnifiedSearchResult[] = await response.json();
+      if (generation !== searchGeneration) return;
 
       results.value = apiResults.map(r => {
         const snippet = isResource(r.item)
@@ -232,9 +241,13 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
       });
       selectedIndex.value = 0;
     } catch {
-      results.value = [];
+      if (generation === searchGeneration) {
+        results.value = [];
+      }
     } finally {
-      isLoading.value = false;
+      if (generation === searchGeneration) {
+        isLoading.value = false;
+      }
     }
   }
 
@@ -244,6 +257,8 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
     if (debounceTimer) clearTimeout(debounceTimer);
 
     if (value.length < 2) {
+      searchGeneration += 1;
+      isLoading.value = false;
       results.value = [];
       selectedIndex.value = 0;
       return;
@@ -266,6 +281,31 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
     activeTab.value = tab;
     selectedIndex.value = 0;
   }
+
+  // Invalidate stale results and re-run the current query when the home changes.
+  effect(() => {
+    const nextHomeId = app.requestHomeId.value;
+    if (nextHomeId === activeRequestHomeId) return;
+    activeRequestHomeId = nextHomeId;
+    searchGeneration += 1;
+    isLoading.value = false;
+    results.value = [];
+    selectedIndex.value = 0;
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
+
+    let shouldSearch = false;
+    untrack(() => {
+      shouldSearch = app.isSpotlightOpen.value && queryText.value.length >= 2;
+    });
+    if (shouldSearch) {
+      untrack(() => {
+        doSearch().catch(() => {});
+      });
+    }
+  });
 
   function selectItem(
     id: string,
@@ -387,6 +427,8 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
   // ── Reset state when opening ──────────────────────────────────────
   effect(() => {
     if (app.isSpotlightOpen.value) {
+      searchGeneration += 1;
+      isLoading.value = false;
       queryText.value = '';
       results.value = [];
       selectedIndex.value = 0;

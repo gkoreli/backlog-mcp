@@ -12,7 +12,7 @@ export class UrlState {
   readonly type = signal('all');
   readonly id = signal<string | null>(null);
   readonly q = signal<string | null>(null);
-  readonly home = signal<'global' | 'project' | null>(null);
+  readonly home = signal<string | null>(null);
   readonly projectRoot = signal<string | null>(null);
 
   constructor() {
@@ -49,8 +49,7 @@ export class UrlState {
     this.type.value = params.get('type') || 'all';
     this.id.value = params.get('id');
     this.q.value = params.get('q');
-    const home = params.get('home');
-    this.home.value = home === 'global' || home === 'project' ? home : null;
+    this.home.value = params.get('home');
     this.projectRoot.value = params.get('project_root');
   }
 
@@ -59,7 +58,7 @@ export class UrlState {
     t: string,
     id: string | null,
     q: string | null,
-    home: 'global' | 'project' | null,
+    home: string | null,
     projectRoot: string | null,
   ) {
     const url = new URL(window.location.href);
@@ -71,8 +70,10 @@ export class UrlState {
     set('type', t, 'all');
     set('id', id);
     set('q', q);
-    set('home', home);
-    set('project_root', projectRoot);
+    if (home === null) url.searchParams.delete('home');
+    else url.searchParams.set('home', home);
+    if (projectRoot === null) url.searchParams.delete('project_root');
+    else url.searchParams.set('project_root', projectRoot);
     if (url.href !== window.location.href) {
       history.pushState(null, '', url);
     }

@@ -34,8 +34,8 @@ export const TaskDetail = component('task-detail', () => {
 
   // ── Data loading — auto-fetches when selectedTaskId changes ─────
   const taskQuery = query<TaskResponse>(
-    () => ['task-detail', app.homeId.value, app.selectedTaskId.value],
-    () => fetchTask(getSelectedTaskId(), app.homeSelection.value),
+    () => ['task-detail', app.requestHomeId.value, app.selectedTaskId.value],
+    () => fetchTask(getSelectedTaskId(), app.requestHomeSelection.value),
     {
       enabled: () => !!app.selectedTaskId.value,
       staleTime: 0,
@@ -48,8 +48,8 @@ export const TaskDetail = component('task-detail', () => {
 
   // ── Operation count for activity badge ─────────────────────────
   const opCountQuery = query<number>(
-    () => ['op-count', app.homeId.value, app.selectedTaskId.value],
-    () => fetchOperationCount(getSelectedTaskId(), app.homeSelection.value),
+    () => ['op-count', app.requestHomeId.value, app.selectedTaskId.value],
+    () => fetchOperationCount(getSelectedTaskId(), app.requestHomeSelection.value),
     {
       enabled: () => !!app.selectedTaskId.value,
       staleTime: 5000,

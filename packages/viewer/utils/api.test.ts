@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   buildApiUrl,
   getHomeId,
+  getHomeRequestId,
+  getHomeRequestSelection,
   getHomeSelection,
   getProvenanceSelection,
 } from './api.js';
@@ -44,5 +46,29 @@ describe('viewer home API helpers', () => {
       home: 'project',
       projectRoot: '/repo',
     });
+  });
+
+  it('forwards malformed request selections unchanged with distinct cache identities', () => {
+    const missingRoot = getHomeRequestSelection('project', null);
+    const contradictory = getHomeRequestSelection('global', '/repo');
+    const invalid = getHomeRequestSelection('invalid', '/repo');
+
+    const missingRootUrl = new URL(buildApiUrl('/tasks', {}, missingRoot));
+    expect(missingRootUrl.searchParams.get('home')).toBe('project');
+    expect(missingRootUrl.searchParams.has('project_root')).toBe(false);
+
+    const contradictoryUrl = new URL(buildApiUrl('/tasks', {}, contradictory));
+    expect(contradictoryUrl.searchParams.get('home')).toBe('global');
+    expect(contradictoryUrl.searchParams.get('project_root')).toBe('/repo');
+
+    const invalidUrl = new URL(buildApiUrl('/tasks', {}, invalid));
+    expect(invalidUrl.searchParams.get('home')).toBe('invalid');
+    expect(invalidUrl.searchParams.get('project_root')).toBe('/repo');
+
+    expect(new Set([
+      getHomeRequestId(missingRoot),
+      getHomeRequestId(contradictory),
+      getHomeRequestId(invalid),
+    ]).size).toBe(3);
   });
 });

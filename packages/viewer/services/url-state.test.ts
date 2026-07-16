@@ -103,11 +103,63 @@ describe('UrlState', () => {
       projectRoot: '/repo',
     });
     expect(state.homeId.value).toBe('/repo');
+    expect(state.requestHomeSelection.value).toEqual({
+      projectRoot: '/repo',
+    });
 
     state.setHomeSelection({ home: 'global' });
     flushEffects();
     expect(state.homeSelection.value).toEqual({ home: 'global' });
     expect(state.homeId.value).toBe('global');
+  });
+
+  it('preserves invalid URL selection for fail-closed requests', () => {
+    setLocation('/?home=invalid&project_root=%2Frepo');
+    const state = new AppState();
+    flushEffects();
+
+    expect(state.home.value).toBe('invalid');
+    expect(state.requestHomeSelection.value).toEqual({
+      home: 'invalid',
+      projectRoot: '/repo',
+    });
+    expect(state.homeSelection.value).toBeUndefined();
+
+    const pushedUrl = new URL(window.location.href);
+    expect(pushedUrl.searchParams.get('home')).toBe('invalid');
+    expect(pushedUrl.searchParams.get('project_root')).toBe('/repo');
+  });
+
+  it('isolates and restores sidebar scope by request home identity', () => {
+    const state = new AppState();
+    flushEffects();
+
+    state.scopeId.value = 'EPIC-LEGACY';
+    flushEffects();
+    expect(localStorage.getItem(
+      `backlog:sidebar-scope:${state.requestHomeId.value}`,
+    )).toBe('EPIC-LEGACY');
+
+    state.setHomeSelection({
+      home: 'project',
+      projectRoot: '/repo',
+    });
+    flushEffects();
+    expect(state.scopeId.value).toBeNull();
+
+    state.scopeId.value = 'EPIC-PROJECT';
+    flushEffects();
+
+    state.setHomeSelection(undefined);
+    flushEffects();
+    expect(state.scopeId.value).toBe('EPIC-LEGACY');
+
+    state.setHomeSelection({
+      home: 'project',
+      projectRoot: '/repo',
+    });
+    flushEffects();
+    expect(state.scopeId.value).toBe('EPIC-PROJECT');
   });
 
   it('default values are omitted from URL', () => {

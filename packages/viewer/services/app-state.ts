@@ -7,12 +7,15 @@
  *
  * See ADR 0007 for design rationale.
  */
-import { signal, effect, computed } from '@nisli/core';
+import { signal, effect, computed, untrack } from '@nisli/core';
 import { getTypeFromId } from '@backlog-mcp/shared';
 import { getTypeConfig } from '../type-registry.js';
 import {
   getHomeId,
+  getHomeRequestId,
+  getHomeRequestSelection,
   getHomeSelection,
+  type HomeRequestSelection,
   type HomeSelection,
 } from '../utils/api.js';
 import { UrlState } from './url-state.js';
@@ -29,6 +32,18 @@ function loadSavedSort(): string {
   return 'updated';
 }
 
+function scopeStorageKey(homeId: string): string {
+  return `${SCOPE_STORAGE_KEY}:${homeId}`;
+}
+
+function loadSavedScope(homeId: string): string | null {
+  try {
+    return localStorage.getItem(scopeStorageKey(homeId));
+  } catch {
+    return null;
+  }
+}
+
 export class AppState {
   private readonly url = new UrlState();
 
@@ -40,12 +55,22 @@ export class AppState {
   readonly home = this.url.home;
   readonly projectRoot = this.url.projectRoot;
 
-  /** Active request selection; undefined preserves the legacy viewer runtime. */
+  /** Exact request selection, including malformed input for fail-closed validation. */
+  readonly requestHomeSelection = computed<HomeRequestSelection | undefined>(() =>
+    getHomeRequestSelection(this.home.value, this.projectRoot.value)
+  );
+
+  /** Cache identity for the exact request selection. */
+  readonly requestHomeId = computed(() =>
+    getHomeRequestId(this.requestHomeSelection.value)
+  );
+
+  /** Valid selection used for provenance-backed navigation and persistence. */
   readonly homeSelection = computed<HomeSelection | undefined>(() =>
     getHomeSelection(this.home.value, this.projectRoot.value)
   );
 
-  /** Stable identity used by every home-bound query and persisted view. */
+  /** Stable identity for valid provenance-backed persistence. */
   readonly homeId = computed(() => getHomeId(this.homeSelection.value));
 
   // ── Local state ──────────────────────────────────────────────────
@@ -55,14 +80,27 @@ export class AppState {
   readonly isSpotlightOpen = signal(false);
 
   constructor() {
+    let scopeHomeId = this.requestHomeId.value;
+
     // Derive scope from initial URL id
     this.deriveScope(this.selectedTaskId.value);
 
     // Restore scope from localStorage if still unresolved (leaf task on refresh)
     if (!this.scopeId.value) {
-      try { this.scopeId.value = localStorage.getItem(SCOPE_STORAGE_KEY); }
-      catch { /* */ }
+      this.scopeId.value = loadSavedScope(scopeHomeId);
     }
+
+    // Restore the scope belonging to the new home before persisting it.
+    effect(() => {
+      const nextHomeId = this.requestHomeId.value;
+      if (nextHomeId === scopeHomeId) return;
+      scopeHomeId = nextHomeId;
+      this.scopeId.value = null;
+      untrack(() => this.deriveScope(this.selectedTaskId.value));
+      if (!this.scopeId.value) {
+        this.scopeId.value = loadSavedScope(nextHomeId);
+      }
+    });
 
     // Derive scope on URL navigation (popstate / programmatic)
     effect(() => {
@@ -72,9 +110,12 @@ export class AppState {
     // Persist scope to localStorage
     effect(() => {
       try {
+        const homeId = this.requestHomeId.value;
         const scope = this.scopeId.value;
-        if (scope) localStorage.setItem(SCOPE_STORAGE_KEY, scope);
-        else localStorage.removeItem(SCOPE_STORAGE_KEY);
+        if (homeId !== scopeHomeId) return;
+        const key = scopeStorageKey(homeId);
+        if (scope) localStorage.setItem(key, scope);
+        else localStorage.removeItem(key);
       } catch { /* */ }
     });
 

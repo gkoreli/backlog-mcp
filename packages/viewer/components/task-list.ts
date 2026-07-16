@@ -32,11 +32,11 @@ export const TaskList = component('task-list', (_props, host) => {
 
   // ── Fetch tasks — auto-refetches when filter/query change ────────
   const tasksQuery = query<Task[]>(
-    () => ['tasks', app.homeId.value, app.filter.value, app.query.value],
+    () => ['tasks', app.requestHomeId.value, app.filter.value, app.query.value],
     () => fetchTasks(
       app.filter.value as any,
       app.query.value || undefined,
-      app.homeSelection.value,
+      app.requestHomeSelection.value,
     ),
     { initialData: [] },
   );

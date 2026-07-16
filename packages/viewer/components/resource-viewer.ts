@@ -32,21 +32,25 @@ export const ResourceViewer = component('resource-viewer', () => {
   const loadState = signal<LoadState>('empty');
   const data = signal<ResourceData | null>(null);
   const errorMessage = signal('');
+  let loadGeneration = 0;
 
   // ── Data loading ─────────────────────────────────────────────────
   async function loadResource(
     path: string,
     selection: HomeSelection | undefined,
+    generation: number,
   ) {
     loadState.value = 'loading';
     try {
       const res = await fetch(buildApiUrl('/resource', { path }, selection));
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load resource');
+      if (generation !== loadGeneration) return;
       data.value = json;
       loadState.value = 'loaded';
       updateHeaderFromData(json);
     } catch (err) {
+      if (generation !== loadGeneration) return;
       errorMessage.value = (err as Error).message;
       loadState.value = 'error';
     }
@@ -55,16 +59,19 @@ export const ResourceViewer = component('resource-viewer', () => {
   async function loadMcpResource(
     uri: string,
     selection: HomeSelection | undefined,
+    generation: number,
   ) {
     loadState.value = 'loading';
     try {
       const res = await fetch(buildApiUrl('/mcp/resource', { uri }, selection));
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load resource');
+      if (generation !== loadGeneration) return;
       data.value = json;
       loadState.value = 'loaded';
       updateHeaderFromData(json);
     } catch (err) {
+      if (generation !== loadGeneration) return;
       errorMessage.value = (err as Error).message;
       loadState.value = 'error';
     }
@@ -84,12 +91,13 @@ export const ResourceViewer = component('resource-viewer', () => {
   effect(() => {
     const paneType = splitState.activePane.value;
     const selection = splitState.homeSelection.value;
+    const generation = ++loadGeneration;
     if (paneType === 'resource') {
       const path = splitState.resourcePath.value;
-      if (path) loadResource(path, selection).catch(() => {});
+      if (path) loadResource(path, selection, generation).catch(() => {});
     } else if (paneType === 'mcp') {
       const uri = splitState.mcpUri.value;
-      if (uri) loadMcpResource(uri, selection).catch(() => {});
+      if (uri) loadMcpResource(uri, selection, generation).catch(() => {});
     } else {
       // Reset when pane closes or switches to activity
       data.value = null;

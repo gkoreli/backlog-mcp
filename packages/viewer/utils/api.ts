@@ -10,6 +10,12 @@ export type HomeSelection =
   | { home: 'global' }
   | { home: 'project'; projectRoot: string };
 
+/** Raw URL/request selection. Invalid combinations remain intact for server validation. */
+export interface HomeRequestSelection {
+  home?: string;
+  projectRoot?: string;
+}
+
 export interface HomeProvenance {
   home: 'global' | 'project';
   home_id: string;
@@ -24,13 +30,38 @@ export function getHomeId(selection: HomeSelection | undefined): string {
   return selection?.home === 'global' ? 'global' : 'legacy';
 }
 
-/** Convert URL-backed fields into the single selection sent to viewer APIs. */
+/** Preserve URL-backed fields exactly so the server can reject invalid combinations. */
+export function getHomeRequestSelection(
+  home: string | null,
+  projectRoot: string | null,
+): HomeRequestSelection | undefined {
+  if (home === null && projectRoot === null) return undefined;
+  return {
+    ...(home === null ? {} : { home }),
+    ...(projectRoot === null ? {} : { projectRoot }),
+  };
+}
+
+/** Stable cache identity for the exact request selection, including invalid input. */
+export function getHomeRequestId(
+  selection: HomeRequestSelection | undefined,
+): string {
+  if (selection === undefined) return 'legacy';
+  return JSON.stringify([
+    selection.home ?? null,
+    selection.projectRoot ?? null,
+  ]);
+}
+
+/** Convert valid URL-backed fields into the typed selection persisted by the viewer. */
 export function getHomeSelection(
-  home: 'global' | 'project' | null,
+  home: string | null,
   projectRoot: string | null,
 ): HomeSelection | undefined {
-  if (home === 'global') return { home: 'global' };
-  if (projectRoot) return { home: 'project', projectRoot };
+  if (home === 'global' && projectRoot === null) return { home: 'global' };
+  if ((home === 'project' || home === null) && projectRoot) {
+    return { home: 'project', projectRoot };
+  }
   return undefined;
 }
 
@@ -51,7 +82,7 @@ export function getProvenanceSelection(
 export function buildApiUrl(
   path: string,
   query: ApiQuery = {},
-  selection?: HomeSelection,
+  selection?: HomeRequestSelection,
 ): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
@@ -60,10 +91,10 @@ export function buildApiUrl(
     }
   }
 
-  if (selection?.home === 'global') {
-    params.set('home', 'global');
-  } else if (selection?.home === 'project') {
-    params.set('home', 'project');
+  if (selection?.home !== undefined) {
+    params.set('home', selection.home);
+  }
+  if (selection?.projectRoot !== undefined) {
     params.set('project_root', selection.projectRoot);
   }
 
@@ -105,7 +136,7 @@ export interface TaskResponse extends Task {
 export async function fetchTasks(
   filter: 'active' | 'completed' | 'all' = 'all',
   query?: string,
-  selection?: HomeSelection,
+  selection?: HomeRequestSelection,
 ): Promise<Task[]> {
   const response = await fetch(buildApiUrl('/tasks', {
     filter,
@@ -116,7 +147,7 @@ export async function fetchTasks(
 
 export async function fetchTask(
   taskId: string,
-  selection?: HomeSelection,
+  selection?: HomeRequestSelection,
 ): Promise<TaskResponse> {
   const response = await fetch(buildApiUrl(`/tasks/${encodeURIComponent(taskId)}`, {}, selection));
   return response.json();
@@ -124,7 +155,7 @@ export async function fetchTask(
 
 export async function fetchOperationCount(
   taskId: string,
-  selection?: HomeSelection,
+  selection?: HomeRequestSelection,
 ): Promise<number> {
   const response = await fetch(buildApiUrl(
     `/operations/count/${encodeURIComponent(taskId)}`,

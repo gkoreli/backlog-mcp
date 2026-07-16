@@ -32,7 +32,7 @@ initHighlighter();
 
 // Keep one SSE connection scoped to the active home.
 effect(() => {
-  backlogEvents.connect(appState.homeSelection.value);
+  backlogEvents.connect(appState.requestHomeSelection.value);
 });
 
 // All document-level event bridges have been removed.

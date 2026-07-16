@@ -8,9 +8,9 @@
 
 import {
   buildApiUrl,
-  getHomeId,
+  getHomeRequestId,
   type HomeProvenance,
-  type HomeSelection,
+  type HomeRequestSelection,
 } from '../utils/api.js';
 
 export type BacklogEventType = 'task_changed' | 'task_created' | 'task_deleted' | 'resource_changed';
@@ -32,8 +32,8 @@ class BacklogEvents {
   private listeners = new Set<ChangeCallback>();
 
   /** Connect to the selected home, replacing only the transport connection. */
-  connect(selection?: HomeSelection): void {
-    const nextHomeId = getHomeId(selection);
+  connect(selection?: HomeRequestSelection): void {
+    const nextHomeId = getHomeRequestId(selection);
     if (this.source && this.homeId === nextHomeId) return;
 
     this.source?.close();

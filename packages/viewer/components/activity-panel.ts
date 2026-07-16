@@ -34,7 +34,7 @@ import {
   type JournalEntry,
   type EpicGroup,
 } from './activity-utils.js';
-import { buildApiUrl } from '../utils/api.js';
+import { buildApiUrl, getHomeRequestId } from '../utils/api.js';
 
 type ViewMode = 'timeline' | 'journal';
 
@@ -58,16 +58,24 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
     const saved = localStorage.getItem(MODE_STORAGE_KEY) as ViewMode | null;
     return (saved === 'timeline' || saved === 'journal') ? saved : 'timeline';
   })());
+  let loadGeneration = 0;
 
   // ── SSE listener ─────────────────────────────────────────────────
-  const changeHandler: ChangeCallback = () => loadOperations();
+  const changeHandler: ChangeCallback = () => {
+    if (splitState.activePane.value === 'activity') {
+      loadOperations().catch(() => {});
+    }
+  };
   backlogEvents.onChange(changeHandler);
   onCleanup(() => backlogEvents.offChange(changeHandler));
 
   // ── Data loading ─────────────────────────────────────────────────
   async function loadOperations() {
+    const generation = ++loadGeneration;
     const taskId = splitState.activityTaskId.value;
     const currentMode = mode.value;
+    const selection = splitState.homeSelection.value
+      ?? app.requestHomeSelection.value;
 
     let path: string;
     let query: Record<string, string | number>;
@@ -89,11 +97,16 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
       const res = await fetch(buildApiUrl(
         path,
         query,
-        splitState.homeSelection.value,
+        selection,
       ));
-      operations.value = await res.json();
+      const nextOperations = await res.json();
+      if (generation === loadGeneration) {
+        operations.value = nextOperations;
+      }
     } catch {
-      operations.value = [];
+      if (generation === loadGeneration) {
+        operations.value = [];
+      }
     }
   }
 
@@ -104,9 +117,14 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
     const _taskId = splitState.activityTaskId.value;
     const _mode = mode.value;
     const _date = selectedDate.value;
+    const selection = splitState.homeSelection.value
+      ?? app.requestHomeSelection.value;
+    const _homeId = getHomeRequestId(selection);
 
     if (_pane === 'activity') {
       loadOperations().catch(() => {});
+    } else {
+      loadGeneration += 1;
     }
   });
 
@@ -172,7 +190,7 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
       parts.push(html`
         <div class="activity-detail-row">
           <span class="activity-detail-label">Task:</span>
-          <a href="#" class="activity-task-link" @click.prevent=${() => handleTaskClick(op.resourceId!)}>
+          <a href="#" class="activity-task-link" @click.prevent=${() => handleTaskClick(op.resourceId ?? '')}>
             ${TaskBadge({ taskId: signal(op.resourceId) })}
           </a>
         </div>
@@ -289,7 +307,7 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
       <div class="activity-task-group">
         <div class="activity-task-header">
           ${taskGroup.epicId ? html`
-            <a href="#" class="activity-epic-link" @click.prevent=${() => handleTaskClick(taskGroup.epicId!)}>
+            <a href="#" class="activity-epic-link" @click.prevent=${() => handleTaskClick(taskGroup.epicId ?? '')}>
               ${TaskBadge({ taskId: signal(taskGroup.epicId) })}
             </a>
           ` : null}
@@ -324,7 +342,7 @@ export const ActivityPanel = component('activity-panel', (_props, host) => {
           <div class="activity-journal-epic-group">
             <div class="activity-journal-epic-header">
               ${group.epicId ? html`
-                <a href="#" class="activity-epic-link" @click.prevent=${() => handleTaskClick(group.epicId!)}>
+                <a href="#" class="activity-epic-link" @click.prevent=${() => handleTaskClick(group.epicId ?? '')}>
                   ${TaskBadge({ taskId: signal(group.epicId) })}
                 </a>
               ` : null}

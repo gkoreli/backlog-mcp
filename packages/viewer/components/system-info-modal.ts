@@ -34,11 +34,11 @@ export const SystemInfoModal = component('system-info-modal', (_props, _host) =>
 
   // ── Data loading — only fetches when modal is open ──────────────
   const infoQuery = query<SystemInfo>(
-    () => ['system-info', app.homeId.value, app.isSystemInfoOpen.value],
+    () => ['system-info', app.requestHomeId.value, app.isSystemInfoOpen.value],
     () => fetch(buildApiUrl(
       '/api/status',
       {},
-      app.homeSelection.value,
+      app.requestHomeSelection.value,
     )).then(r => r.json()),
     {
       enabled: () => app.isSystemInfoOpen.value,
