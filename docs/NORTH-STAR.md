@@ -123,9 +123,13 @@ product's retrieval story.** Context engineering does not disappear — it survi
   the Temporal/Airflow shape). Scheduling, retries, and agent execution are external MCP
   clients. Orchestration is a *different product* (aime), and it talks to this store like
   any other client.
-- **Not cloud-first.** The Cloudflare Workers + D1 mode is a **constrained satellite**, not
-  an equal (ADR 0104). New capability targets local mode first and needs no D1 story to
-  ship.
+- **Not cloud-first — the D1/Workers path is descoped.** Local-first is not one mode among
+  two; it **is** the north star. Even remote hosting is a **VPS running the same
+  local-filesystem architecture** — never Cloudflare Workers, never a D1-like database. The
+  existing D1/Workers code is **retained but not evolved**: no new capability targets it and
+  nothing anywhere carries a parity obligation to it. (This supersedes-in-part ADR 0104's
+  "constrained satellite" framing — the satellite is now descoped, not maintained toward
+  parity.)
 - **Not a migration.** Adoption is bolt-on. If it requires moving your files or rewriting
   your docs, we designed it wrong.
 
@@ -172,8 +176,11 @@ product's retrieval story.** Context engineering does not disappear — it survi
 3. **The viewer observes; agents mutate; humans steer agents.** The viewer is never an
    editor. Humans change the store by conversing with agents, or by editing the markdown
    directly — never through a mutating UI (ARTF-0189, ADR 0097).
-4. **Local-first, forever.** The primary mode is your machine: your files, your git, your
-   embeddings. Never compromise a local-mode capability for D1/edge parity (ADR 0104).
+4. **Local-first, forever — local IS the architecture, not the primary of two.** Your files,
+   your git, your embeddings. Remote hosting, when it exists, is a **VPS running the same
+   local-filesystem stack** — never Workers, never a D1-like DB. The D1/Workers code is
+   retained but descoped: it is never evolved and nothing owes it parity (supersedes-in-part
+   ADR 0104's satellite framing).
 5. **One source of truth per fact.** Corrections supersede; they do not accumulate as
    contradicting duplicates (`supersedes` / `state_key`, ADR 0092.3). History is preserved,
    recall stays clean, and the human can adjudicate surfaced contradictions (ADR 0092.13).
@@ -391,7 +398,7 @@ prefix") is on the table.
 | Vocabulary | **Substrate** = definition · **Entity** = instance · **Projection** = view. One word per concept. | ADR 0106.1 |
 | Memory storage | **Memory is a backlog substrate.** No parallel memory stack; recall rides the entity search pipeline. | ADR 0092.3 |
 | Write path | **No LLM in the server write path.** Deterministic capture; LLM work is external. | ADR 0092 |
-| Deployment | **Local-first, forever.** D1/Workers is a constrained satellite, not an equal. | ADR 0104 |
+| Deployment | **Local-first IS the architecture.** D1/Workers **descoped** (retained, not evolved, no parity owed); remote = VPS running the local-filesystem stack. | ADR 0104 (superseded-in-part) |
 | MCP boundary | **Speak intent; hide the substrate in core.** Verbs over a `type` discriminator. | ADR 0106 |
 
 **Open (represented, not resolved — leanings noted; the ADR owners decide the internals):**
