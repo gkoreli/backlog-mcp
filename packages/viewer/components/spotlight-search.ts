@@ -21,6 +21,7 @@ import {
   type HomeProvenance,
   type HomeSelection,
   type Task,
+  homeDirName,
 } from '../utils/api.js';
 import { AppState } from '../services/app-state.js';
 import { SplitPaneState } from '../services/split-pane-state.js';
@@ -142,6 +143,10 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
   const sortMode = signal<SortMode>('relevant');
   const typeFilter = signal<TypeFilter>('all');
   const isLoading = signal(false);
+  // Cross-home discovery (ADR 0112.4 §3): opt-in, read-only, search-only.
+  // Rides home=all — the server fuses exactly global + the URL's project
+  // root via the coordinator; browse always stays one-home-at-a-time.
+  const crossHome = signal(false);
   const activeTab = signal<DefaultTab>('searches');
   const recentSearches = signal<RecentSearchItem[]>([]);
 
@@ -203,7 +208,9 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
     const q = queryText.value;
     if (q.length < 2) return;
     const generation = ++searchGeneration;
-    const selection = app.requestHomeSelection.value;
+    const selection = crossHome.value
+      ? { home: 'all', ...(app.projectRoot.value === null ? {} : { projectRoot: app.projectRoot.value }) }
+      : app.requestHomeSelection.value;
     const sort = sortMode.value;
     const filter = typeFilter.value;
 
@@ -275,6 +282,21 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
   function setSortMode(sort: SortMode) {
     sortMode.value = sort;
     if (hasQuery.value) doSearch();
+  }
+
+  function setCrossHome(on: boolean) {
+    crossHome.value = on;
+    if (hasQuery.value) doSearch();
+  }
+
+  // Provenance badge per row — only in cross-home mode, where rows from
+  // different homes interleave and must never be mistaken for one another.
+  function homeBadge(rv: SearchResult) {
+    if (!crossHome.value || rv.home === undefined) return null;
+    const label = rv.home === 'global'
+      ? '\u{1F310} global'
+      : `\u{1F4C1} ${homeDirName(rv.source_path ?? rv.home_id ?? 'project')}`;
+    return html`<span class="type-badge spotlight-home-badge">${label}</span>`;
   }
 
   function setActiveTab(tab: DefaultTab) {
@@ -504,6 +526,7 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
                 <span class="spotlight-resource-icon">📄</span>
                 <span class="spotlight-result-title" html:inner="${highlightedTitle}"></span>
                 <span class="type-badge type-resource">resource</span>
+                ${homeBadge(rv)}
               </div>
               <div class="spotlight-result-snippet">
                 <span class="snippet-text" html:inner="${snippetHtml}"></span>
@@ -527,6 +550,7 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
               ${TaskBadge({ taskId: computed(() => task.id) })}
               <span class="spotlight-result-title" html:inner="${highlightedTitle}"></span>
               <span class="status-badge status-${status}">${status.replace('_', ' ')}</span>
+              ${homeBadge(rv)}
             </div>
             <div class="spotlight-result-snippet">
               <span class="snippet-text" html:inner="${snippetHtml}"></span>
@@ -653,6 +677,7 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
   const isFilterResource = computed(() => typeFilter.value === 'resource');
   const isSortRelevant = computed(() => sortMode.value === 'relevant');
   const isSortRecent = computed(() => sortMode.value === 'recent');
+  const isCrossHome = computed(() => crossHome.value);
 
   // ── Main search results or empty state ────────────────────────────
   const searchResultsView = computed(() => {
@@ -689,6 +714,7 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
           <div class="spotlight-sort-controls">
             <button class="spotlight-sort-btn" class:active="${isSortRelevant}" @click="${() => setSortMode('relevant')}">Relevant</button>
             <button class="spotlight-sort-btn" class:active="${isSortRecent}" @click="${() => setSortMode('recent')}">Recent</button>
+            <button class="spotlight-sort-btn spotlight-cross-home-btn" class:active="${isCrossHome}" title="Search across global + this project (read-only; click a result to enter its home)" @click="${() => setCrossHome(!crossHome.value)}">\u{1F310} All homes</button>
           </div>
         </div>
 

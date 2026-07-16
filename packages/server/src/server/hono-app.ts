@@ -424,12 +424,47 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
   // GET /search
   app.get('/search', async (c) => {
-    const runtime = await resolveRequestRuntime(c.req);
+    const selection = selectAppRequestRuntime(c.req);
     const q = c.req.query('q');
     if (!q) return c.json({ error: 'Missing required query param: q' }, 400);
     const limit = parseInt(c.req.query('limit') ?? '20', 10);
     const types = c.req.query('types')?.split(',');
     const sort = c.req.query('sort');
+
+    // home=all — cross-home discovery (ADR 0112.4 §3): read-only, fused via
+    // the shipped coordinator (rrf merge, provenance-stamped per row). Same
+    // machinery the MCP search tool uses; the coordinator resolves exactly
+    // global + the supplied project root — never a workspace scan (R-2/R-9).
+    if (selection.home === 'all' && deps?.resolveRuntime !== undefined) {
+      const coordinator = createRequestHomeReadCoordinator(
+        resolveSelectedRuntime,
+        selection.projectRoot,
+      );
+      const crossHome = await coordinator.search(
+        {
+          query: q,
+          limit,
+          ...(types === undefined ? {} : { types: types as Array<'task' | 'epic' | 'resource'> }),
+          ...(sort === undefined ? {} : { sort: sort as 'relevant' | 'recent' }),
+        },
+        selection.projectRoot === undefined ? undefined : { projectRoot: selection.projectRoot },
+      );
+      // Adapt to the route's UnifiedSearchResult shape ({item, type, score,
+      // provenance}) so the viewer renders one result grammar for both modes.
+      return c.json(crossHome.results.map(function toUnifiedShape(item) {
+        const { score, home, home_id, source_path, within_home_rank, ...entity } = item;
+        return {
+          item: entity,
+          type: entity.type,
+          score,
+          home,
+          home_id,
+          ...(source_path === undefined ? {} : { source_path }),
+        };
+      }));
+    }
+
+    const runtime = await resolveSelectedRuntime(selection);
     const results = await runtime.service.searchUnified(q, { types: types as Array<'task' | 'epic' | 'resource'> | undefined, sort, limit });
     return c.json(results.map(function addProvenance(result) {
       return withSearchHomeProvenance(runtime, result);

@@ -74,6 +74,11 @@ export function getHomeSelection(
   return undefined;
 }
 
+/** Last path segment of a home root — `/Users/goga/backlog-mcp` → `backlog-mcp`. */
+export function homeDirName(path: string): string {
+  return path.split('/').filter(Boolean).pop() ?? path;
+}
+
 /** Recover a request selection from server-returned home provenance. */
 export function getProvenanceSelection(
   provenance: Partial<HomeProvenance>,
