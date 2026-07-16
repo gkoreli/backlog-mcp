@@ -1,112 +1,179 @@
-import { describe, it, expect } from 'vitest';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { beforeAll, describe, expect, it } from 'vitest';
 import {
+  CONFIG_DIR,
   findConfigDir,
   loadRepoConfig,
   resolveScope,
-  CONFIG_DIR,
-  type ConfigFsDeps,
 } from '../core/config.js';
 
-/**
- * Build an injectable fs from a flat map of absolute path → contents.
- * A path "exists" if it's a key, or a prefix of a key (so directories resolve).
- */
-function fakeFs(files: Record<string, string>): ConfigFsDeps {
-  const keys = Object.keys(files);
-  return {
-    exists: (p) => keys.some((k) => k === p || k.startsWith(p + '/')),
-    read: (p) => {
-      if (!(p in files)) throw new Error(`ENOENT: ${p}`);
-      return files[p]!;
-    },
-  };
+function writeConfig(
+  root: string,
+  fileName: 'config.json' | 'config.local.json',
+  contents: string,
+): void {
+  const configDir = `${root}/${CONFIG_DIR}`;
+  mkdirSync(configDir, { recursive: true });
+  writeFileSync(`${configDir}/${fileName}`, contents);
 }
 
 describe('findConfigDir', () => {
   it('finds .backlog-mcp in the start dir', () => {
-    const fs = fakeFs({ [`/repo/${CONFIG_DIR}/config.json`]: '{}' });
-    expect(findConfigDir('/repo', fs)).toBe(`/repo/${CONFIG_DIR}`);
+    writeConfig('/config/start', 'config.json', '{}');
+    expect(findConfigDir('/config/start')).toBe(`/config/start/${CONFIG_DIR}`);
   });
 
   it('walks up to a parent directory', () => {
-    const fs = fakeFs({ [`/repo/${CONFIG_DIR}/config.json`]: '{}' });
-    expect(findConfigDir('/repo/packages/server/src', fs)).toBe(`/repo/${CONFIG_DIR}`);
+    writeConfig('/config/parent', 'config.json', '{}');
+    mkdirSync('/config/parent/packages/server/src', { recursive: true });
+
+    expect(findConfigDir('/config/parent/packages/server/src'))
+      .toBe(`/config/parent/${CONFIG_DIR}`);
   });
 
-  it('returns undefined when no config dir exists up to root', () => {
-    const fs = fakeFs({ '/some/other/file.txt': 'x' });
-    expect(findConfigDir('/repo/deep/nested', fs)).toBeUndefined();
+  it('does not cross a nested VCS boundary', () => {
+    writeConfig('/config/outer', 'config.json', '{}');
+    mkdirSync('/config/outer/nested/.git', { recursive: true });
+    mkdirSync('/config/outer/nested/src', { recursive: true });
+
+    expect(findConfigDir('/config/outer/nested/src')).toBeUndefined();
+  });
+
+  it('prefers config when config and VCS markers share a directory', () => {
+    writeConfig('/config/same-boundary', 'config.json', '{}');
+    mkdirSync('/config/same-boundary/.git', { recursive: true });
+
+    expect(findConfigDir('/config/same-boundary'))
+      .toBe(`/config/same-boundary/${CONFIG_DIR}`);
+  });
+
+  it('does not walk above an explicit stop directory', () => {
+    writeConfig('/config/stopped', 'config.json', '{}');
+    mkdirSync('/config/stopped/packages/app/src', { recursive: true });
+
+    expect(findConfigDir(
+      '/config/stopped/packages/app/src',
+      undefined,
+      '/config/stopped/packages/app',
+    )).toBeUndefined();
   });
 });
 
 describe('loadRepoConfig', () => {
-  it('returns {} when no config dir', () => {
-    expect(loadRepoConfig('/repo', fakeFs({}))).toEqual({});
+  it('returns {} when no config directory exists', () => {
+    expect(loadRepoConfig('/config/missing')).toEqual({});
   });
 
-  it('reads scope from config.json', () => {
-    const fs = fakeFs({ [`/repo/${CONFIG_DIR}/config.json`]: '{"scope":"FLDR-0001"}' });
-    expect(loadRepoConfig('/repo', fs).scope).toBe('FLDR-0001');
-  });
+  it('reads docs-native home configuration and scope', () => {
+    writeConfig(
+      '/config/read',
+      'config.json',
+      JSON.stringify({
+        home: 'project',
+        documentsDir: 'handbook',
+        scope: 'FLDR-0001',
+      }),
+    );
 
-  it('config.local.json overrides config.json', () => {
-    const fs = fakeFs({
-      [`/repo/${CONFIG_DIR}/config.json`]: '{"scope":"FLDR-0001"}',
-      [`/repo/${CONFIG_DIR}/config.local.json`]: '{"scope":"FLDR-9999"}',
+    expect(loadRepoConfig('/config/read')).toMatchObject({
+      home: 'project',
+      documentsDir: 'handbook',
+      scope: 'FLDR-0001',
     });
-    expect(loadRepoConfig('/repo', fs).scope).toBe('FLDR-9999');
   });
 
-  it('preserves unknown keys (forward compatibility)', () => {
-    const fs = fakeFs({ [`/repo/${CONFIG_DIR}/config.json`]: '{"scope":"FLDR-0001","future":42}' });
-    expect(loadRepoConfig('/repo', fs)).toMatchObject({ scope: 'FLDR-0001', future: 42 });
+  it('config.local.json overrides committed home defaults', () => {
+    writeConfig(
+      '/config/local',
+      'config.json',
+      JSON.stringify({
+        home: 'global',
+        documentsDir: 'docs',
+        scope: 'FLDR-0001',
+      }),
+    );
+    writeConfig(
+      '/config/local',
+      'config.local.json',
+      JSON.stringify({
+        home: 'project',
+        documentsDir: 'notes',
+        scope: 'FLDR-9999',
+      }),
+    );
+
+    expect(loadRepoConfig('/config/local')).toMatchObject({
+      home: 'project',
+      documentsDir: 'notes',
+      scope: 'FLDR-9999',
+    });
   });
 
-  it('degrades gracefully on malformed JSON → {}', () => {
-    const fs = fakeFs({ [`/repo/${CONFIG_DIR}/config.json`]: '{not json' });
-    expect(loadRepoConfig('/repo', fs)).toEqual({});
+  it('preserves unknown keys', () => {
+    writeConfig(
+      '/config/unknown',
+      'config.json',
+      '{"scope":"FLDR-0001","future":42}',
+    );
+
+    expect(loadRepoConfig('/config/unknown'))
+      .toMatchObject({ scope: 'FLDR-0001', future: 42 });
   });
 
-  it('degrades gracefully on wrong-typed scope → {}', () => {
-    const fs = fakeFs({ [`/repo/${CONFIG_DIR}/config.json`]: '{"scope":123}' });
-    expect(loadRepoConfig('/repo', fs)).toEqual({});
+  it('degrades gracefully on malformed JSON', () => {
+    writeConfig('/config/malformed', 'config.json', '{not json');
+    expect(loadRepoConfig('/config/malformed')).toEqual({});
+  });
+
+  it('degrades gracefully on invalid home configuration', () => {
+    writeConfig('/config/invalid', 'config.json', '{"home":"all"}');
+    expect(loadRepoConfig('/config/invalid')).toEqual({});
   });
 });
 
 describe('resolveScope precedence', () => {
-  const fsWithConfig = fakeFs({ [`/repo/${CONFIG_DIR}/config.json`]: '{"scope":"FLDR-CONFIG"}' });
+  beforeAll(() => {
+    writeConfig(
+      '/config/scope',
+      'config.json',
+      '{"scope":"FLDR-CONFIG","home":"project"}',
+    );
+  });
 
-  it('explicit wins over everything', () => {
+  it('keeps explicit entity scope distinct from home configuration', () => {
     expect(resolveScope({
       explicit: 'FLDR-EXPLICIT',
       env: { BACKLOG_SCOPE: 'FLDR-ENV' },
-      cwd: '/repo',
-      deps: fsWithConfig,
+      cwd: '/config/scope',
     })).toBe('FLDR-EXPLICIT');
   });
 
-  it('env wins over config file', () => {
+  it('uses caller environment before config scope', () => {
     expect(resolveScope({
       env: { BACKLOG_SCOPE: 'FLDR-ENV' },
-      cwd: '/repo',
-      deps: fsWithConfig,
+      cwd: '/config/scope',
     })).toBe('FLDR-ENV');
   });
 
-  it('config file used when no explicit/env', () => {
-    expect(resolveScope({ env: {}, cwd: '/repo', deps: fsWithConfig })).toBe('FLDR-CONFIG');
+  it('uses config scope when caller defaults are absent', () => {
+    expect(resolveScope({
+      env: {},
+      cwd: '/config/scope',
+    })).toBe('FLDR-CONFIG');
   });
 
-  it('returns undefined when nothing is set (whole-backlog default)', () => {
-    expect(resolveScope({ env: {}, cwd: '/repo', deps: fakeFs({}) })).toBeUndefined();
+  it('returns undefined when no scope is configured', () => {
+    expect(resolveScope({
+      env: {},
+      cwd: '/config/no-scope',
+    })).toBeUndefined();
   });
 
-  it('treats blank/whitespace values as absent and falls through', () => {
+  it('treats blank values as absent and falls through', () => {
     expect(resolveScope({
       explicit: '   ',
       env: { BACKLOG_SCOPE: '' },
-      cwd: '/repo',
-      deps: fsWithConfig,
+      cwd: '/config/scope',
     })).toBe('FLDR-CONFIG');
   });
 });

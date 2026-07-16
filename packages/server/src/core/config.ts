@@ -1,42 +1,31 @@
-/**
- * Per-repo config (ADR 0105) — resolves a default scope for memory & wakeup
- * from a `.backlog-mcp/` folder discovered by walking up from the cwd.
- *
- * Design (ADR 0105):
- *  - Pure & injectable. `cwd`, env, and filesystem readers are parameters, not
- *    ambient singletons — so this is memfs-testable and safe in a long-lived
- *    process (unlike PathResolver, which reads env once at construction).
- *  - A DEFAULT PROVIDER, never an override. Explicit caller input (a CLI flag /
- *    MCP param) always wins. Precedence, highest first:
- *        explicit  >  BACKLOG_SCOPE env  >  config.local.json  >  config.json
- *    Resolving to `undefined` reproduces today's whole-backlog behavior.
- *  - Graceful degradation. A malformed config file must never crash `wakeup`:
- *    parse/validation errors are swallowed (logged once) and the resolver falls
- *    through to the next precedence layer — same posture as the embedding
- *    service's BM25 fallback.
- *
- * Transport asymmetry (ADR 0105 "decisive asymmetry"): the config FILE is read
- * from cwd, which is reliable only for the in-process CLI. The detached, shared
- * MCP server has a different cwd, so it relies on the `BACKLOG_SCOPE` env layer
- * (set in the MCP client config, exactly like BACKLOG_DATA_DIR). This module
- * honors both via the single precedence order above.
- */
+/** Per-repository caller defaults discovered from `.backlog-mcp/`. */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import {
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from 'node:path';
 import { z } from 'zod';
 
 export const CONFIG_DIR = '.backlog-mcp';
 export const CONFIG_FILE = 'config.json';
 export const CONFIG_LOCAL_FILE = 'config.local.json';
 export const SCOPE_ENV_VAR = 'BACKLOG_SCOPE';
+export const VCS_CONFIG_BOUNDARY = '.git';
 
 /**
- * Repo config schema. `z.looseObject` keeps unknown keys so a newer config
- * (e.g. once dataDir/port migrate in — ADR 0105 follow-ups) doesn't break an
- * older parser. Every field is optional; an empty `{}` is valid.
+ * Repository defaults keep home selection separate from entity-subtree scope.
+ * Unknown keys remain available to newer readers.
  */
 export const RepoConfigSchema = z.looseObject({
+  /** Default document universe for calls from this repository. */
+  home: z.enum(['global', 'project']).optional(),
+  /** Project documents directory, relative to the project root by default. */
+  documentsDir: z.string().optional(),
   /** Default scope container id (e.g. "FLDR-0001") for wakeup/recall/remember. */
   scope: z.string().optional(),
 });
@@ -54,21 +43,36 @@ const realFs: ConfigFsDeps = {
   read: (path) => readFileSync(path, 'utf-8'),
 };
 
+function isPathWithin(root: string, candidate: string): boolean {
+  const relativePath = relative(root, candidate);
+  return relativePath === ''
+    || (
+      relativePath !== '..'
+      && !relativePath.startsWith(`..${sep}`)
+      && !isAbsolute(relativePath)
+    );
+}
+
 /**
- * Walk up from `startDir` to the filesystem root, returning the first
- * directory that contains a `.backlog-mcp/` folder, or undefined if none.
+ * Find the nearest `.backlog-mcp/` without crossing the nearest VCS boundary
+ * or an optional inclusive `stopDir`.
  */
 export function findConfigDir(
   startDir: string,
   deps: ConfigFsDeps = realFs,
+  stopDir?: string,
 ): string | undefined {
-  let dir = startDir;
-  // parsePath(dir).root is '/' (posix) — the loop terminates when dirname stops
-  // changing (we've hit the root).
+  let dir = resolve(startDir);
+  const boundary = stopDir === undefined ? undefined : resolve(stopDir);
+  if (boundary !== undefined && !isPathWithin(boundary, dir)) return undefined;
+
   for (;;) {
     if (deps.exists(join(dir, CONFIG_DIR))) return join(dir, CONFIG_DIR);
+    if (deps.exists(join(dir, VCS_CONFIG_BOUNDARY))) return undefined;
+    if (dir === boundary) return undefined;
+
     const parent = dirname(dir);
-    if (parent === dir) return undefined; // reached root
+    if (parent === dir) return undefined;
     dir = parent;
   }
 }
@@ -93,12 +97,13 @@ function tryLoad(path: string, deps: ConfigFsDeps): RepoConfig | undefined {
 export function loadRepoConfig(
   cwd: string,
   deps: ConfigFsDeps = realFs,
+  stopDir?: string,
 ): RepoConfig {
-  const configDir = findConfigDir(cwd, deps);
+  const configDir = findConfigDir(cwd, deps, stopDir);
   if (!configDir) return {};
   const base = tryLoad(join(configDir, CONFIG_FILE), deps) ?? {};
   const local = tryLoad(join(configDir, CONFIG_LOCAL_FILE), deps) ?? {};
-  return { ...base, ...local }; // local overrides committed
+  return { ...base, ...local };
 }
 
 export interface ResolveScopeParams {
@@ -108,6 +113,8 @@ export interface ResolveScopeParams {
   cwd?: string;
   /** Environment map. Defaults to process.env. */
   env?: Record<string, string | undefined>;
+  /** Inclusive upper discovery boundary. */
+  stopDir?: string;
   deps?: ConfigFsDeps;
 }
 
@@ -132,5 +139,5 @@ export function resolveScope(params: ResolveScopeParams = {}): string | undefine
   if (fromEnv) return fromEnv;
 
   const cwd = params.cwd ?? process.cwd();
-  return clean(loadRepoConfig(cwd, params.deps).scope);
+  return clean(loadRepoConfig(cwd, params.deps, params.stopDir).scope);
 }
