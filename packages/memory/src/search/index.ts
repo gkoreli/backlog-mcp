@@ -20,3 +20,7 @@ export { minmaxNormalize, rankNormalize, linearFusion, applyCoordinationBonus, a
 export { compoundWordTokenizer, splitCamelCase } from './tokenizer.js';
 // Query intent parser (ADR 0083 #4)
 export { parseQueryIntent, canonicalizeIdQuery, extractLeadingFilters, type QueryIntent } from './query-intent.js';
+
+// Cross-home rank fusion (ADR 0112.1 / ADR 0116)
+export { mergeCrossHomeRrf, RRF_K } from './cross-home-rrf.js';
+export type { CrossHomeRankedList, CrossHomeRrfResult } from './cross-home-rrf.types.js';
