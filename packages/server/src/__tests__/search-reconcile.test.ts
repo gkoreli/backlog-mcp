@@ -10,7 +10,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { join } from 'node:path';
-import { OramaSearchService } from '@backlog-mcp/memory/search';
+import { OramaSearchService, type Resource } from '@backlog-mcp/memory/search';
 import type { Entity } from '@backlog-mcp/shared';
 
 let cacheCounter = 0;
@@ -120,5 +120,94 @@ describe('OramaSearchService.reconcile (ADR-0101)', () => {
     const fresh = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     const stats = await fresh.reconcile([initialTasks[0]]);
     expect(stats).toEqual({ added: 0, removed: 0, updated: 0 });
+  });
+});
+
+describe('OramaSearchService.reconcileResources (ADR-0112)', () => {
+  const initialResources: Resource[] = [
+    {
+      id: 'mcp://backlog/resources/guides/alpha.md',
+      path: 'resources/guides/alpha.md',
+      title: 'Alpha guide',
+      content: 'alpha original content',
+    },
+    {
+      id: 'mcp://backlog/resources/guides/beta.md',
+      path: 'resources/guides/beta.md',
+      title: 'Beta guide',
+      content: 'beta stale content',
+    },
+  ];
+
+  async function createService(cachePath = freshCachePath()): Promise<OramaSearchService> {
+    const service = new OramaSearchService({ cachePath, hybridSearch: false });
+    await service.index([]);
+    return service;
+  }
+
+  it('returns zero counts when indexed resources already match input', async () => {
+    const service = await createService();
+    await service.indexResources(initialResources);
+
+    const stats = await service.reconcileResources(initialResources);
+
+    expect(stats).toEqual({ added: 0, removed: 0, updated: 0 });
+  });
+
+  it.each([
+    {
+      field: 'path',
+      change: { path: 'resources/reference/relocated-alpha.md' },
+      query: 'relocated',
+    },
+    {
+      field: 'title',
+      change: { title: 'Renamed resource marker' },
+      query: 'Renamed resource marker',
+    },
+    {
+      field: 'content',
+      change: { content: 'replacement body marker' },
+      query: 'replacement body marker',
+    },
+  ] as const)('updates a resource when its $field changes', async ({ change, query }) => {
+    const service = await createService();
+    await service.indexResources([initialResources[0]]);
+    const changed = { ...initialResources[0], ...change };
+
+    const stats = await service.reconcileResources([changed]);
+
+    expect(stats).toEqual({ added: 0, removed: 0, updated: 1 });
+    const results = await service.searchResources(query);
+    expect(results.map(result => result.resource)).toContainEqual(changed);
+  });
+
+  it('reconciles added, removed, and updated resources from a persisted stale cache', async () => {
+    const cachePath = freshCachePath();
+    const staleService = await createService(cachePath);
+    await staleService.indexResources(initialResources);
+    staleService.flush();
+
+    const service = await createService(cachePath);
+    const updatedAlpha: Resource = {
+      ...initialResources[0],
+      title: 'Alpha guide refreshed',
+      content: 'alpha refreshed marker',
+    };
+    const addedGamma: Resource = {
+      id: 'mcp://backlog/resources/guides/gamma.md',
+      path: 'resources/guides/gamma.md',
+      title: 'Gamma guide',
+      content: 'gamma added marker',
+    };
+
+    const stats = await service.reconcileResources([updatedAlpha, addedGamma]);
+
+    expect(stats).toEqual({ added: 1, removed: 1, updated: 1 });
+    expect((await service.searchResources('refreshed marker')).map(result => result.resource.id))
+      .toContain(updatedAlpha.id);
+    expect((await service.searchResources('gamma added')).map(result => result.resource.id))
+      .toContain(addedGamma.id);
+    expect(await service.searchResources('beta stale')).toEqual([]);
   });
 });
