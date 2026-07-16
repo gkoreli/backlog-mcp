@@ -376,7 +376,7 @@ describe('LocalRuntime', function describeLocalRuntime() {
     expect(markdown).toContain('usage_count: 1');
     expect(markdown).toContain('last_used_at:');
     expect(readFileSync(
-      join(home.root, 'memory-usage.jsonl'),
+      join(home.controlDir, 'state', 'memory-usage.jsonl'),
       'utf-8',
     )).toContain('"type":"expand"');
 

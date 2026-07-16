@@ -52,8 +52,8 @@ function ensureRuntimeDirectories(home: BacklogHome): void {
   mkdirSync(home.controlDir, { recursive: true });
 }
 
-function globalUsageLogPath(home: BacklogHome): string {
-  return join(home.root, MEMORY_USAGE_LOG);
+function usageLogPath(home: BacklogHome): string {
+  return join(home.controlDir, 'state', MEMORY_USAGE_LOG);
 }
 
 function appendUsageLine(path: string, line: string): void {
@@ -240,12 +240,12 @@ export function createLocalRuntime(
     usageOverlay,
   );
   const memoryComposer = createComposerForStore(memoryStore);
-  const globalUsagePath = globalUsageLogPath(home);
+  const runtimeUsagePath = usageLogPath(home);
   const usageTracker = new MemoryUsageTracker({
     getService: getRuntimeService,
     appendLine: usageOverlay === undefined
       ? function appendGlobalUsage(line) {
-        appendUsageLine(globalUsagePath, line);
+        appendUsageLine(runtimeUsagePath, line);
       }
       : function appendProjectUsage(line) {
         usageOverlay.appendLine(line);
@@ -256,7 +256,7 @@ export function createLocalRuntime(
   });
   const runtimeReadUsageLines = usageOverlay === undefined
     ? function readGlobalUsage(): string[] {
-      return readUsageLines(globalUsagePath);
+      return readUsageLines(runtimeUsagePath);
     }
     : function readProjectUsage(): string[] {
       return usageOverlay.readLines();
