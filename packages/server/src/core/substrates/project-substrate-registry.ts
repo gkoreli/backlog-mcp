@@ -3,27 +3,36 @@ import type {
   SubstrateStorageClaim,
 } from '../../storage/substrate-storage-catalog.contract.js';
 import type {
+  CompiledBuiltinSubstrate,
   CompiledSubstrateDefinition,
   CreateProjectSubstrateRegistryParams,
   CreateProjectSubstrateRegistryResult,
+  RegisteredSubstrate,
   SubstrateDefinitionDiagnostic,
   SubstrateDefinitionIssue,
+  SubstrateWriteValidationResult,
 } from './types.js';
 
 type CollisionField = 'folder' | 'identity.prefix';
 
 interface Collision {
   field: CollisionField;
-  sources: readonly CompiledSubstrateDefinition[];
+  sources: readonly RegisteredSubstrate[];
 }
 
-/** Project-scoped runtime catalog composed from packaged and project definitions. */
-export class ProjectSubstrateRegistry implements SubstrateStorageCatalog {
-  readonly #substrates: ReadonlyMap<string, CompiledSubstrateDefinition>;
+function substrateType(substrate: RegisteredSubstrate): string {
+  return substrate.kind === 'compiled'
+    ? substrate.type
+    : substrate.definition.type;
+}
 
-  constructor(substrates: readonly CompiledSubstrateDefinition[]) {
+/** Project-scoped write router and storage catalog for every active substrate. */
+export class ProjectSubstrateRegistry implements SubstrateStorageCatalog {
+  readonly #substrates: ReadonlyMap<string, RegisteredSubstrate>;
+
+  constructor(substrates: readonly RegisteredSubstrate[]) {
     this.#substrates = new Map(substrates.map(function createEntry(substrate) {
-      return [substrate.definition.type, substrate];
+      return [substrateType(substrate), substrate];
     }));
   }
 
@@ -31,20 +40,53 @@ export class ProjectSubstrateRegistry implements SubstrateStorageCatalog {
     return this.#substrates.get(type)?.storageClaim;
   }
 
-  getSubstrate(type: string): CompiledSubstrateDefinition | undefined {
+  getSubstrate(type: string): RegisteredSubstrate | undefined {
     return this.#substrates.get(type);
   }
 
-  listSubstrates(): readonly CompiledSubstrateDefinition[] {
+  listSubstrates(): readonly RegisteredSubstrate[] {
     return [...this.#substrates.values()].sort(function compareSources(left, right) {
       return left.sourcePath.localeCompare(right.sourcePath);
     });
   }
+
+  /** Validate one canonical managed write through its registered implementation. */
+  validateWrite(candidate: unknown): SubstrateWriteValidationResult {
+    const type = typeof candidate === 'object'
+      && candidate !== null
+      && 'type' in candidate
+      && typeof candidate.type === 'string'
+      ? candidate.type
+      : undefined;
+    if (!type) {
+      return {
+        ok: false,
+        issues: [{
+          code: 'shape',
+          path: '/type',
+          message: 'candidate must declare a substrate type',
+        }],
+      };
+    }
+
+    const substrate = this.#substrates.get(type);
+    if (!substrate) {
+      return {
+        ok: false,
+        issues: [{
+          code: 'shape',
+          path: '/type',
+          message: `unknown substrate type: ${type}`,
+        }],
+      };
+    }
+    return substrate.validateWrite(candidate);
+  }
 }
 
 function compareSources(
-  left: CompiledSubstrateDefinition,
-  right: CompiledSubstrateDefinition,
+  left: RegisteredSubstrate,
+  right: RegisteredSubstrate,
 ): number {
   return left.sourcePath.localeCompare(right.sourcePath);
 }
@@ -87,10 +129,10 @@ function groupByType(
 }
 
 function findClaimCollisions(
-  definitions: readonly CompiledSubstrateDefinition[],
+  definitions: readonly RegisteredSubstrate[],
 ): Collision[] {
   const collisions: Collision[] = [];
-  const prefixes = new Map<string, CompiledSubstrateDefinition[]>();
+  const prefixes = new Map<string, RegisteredSubstrate[]>();
 
   for (const definition of definitions) {
     const prefix = definition.storageClaim.identity.prefix;
@@ -134,10 +176,11 @@ function findClaimCollisions(
 }
 
 function composeDefinitions(
+  builtins: readonly CompiledBuiltinSubstrate[],
   packaged: readonly CompiledSubstrateDefinition[],
   candidates: readonly CompiledSubstrateDefinition[],
   rejectedSources: ReadonlySet<string>,
-): CompiledSubstrateDefinition[] {
+): RegisteredSubstrate[] {
   const acceptedCandidates = candidates.filter(function isAccepted(candidate) {
     return !rejectedSources.has(candidate.sourcePath);
   });
@@ -145,6 +188,7 @@ function composeDefinitions(
     return candidate.definition.replaces ? [candidate.definition.replaces] : [];
   }));
   return [
+    ...builtins,
     ...packaged.filter(function isNotReplaced(definition) {
       return !replacedSources.has(definition.sourcePath);
     }),
@@ -161,17 +205,30 @@ function composeDefinitions(
 export function createProjectSubstrateRegistry(
   params: CreateProjectSubstrateRegistryParams,
 ): CreateProjectSubstrateRegistryResult {
+  const builtins = [...(params.builtins ?? [])].sort(compareSources);
   const packaged = [...params.packaged].sort(compareSources);
   const project = [...params.project].sort(compareSources);
+  const builtinsByType = new Map<string, CompiledBuiltinSubstrate>();
   const packagedByType = groupByType(packaged);
   const projectByType = groupByType(project);
   const rejectedSources = new Set<string>();
   const issuesBySource = new Map<string, SubstrateDefinitionIssue[]>();
   const candidates: CompiledSubstrateDefinition[] = [];
 
+  for (const builtin of builtins) {
+    const type = substrateType(builtin);
+    if (builtinsByType.has(type)) {
+      throw new Error(`duplicate compiled substrate type: ${type}`);
+    }
+    builtinsByType.set(type, builtin);
+  }
+
   for (const [type, packagedGroup] of packagedByType) {
     if (packagedGroup.length > 1) {
       throw new Error(`duplicate packaged substrate type: ${type}`);
+    }
+    if (builtinsByType.has(type)) {
+      throw new Error(`packaged substrate type collides with compiled type: ${type}`);
     }
   }
 
@@ -202,6 +259,14 @@ export function createProjectSubstrateRegistry(
 
     const definition = group[0];
     if (!definition) continue;
+    if (builtinsByType.has(type)) {
+      reject(definition, {
+        code: 'shape',
+        path: '/type',
+        message: `compiled substrate type ${type} cannot be replaced by project data`,
+      });
+      continue;
+    }
     const packagedDefinition = packagedByType.get(type)?.[0];
     if (packagedDefinition) {
       if (definition.definition.replaces !== packagedDefinition.sourcePath) {
@@ -226,12 +291,23 @@ export function createProjectSubstrateRegistry(
   let addedRejection = true;
   while (addedRejection) {
     addedRejection = false;
-    const composed = composeDefinitions(packaged, candidates, rejectedSources);
+    const composed = composeDefinitions(
+      builtins,
+      packaged,
+      candidates,
+      rejectedSources,
+    );
     for (const collision of findClaimCollisions(composed)) {
       const issue = createCollisionIssue(collision);
-      const projectSources = collision.sources.filter(function isProjectSource(source) {
-        return candidates.includes(source) && !rejectedSources.has(source.sourcePath);
-      });
+      const projectSources = collision.sources.filter(
+        function isProjectSource(
+          source,
+        ): source is CompiledSubstrateDefinition {
+          return source.kind === 'declarative'
+            && candidates.includes(source)
+            && !rejectedSources.has(source.sourcePath);
+        },
+      );
       if (projectSources.length === 0) {
         throw new Error(issue.message);
       }
@@ -242,7 +318,12 @@ export function createProjectSubstrateRegistry(
     }
   }
 
-  const active = composeDefinitions(packaged, candidates, rejectedSources);
+  const active = composeDefinitions(
+    builtins,
+    packaged,
+    candidates,
+    rejectedSources,
+  );
   const diagnostics = project
     .filter(function wasRejected(definition) {
       return rejectedSources.has(definition.sourcePath);

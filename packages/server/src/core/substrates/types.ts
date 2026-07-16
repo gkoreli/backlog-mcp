@@ -1,4 +1,9 @@
-import type { RuntimeSubstrateDefinition } from '@backlog-mcp/shared';
+import type {
+  AnyEntity,
+  RuntimeEntity,
+  RuntimeSubstrateDefinition,
+  SubstrateType,
+} from '@backlog-mcp/shared';
 import type {
   DiscoveredDocument,
   DiscoveredSubstrateDeclaration,
@@ -33,6 +38,7 @@ export interface SubstrateWriteValidationFailure {
 
 export interface SubstrateWriteValidationSuccess {
   ok: true;
+  entity: AnyEntity;
 }
 
 export type SubstrateWriteValidationResult =
@@ -40,10 +46,28 @@ export type SubstrateWriteValidationResult =
   | SubstrateWriteValidationSuccess;
 
 export interface CompiledSubstrateDefinition {
+  kind: 'declarative';
   sourcePath: string;
   definition: RuntimeSubstrateDefinition;
   storageClaim: Readonly<SubstrateStorageClaim>;
   validateWrite(candidate: unknown): SubstrateWriteValidationResult;
+}
+
+export interface CompiledBuiltinSubstrate {
+  kind: 'compiled';
+  sourcePath: string;
+  type: SubstrateType;
+  storageClaim: Readonly<SubstrateStorageClaim>;
+  validateWrite(candidate: unknown): SubstrateWriteValidationResult;
+}
+
+export type RegisteredSubstrate =
+  | CompiledBuiltinSubstrate
+  | CompiledSubstrateDefinition;
+
+export interface SubstrateClaimSource {
+  sourcePath: string;
+  storageClaim: Readonly<SubstrateStorageClaim>;
 }
 
 export interface CompileSubstrateDefinitionParams {
@@ -63,6 +87,7 @@ export type CompileSubstrateDefinitionResult =
   };
 
 export interface CreateProjectSubstrateRegistryParams {
+  builtins?: readonly CompiledBuiltinSubstrate[];
   packaged: readonly CompiledSubstrateDefinition[];
   project: readonly CompiledSubstrateDefinition[];
 }
@@ -73,6 +98,7 @@ export interface CreateProjectSubstrateRegistryResult {
 }
 
 export interface LoadSubstrateDefinitionsParams {
+  builtins?: readonly CompiledBuiltinSubstrate[];
   packagedDefinitions: readonly CompileSubstrateDefinitionParams[];
   declarations: readonly DiscoveredSubstrateDeclaration[];
 }
@@ -96,7 +122,7 @@ export interface SubstrateDocumentCollisionDiagnostic {
 export interface ClaimSubstrateDocumentsParams {
   homeKey: string;
   documents: readonly DiscoveredDocument[];
-  substrates: readonly CompiledSubstrateDefinition[];
+  substrates: readonly SubstrateClaimSource[];
 }
 
 export interface ClaimSubstrateDocumentsResult {

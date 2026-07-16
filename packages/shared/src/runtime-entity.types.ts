@@ -18,8 +18,8 @@ export interface RuntimeEntity {
   status?: string;
   parent_id?: string;
   references?: Reference[];
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
   [field: string]: unknown;
 }
 

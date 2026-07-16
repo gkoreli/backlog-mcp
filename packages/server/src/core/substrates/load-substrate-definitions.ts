@@ -43,6 +43,7 @@ export function loadSubstrateDefinitions(
   const packaged = compileDefinitions(params.packagedDefinitions);
   const project = compileDefinitions(params.declarations.map(declarationToCompileParams));
   const composed = createProjectSubstrateRegistry({
+    builtins: params.builtins,
     packaged: packaged.substrates,
     project: project.substrates,
   });
@@ -61,8 +62,10 @@ export function loadSubstrateDefinitions(
 /** Load the pre-installed ADR/Requirement/Prompt definitions plus project declarations. */
 export function loadProjectSubstrateDefinitions(
   declarations: readonly DiscoveredSubstrateDeclaration[],
+  builtins: LoadSubstrateDefinitionsParams['builtins'] = [],
 ): LoadSubstrateDefinitionsResult {
   return loadSubstrateDefinitions({
+    builtins,
     packagedDefinitions: PACKAGED_SUBSTRATE_DEFINITIONS,
     declarations,
   });
