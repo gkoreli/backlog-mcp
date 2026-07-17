@@ -246,11 +246,14 @@ function recallCost(item: object): number {
 function demandRecorder(): {
   tracker: HomeRecallDemandRecorder;
   recordRecall: Mock<HomeRecallDemandRecorder['recordRecall']>;
+  recordSearch: Mock<NonNullable<HomeRecallDemandRecorder['recordSearch']>>;
 } {
   const recordRecall = vi.fn<HomeRecallDemandRecorder['recordRecall']>();
+  const recordSearch = vi.fn<NonNullable<HomeRecallDemandRecorder['recordSearch']>>();
   return {
-    tracker: { recordRecall },
+    tracker: { recordRecall, recordSearch },
     recordRecall,
+    recordSearch,
   };
 }
 
@@ -589,6 +592,64 @@ describe('home read coordinator', function describeHomeReadCoordinator() {
       'memory',
       ['MEMO-P1'],
     );
+  });
+
+  it('records a per-home recall miss when a consulted home returns nothing (ADR 0121 R7)', async function recordsRecallMiss() {
+    const globalDemand = demandRecorder();
+    const projectDemand = demandRecorder();
+    const globalRuntime = createRuntime('global', 'global', {
+      composer: composer('global', [rankedMemory('MEMO-G1', 0.9)]),
+      usageTracker: globalDemand.tracker,
+    });
+    const projectRuntime = createRuntime('project', 'project', {
+      composer: composer('project', []),
+      usageTracker: projectDemand.tracker,
+    });
+    const coordinator = createHomeReadCoordinator({
+      resolveRuntime: resolverFor(globalRuntime, projectRuntime),
+    });
+
+    await coordinator.recall(
+      { query: 'memory', limit: 4 },
+      { projectRoot: 'project' },
+    );
+
+    expect(globalDemand.recordRecall).toHaveBeenCalledWith(
+      'memory',
+      ['MEMO-G1'],
+    );
+    // The empty home still records: ids [] is the first-class miss event
+    // and the promotion lane's cross-home demand signal.
+    expect(projectDemand.recordRecall).toHaveBeenCalledOnce();
+    expect(projectDemand.recordRecall).toHaveBeenCalledWith('memory', []);
+  });
+
+  it('records per-home search demand — ids only, zero-contribution homes included', async function recordsSearchDemand() {
+    const globalDemand = demandRecorder();
+    const projectDemand = demandRecorder();
+    const globalRuntime = createRuntime('global', 'global', {
+      searchResults: [searchResult('G-1', 2), searchResult('G-2', 1)],
+      usageTracker: globalDemand.tracker,
+    });
+    const projectRuntime = createRuntime('project', 'project', {
+      searchResults: [],
+      usageTracker: projectDemand.tracker,
+    });
+    const coordinator = createHomeReadCoordinator({
+      resolveRuntime: resolverFor(globalRuntime, projectRuntime),
+    });
+
+    await coordinator.search(
+      { query: 'ranked', limit: 4 },
+      { projectRoot: 'project' },
+    );
+
+    expect(globalDemand.recordSearch).toHaveBeenCalledOnce();
+    expect(globalDemand.recordSearch).toHaveBeenCalledWith(['G-1', 'G-2']);
+    expect(projectDemand.recordSearch).toHaveBeenCalledOnce();
+    expect(projectDemand.recordSearch).toHaveBeenCalledWith([]);
+    // Search demand is Tier-1 telemetry only: never the recall overlay.
+    expect(globalDemand.recordRecall).not.toHaveBeenCalled();
   });
 
   it('keeps wakeup briefings grouped per home without cross-home fusion', async function groupsWakeup() {
