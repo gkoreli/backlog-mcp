@@ -16,7 +16,7 @@ relates_to:
 **Status**: Proposed — Goga authorized implementation on 2026-07-16; this
 checkpoint fixes the boundary before code.
 
-**Phase state**: Phase A committed 15a8257, slices pending Phase Two.
+**Phase state**: Phase Two resumed from Phase A 15a8257 (rebased as 69d1448).
 
 ## Decision in one sentence
 
@@ -63,8 +63,9 @@ invariant breach. Every semantic surface says `collision candidate`.
   substrate. A second index would duplicate truth.
 - `MemorySchema` is strict. A Markdown-visible adjudication field must be added
   to the schema and substrate `extraFields`, not smuggled through an overlay.
-- `backlog_update({fields})` already performs schema-validated generic field
-  changes. A new dismissal tool would add vocabulary without capability.
+- The CLI `backlog update --fields` tail from ADR 0106.5 performs
+  schema-validated field changes, and docs-native Markdown remains directly
+  editable. Generic MCP update is intentionally absent.
 - `/memory/contradictions`, `backlog_contradictions`, and the CLI command already
   form one structural read surface. The semantic mode extends those adapters;
   it does not create a new tool.
@@ -233,15 +234,24 @@ Markdown file. A mark on either member excludes the pair. This is the product
 difference: a human can inspect the memory and see why two nearby facts are
 allowed to coexist.
 
-Agents and humans write or remove the mark through the existing generic update
-verb:
+Humans and CLI-capable agents write or remove the mark either in the
+authoritative Markdown file or through ADR 0106.5's explicit local tail:
 
 ```text
-backlog_update({ id, fields: { distinct_from: [otherId] } })
+backlog update MEMO-0042 --fields '{"distinct_from":["MEMO-0043"]}'
 ```
 
-The other existing resolutions remain `supersedes`, `state_key`, and
-`backlog_forget`. The detector only reads. It never writes a dismissal,
+The remember-response candidates remain actionable by MCP agents for every
+other outcome: supersede through `backlog_remember({ supersedes })`, establish
+one evolving fact through `backlog_remember({ state_key })`, retract through
+`backlog_forget`, or keep both with no write. Only `distinct_from` dismissal
+requires Markdown or the CLI tail in this phase.
+
+If write-time surfacing ships and the same pair repeatedly resurfaces
+undismissed across MCP-only sessions, that is the named escalation trigger for
+one declared semantic dismiss-collision intent. It is never a reason to revive
+generic MCP update, and declaring it before observed pressure would be a
+speculative tool. The detector itself only reads: it never writes a dismissal,
 expires a memory, selects a winner, or logs an adjudication on the user's
 behalf.
 
@@ -363,9 +373,12 @@ The feature stays falsifiable:
   wrong pressure point. Measurement source: two operator-captured, timestamped
   JSON snapshots from `backlog contradictions --candidates --json`; canonical
   pair IDs that remain present and unadjudicated across the interval are the
-  silence cohort. The server does not persist observations merely to measure
-  itself. Move pressure to the viewer; only then consider a bounded wakeup
-  count.
+  silence cohort. That cohort must distinguish ignored candidates from a
+  no-path tooling gap: repeat-surfaced-undismissed pairs observed in MCP-only
+  sessions are counted separately as the semantic-intent escalation signal,
+  not as evidence that surfacing itself was ignored. The server does not
+  persist observations merely to measure itself. Move pressure to the viewer
+  only after separating those causes; then consider a bounded wakeup count.
 - If the fold exceeds roughly 50 ms p95 at recall-scale corpora, cap K before
   adding caches or a new index. “Recall-scale” means a replayable 1,000-live-
   memory corpus, matching the global-pile pressure that motivated per-home
