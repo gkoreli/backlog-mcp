@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { flushEffects, provide, resetInjector } from '@nisli/core';
+import { flushEffects, provide, QueryClient, resetInjector } from '@nisli/core';
 import { AppState } from '../services/app-state.js';
 import {
   backlogEvents,
@@ -46,6 +46,7 @@ beforeEach(() => {
   splitState = new SplitPaneState();
   provide(AppState, () => app);
   provide(SplitPaneState, () => splitState);
+  provide(QueryClient, () => new QueryClient());
   vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => queue })));
 });
 
@@ -111,17 +112,37 @@ describe('collision candidate queue', () => {
     });
   });
 
-  it('refetches the active home queue after an entity change event', async () => {
+  it('reactively refreshes same-key rows and the summary after an entity change event', async () => {
     let changeHandler: ChangeCallback | undefined;
     vi.spyOn(backlogEvents, 'onChange').mockImplementation(function captureChange(handler) {
       changeHandler = handler;
     });
+    const refreshedQueue = {
+      pairs: [
+        {
+          pair_id: queue.pairs[0].pair_id,
+          pair_priority: 0.42,
+          signals: { neighbor_rank: 0.5, lexical_overlap: 0.2, scope: 0.8, epistemic_shape: 0.5 },
+          members: [
+            { id: 'MEMO-0002', title: 'Renamed second', digest: 'updated second digest', entity_refs: [], tags: [] },
+            { id: 'MEMO-0003', title: 'Third', digest: 'third digest', entity_refs: [], tags: [] },
+          ],
+        },
+      ],
+      total_live_memories: 5,
+      focal_count: 5,
+      candidate_count: 1,
+    };
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => queue })
+      .mockResolvedValueOnce({ ok: true, json: async () => refreshedQueue }));
     splitState.openCollisionCandidates({ home: 'project', projectRoot: '/repo' });
     const element = document.createElement('collision-candidates');
     document.body.appendChild(element);
     flushEffects();
     await vi.waitFor(() => {
       expect(element.querySelectorAll('.collision-priority')).toHaveLength(2);
+      expect(element.textContent).toContain('2 candidates from 4 focal memories (4 live memories).');
     });
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(splitState.activePane.value).toBe('collision-candidates');
@@ -138,6 +159,13 @@ describe('collision candidate queue', () => {
     changeHandler?.(event);
     flushEffects();
 
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => {
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(element.textContent).toContain('review priority 0.420');
+      expect(element.textContent).toContain('Renamed second');
+      expect(element.textContent).toContain('updated second digest');
+      expect(element.textContent).toContain('neighbor rank 0.50');
+      expect(element.textContent).toContain('1 candidate from 5 focal memories (5 live memories).');
+    });
   });
 });

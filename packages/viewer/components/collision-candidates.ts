@@ -5,7 +5,16 @@
  * `pairs` as received: collision candidates are adjudication pressure, not a
  * client-side ranking surface.
  */
-import { computed, component, each, html, inject, onCleanup, query } from '@nisli/core';
+import {
+  computed,
+  component,
+  each,
+  html,
+  inject,
+  onCleanup,
+  query,
+  type ReadonlySignal,
+} from '@nisli/core';
 import { AppState } from '../services/app-state.js';
 import { backlogEvents, type ChangeCallback } from '../services/event-source-client.js';
 import { SplitPaneState } from '../services/split-pane-state.js';
@@ -57,41 +66,62 @@ export const CollisionCandidates = component('collision-candidates', () => {
     splitState.openMcpResource(collisionCandidateUri(member.id), app.homeSelection.value);
   }
 
-  function renderMember(member: CollisionCandidateMember) {
-    const context = member.context ? ` · ${member.context}` : '';
+  function renderMember(member: ReadonlySignal<CollisionCandidateMember>) {
+    const id = computed(() => member.value.id);
+    const title = computed(() => member.value.title);
+    const digest = computed(() => member.value.digest);
+    const uri = computed(() => collisionCandidateUri(member.value.id));
+    const metadata = computed(() => {
+      const value = member.value;
+      const context = value.context ? ` · ${value.context}` : '';
+      if (!value.kind && !value.context && value.entity_refs.length === 0 && value.tags.length === 0) {
+        return null;
+      }
+      return html`<p class="collision-member-context">
+        ${value.kind ?? 'memory'}${context}
+        ${value.entity_refs.length ? ` · refs: ${value.entity_refs.join(', ')}` : ''}
+        ${value.tags.length ? ` · tags: ${value.tags.join(', ')}` : ''}
+      </p>`;
+    });
     function handleMemberClick() {
-      openMember(member);
+      openMember(member.value);
     }
     return html`
       <article class="collision-member">
-        <a href="${collisionCandidateUri(member.id)}" class="collision-member-link"
-           @click.prevent=${handleMemberClick}>${member.id} — ${member.title}</a>
-        <p class="collision-member-digest">${member.digest}</p>
-        ${member.kind || member.context || member.entity_refs.length || member.tags.length
-          ? html`<p class="collision-member-context">
-              ${member.kind ?? 'memory'}${context}
-              ${member.entity_refs.length ? ` · refs: ${member.entity_refs.join(', ')}` : ''}
-              ${member.tags.length ? ` · tags: ${member.tags.join(', ')}` : ''}
-            </p>`
-          : null}
+        <a href="${uri}" class="collision-member-link"
+           @click.prevent=${handleMemberClick}>${id} — ${title}</a>
+        <p class="collision-member-digest">${digest}</p>
+        ${metadata}
       </article>
     `;
   }
 
   const pairRows = each(pairs, (pair) => pair.pair_id, (entry) => {
-    const pair = entry.value as CollisionCandidatePair;
+    const pair = computed<CollisionCandidatePair>(() => entry.value);
+    const priority = computed(() => `review priority ${pair.value.pair_priority.toFixed(3)}`);
+    const signals = computed(() => formatCollisionSignals(pair.value.signals));
+    const firstMember = computed(() => pair.value.members[0]);
+    const secondMember = computed(() => pair.value.members[1]);
     return html`
       <li class="collision-pair">
         <div class="collision-pair-heading">
-          <span class="collision-priority">review priority ${pair.pair_priority.toFixed(3)}</span>
-          <span class="collision-signals">${formatCollisionSignals(pair.signals)}</span>
+          <span class="collision-priority">${priority}</span>
+          <span class="collision-signals">${signals}</span>
         </div>
         <div class="collision-members">
-          ${renderMember(pair.members[0])}
-          ${renderMember(pair.members[1])}
+          ${renderMember(firstMember)}
+          ${renderMember(secondMember)}
         </div>
       </li>
     `;
+  });
+
+  const summaryView = computed(() => {
+    const value = summary.value;
+    const candidateLabel = value?.candidate_count === 1 ? 'candidate' : 'candidates';
+    return value
+      ? html`<p class="collision-summary">${value.candidate_count} ${candidateLabel} from ${value.focal_count} focal memories (${value.total_live_memories} live memories).</p>`
+      : null;
   });
 
   const content = computed(() => {
@@ -112,8 +142,8 @@ export const CollisionCandidates = component('collision-candidates', () => {
 
   return html`
     <section class="collision-candidates" aria-label="Collision candidate queue">
-      <p class="collision-guidance">Inspect both Markdown files, then adjudicate with the existing memory update fields—for example <code>distinct_from</code> or supersession. This queue is read-only.</p>
-      ${summary.value ? html`<p class="collision-summary">${summary.value.candidate_count} candidates from ${summary.value.focal_count} focal memories (${summary.value.total_live_memories} live memories).</p>` : null}
+      <p class="collision-guidance">Inspect both Markdown files. MCP can supersede, set a <code>state_key</code>, forget, or keep both. To dismiss a false collision, add <code>distinct_from</code> in Markdown or use the CLI <code>backlog update --fields</code> tail. This queue is read-only.</p>
+      ${summaryView}
       ${content}
     </section>
   `;
