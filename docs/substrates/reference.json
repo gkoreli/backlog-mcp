@@ -1,0 +1,108 @@
+{
+  "$schema": "urn:backlog-mcp:schema:substrate-definition:1",
+  "definitionVersion": 1,
+  "type": "reference",
+  "label": {
+    "singular": "Reference",
+    "plural": "References"
+  },
+  "folder": "references",
+  "identity": {
+    "strategy": "prefixed-number",
+    "prefix": "REF",
+    "minimumDigits": 4,
+    "displayTemplate": "REF-{key}"
+  },
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+      "type": { "const": "reference" },
+      "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+      "content": { "type": "string", "maxLength": 2000000 },
+      "created_at": { "type": "string", "format": "date-time" },
+      "updated_at": { "type": "string", "format": "date-time" },
+      "category": {
+        "type": "string",
+        "enum": ["stack-technology", "prior-art-system", "benchmark"]
+      },
+      "what_it_is": { "type": "string", "minLength": 1, "maxLength": 500 },
+      "citations": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 20,
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+            "url": { "type": "string", "minLength": 1, "maxLength": 2000 },
+            "kind": {
+              "type": "string",
+              "enum": ["paper", "official-docs", "repo", "post"]
+            }
+          },
+          "required": ["title", "url", "kind"],
+          "additionalProperties": false
+        }
+      },
+      "our_relationship": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000,
+        "description": "What this project adopts, parks, or rejects from the subject, and why — with exact repo file citations where reproductions exist."
+      },
+      "bears_on": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 20,
+        "items": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "uniqueItems": true,
+        "description": "NORTH-STAR tenets/invariants and ADRs this subject bears on."
+      }
+    },
+    "required": [
+      "id",
+      "type",
+      "title",
+      "content",
+      "category",
+      "what_it_is",
+      "citations",
+      "our_relationship",
+      "bears_on"
+    ],
+    "additionalProperties": false
+  },
+  "intents": [
+    {
+      "verb": "capture_reference",
+      "toolName": "backlog_capture_reference",
+      "operation": "create",
+      "description": "Use when recording an external technology, prior-art system, or benchmark this project builds on — with authoritative citations and the project's adopt/park/reject relationship to it.",
+      "requiredInputs": [
+        "title",
+        "content",
+        "category",
+        "what_it_is",
+        "citations",
+        "our_relationship",
+        "bears_on"
+      ]
+    }
+  ],
+  "disclosure": {
+    "search": {
+      "enabled": true,
+      "fields": [
+        "title",
+        "content",
+        "category",
+        "what_it_is",
+        "citations",
+        "our_relationship",
+        "bears_on"
+      ]
+    }
+  }
+}
