@@ -54,7 +54,12 @@ function fixtureScore(id: string): number | undefined {
     return pair.id === id;
   });
   if (fixture === undefined) return undefined;
-  return scoreCollisionPair(fixture.left, fixture.right, 1, NOW)?.pair_priority;
+  return scoreCollisionPair(
+    fixture.left,
+    fixture.right,
+    fixture.neighbor_rank,
+    NOW,
+  )?.pair_priority;
 }
 
 describe('ADR 0120 judged collision-candidate gate', () => {
@@ -64,6 +69,9 @@ describe('ADR 0120 judged collision-candidate gate', () => {
     expect(new Set(COLLISION_CANDIDATE_PAIRS.map(function getId(pair) {
       return pair.id;
     })).size).toBe(8);
+    expect(COLLISION_CANDIDATE_PAIRS.map(function getNeighborRank(pair) {
+      return pair.neighbor_rank;
+    })).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
     for (const pair of COLLISION_CANDIDATE_PAIRS) {
       expect(MemorySchema.safeParse(pair.left).success, `${pair.id} left`).toBe(true);
       expect(MemorySchema.safeParse(pair.right).success, `${pair.id} right`).toBe(true);
@@ -82,12 +90,22 @@ describe('ADR 0120 judged collision-candidate gate', () => {
     const candidates = COLLISION_CANDIDATE_PAIRS
       .filter(function isCandidate(pair) { return pair.judgment === 'candidate'; })
       .map(function score(pair) {
-        return scoreCollisionPair(pair.left, pair.right, 1, NOW)?.pair_priority;
+        return scoreCollisionPair(
+          pair.left,
+          pair.right,
+          pair.neighbor_rank,
+          NOW,
+        )?.pair_priority;
       });
     const lowerPriority = COLLISION_CANDIDATE_PAIRS
       .filter(function isLowerPriority(pair) { return pair.judgment === 'lower_priority'; })
       .map(function score(pair) {
-        return scoreCollisionPair(pair.left, pair.right, 1, NOW)?.pair_priority;
+        return scoreCollisionPair(
+          pair.left,
+          pair.right,
+          pair.neighbor_rank,
+          NOW,
+        )?.pair_priority;
       });
     expect(candidates).toEqual([0.8125, 0.925]);
     expect(lowerPriority[0]).toBeCloseTo(0.731818, 6);
@@ -125,8 +143,18 @@ describe('ADR 0120 judged collision-candidate gate', () => {
       });
       expect(pair, id).toBeDefined();
       if (pair === undefined) continue;
-      expect(scoreCollisionPair(pair.left, pair.right, 1, NOW), `${id} forward`).toBeUndefined();
-      expect(scoreCollisionPair(pair.right, pair.left, 1, NOW), `${id} reverse`).toBeUndefined();
+      expect(scoreCollisionPair(
+        pair.left,
+        pair.right,
+        pair.neighbor_rank,
+        NOW,
+      ), `${id} forward`).toBeUndefined();
+      expect(scoreCollisionPair(
+        pair.right,
+        pair.left,
+        pair.neighbor_rank,
+        NOW,
+      ), `${id} reverse`).toBeUndefined();
     }
   });
 
@@ -138,11 +166,21 @@ describe('ADR 0120 judged collision-candidate gate', () => {
       parent_id: 'FLDR-0102',
       tags: ['  '],
     };
-    expect(scoreCollisionPair(base.left, otherContext, 1, NOW)).toBeUndefined();
+    expect(scoreCollisionPair(
+      base.left,
+      otherContext,
+      base.neighbor_rank,
+      NOW,
+    )).toBeUndefined();
 
     const anchoredLeft = { ...base.left, tags: ['deployment'] };
     const anchoredRight = { ...otherContext, tags: ['deployment'] };
-    expect(scoreCollisionPair(anchoredLeft, anchoredRight, 1, NOW)?.signals.scope)
+    expect(scoreCollisionPair(
+      anchoredLeft,
+      anchoredRight,
+      base.neighbor_rank,
+      NOW,
+    )?.signals.scope)
       .toBe(0.8);
   });
 
@@ -152,7 +190,7 @@ describe('ADR 0120 judged collision-candidate gate', () => {
     expect(scoreCollisionPair(
       base.left,
       { ...base.right, valid_until: 'not-a-date' },
-      1,
+      base.neighbor_rank,
       NOW,
     )).toBeDefined();
   });

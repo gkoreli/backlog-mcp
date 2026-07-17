@@ -6,6 +6,7 @@ export interface CollisionFixturePair {
   id: string;
   left: Memory;
   right: Memory;
+  neighbor_rank: number;
   judgment: CollisionFixtureJudgment;
 }
 
@@ -38,12 +39,14 @@ export const COLLISION_CANDIDATE_PAIRS: readonly CollisionFixturePair[] = [
     id: 'unkeyed-deploy-target',
     left: memory('MEMO-1001', 'Production deploys to Cloudflare Workers'),
     right: memory('MEMO-1002', 'Production deploys to a local VPS'),
+    neighbor_rank: 1,
     judgment: 'candidate',
   },
   {
     id: 'unkeyed-package-manager',
     left: memory('MEMO-1003', 'This repository uses pnpm for dependency installation'),
     right: memory('MEMO-1004', 'This repository uses npm for dependency installation'),
+    neighbor_rank: 1,
     judgment: 'candidate',
   },
   {
@@ -52,6 +55,7 @@ export const COLLISION_CANDIDATE_PAIRS: readonly CollisionFixturePair[] = [
       distinct_from: ['MEMO-1006'],
     }),
     right: memory('MEMO-1006', 'The viewer is styled with Tsa design tokens'),
+    neighbor_rank: 1,
     judgment: 'exclude',
   },
   {
@@ -63,6 +67,7 @@ export const COLLISION_CANDIDATE_PAIRS: readonly CollisionFixturePair[] = [
       parent_id: undefined,
       distinct_from: ['MEMO-1007'],
     }),
+    neighbor_rank: 1,
     judgment: 'exclude',
   },
   {
@@ -71,6 +76,7 @@ export const COLLISION_CANDIDATE_PAIRS: readonly CollisionFixturePair[] = [
       kind: 'timeless',
     }),
     right: memory('MEMO-1010', 'Current integrity checks use SHA-256 hashes'),
+    neighbor_rank: 1,
     judgment: 'lower_priority',
   },
   {
@@ -79,6 +85,7 @@ export const COLLISION_CANDIDATE_PAIRS: readonly CollisionFixturePair[] = [
       kind: 'timeless',
     }),
     right: memory('MEMO-1012', 'Current documents name IDs with uppercase ASCII type prefixes'),
+    neighbor_rank: 1,
     judgment: 'lower_priority',
   },
   {
@@ -87,6 +94,7 @@ export const COLLISION_CANDIDATE_PAIRS: readonly CollisionFixturePair[] = [
     right: memory('MEMO-1014', 'This repository uses pnpm for dependency installation', {
       parent_id: 'FLDR-0102',
     }),
+    neighbor_rank: 1,
     judgment: 'exclude',
   },
   {
@@ -95,6 +103,7 @@ export const COLLISION_CANDIDATE_PAIRS: readonly CollisionFixturePair[] = [
     right: memory('MEMO-1016', 'Production deploys to Cloudflare Workers', {
       parent_id: 'FLDR-0102',
     }),
+    neighbor_rank: 1,
     judgment: 'exclude',
   },
 ];
