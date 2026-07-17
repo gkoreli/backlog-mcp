@@ -10,6 +10,7 @@
     "test": "pnpm -r test",
     "test:watch": "pnpm --filter backlog-mcp test:watch",
     "search:eval": "node --experimental-strip-types scripts/search-eval.mjs",
+    "suite:structural": "node --experimental-strip-types scripts/structural-suite.mjs",
     "usage:report": "node --experimental-strip-types scripts/usage-report.mjs",
     "qrels:implicit": "node scripts/implicit-qrels.mjs",
     "dev": "vite",
