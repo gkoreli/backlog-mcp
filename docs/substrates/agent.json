@@ -1,0 +1,54 @@
+{
+  "$schema": "urn:backlog-mcp:schema:substrate-definition:1",
+  "definitionVersion": 1,
+  "type": "agent",
+  "label": {
+    "singular": "Agent",
+    "plural": "Agents"
+  },
+  "folder": "agents",
+  "identity": {
+    "strategy": "prefixed-number",
+    "prefix": "AGENT",
+    "minimumDigits": 4,
+    "displayTemplate": "AGENT-{key}"
+  },
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+      "type": { "const": "agent" },
+      "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+      "content": { "type": "string", "maxLength": 2000000 },
+      "created_at": { "type": "string", "format": "date-time" },
+      "updated_at": { "type": "string", "format": "date-time" },
+      "role": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200,
+        "description": "Current working role (e.g. orchestrator, reviewer, engineer). Descriptive, never evaluative — roles move while identity stays (ADR 0119)."
+      },
+      "harness": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200,
+        "description": "Runtime harness the agent executes in (e.g. claude-code, codex-cli)."
+      },
+      "principal": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 200,
+        "description": "Stable namespaced external identity key (ADR 0119 R2) — the exact attribution value external clients supply, e.g. an orchestrator principal (aime:granite) or herdr pane/workspace metadata (herdr:main/2). Scalar by design; no alias arrays in v1."
+      }
+    },
+    "required": ["id", "type", "title", "content", "principal"],
+    "additionalProperties": false
+  },
+  "disclosure": {
+    "search": {
+      "enabled": true,
+      "fields": ["title", "content", "role", "harness", "principal"]
+    }
+  }
+}
