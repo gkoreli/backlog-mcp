@@ -510,8 +510,12 @@ function supersedesPairs(documents) {
   const pairs = [];
   for (const document of documents) {
     if (document.entity === undefined) continue;
-    const declared = document.entity.supersedes;
-    if (!Array.isArray(declared)) continue;
+    const raw = document.entity.supersedes;
+    // Lenient reads keep whatever YAML yields: the schema declares a string
+    // array, but a hand-written scalar is still a declaration of record.
+    const declared = Array.isArray(raw)
+      ? raw
+      : typeof raw === 'string' ? [raw] : [];
     for (const reference of declared) {
       if (typeof reference !== 'string' || reference.trim() === '') continue;
       pairs.push({ superseding: document, reference });
