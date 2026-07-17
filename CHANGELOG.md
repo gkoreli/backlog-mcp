@@ -12,12 +12,25 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+## [0.63.0] — 2026-07-17
+
+*The store starts noticing when it disagrees with itself: nearby memories that
+might collide are surfaced for a human verdict — candidates, never verdicts —
+and the dismissal is itself a durable, readable memory.*
+
 ### Added
 - **Memory collision candidates (ADR 0120).** Remember receipts, consolidation,
   the existing contradictions command/tool, and a per-home viewer queue can now
   surface nearby live memories for review without declaring a contradiction or
   changing recall order. False collisions can be dismissed durably with the
   human-readable `distinct_from` Markdown field.
+
+### Fixed
+- **Docs-native migration accepts its own recommended layout.** A project whose
+  control dir contains a tracked `.gitignore` (the layout the tool itself
+  suggests) no longer fails the fail-closed migration; unknown files still
+  refuse. Project cache directories are now kept out of git automatically,
+  without rewriting any human-authored ignore rules.
 
 ## [0.62.0] — 2026-07-16
 
