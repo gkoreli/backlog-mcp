@@ -13,6 +13,12 @@ begins at 0.57.0 — earlier history lives in git.
 ## [Unreleased]
 
 ### Added
+- **Install by telling your agent (SKILL.md).** The whole setup is now one
+  message: *"Read <repo>/SKILL.md and follow it to install backlog-mcp."* The
+  agent detects its harness (Claude Code, Cursor, Codex, generic MCP, or
+  CLI-only), registers the server, runs the first wakeup, and verifies git
+  stayed clean and the briefing stayed under budget — with exact fallbacks and
+  a report-back template. Claude Code and CLI paths live-verified.
 - **`wakeup(operation=…)` — the Amnesia Test's missing argument.** A fresh agent
   handed nothing but one wakeup call with an operation ID receives that
   document's live state as the briefing's leading FOCUS centerpiece — goal,
