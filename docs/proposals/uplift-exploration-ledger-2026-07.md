@@ -108,6 +108,87 @@ Wider ecosystem scan (forge, agent-hive, cc-pane): worktree-parallel *execution*
 is now a common harness pattern; none pairs it with memory. The window is
 narrower than "unclaimed" but still open.
 
+## UQ6 — What does ghostty's craft and governance teach the spine? (Goga-directed, 2026-07-17)
+
+**Decision brief.** Ghostty is a beloved, craft-tier, local-first OSS project.
+Question: which of its recent moves transfer to our product craft, OSS posture,
+or substrate pack? Decisions this could change: OSS contribution governance, the
+substrate pack's contents, release discipline.
+
+**Evidence (repo + website, code/doc-level).**
+- **`AI_POLICY.md`** at repo root: mandatory AI-use disclosure, "the human in the
+  loop must fully understand all code," no AI media, a public denouncement list
+  for slop, maintainer exemption by earned trust. A governance artifact for the
+  AI era that did not exist as a genre two years ago.
+- **`.agents/commands/` + `.agents/skills/`** maintained in-repo alongside
+  AGENTS.md and CLAUDE.md — the .md-standards wave at craft-tier OSS, now
+  including agent *toolboxes*, not just instructions.
+- **Release notes as product surface**: 1.3.0 notes are "painstakingly and
+  lovingly hand-crafted by human maintainers… 16+ hours," with a March/September
+  release cadence, security advisories with CVEs, and narrative highlights.
+  Human authorship is explicitly stated — craft as positioning.
+
+**Landings.**
+1. **ADOPT (S, when OSS contributions become real):** a backlog-mcp AI
+   contribution policy in ghostty's genre — disclosure + understanding rule —
+   written for a project whose *builders are agents*: our twist is that
+   provenance is machine-recorded (the journal attributes every write), so our
+   policy can be *enforced by the store* rather than by trust. That inversion is
+   spine-shaped.
+2. **SUBSTRATE-PACK ADDITION:** POLICY as a document class (AI policy,
+   contribution law, security policy) — law-shaped documents, which under the
+   lattice's freshness classes disclose canonical-fresh in worktrees. Feeds the
+   judgment branch: policy is exactly what a human must be asked about rarely
+   and precisely.
+3. **ADOPT (discipline, no code):** milestone releases (0.70+, 1.0) get
+   hand-crafted narrative release notes in the ghostty genre; the per-release
+   north-star italics we already write are the seed of this.
+
+## UQ7 — What does herdr formalize that we designed by hand? (Goga-directed, 2026-07-17)
+
+**Decision brief.** Herdr ("agent multiplexer that lives in your terminal") is
+the substrate our own fleet runs on — aime consumes its panes today. Question:
+which mechanisms in its recent releases (0.7.x, July 2026) transfer to the
+lattice, 0119 attribution, the judgment branch, or our API craft?
+
+**Evidence (CHANGELOG 0.7.2–0.7.4, code-adjacent detail level).**
+- **`session.snapshot`** — one socket call bootstraps full client state before
+  event subscription. Wakeup as a protocol pattern, independently invented.
+- **`terminal session observe` vs `control`** — a formalized lane split:
+  read-only NDJSON observation streams vs control sessions carrying input,
+  resize, release, and **takeover authority**. Our 0117 watcher-never-mutates
+  law and aime 0032's observe-only gate, expressed as API surface with named,
+  revocable authority.
+- **Agent metadata tokens** — sidebar rows with per-agent overrides and custom
+  metadata tokens; pane/workspace metadata reported through CLI and socket API;
+  per-pane agent lifecycle detection including **blocked-on-permission and
+  question dialogs** (Amp/Codex/Claude/Grok/Copilot variants tracked release
+  over release).
+- **Worktrees rendered as a tree** in the agents-first mobile switcher — herdr
+  models agents-in-worktrees as a first-class UI concept.
+- **`api schema --json`** — the CLI ships its own JSON Schema; bundled agent
+  SKILL.md refreshed per release (the install pattern a third time).
+
+**Landings.**
+1. **DESIGN INPUT → lattice W3:** the "main brain reads across worktrees"
+   judgment call should be modeled as herdr models control: an explicit,
+   revocable **lease with named authority**, never an ambient role. Recorded in
+   the lattice proposal's judgment-call framing.
+2. **DESIGN INPUT → 0119 Slice A:** herdr pane/workspace metadata is a live,
+   machine-resolved identity source already in Goga's stack (aime consumes it);
+   the agent substrate's attribution contract should name it as a supported
+   origin. No new code in our product.
+3. **EVIDENCE → judgment branch:** herdr's blocked-on-permission/question
+   detection is the pane-level "needs a human" signal — prior art for the
+   attention surface, and the natural upstream feed for a future unified
+   judgment queue (herdr detects, aime routes, backlog-mcp remembers).
+4. **EVIDENCE → lattice proposal:** worktrees-as-tree in a beloved shipping
+   tool = further market validation that agents-in-worktrees is the real
+   topology (added to the proposal's prior-art note).
+5. **GARDEN:** `session.snapshot` audit of our viewer boot (snapshot-then-
+   subscribe vs piecemeal); CLI self-describing schema (`api schema`) — both
+   with the trigger "next viewer/API work cycle."
+
 ## Standing rules going forward
 
 1. Every future landscape claim cites its verification level: `code-verified` /

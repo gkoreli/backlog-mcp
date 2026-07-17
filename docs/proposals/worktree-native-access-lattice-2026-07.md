@@ -45,6 +45,12 @@ Running the released wakeup inside one (`backlog-mcp-wt-0116`, branch sealed at
   --git-common-dir` resolves any worktree to its main checkout — we shipped exactly
   this yesterday in aime's project-scoped questions.
 
+Prior-art check II (ledger UQ7): herdr — the terminal multiplexer Goga's own
+fleet runs on — renders worktrees as a first-class tree in its agents-first
+switcher and formalizes observe-vs-control lanes with named takeover authority;
+the lattice's "main brain" access question should be modeled the same way (an
+explicit revocable lease, never an ambient role).
+
 Prior-art check (code-verified, see `uplift-exploration-ledger-2026-07.md` UQ3):
 beads ships worktree plumbing (`bd worktree`, a family-shared `.beads/` store), so
 the pain is market-validated — but its mechanism is one shared database outside
