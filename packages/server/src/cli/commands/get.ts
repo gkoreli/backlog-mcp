@@ -5,7 +5,9 @@ import { cliRuntimeDependencies, run } from '../runner.js';
 
 function format(result: GetResult): string {
   return result.items.map(i =>
-    i.content ? `--- ${i.id} ---\n${i.content}` : `--- ${i.id} ---\n(no content)`
+    i.content
+      ? `--- ${i.id} ---\n${i.content}`
+      : `--- ${i.id} ---\n${i.error ?? '(no content)'}`
   ).join('\n\n');
 }
 

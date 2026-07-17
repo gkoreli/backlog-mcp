@@ -47,7 +47,7 @@ function formatContext(context: ContextStubs): string {
 
 /** MCP transport formatting — core returns raw data, we present it */
 function formatItem(item: GetItem): string {
-  if (item.content === null) return `Not found: ${item.id}`;
+  if (item.content === null) return item.error ?? `Not found: ${item.id}`;
   if (item.resource) {
     const header = `# Resource: ${item.id}\nMIME: ${item.resource.mimeType}`;
     const fm = item.resource.frontmatter ? `\nFrontmatter: ${JSON.stringify(item.resource.frontmatter)}` : '';
@@ -61,10 +61,10 @@ export function registerBacklogGetTool(server: McpServer, service: IBacklogServi
   server.registerTool(
     'backlog_get',
     {
-      description: 'Get full details by ID. Accepts task IDs (TASK-0001, EPIC-0002) or MCP resource URIs (mcp://backlog/resources/design.md). Works for any item regardless of status. Pass context:true when starting work on an entity to also see its relational neighborhood as stubs.',
+      description: 'Get full details by ID. Accepts task IDs (TASK-0001, EPIC-0002), document paths (README.md, docs/adr/0001-example.md), or MCP resource URIs (mcp://backlog/resources/design.md). Works for any item regardless of status. Pass context:true when starting work on an entity to also see its relational neighborhood as stubs.',
       inputSchema: z.object({
         ...BACKLOG_HOME_INPUT_FIELDS,
-        id: z.union([z.string(), z.array(z.string())]).describe('Task ID (e.g. TASK-0001) or MCP resource URI (e.g. mcp://backlog/resources/file.md). Array for batch fetch.'),
+        id: z.union([z.string(), z.array(z.string())]).describe('Task ID (e.g. TASK-0001), document path (e.g. README.md, docs/notes/file.md), or MCP resource URI (e.g. mcp://backlog/resources/file.md). Array for batch fetch.'),
         context: z.boolean().optional().describe('Expand the entity\'s relational neighborhood as stubs — parent/children/siblings/references/referenced_by/related; hydrate any stub with another backlog_get.'),
         depth: z.number().int().min(1).max(2).optional().describe('Relational expansion depth with context:true. 1 = direct relations (default), 2 = grandparents/grandchildren.'),
       }),

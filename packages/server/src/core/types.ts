@@ -149,6 +149,11 @@ export interface GetItem {
   resource?: ResourceContent;
   /** Role-grouped relational stubs — present only when requested via GetParams.context */
   context?: ContextStubs;
+  /**
+   * Clear not-found diagnostic for unknown paths and resource URIs
+   * (EXP-1 rerun P2) — a path miss must never read as silent null.
+   */
+  error?: string;
 }
 
 export interface GetResult {

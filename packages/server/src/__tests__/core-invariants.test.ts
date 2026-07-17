@@ -182,6 +182,12 @@ function mockService(entities: Entity[] = []): IBacklogService {
       if (uri === 'mcp://backlog/resources/test.md') {
         return { content: '# Test Resource', mimeType: 'text/markdown' };
       }
+      if (uri === 'mcp://backlog/README.md') {
+        return { content: '# Readme', mimeType: 'text/markdown' };
+      }
+      if (uri === 'mcp://backlog/docs/adr/0001-example.md') {
+        return { content: '# ADR 0001', mimeType: 'text/markdown' };
+      }
       return undefined;
     }),
   };
@@ -262,11 +268,46 @@ describe('core/getItems', () => {
     expect(result.items[0].resource).toEqual({ content: '# Test Resource', mimeType: 'text/markdown' });
   });
 
-  it('returns null for missing resource URI', async () => {
+  it('returns null with a clear not-found error for missing resource URI', async () => {
     const svc = mockService();
     const result = await getItems(svc, { ids: ['mcp://backlog/resources/missing.md'] });
     expect(result.items[0].content).toBeNull();
     expect(result.items[0].resource).toBeUndefined();
+    expect(result.items[0].error).toContain('Not found: mcp://backlog/resources/missing.md');
+  });
+
+  // ── Bare-path alias (EXP-1 rerun P2): wakeup advertises root-relative
+  // paths as "paths open with get" — the bare form must resolve exactly
+  // like its mcp://backlog/... URI, and unknown paths must fail loudly.
+
+  it('resolves a bare root path the same way as the mcp:// form', async () => {
+    const svc = mockService();
+    const bare = await getItems(svc, { ids: ['README.md'] });
+    const uri = await getItems(svc, { ids: ['mcp://backlog/README.md'] });
+    expect(bare.items[0].content).toBe('# Readme');
+    expect(bare.items[0].content).toBe(uri.items[0].content);
+    expect(bare.items[0].resource).toEqual(uri.items[0].resource);
+  });
+
+  it('resolves a nested docs path without the mcp:// prefix', async () => {
+    const svc = mockService();
+    const result = await getItems(svc, { ids: ['docs/adr/0001-example.md'] });
+    expect(result.items[0].content).toBe('# ADR 0001');
+    expect(result.items[0].resource?.mimeType).toBe('text/markdown');
+  });
+
+  it('returns a clear not-found error for an unknown bare path, never silent null', async () => {
+    const svc = mockService();
+    const result = await getItems(svc, { ids: ['docs/missing/nowhere.md'] });
+    expect(result.items[0].content).toBeNull();
+    expect(result.items[0].error).toContain('Not found: docs/missing/nowhere.md');
+    expect(result.items[0].error).toContain('mcp://backlog/docs/missing/nowhere.md');
+  });
+
+  it('keeps the plain entity-miss contract for non-path ids', async () => {
+    const svc = mockService();
+    const result = await getItems(svc, { ids: ['TASK-9999'] });
+    expect(result.items[0]).toEqual({ id: 'TASK-9999', content: null });
   });
 
   it('throws ValidationError on empty ID array', async () => {
