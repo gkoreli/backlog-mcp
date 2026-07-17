@@ -385,6 +385,22 @@ export interface WakeupGrounding {
    * Built outside core (git history / mtime); core only compares values.
    */
   observedRecency?: Readonly<Record<string, string>>;
+  /**
+   * Present only when the resolved home is a LINKED git worktree
+   * (LATTICE W1): plain family facts probed by the composition through
+   * git plumbing. Core folds them into one meta line — family, branch,
+   * and how far the branch sits behind the family's default branch.
+   */
+  worktree?: {
+    /** Family name — the main checkout root's basename. */
+    family: string;
+    /** Branch checked out in this worktree. */
+    branch: string;
+    /** The family's default branch — where canonical truth lives. */
+    defaultBranch: string;
+    /** Commits on the default branch that HEAD lacks. */
+    behind: number;
+  };
 }
 
 export interface WakeupEntitySummary {
@@ -505,6 +521,12 @@ export interface WakeupResult {
      * silently chosen authority (charter Slice A).
      */
     vision_candidates?: string[];
+    /**
+     * Present only when the resolved home is a linked git worktree
+     * (LATTICE W1) — one short line naming the family, the branch, and
+     * the divergence: `<family> @ <branch>, <n> behind <defaultBranch>`.
+     */
+    worktree?: string;
     /** Home-wide parentless work count; memories and containers are exempt. */
     unfiled_count: number;
   };

@@ -537,6 +537,12 @@ export async function wakeup(
     }
   }
 
+  // Worktree meta line (LATTICE W1): when (and only when) the resolved
+  // home is a linked worktree, the briefing names its family, branch, and
+  // divergence in one short line. Plain data injected by the composition
+  // (git plumbing stays outside core); the fold only formats it.
+  const worktree = grounding?.worktree;
+
   return {
     ...(identity ? { identity } : {}),
     ...(params.scope ? { scope: params.scope } : {}),
@@ -563,6 +569,10 @@ export async function wakeup(
       sections_omitted: sectionsOmitted,
       ...(quarantined.length === 0 ? {} : { quarantined }),
       ...(ambiguousVision === undefined ? {} : { vision_candidates: ambiguousVision }),
+      ...(worktree === undefined ? {} : {
+        worktree: `${worktree.family} @ ${worktree.branch}, `
+          + `${worktree.behind} behind ${worktree.defaultBranch}`,
+      }),
       unfiled_count: unfiledCount,
     },
   };

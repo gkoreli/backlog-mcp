@@ -578,6 +578,37 @@ describe('core/wakeup', () => {
     });
   });
 
+  describe('worktree meta line (LATTICE W1)', () => {
+    it('a linked-worktree home briefs its family, branch, and divergence in one meta line', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => ({
+          orientation: [],
+          visionCandidates: [],
+          indexedDocuments: 0,
+          worktree: {
+            family: 'backlog-mcp',
+            branch: 'feat/lattice-w1',
+            defaultBranch: 'main',
+            behind: 3,
+          },
+        }),
+      });
+      expect(result.metadata.worktree).toBe('backlog-mcp @ feat/lattice-w1, 3 behind main');
+    });
+
+    it('a main-checkout briefing carries no worktree line — absent stays absent-cheap', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => ({
+          orientation: [],
+          visionCandidates: [],
+          indexedDocuments: 0,
+        }),
+      });
+      expect(result.metadata.worktree).toBeUndefined();
+      expect(JSON.stringify(result.metadata)).not.toContain('worktree');
+    });
+  });
+
   describe('visible quarantine (EXP-1 B-3)', () => {
     it('names claimed-but-uncompilable documents so no section implies completeness', async () => {
       const svc = mockService([]);

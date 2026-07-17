@@ -16,10 +16,11 @@ import type {
 } from '../core/types.js';
 import { isNorthStarFilename, markdownTitle } from '../core/orientation.js';
 import type { DocumentStorageAdapter } from '../storage/storage-adapter.js';
+import { countCommitsBehind } from '../storage/local/git-family.js';
 import { buildGitRecencyMap } from '../storage/local/git-recency.js';
 
 export interface WakeupGroundingSources {
-  home: Pick<BacklogHome, 'root' | 'documentsDir'>;
+  home: Pick<BacklogHome, 'root' | 'documentsDir' | 'family'>;
   /** Size of the home's indexed document catalog (resource manager list). */
   countIndexedDocuments?: () => number;
   /**
@@ -28,6 +29,39 @@ export interface WakeupGroundingSources {
    * by the local composition (charter Slice B).
    */
   observedRecency?: () => Readonly<Record<string, string>>;
+  /**
+   * Divergence probe for linked-worktree homes (LATTICE W1): commits the
+   * checkout is behind the family's default branch. Defaults to the real
+   * git probe; injectable for tests. A failed probe (undefined) omits
+   * the worktree grounding entirely — the meta line always carries all
+   * three facts or none (fail-open).
+   */
+  countCommitsBehind?: (
+    root: string,
+    defaultBranch: string,
+  ) => number | undefined;
+}
+
+/**
+ * Worktree grounding (LATTICE W1): present only when home resolution
+ * attached a family — i.e. the home root is a linked worktree. Divergence
+ * is probed per briefing (it moves as the family's default branch does),
+ * while the family facts rode in on the resolved home.
+ */
+function discoverWorktreeGrounding(
+  home: WakeupGroundingSources['home'],
+  probeBehind: NonNullable<WakeupGroundingSources['countCommitsBehind']>,
+): WakeupGrounding['worktree'] {
+  const family = home.family;
+  if (family === undefined) return undefined;
+  const behind = probeBehind(home.root, family.defaultBranch);
+  if (behind === undefined) return undefined;
+  return {
+    family: family.name,
+    branch: family.branch,
+    defaultBranch: family.defaultBranch,
+    behind,
+  };
 }
 
 function listDirectory(path: string): string[] {
@@ -152,7 +186,9 @@ export function createObservedRecencyReader(
 export function createWakeupGroundingReader(
   sources: WakeupGroundingSources,
 ): () => WakeupGrounding {
+  const probeBehind = sources.countCommitsBehind ?? countCommitsBehind;
   return function readWakeupGrounding(): WakeupGrounding {
+    const worktree = discoverWorktreeGrounding(sources.home, probeBehind);
     return {
       ...discoverWakeupGrounding(sources.home),
       ...(sources.countIndexedDocuments === undefined
@@ -161,6 +197,7 @@ export function createWakeupGroundingReader(
       ...(sources.observedRecency === undefined
         ? {}
         : { observedRecency: sources.observedRecency() }),
+      ...(worktree === undefined ? {} : { worktree }),
     };
   };
 }

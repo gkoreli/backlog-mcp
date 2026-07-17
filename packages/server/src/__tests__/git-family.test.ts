@@ -13,6 +13,7 @@ import { execSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createBacklogHome } from '../core/backlog-home.js';
+import { createWakeupGroundingReader } from '../server/wakeup-grounding.js';
 import {
   countCommitsBehind,
   resolveGitFamily,
@@ -165,5 +166,31 @@ describe('family awareness end-to-end (home resolution → wakeup grounding)', (
   it('without the injected resolver, worktree homes resolve exactly as before', () => {
     const home = createBacklogHome({ kind: 'project', root: WORKTREE });
     expect(home.family).toBeUndefined();
+  });
+
+  it('the grounding reader briefs a family-aware home with its live divergence', () => {
+    const home = createBacklogHome(
+      { kind: 'project', root: WORKTREE },
+      { resolveFamily: resolveGitFamily },
+    );
+    const grounding = createWakeupGroundingReader({ home })();
+    expect(grounding.worktree).toEqual({
+      family: 'family',
+      branch: 'feat/lattice',
+      defaultBranch: 'main',
+      behind: 2,
+    });
+  });
+
+  it('a failed divergence probe omits the worktree grounding entirely (fail-open)', () => {
+    const home = createBacklogHome(
+      { kind: 'project', root: WORKTREE },
+      { resolveFamily: resolveGitFamily },
+    );
+    const grounding = createWakeupGroundingReader({
+      home,
+      countCommitsBehind: () => undefined,
+    })();
+    expect(grounding.worktree).toBeUndefined();
   });
 });

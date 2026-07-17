@@ -90,6 +90,10 @@ function format(result: WakeupResult): string {
     '',
     `── meta ──`,
     `  generated_at: ${result.metadata.generated_at}`,
+    // LATTICE W1: a linked-worktree home names its family and divergence.
+    ...(result.metadata.worktree !== undefined
+      ? [`  worktree: ${result.metadata.worktree}`]
+      : []),
     `  identity: ${result.identity !== undefined ? 'present' : 'absent'}`,
     `  counts: active=${result.now.active_tasks.length} epics=${result.now.current_epics.length} knowledge=${result.knowledge.length} constraints=${result.constraints.length}${result.metadata.constraints_omitted > 0 ? `(+${result.metadata.constraints_omitted} omitted)` : ''} completions=${result.recent.completions.length} activity=${result.recent.activity.length} unfiled=${result.metadata.unfiled_count}`,
   );
