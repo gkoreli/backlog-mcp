@@ -78,5 +78,7 @@ export function createLocalAppRequestRuntime(
     readUsageLines: runtime.readUsageLines,
     identityPath: join(runtime.home.documentsDir, 'identity.md'),
     visionPath: join(runtime.home.documentsDir, 'NORTH-STAR.md'),
+    intentRegistry: runtime.substrateRegistry,
+    intentWriteValidator: runtime.substrateRegistry,
   };
 }

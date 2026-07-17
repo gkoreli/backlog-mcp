@@ -38,7 +38,6 @@ export function createNodeApp(options: CreateNodeAppOptions): Hono {
       : serveStatic({ root: paths.viewerDist, onFound: setViewerCacheHeaders }),
     readLocalFile: runtime.readLocalFile,
     readUsageLines: runtime.readUsageLines,
-    resolveSourcePath: runtime.resolveSourcePath,
     identityPath: runtime.identityPath,
     visionPath: runtime.visionPath,
     resolveRuntime: options.resolveRuntime,

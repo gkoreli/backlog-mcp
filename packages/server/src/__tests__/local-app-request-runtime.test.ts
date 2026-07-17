@@ -80,6 +80,8 @@ describe('createLocalAppRequestRuntime', function describeLocalAppRuntime() {
       resourceManager: runtime.resourceManager,
       readUsageLines: runtime.readUsageLines,
       identityPath: join(runtime.home.documentsDir, 'identity.md'),
+      intentRegistry: runtime.substrateRegistry,
+      intentWriteValidator: runtime.substrateRegistry,
     });
     expect(appRuntime.mintMemoryEntry).toBeTypeOf('function');
     expect(appRuntime.getSourcePath?.(entity.id)).toBe(

@@ -1,9 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { describe, expect, it } from 'vitest';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
-import { registerBacklogCreateTool } from '../tools/backlog-create.js';
 import { registerBacklogListTool } from '../tools/backlog-list.js';
-import { registerBacklogUpdateTool } from '../tools/backlog-update.js';
 
 interface RegisteredTool {
   inputSchema: {
@@ -36,22 +34,10 @@ function tool(
   return registered;
 }
 
-describe('generic runtime substrate tools', function describeRuntimeTools() {
-  it('accepts open substrate types and schema-specific field bags', function acceptsRuntimeFields() {
-    const createTools = captureTools(registerBacklogCreateTool);
-    const updateTools = captureTools(registerBacklogUpdateTool);
+describe('runtime substrate read tools', function describeRuntimeTools() {
+  it('accepts open substrate types', function acceptsRuntimeTypes() {
     const listTools = captureTools(registerBacklogListTool);
 
-    expect(tool(createTools, 'backlog_create').inputSchema.safeParse({
-      title: 'Decision',
-      type: 'decision',
-      fields: { summary: 'Use the runtime registry' },
-    }).success).toBe(true);
-    expect(tool(updateTools, 'backlog_update').inputSchema.safeParse({
-      id: 'decision-001-root',
-      status: 'accepted',
-      fields: { reviewer: 'goga' },
-    }).success).toBe(true);
     expect(tool(listTools, 'backlog_list').inputSchema.safeParse({
       type: 'decision',
       status: ['accepted'],
@@ -59,18 +45,8 @@ describe('generic runtime substrate tools', function describeRuntimeTools() {
   });
 
   it('rejects the retired epic_id alias instead of stripping it', function rejectsLegacyAlias() {
-    const createTools = captureTools(registerBacklogCreateTool);
-    const updateTools = captureTools(registerBacklogUpdateTool);
     const listTools = captureTools(registerBacklogListTool);
 
-    expect(tool(createTools, 'backlog_create').inputSchema.safeParse({
-      title: 'Legacy',
-      epic_id: 'EPIC-0001',
-    }).success).toBe(false);
-    expect(tool(updateTools, 'backlog_update').inputSchema.safeParse({
-      id: 'TASK-0001',
-      epic_id: 'EPIC-0001',
-    }).success).toBe(false);
     expect(tool(listTools, 'backlog_list').inputSchema.safeParse({
       epic_id: 'EPIC-0001',
     }).success).toBe(false);

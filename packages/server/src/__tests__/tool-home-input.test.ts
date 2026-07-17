@@ -1,22 +1,21 @@
-import type { Entity } from '@backlog-mcp/shared';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
-import type { OperationEntry, IOperationLog } from '../operations/types.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
-import { registerBacklogCreateTool } from '../tools/backlog-create.js';
 import { registerBacklogListTool } from '../tools/backlog-list.js';
 import { registerBacklogRecallTool } from '../tools/backlog-recall.js';
 import { registerBacklogSearchTool } from '../tools/backlog-search.js';
-import { registerBacklogUpdateTool } from '../tools/backlog-update.js';
 import { registerBacklogWakeupTool } from '../tools/backlog-wakeup.js';
 import {
   BACKLOG_HOME_INPUT_FIELDS,
   BACKLOG_READ_HOME_INPUT_FIELDS,
 } from '../tools/home-input.js';
-import { registerTools, type ToolDeps } from '../tools/index.js';
+import { registerTools } from '../tools/index.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
-import { STATIC_TOOL_NAMES } from '../server/tool-name-reservations.js';
+import {
+  RESERVED_TOOL_NAMES,
+  STATIC_TOOL_NAMES,
+} from '../server/tool-name-reservations.js';
 
 type ToolHandler = (
   params: Record<string, unknown>,
@@ -36,40 +35,6 @@ function captureHandler(register: (server: McpServer) => void): ToolHandler {
   register(server);
   if (handler === undefined) throw new Error('tool did not register a handler');
   return handler;
-}
-
-function createOperationDeps(): {
-  deps: ToolDeps;
-  append: ReturnType<typeof vi.fn>;
-} {
-  const append = vi.fn(function appendOperation(_entry: OperationEntry) {});
-  const operationLog: IOperationLog = {
-    append,
-    query: vi.fn(async function queryOperations() {
-      return [];
-    }),
-    countForTask: vi.fn(async function countForTask() {
-      return 0;
-    }),
-  };
-  return {
-    deps: {
-      actor: { type: 'agent', name: 'home-input-test' },
-      operationLog,
-    },
-    append,
-  };
-}
-
-function task(title = 'Existing task'): Entity {
-  return {
-    id: 'TASK-0001',
-    title,
-    status: 'open',
-    type: 'task',
-    created_at: '2026-07-16T00:00:00.000Z',
-    updated_at: '2026-07-16T00:00:00.000Z',
-  };
 }
 
 function inputShape(meta: unknown): Record<string, z.ZodType> {
@@ -146,6 +111,15 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
       );
       expect(shape.project_root?.safeParse('/workspace/project').success).toBe(true);
     }
+  });
+
+  it('retires generic write names without allowing declarations to reclaim them', function preservesTombstones() {
+    expect(STATIC_TOOL_NAMES).not.toEqual(
+      expect.arrayContaining(['backlog_create', 'backlog_update']),
+    );
+    expect(RESERVED_TOOL_NAMES).toEqual(
+      expect.arrayContaining(['backlog_create', 'backlog_update']),
+    );
   });
 
   it('routes home:all search through the coordinator', async function coordinatesSearch() {
@@ -281,72 +255,6 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
       status: ['open'],
       limit: 5,
       parent_id: undefined,
-    });
-  });
-
-  it('strips home fields from backlog_create core and mutation params', async function stripsCreateFields() {
-    const add = vi.fn(async function addEntity(entity: Entity) {
-      return entity;
-    });
-    const service = {
-      allocateId: vi.fn(async function allocateId() {
-        return 'TASK-0001';
-      }),
-      add,
-    } as unknown as IBacklogService;
-    const { deps, append } = createOperationDeps();
-    const handler = captureHandler(function register(server) {
-      registerBacklogCreateTool(server, service, deps);
-    });
-
-    const response = await handler({
-      home: 'project',
-      project_root: '/workspace/project',
-      title: 'Transport-safe create',
-    });
-
-    expect(response.isError).not.toBe(true);
-    expect(add).toHaveBeenCalledOnce();
-    expect(add.mock.calls[0]?.[0]).not.toHaveProperty('home');
-    expect(add.mock.calls[0]?.[0]).not.toHaveProperty('project_root');
-    const entry = append.mock.calls[0]?.[0] as OperationEntry | undefined;
-    expect(entry?.params).not.toHaveProperty('home');
-    expect(entry?.params).not.toHaveProperty('project_root');
-  });
-
-  it('strips home fields from backlog_update core and mutation params', async function stripsUpdateFields() {
-    const save = vi.fn(async function saveEntity(entity: Entity) {
-      return entity;
-    });
-    const service = {
-      get: vi.fn(async function getEntity() {
-        return task();
-      }),
-      save,
-    } as unknown as IBacklogService;
-    const { deps, append } = createOperationDeps();
-    const handler = captureHandler(function register(server) {
-      registerBacklogUpdateTool(server, service, deps);
-    });
-
-    const response = await handler({
-      home: 'project',
-      project_root: '/workspace/project',
-      id: 'TASK-0001',
-      title: 'Updated task',
-    });
-
-    expect(response.isError).not.toBe(true);
-    expect(save).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'TASK-0001',
-      title: 'Updated task',
-    }));
-    expect(save.mock.calls[0]?.[0]).not.toHaveProperty('home');
-    expect(save.mock.calls[0]?.[0]).not.toHaveProperty('project_root');
-    const entry = append.mock.calls[0]?.[0] as OperationEntry | undefined;
-    expect(entry?.params).toEqual({
-      id: 'TASK-0001',
-      title: 'Updated task',
     });
   });
 });

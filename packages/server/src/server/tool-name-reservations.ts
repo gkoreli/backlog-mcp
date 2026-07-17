@@ -1,8 +1,8 @@
 const TOOL_NAME_RESERVATION_STATUS = {
   backlog_list: 'active',
   backlog_get: 'active',
-  backlog_create: 'active',
-  backlog_update: 'active',
+  backlog_create: 'retired',
+  backlog_update: 'retired',
   backlog_delete: 'active',
   backlog_search: 'active',
   backlog_wakeup: 'active',

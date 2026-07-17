@@ -145,26 +145,29 @@ backlog_get id=["TASK-0001","EPIC-0002"]  # Batch get
 backlog_get id="TASK-0001" context=true   # Item + neighborhood stubs (parent/children/siblings/refs/referenced_by/related)
 ```
 
-### backlog_create
+### Intent writes
 
 ```
-backlog_create title="Fix bug"
-backlog_create title="Fix bug" content="Details..." parent_id="EPIC-0002"
-backlog_create title="Q1 Goals" type="epic"
-backlog_create title="Research notes" type="artifact" parent_id="TASK-0001"
-backlog_create title="v2.0 Release" type="milestone" due_date="2026-03-01"
-backlog_create title="Fix bug" source_path="/path/to/spec.md"  # Read content from file
+backlog_create_work title="Fix bug" content="Details..." parent_id="EPIC-0002"
+backlog_start_task id="TASK-0001"
+backlog_complete_task id="TASK-0001" evidence=["Fixed in PR #45"]
+backlog_block_task id="TASK-0001" blocked_reason=["Waiting on API"]
+backlog_plan_epic title="Q1 Goals" content="Quarterly outcomes"
+backlog_organize_folder title="Research"
+backlog_attach_artifact title="Findings" content="..." parent_id="TASK-0001"
+backlog_target_milestone title="v2.0 Release" due_date="2026-03-01"
+backlog_schedule_cron title="Weekly review" schedule="0 9 * * 1" command="..."
+backlog_propose_adr title="Choose storage" content="..."
+backlog_capture_requirement title="Local-first" content="No cloud dependency"
+backlog_capture_prompt title="Founder directive" content="..."
 ```
 
-### backlog_update
-
-```
-backlog_update id="TASK-0001" status="done"
-backlog_update id="TASK-0001" status="blocked" blocked_reason=["Waiting on API"]
-backlog_update id="TASK-0001" evidence=["Fixed in PR #45"]
-backlog_update id="TASK-0001" parent_id="FLDR-0001"
-backlog_update id="MLST-0001" due_date="2026-04-01"
-```
+Transitions have matching narrow verbs (`backlog_pause_cron`,
+`backlog_resume_cron`, `backlog_accept_adr`, and `backlog_supersede_adr`). The
+MCP surface intentionally has no generic create/update dialect: the active
+substrate registry exposes only declared semantic intents. Operators retain
+the low-level `backlog create` / `backlog update` CLI escape hatch for rare or
+undeclared substrates.
 
 ### backlog_delete
 
@@ -186,7 +189,8 @@ backlog_search query="search ranking" include_content=true
 
 ### write_resource
 
-Edit existing files on the MCP server. All creation goes through `backlog_create`.
+Edit the Markdown body of an existing entity. Create and transition entities
+through the substrate-declared intent verbs above.
 
 ```
 # Edit task body (use str_replace — protects frontmatter)

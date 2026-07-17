@@ -42,6 +42,7 @@ import type {
   HomeReadRuntimeSelection,
 } from '../core/home-read-coordinator.types.js';
 import { memoryUsageFieldsFromEntry } from '../memory/memory-entry-usage.js';
+import type { SubstrateIntentQuarantineDiagnostic } from '../tools/register-substrate-intents.types.js';
 // Note: paths.ts and operations/index.ts are NOT imported here — they pull in
 // Node.js modules (import.meta.url, fs, path) that break the Workers bundle.
 // name/version and the MCP server wrapper are injected via AppDeps.
@@ -125,7 +126,6 @@ function createStaticRequestRuntime(
     usageTracker: deps?.usageTracker,
     resourceManager: deps?.resourceManager,
     readLocalFile: deps?.readLocalFile,
-    resolveSourcePath: deps?.resolveSourcePath,
     readUsageLines: deps?.readUsageLines,
     identityPath: deps?.identityPath,
     visionPath: deps?.visionPath,
@@ -136,6 +136,9 @@ function createRequestToolDeps(
   runtime: AppRequestRuntime,
   deps: AppDeps | undefined,
   homeReadCoordinator?: HomeReadCoordinator,
+  reportIntentQuarantine?: (
+    diagnostic: SubstrateIntentQuarantineDiagnostic,
+  ) => void,
 ): ToolDeps {
   return {
     actor: deps?.actor,
@@ -149,11 +152,13 @@ function createRequestToolDeps(
     usageTracker: runtime.usageTracker,
     resourceManager: runtime.resourceManager,
     readLocalFile: runtime.readLocalFile,
-    resolveSourcePath: runtime.resolveSourcePath,
     readUsageLines: runtime.readUsageLines,
     identityPath: runtime.identityPath,
     visionPath: runtime.visionPath,
     homeReadCoordinator,
+    intentRegistry: runtime.intentRegistry,
+    intentWriteValidator: runtime.intentWriteValidator,
+    reportIntentQuarantine,
   };
 }
 
@@ -266,6 +271,20 @@ function withMintedMemoryUsage(
 export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   const app = new Hono();
   const staticRuntime = createStaticRequestRuntime(service, deps);
+  const reportedIntentQuarantines = new Set<string>();
+  function reportIntentQuarantine(
+    diagnostic: SubstrateIntentQuarantineDiagnostic,
+  ): void {
+    const key = JSON.stringify(diagnostic);
+    if (reportedIntentQuarantines.has(key)) return;
+    reportedIntentQuarantines.add(key);
+    const data = { ...diagnostic };
+    if (deps?.logError !== undefined) {
+      deps.logError('Substrate intent quarantined', data);
+      return;
+    }
+    console.error('Substrate intent quarantined', data);
+  }
   async function resolveSelectedRuntime(
     selection: AppRequestRuntimeSelection,
   ): Promise<AppRequestRuntime> {
@@ -332,6 +351,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       runtime,
       deps,
       homeReadCoordinator,
+      reportIntentQuarantine,
     );
     registerTools(server, runtime.service, toolDeps);
     if (runtime.resourceManager) {

@@ -15,7 +15,7 @@ export function registerWriteResourceTool(server: McpServer, service: IBacklogSe
   server.registerTool(
     'write_resource',
     {
-      description: `Use when you want backlog-mcp to validate and canonically persist an existing entity edit before reporting success. For ordinary repository prose edits, use your native Edit tool; reconciliation updates indexes and diagnostics afterward.
+      description: `Use when you want backlog-mcp to validate and canonically persist an existing entity edit before reporting success. For ordinary repository prose edits, use your native Edit tool; reconciliation updates indexes and diagnostics afterward. Create and transition entities through the substrate-declared intent tools.
  * The \`append\` command will add content to the end of the body, automatically adding a newline if needed.
  Notes for using the \`str_replace\` command:
  * The \`old_str\` parameter should match EXACTLY one or more consecutive lines from the original body. Be mindful of whitespaces!

@@ -11,6 +11,10 @@ import type { IOperationLog } from '../operations/types.js';
 import type { ResourceManager } from '../resources/manager.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { ProjectSubstrateRegistry } from '../core/substrates/project-substrate-registry.js';
+import type {
+  IntentRegistryPort,
+  IntentWriteValidatorPort,
+} from '../core/substrates/index.js';
 
 /** Runtime-owned services selected for one transport request. */
 export interface AppRequestRuntime {
@@ -32,6 +36,8 @@ export interface AppRequestRuntime {
   identityPath?: string;
   /** Absolute path to the vision doc (NORTH-STAR.md) — docs-native only. */
   visionPath?: string;
+  intentRegistry?: IntentRegistryPort;
+  intentWriteValidator?: IntentWriteValidatorPort;
 }
 
 /** Explicit caller context extracted from one HTTP request. */
