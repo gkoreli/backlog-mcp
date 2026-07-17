@@ -1,7 +1,7 @@
 ---
 title: "Wakeup First Impression — Cold Orientation Quality and Budget Discipline"
 date: 2026-07-16
-status: Proposed
+status: Accepted — implemented (shipped 0.64.0, 2026-07-17); measured — nisli first wakeup 0/10 → 10/10 in 3.24 s at 1,214 bytes, git clean (report 0006); erent A/B 10/10 in both tool sessions, Q3+Q5 closed (report 0008); aime 1.0/5 → 3.0/5, grade bar 4/5 not met — remaining gap is the declared zero-setup boundary (report 0007); status reconciled 2026-07-17
 author: "agate, synthesizing EXP-1a/EXP-1b/EXP-2; domain rulings by beryl; distillation rulings by shale"
 evidence_commits:
   - "bd2463c — Nisli bolt-on trial"
