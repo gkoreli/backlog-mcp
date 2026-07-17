@@ -3,6 +3,7 @@ import { remember } from '../../core/remember.js';
 import { findCollisionCandidatesForMemory } from '../../core/collision-candidates.js';
 import { resolveContext } from '../../core/config.js';
 import type { RememberResult } from '../../core/types.js';
+import { parseCommaList } from '../parse-fields.js';
 import { cliRuntimeDependencies, run } from '../runner.js';
 
 function format(result: RememberResult): string {
@@ -28,8 +29,10 @@ export function registerRemember(program: Command): void {
     .requiredOption('--title <title>', 'Memory title (required, like a task title)')
     .option('--layer <layer>', 'episodic | semantic (default) | procedural')
     .option('--context <id>', 'Scope container (e.g. FLDR-0001)')
-    .option('--tags <tag...>', 'Freeform labels')
-    .option('--refs <id...>', 'Source entity ids this knowledge derives from')
+    // Comma-separated, not variadic (BUG-0004): a variadic option before
+    // the variadic <content...> positional swallowed the content.
+    .option('--tags <tags>', 'Comma-separated labels (e.g. exp-1,friction)')
+    .option('--refs <ids>', 'Comma-separated source entity ids (e.g. TASK-0676,ADR-0027)')
     .option('--kind <kind>', 'current | historical | plan | preference | timeless')
     .option('--state-key <key>', 'Evolving-fact key — closes previous holders')
     .option('--occurred-at <iso>', 'When the event occurred (ISO date)')
@@ -43,14 +46,16 @@ export function registerRemember(program: Command): void {
           explicit: opts.context,
           ...(runtime.home === undefined ? {} : { home: runtime.home }),
         });
+        const tags = parseCommaList(opts.tags);
+        const refs = parseCommaList(opts.refs);
         const result = await remember(
         {
           content: contentParts.join(' '),
           title: opts.title,
           ...(opts.layer !== undefined ? { layer: opts.layer } : {}),
           ...(context !== undefined ? { context } : {}),
-          ...(opts.tags !== undefined ? { tags: opts.tags } : {}),
-          ...(opts.refs !== undefined ? { entity_refs: opts.refs } : {}),
+          ...(tags !== undefined ? { tags } : {}),
+          ...(refs !== undefined ? { entity_refs: refs } : {}),
           ...(opts.kind !== undefined ? { kind: opts.kind } : {}),
           ...(opts.stateKey !== undefined ? { state_key: opts.stateKey } : {}),
           ...(opts.occurredAt !== undefined ? { occurred_at: opts.occurredAt } : {}),
@@ -73,7 +78,7 @@ export function registerRemember(program: Command): void {
         if (runtime.usageTracker !== undefined) {
           await runtime.usageTracker.recordCitations(
             [contentParts.join(' ')],
-            ((opts.refs as string[] | undefined) ?? []).filter(
+            (refs ?? []).filter(
               function excludeCreatedMemory(ref) {
                 return ref !== result.id;
               },

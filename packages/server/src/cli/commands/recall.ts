@@ -3,6 +3,7 @@ import { recall } from '../../core/recall.js';
 import { resolveContext } from '../../core/config.js';
 import type { RecallParams, RecallResult } from '../../core/types.js';
 import type { CrossHomeRecallResult } from '../../core/home-read-coordinator.types.js';
+import { parseCommaList } from '../parse-fields.js';
 import {
   cliRuntimeDependencies,
   run,
@@ -58,17 +59,21 @@ export function registerRecall(program: Command): void {
     .command('recall <query...>')
     .description('Recall memories — stubs by default; --full for bodies (durable MEMO- entities since ADR 0092.3)')
     .option('--context <id>', 'Scope to memories written with this entity as their context (e.g. FLDR-0001)')
-    .option('--tags <tag...>', 'Filter by tags (any-match)')
-    .option('--layers <layer...>', 'Restrict to specific layers; default: all persisted layers')
+    // Comma-separated, not variadic (BUG-0004): a variadic option before
+    // the variadic <query...> positional swallows the query.
+    .option('--tags <tags>', 'Comma-separated tag filter, any-match (e.g. exp-1,friction)')
+    .option('--layers <layers>', 'Comma-separated layers; default: all persisted layers')
     .option('--limit <n>', 'Max results', parseInt)
     .option('--full', 'Return full memory bodies instead of stubs')
     .option('--budget <tokens>', 'Approximate token budget — results packed to fit', parseInt)
     .action((queryParts: string[], opts) => {
       const deps = cliRuntimeDependencies(program);
+      const tags = parseCommaList(opts.tags);
+      const layers = parseCommaList(opts.layers);
       const baseParams: RecallParams = {
         query: queryParts.join(' '),
-        ...(opts.tags !== undefined ? { tags: opts.tags } : {}),
-        ...(opts.layers !== undefined ? { layers: opts.layers } : {}),
+        ...(tags !== undefined ? { tags } : {}),
+        ...(layers !== undefined ? { layers: layers as RecallParams['layers'] } : {}),
         ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
         ...(opts.full !== undefined ? { full: opts.full } : {}),
         ...(opts.budget !== undefined ? { token_budget: opts.budget } : {}),
