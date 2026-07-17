@@ -10,6 +10,26 @@ each version says why it mattered on the road to the north star
 (`docs/NORTH-STAR.md` — *your backlog is your agent's memory*). This changelog
 begins at 0.57.0 — earlier history lives in git.
 
+## [Unreleased]
+
+### Added
+- **See what your retrieval actually does — every recall, search, and expand
+  now leaves a session-stamped trace, and a recall that found nothing is
+  finally an event instead of silence.** Tier-1 retrieval telemetry
+  (ADR 0121 R7, the usage-instrument B18 follow-on): one JSON line per event
+  — `{session, ts, event, ids, home}` plus the resolved ADR 0119.1 `actor`
+  when present — appended to the home's uncommitted state area
+  (`<controlDir>/state/retrieval-telemetry.jsonl`, gitignored in project
+  homes; never committed docs, never the mutation journal). The session id
+  is minted once per server process and once per CLI invocation;
+  `BACKLOG_SESSION` threads one session across a harness's calls. `ids: []`
+  is the first-class recall-miss, and cross-home reads record per home — the
+  promotion lane's cross-home demand evidence. No query text is captured
+  (Tier 2 is gated separately), nothing about ranking or result shapes
+  changed, and the sink is fail-open: telemetry can never break or slow a
+  retrieval. Purpose-bound to the R6 mining trigger and experiments E1/E3 —
+  observation, not qrel manufacture. (ADR 0121 R6/R7)
+
 ## [0.66.0] — 2026-07-17
 
 *The release where identity stops costing tokens. You declare who an agent is

@@ -241,3 +241,19 @@ product's exact-ID and title-boost special cases — a tripwire, never
 improvement evidence — and aboutness is out of scope by design. The
 report contains no timestamps or timings; two runs over the same corpus
 and commit are byte-identical, which is the suite's determinism check.
+
+## Tier-1 retrieval telemetry (ADR 0121 R7)
+
+Every recall, search, and expand appends one line to the home's
+uncommitted state area (`<controlDir>/state/retrieval-telemetry.jsonl`,
+never committed docs, never the mutation journal): `{session, ts, event,
+ids, home}` plus the resolved ADR 0119.1 `actor` when present. The
+session id is minted once per server process (one per CLI invocation;
+`BACKLOG_SESSION` threads one session across calls), and a recall that
+returned zero ids appends `ids: []` — the first-class miss event the
+usage overlay has always skipped. The instrument exists to measure the
+R6 mining trigger (≥25 recall-hit events across ≥5 distinct days), the
+memory-placement promotion lane's cross-home recall demand, and
+experiments E1/E3 — it is not qrel manufacture, carries no query text
+(Tier 2 is gated separately), and is fail-open: a telemetry failure
+never breaks or slows the retrieval call.
