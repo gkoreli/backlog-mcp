@@ -1,0 +1,505 @@
+# Structural Truth Suite — Run Summary
+
+Corpus: 222 documents (162 entities, 60 resources, 0 quarantined) — sha256 `4b00540ce136…`, commit `2d32a2a74b49`.
+
+## Declared limits
+
+- Structural navigation partly measures the product's own exact-ID and title-boost special cases. This suite is a tripwire for retrievability regressions; a green navigation class is NOT improvement evidence for ranking (ADR 0121 R2).
+- Aboutness is out of scope by design. No assertion here grades topical relevance; that remains irreducibly a judgment under docs/evaluation/JUDGING.md.
+- Query text is drawn from each target's own words (titles, IDs, tail tokens), so the suite tests reachability under the tokenizer contract, not vocabulary-mismatch retrieval (report 0004, lens B kill-evidence).
+- Tail probes measure lexical (BM25-side) reachability of content beyond the embedding windows. A pass does not show the vector lane sees that content — by construction it cannot (tokens past 512 are absent from the vector).
+- Temporal decay is disabled (no halfLifeDays), matching scripts/search-eval.mjs, so runs are deterministic. The production runtime applies a 30-day half-life at query time.
+- The suite's own output files are excluded from the measured corpus (the search-eval excluded_output_path rule) so a checked-in report cannot feed itself back as corpus input. The production index does include checked-in reports.
+- Wakeup reconciliation compares disclosed counts (stubs + omitted) against an independent eligible count. The briefing exposes only top-N stubs, so a count match with exactly compensating membership errors is not detectable from the public surface.
+- The Requirement "constraints" wakeup section rides a specialized fold (live-constraint band ordering, not includeStatuses) and is not reconciled here; only generic declared wakeup sections are.
+- Memory entities are excluded from generic search by product design (ADR 0092.3). A corpus containing memories needs recall-path probes this suite does not emit; their presence is reported and those documents are skipped.
+
+## Composition (mode-independent)
+
+- PASS wakeup-reconciliation [decisions]: disclosed 45 vs eligible 45
+
+## Mode: bm25
+
+| class | total | passed | failed |
+|---|---|---|---|
+| filter-compliance | 12 | 12 | 0 |
+| membership-title | 222 | 221 | 1 |
+| navigation-id | 324 | 121 | 203 |
+| navigation-title | 222 | 221 | 1 |
+| supersedes-reference-resolves | 1 | 1 | 0 |
+| tail-reachability | 418 | 404 | 14 |
+
+### Failures (219)
+
+- navigation-title: ADR 0096 (query: `Cron Entity Type — Scheduled Task Intake`) — not in window
+- membership-title: ADR 0096 (query: `Cron Entity Type — Scheduled Task Intake`) — not in window
+- navigation-id: ADR 0001 (query: `ADR 0001`) — rank 13
+- navigation-id: ADR 0001 (query: `ADR-0001`) — not in window
+- navigation-id: ADR 0002 (query: `ADR 0002`) — rank 15
+- navigation-id: ADR 0002 (query: `ADR-0002`) — not in window
+- navigation-id: ADR 0003 (query: `ADR 0003`) — not in window
+- navigation-id: ADR 0003 (query: `ADR-0003`) — not in window
+- navigation-id: ADR 0004 (query: `ADR 0004`) — not in window
+- navigation-id: ADR 0004 (query: `ADR-0004`) — not in window
+- navigation-id: ADR 0005 (query: `ADR 0005`) — rank 14
+- navigation-id: ADR 0005 (query: `ADR-0005`) — rank 17
+- navigation-id: ADR 0007 (query: `ADR-0007`) — rank 12
+- navigation-id: ADR 0011 (query: `ADR 0011`) — rank 15
+- navigation-id: ADR 0011 (query: `ADR-0011`) — rank 20
+- navigation-id: ADR 0012 (query: `ADR-0012`) — rank 19
+- navigation-id: ADR 0013 (query: `ADR 0013`) — not in window
+- navigation-id: ADR 0013 (query: `ADR-0013`) — not in window
+- navigation-id: ADR 0013.1 (query: `ADR 0013.1`) — rank 18
+- navigation-id: ADR 0013.1 (query: `ADR-0013.1`) — rank 16
+- navigation-id: ADR 0013.2 (query: `ADR 0013.2`) — rank 15
+- navigation-id: ADR 0013.2 (query: `ADR-0013.2`) — rank 13
+- navigation-id: ADR 0013.3 (query: `ADR 0013.3`) — rank 19
+- navigation-id: ADR 0013.3 (query: `ADR-0013.3`) — rank 16
+- navigation-id: ADR 0013.5 (query: `ADR 0013.5`) — not in window
+- navigation-id: ADR 0013.5 (query: `ADR-0013.5`) — not in window
+- navigation-id: ADR 0013.6 (query: `ADR 0013.6`) — not in window
+- navigation-id: ADR 0013.6 (query: `ADR-0013.6`) — not in window
+- navigation-id: ADR 0013.7 (query: `ADR 0013.7`) — not in window
+- navigation-id: ADR 0013.7 (query: `ADR-0013.7`) — not in window
+- navigation-id: ADR 0016 (query: `ADR 0016`) — rank 17
+- navigation-id: ADR 0016 (query: `ADR-0016`) — not in window
+- navigation-id: ADR 0017 (query: `ADR-0017`) — not in window
+- navigation-id: ADR 0026 (query: `ADR 0026`) — rank 11
+- navigation-id: ADR 0026 (query: `ADR-0026`) — rank 19
+- navigation-id: ADR 0029 (query: `ADR-0029`) — rank 16
+- navigation-id: ADR 0032 (query: `ADR 0032`) — rank 12
+- navigation-id: ADR 0032 (query: `ADR-0032`) — rank 18
+- navigation-id: ADR 0035 (query: `ADR 0035`) — rank 15
+- navigation-id: ADR 0035 (query: `ADR-0035`) — not in window
+- navigation-id: ADR 0039 (query: `ADR 0039`) — rank 14
+- navigation-id: ADR 0039 (query: `ADR-0039`) — rank 19
+- navigation-id: ADR 0041 (query: `ADR 0041`) — rank 15
+- navigation-id: ADR 0041 (query: `ADR-0041`) — not in window
+- navigation-id: ADR 0042 (query: `ADR 0042`) — rank 20
+- navigation-id: ADR 0042 (query: `ADR-0042`) — not in window
+- navigation-id: ADR 0044 (query: `ADR-0044`) — rank 12
+- navigation-id: ADR 0046 (query: `ADR 0046`) — rank 17
+- navigation-id: ADR 0046 (query: `ADR-0046`) — not in window
+- navigation-id: ADR 0049 (query: `ADR-0049`) — rank 12
+- navigation-id: ADR 0050 (query: `ADR 0050`) — rank 14
+- navigation-id: ADR 0050 (query: `ADR-0050`) — rank 19
+- navigation-id: ADR 0053 (query: `ADR 0053`) — rank 19
+- navigation-id: ADR 0053 (query: `ADR-0053`) — not in window
+- navigation-id: ADR 0054 (query: `ADR 0054`) — rank 15
+- navigation-id: ADR 0054 (query: `ADR-0054`) — rank 18
+- navigation-id: ADR 0055 (query: `ADR 0055`) — rank 15
+- navigation-id: ADR 0055 (query: `ADR-0055`) — not in window
+- navigation-id: ADR 0056 (query: `ADR 0056`) — rank 15
+- navigation-id: ADR 0056 (query: `ADR-0056`) — not in window
+- navigation-id: ADR 0057 (query: `ADR-0057`) — not in window
+- navigation-id: ADR 0058 (query: `ADR 0058`) — rank 16
+- navigation-id: ADR 0058 (query: `ADR-0058`) — not in window
+- navigation-id: ADR 0059 (query: `ADR 0059`) — rank 14
+- navigation-id: ADR 0059 (query: `ADR-0059`) — not in window
+- navigation-id: ADR 0061 (query: `ADR 0061`) — rank 12
+- navigation-id: ADR 0061 (query: `ADR-0061`) — rank 18
+- navigation-id: ADR 0062 (query: `ADR 0062`) — rank 15
+- navigation-id: ADR 0062 (query: `ADR-0062`) — not in window
+- navigation-id: ADR 0063 (query: `ADR 0063`) — rank 15
+- navigation-id: ADR 0063 (query: `ADR-0063`) — not in window
+- navigation-id: ADR 0064 (query: `ADR 0064`) — rank 14
+- navigation-id: ADR 0064 (query: `ADR-0064`) — rank 19
+- navigation-id: ADR 0065 (query: `ADR 0065`) — rank 12
+- navigation-id: ADR 0065 (query: `ADR-0065`) — rank 19
+- navigation-id: ADR 0066 (query: `ADR-0066`) — rank 17
+- navigation-id: ADR 0068 (query: `ADR 0068`) — not in window
+- navigation-id: ADR 0068 (query: `ADR-0068`) — not in window
+- navigation-id: ADR 0069 (query: `ADR 0069`) — rank 13
+- navigation-id: ADR 0069 (query: `ADR-0069`) — not in window
+- navigation-id: ADR 0070 (query: `ADR-0070`) — rank 19
+- navigation-id: ADR 0071 (query: `ADR 0071`) — rank 19
+- navigation-id: ADR 0071 (query: `ADR-0071`) — not in window
+- navigation-id: ADR 0072 (query: `ADR-0072`) — not in window
+- navigation-id: ADR 0075 (query: `ADR-0075`) — rank 11
+- navigation-id: ADR 0076 (query: `ADR-0076`) — rank 18
+- navigation-id: ADR 0084 (query: `ADR 0084`) — rank 14
+- navigation-id: ADR 0084 (query: `ADR-0084`) — not in window
+- navigation-id: ADR 0085 (query: `ADR-0085`) — rank 12
+- navigation-id: ADR 0086 (query: `ADR 0086`) — rank 14
+- navigation-id: ADR 0086 (query: `ADR-0086`) — not in window
+- navigation-id: ADR 0087 (query: `ADR 0087`) — rank 15
+- navigation-id: ADR 0087 (query: `ADR-0087`) — not in window
+- navigation-id: ADR 0088 (query: `ADR-0088`) — not in window
+- navigation-id: ADR 0089 (query: `ADR-0089`) — not in window
+- navigation-id: ADR 0090 (query: `ADR 0090`) — not in window
+- navigation-id: ADR 0090 (query: `ADR-0090`) — not in window
+- navigation-id: ADR 0090.1 (query: `ADR 0090.1`) — not in window
+- navigation-id: ADR 0090.1 (query: `ADR-0090.1`) — not in window
+- navigation-id: ADR 0091 (query: `ADR 0091`) — not in window
+- navigation-id: ADR 0091 (query: `ADR-0091`) — rank 19
+- navigation-id: ADR 0092 (query: `ADR 0092`) — not in window
+- navigation-id: ADR 0092 (query: `ADR-0092`) — not in window
+- navigation-id: ADR 0092.1 (query: `ADR 0092.1`) — not in window
+- navigation-id: ADR 0092.1 (query: `ADR-0092.1`) — not in window
+- navigation-id: ADR 0092.10 (query: `ADR 0092.10`) — rank 16
+- navigation-id: ADR 0092.10 (query: `ADR-0092.10`) — rank 18
+- navigation-id: ADR 0092.11 (query: `ADR 0092.11`) — rank 18
+- navigation-id: ADR 0092.11 (query: `ADR-0092.11`) — rank 20
+- navigation-id: ADR 0092.12 (query: `ADR 0092.12`) — not in window
+- navigation-id: ADR 0092.12 (query: `ADR-0092.12`) — not in window
+- navigation-id: ADR 0092.13 (query: `ADR 0092.13`) — not in window
+- navigation-id: ADR 0092.13 (query: `ADR-0092.13`) — not in window
+- navigation-id: ADR 0092.2 (query: `ADR 0092.2`) — not in window
+- navigation-id: ADR 0092.2 (query: `ADR-0092.2`) — not in window
+- navigation-id: ADR 0092.3 (query: `ADR 0092.3`) — not in window
+- navigation-id: ADR 0092.3 (query: `ADR-0092.3`) — not in window
+- navigation-id: ADR 0092.6 (query: `ADR 0092.6`) — not in window
+- navigation-id: ADR 0092.6 (query: `ADR-0092.6`) — rank 20
+- navigation-id: ADR 0092.9 (query: `ADR 0092.9`) — rank 14
+- navigation-id: ADR 0092.9 (query: `ADR-0092.9`) — rank 11
+- navigation-id: ADR 0093 (query: `ADR 0093`) — not in window
+- navigation-id: ADR 0093 (query: `ADR-0093`) — not in window
+- navigation-id: ADR 0095 (query: `ADR 0095`) — not in window
+- navigation-id: ADR 0095 (query: `ADR-0095`) — not in window
+- navigation-id: ADR 0096 (query: `ADR 0096`) — not in window
+- navigation-id: ADR 0096 (query: `ADR-0096`) — not in window
+- navigation-id: ADR 0097 (query: `ADR 0097`) — not in window
+- navigation-id: ADR 0097 (query: `ADR-0097`) — not in window
+- navigation-id: ADR 0097.1 (query: `ADR 0097.1`) — not in window
+- navigation-id: ADR 0097.1 (query: `ADR-0097.1`) — not in window
+- navigation-id: ADR 0098 (query: `ADR-0098`) — not in window
+- navigation-id: ADR 0099 (query: `ADR 0099`) — rank 17
+- navigation-id: ADR 0099 (query: `ADR-0099`) — not in window
+- navigation-id: ADR 0100 (query: `ADR 0100`) — not in window
+- navigation-id: ADR 0100 (query: `ADR-0100`) — not in window
+- navigation-id: ADR 0101 (query: `ADR-0101`) — rank 13
+- navigation-id: ADR 0102 (query: `ADR 0102`) — rank 12
+- navigation-id: ADR 0102 (query: `ADR-0102`) — rank 16
+- navigation-id: ADR 0104 (query: `ADR-0104`) — rank 12
+- navigation-id: ADR 0105 (query: `ADR 0105`) — not in window
+- navigation-id: ADR 0105 (query: `ADR-0105`) — not in window
+- navigation-id: ADR 0106 (query: `ADR 0106`) — rank 19
+- navigation-id: ADR 0106 (query: `ADR-0106`) — not in window
+- navigation-id: ADR 0106.1 (query: `ADR 0106.1`) — not in window
+- navigation-id: ADR 0106.1 (query: `ADR-0106.1`) — not in window
+- navigation-id: ADR 0106.3 (query: `ADR 0106.3`) — not in window
+- navigation-id: ADR 0106.3 (query: `ADR-0106.3`) — not in window
+- navigation-id: ADR 0106.5 (query: `ADR 0106.5`) — not in window
+- navigation-id: ADR 0106.5 (query: `ADR-0106.5`) — not in window
+- navigation-id: ADR 0107 (query: `ADR 0107`) — not in window
+- navigation-id: ADR 0107 (query: `ADR-0107`) — not in window
+- navigation-id: ADR 0108 (query: `ADR-0108`) — not in window
+- navigation-id: ADR 0110 (query: `ADR-0110`) — not in window
+- navigation-id: ADR 0111 (query: `ADR 0111`) — rank 11
+- navigation-id: ADR 0111 (query: `ADR-0111`) — rank 13
+- navigation-id: ADR 0112 (query: `ADR 0112`) — not in window
+- navigation-id: ADR 0112 (query: `ADR-0112`) — not in window
+- navigation-id: ADR 0112.1 (query: `ADR 0112.1`) — not in window
+- navigation-id: ADR 0112.1 (query: `ADR-0112.1`) — not in window
+- navigation-id: ADR 0112.2 (query: `ADR 0112.2`) — rank 14
+- navigation-id: ADR 0112.2 (query: `ADR-0112.2`) — rank 13
+- navigation-id: ADR 0112.3 (query: `ADR 0112.3`) — not in window
+- navigation-id: ADR 0112.3 (query: `ADR-0112.3`) — not in window
+- navigation-id: ADR 0112.4 (query: `ADR 0112.4`) — not in window
+- navigation-id: ADR 0112.4 (query: `ADR-0112.4`) — not in window
+- navigation-id: ADR 0113 (query: `ADR-0113`) — rank 20
+- navigation-id: ADR 0113.1 (query: `ADR 0113.1`) — not in window
+- navigation-id: ADR 0113.1 (query: `ADR-0113.1`) — rank 14
+- navigation-id: ADR 0114 (query: `ADR-0114`) — not in window
+- navigation-id: ADR 0115 (query: `ADR-0115`) — rank 14
+- navigation-id: ADR 0116 (query: `ADR 0116`) — rank 19
+- navigation-id: ADR 0116 (query: `ADR-0116`) — not in window
+- navigation-id: ADR 0117 (query: `ADR-0117`) — not in window
+- navigation-id: ADR 0118 (query: `ADR-0118`) — not in window
+- navigation-id: ADR 0118.1 (query: `ADR 0118.1`) — not in window
+- navigation-id: ADR 0118.1 (query: `ADR-0118.1`) — not in window
+- navigation-id: REF-0001 (query: `REF 0001`) — not in window
+- navigation-id: REF-0001 (query: `REF-0001`) — not in window
+- navigation-id: REF-0002 (query: `REF 0002`) — not in window
+- navigation-id: REF-0002 (query: `REF-0002`) — not in window
+- navigation-id: REF-0003 (query: `REF 0003`) — not in window
+- navigation-id: REF-0003 (query: `REF-0003`) — not in window
+- navigation-id: REF-0004 (query: `REF 0004`) — not in window
+- navigation-id: REF-0004 (query: `REF-0004`) — not in window
+- navigation-id: REF-0005 (query: `REF 0005`) — not in window
+- navigation-id: REF-0005 (query: `REF-0005`) — not in window
+- navigation-id: REF-0006 (query: `REF 0006`) — not in window
+- navigation-id: REF-0006 (query: `REF-0006`) — not in window
+- navigation-id: REF-0007 (query: `REF 0007`) — not in window
+- navigation-id: REF-0007 (query: `REF-0007`) — not in window
+- navigation-id: REF-0008 (query: `REF 0008`) — not in window
+- navigation-id: REF-0008 (query: `REF-0008`) — not in window
+- navigation-id: REF-0009 (query: `REF 0009`) — not in window
+- navigation-id: REF-0009 (query: `REF-0009`) — not in window
+- navigation-id: REF-0010 (query: `REF 0010`) — not in window
+- navigation-id: REF-0010 (query: `REF-0010`) — not in window
+- navigation-id: REF-0011 (query: `REF 0011`) — not in window
+- navigation-id: REF-0011 (query: `REF-0011`) — not in window
+- navigation-id: REF-0012 (query: `REF 0012`) — not in window
+- navigation-id: REF-0012 (query: `REF-0012`) — not in window
+- navigation-id: REF-0013 (query: `REF 0013`) — not in window
+- navigation-id: REF-0013 (query: `REF-0013`) — not in window
+- navigation-id: REF-0014 (query: `REF 0014`) — not in window
+- navigation-id: REF-0014 (query: `REF-0014`) — not in window
+- tail-reachability: ADR 0049 (query: `algolia's e-commerce categorization dress`) — not in window
+- tail-reachability: ADR 0074 (query: `task-0040 formulation re-doing constellation`) — not in window
+- tail-reachability: ADR 0098 (query: `taskschema epicschema backlog- re-declaring`) — not in window
+- tail-reachability: REF-0002 (query: `score-free training tune explainable`) — not in window
+- tail-reachability: REF-0006 (query: `excessive handed unvetted pillar`) — rank 13
+- tail-reachability: REF-0007 (query: `layered spec's crud-with-a-type-discriminator crisp`) — not in window
+- tail-reachability: REF-0007 (query: `substrate-declared executor speak earn`) — not in window
+- tail-reachability: REF-0009 (query: `'protect allocator' server-resident llm-in-the-loop`) — not in window
+- tail-reachability: REF-0010 (query: `vector-db not' 'write-time reconciliation'`) — not in window
+- tail-reachability: REF-0010 (query: `plugin's injecting voluntary intent-gated`) — not in window
+- tail-reachability: REF-0012 (query: `misfits mixed-type informs upward`) — not in window
+- tail-reachability: REF-0013 (query: `'steal lafs' search-relevance chase`) — not in window
+- tail-reachability: mcp://backlog/docs/adr/0106.4-DELEGATION-BRIEF.md (query: `tonull input-schema re-list throwaways`) — not in window
+- tail-reachability: mcp://backlog/docs/proposals/vision-gaps-audit-2026-07.md (query: `current-decisions doctrinal re-proven possessive`) — not in window
+
+Skipped probes: 1 (enumerated in the JSON report).
+
+## Mode: hybrid
+
+| class | total | passed | failed |
+|---|---|---|---|
+| filter-compliance | 12 | 12 | 0 |
+| membership-title | 222 | 221 | 1 |
+| navigation-id | 324 | 106 | 218 |
+| navigation-title | 222 | 221 | 1 |
+| supersedes-reference-resolves | 1 | 1 | 0 |
+| tail-reachability | 418 | 407 | 11 |
+
+### Failures (231)
+
+- navigation-title: ADR 0096 (query: `Cron Entity Type — Scheduled Task Intake`) — not in window
+- membership-title: ADR 0096 (query: `Cron Entity Type — Scheduled Task Intake`) — not in window
+- navigation-id: ADR 0001 (query: `ADR 0001`) — rank 14
+- navigation-id: ADR 0001 (query: `ADR-0001`) — not in window
+- navigation-id: ADR 0002 (query: `ADR 0002`) — rank 18
+- navigation-id: ADR 0002 (query: `ADR-0002`) — not in window
+- navigation-id: ADR 0003 (query: `ADR 0003`) — not in window
+- navigation-id: ADR 0003 (query: `ADR-0003`) — not in window
+- navigation-id: ADR 0004 (query: `ADR 0004`) — not in window
+- navigation-id: ADR 0004 (query: `ADR-0004`) — not in window
+- navigation-id: ADR 0005 (query: `ADR 0005`) — rank 14
+- navigation-id: ADR 0005 (query: `ADR-0005`) — rank 18
+- navigation-id: ADR 0007 (query: `ADR-0007`) — rank 15
+- navigation-id: ADR 0011 (query: `ADR 0011`) — rank 16
+- navigation-id: ADR 0011 (query: `ADR-0011`) — rank 20
+- navigation-id: ADR 0012 (query: `ADR 0012`) — rank 11
+- navigation-id: ADR 0012 (query: `ADR-0012`) — rank 20
+- navigation-id: ADR 0013 (query: `ADR 0013`) — not in window
+- navigation-id: ADR 0013 (query: `ADR-0013`) — not in window
+- navigation-id: ADR 0013.1 (query: `ADR 0013.1`) — rank 19
+- navigation-id: ADR 0013.1 (query: `ADR-0013.1`) — rank 19
+- navigation-id: ADR 0013.2 (query: `ADR 0013.2`) — rank 18
+- navigation-id: ADR 0013.2 (query: `ADR-0013.2`) — rank 15
+- navigation-id: ADR 0013.3 (query: `ADR 0013.3`) — rank 20
+- navigation-id: ADR 0013.3 (query: `ADR-0013.3`) — rank 18
+- navigation-id: ADR 0013.4 (query: `ADR 0013.4`) — rank 14
+- navigation-id: ADR 0013.5 (query: `ADR 0013.5`) — not in window
+- navigation-id: ADR 0013.5 (query: `ADR-0013.5`) — not in window
+- navigation-id: ADR 0013.6 (query: `ADR 0013.6`) — not in window
+- navigation-id: ADR 0013.6 (query: `ADR-0013.6`) — not in window
+- navigation-id: ADR 0013.7 (query: `ADR 0013.7`) — not in window
+- navigation-id: ADR 0013.7 (query: `ADR-0013.7`) — not in window
+- navigation-id: ADR 0016 (query: `ADR 0016`) — rank 17
+- navigation-id: ADR 0016 (query: `ADR-0016`) — not in window
+- navigation-id: ADR 0017 (query: `ADR 0017`) — rank 12
+- navigation-id: ADR 0017 (query: `ADR-0017`) — not in window
+- navigation-id: ADR 0026 (query: `ADR 0026`) — rank 12
+- navigation-id: ADR 0026 (query: `ADR-0026`) — rank 20
+- navigation-id: ADR 0028 (query: `ADR-0028`) — rank 11
+- navigation-id: ADR 0029 (query: `ADR-0029`) — rank 18
+- navigation-id: ADR 0032 (query: `ADR 0032`) — rank 13
+- navigation-id: ADR 0032 (query: `ADR-0032`) — rank 20
+- navigation-id: ADR 0034 (query: `ADR-0034`) — rank 12
+- navigation-id: ADR 0035 (query: `ADR 0035`) — rank 16
+- navigation-id: ADR 0035 (query: `ADR-0035`) — not in window
+- navigation-id: ADR 0036 (query: `ADR-0036`) — rank 14
+- navigation-id: ADR 0039 (query: `ADR 0039`) — rank 15
+- navigation-id: ADR 0039 (query: `ADR-0039`) — rank 20
+- navigation-id: ADR 0041 (query: `ADR 0041`) — rank 16
+- navigation-id: ADR 0041 (query: `ADR-0041`) — not in window
+- navigation-id: ADR 0042 (query: `ADR 0042`) — not in window
+- navigation-id: ADR 0042 (query: `ADR-0042`) — not in window
+- navigation-id: ADR 0044 (query: `ADR-0044`) — rank 15
+- navigation-id: ADR 0046 (query: `ADR 0046`) — rank 18
+- navigation-id: ADR 0046 (query: `ADR-0046`) — not in window
+- navigation-id: ADR 0049 (query: `ADR-0049`) — rank 15
+- navigation-id: ADR 0050 (query: `ADR 0050`) — rank 14
+- navigation-id: ADR 0050 (query: `ADR-0050`) — rank 19
+- navigation-id: ADR 0051 (query: `ADR-0051`) — rank 11
+- navigation-id: ADR 0053 (query: `ADR 0053`) — not in window
+- navigation-id: ADR 0053 (query: `ADR-0053`) — not in window
+- navigation-id: ADR 0054 (query: `ADR 0054`) — rank 15
+- navigation-id: ADR 0054 (query: `ADR-0054`) — rank 18
+- navigation-id: ADR 0055 (query: `ADR 0055`) — rank 16
+- navigation-id: ADR 0055 (query: `ADR-0055`) — not in window
+- navigation-id: ADR 0056 (query: `ADR 0056`) — rank 15
+- navigation-id: ADR 0056 (query: `ADR-0056`) — not in window
+- navigation-id: ADR 0057 (query: `ADR-0057`) — not in window
+- navigation-id: ADR 0058 (query: `ADR 0058`) — rank 16
+- navigation-id: ADR 0058 (query: `ADR-0058`) — not in window
+- navigation-id: ADR 0059 (query: `ADR 0059`) — rank 14
+- navigation-id: ADR 0059 (query: `ADR-0059`) — not in window
+- navigation-id: ADR 0060 (query: `ADR-0060`) — rank 11
+- navigation-id: ADR 0061 (query: `ADR 0061`) — rank 12
+- navigation-id: ADR 0061 (query: `ADR-0061`) — rank 18
+- navigation-id: ADR 0062 (query: `ADR 0062`) — rank 16
+- navigation-id: ADR 0062 (query: `ADR-0062`) — not in window
+- navigation-id: ADR 0063 (query: `ADR 0063`) — rank 16
+- navigation-id: ADR 0063 (query: `ADR-0063`) — not in window
+- navigation-id: ADR 0064 (query: `ADR 0064`) — rank 15
+- navigation-id: ADR 0064 (query: `ADR-0064`) — rank 19
+- navigation-id: ADR 0065 (query: `ADR 0065`) — rank 13
+- navigation-id: ADR 0065 (query: `ADR-0065`) — rank 20
+- navigation-id: ADR 0066 (query: `ADR-0066`) — rank 17
+- navigation-id: ADR 0068 (query: `ADR 0068`) — not in window
+- navigation-id: ADR 0068 (query: `ADR-0068`) — not in window
+- navigation-id: ADR 0069 (query: `ADR 0069`) — rank 13
+- navigation-id: ADR 0069 (query: `ADR-0069`) — not in window
+- navigation-id: ADR 0070 (query: `ADR-0070`) — rank 20
+- navigation-id: ADR 0071 (query: `ADR 0071`) — rank 19
+- navigation-id: ADR 0071 (query: `ADR-0071`) — not in window
+- navigation-id: ADR 0072 (query: `ADR-0072`) — not in window
+- navigation-id: ADR 0075 (query: `ADR-0075`) — rank 15
+- navigation-id: ADR 0076 (query: `ADR-0076`) — rank 20
+- navigation-id: ADR 0082 (query: `ADR-0082`) — rank 12
+- navigation-id: ADR 0084 (query: `ADR 0084`) — rank 15
+- navigation-id: ADR 0084 (query: `ADR-0084`) — not in window
+- navigation-id: ADR 0085 (query: `ADR-0085`) — rank 14
+- navigation-id: ADR 0086 (query: `ADR 0086`) — rank 15
+- navigation-id: ADR 0086 (query: `ADR-0086`) — not in window
+- navigation-id: ADR 0087 (query: `ADR 0087`) — rank 15
+- navigation-id: ADR 0087 (query: `ADR-0087`) — not in window
+- navigation-id: ADR 0088 (query: `ADR-0088`) — not in window
+- navigation-id: ADR 0089 (query: `ADR-0089`) — not in window
+- navigation-id: ADR 0090 (query: `ADR 0090`) — not in window
+- navigation-id: ADR 0090 (query: `ADR-0090`) — not in window
+- navigation-id: ADR 0090.1 (query: `ADR 0090.1`) — not in window
+- navigation-id: ADR 0090.1 (query: `ADR-0090.1`) — not in window
+- navigation-id: ADR 0091 (query: `ADR 0091`) — not in window
+- navigation-id: ADR 0091 (query: `ADR-0091`) — not in window
+- navigation-id: ADR 0092 (query: `ADR 0092`) — not in window
+- navigation-id: ADR 0092 (query: `ADR-0092`) — not in window
+- navigation-id: ADR 0092.1 (query: `ADR 0092.1`) — not in window
+- navigation-id: ADR 0092.1 (query: `ADR-0092.1`) — not in window
+- navigation-id: ADR 0092.11 (query: `ADR 0092.11`) — rank 19
+- navigation-id: ADR 0092.11 (query: `ADR-0092.11`) — rank 20
+- navigation-id: ADR 0092.12 (query: `ADR 0092.12`) — not in window
+- navigation-id: ADR 0092.12 (query: `ADR-0092.12`) — not in window
+- navigation-id: ADR 0092.13 (query: `ADR 0092.13`) — rank 20
+- navigation-id: ADR 0092.13 (query: `ADR-0092.13`) — rank 18
+- navigation-id: ADR 0092.14 (query: `ADR 0092.14`) — rank 12
+- navigation-id: ADR 0092.2 (query: `ADR 0092.2`) — rank 17
+- navigation-id: ADR 0092.2 (query: `ADR-0092.2`) — rank 19
+- navigation-id: ADR 0092.3 (query: `ADR 0092.3`) — rank 18
+- navigation-id: ADR 0092.3 (query: `ADR-0092.3`) — rank 19
+- navigation-id: ADR 0092.5 (query: `ADR 0092.5`) — rank 13
+- navigation-id: ADR 0092.5 (query: `ADR-0092.5`) — rank 14
+- navigation-id: ADR 0092.6 (query: `ADR 0092.6`) — rank 18
+- navigation-id: ADR 0092.6 (query: `ADR-0092.6`) — rank 14
+- navigation-id: ADR 0092.9 (query: `ADR 0092.9`) — rank 18
+- navigation-id: ADR 0092.9 (query: `ADR-0092.9`) — rank 15
+- navigation-id: ADR 0093 (query: `ADR 0093`) — not in window
+- navigation-id: ADR 0093 (query: `ADR-0093`) — not in window
+- navigation-id: ADR 0095 (query: `ADR 0095`) — not in window
+- navigation-id: ADR 0095 (query: `ADR-0095`) — not in window
+- navigation-id: ADR 0096 (query: `ADR 0096`) — not in window
+- navigation-id: ADR 0096 (query: `ADR-0096`) — not in window
+- navigation-id: ADR 0097 (query: `ADR 0097`) — not in window
+- navigation-id: ADR 0097 (query: `ADR-0097`) — not in window
+- navigation-id: ADR 0097.1 (query: `ADR 0097.1`) — not in window
+- navigation-id: ADR 0097.1 (query: `ADR-0097.1`) — not in window
+- navigation-id: ADR 0098 (query: `ADR-0098`) — rank 20
+- navigation-id: ADR 0099 (query: `ADR 0099`) — not in window
+- navigation-id: ADR 0099 (query: `ADR-0099`) — not in window
+- navigation-id: ADR 0100 (query: `ADR 0100`) — not in window
+- navigation-id: ADR 0100 (query: `ADR-0100`) — not in window
+- navigation-id: ADR 0101 (query: `ADR-0101`) — rank 15
+- navigation-id: ADR 0102 (query: `ADR 0102`) — rank 12
+- navigation-id: ADR 0102 (query: `ADR-0102`) — rank 17
+- navigation-id: ADR 0104 (query: `ADR-0104`) — rank 14
+- navigation-id: ADR 0105 (query: `ADR 0105`) — not in window
+- navigation-id: ADR 0105 (query: `ADR-0105`) — not in window
+- navigation-id: ADR 0106 (query: `ADR 0106`) — not in window
+- navigation-id: ADR 0106 (query: `ADR-0106`) — not in window
+- navigation-id: ADR 0106.1 (query: `ADR 0106.1`) — not in window
+- navigation-id: ADR 0106.1 (query: `ADR-0106.1`) — not in window
+- navigation-id: ADR 0106.3 (query: `ADR 0106.3`) — not in window
+- navigation-id: ADR 0106.3 (query: `ADR-0106.3`) — not in window
+- navigation-id: ADR 0106.5 (query: `ADR 0106.5`) — not in window
+- navigation-id: ADR 0106.5 (query: `ADR-0106.5`) — not in window
+- navigation-id: ADR 0107 (query: `ADR 0107`) — not in window
+- navigation-id: ADR 0107 (query: `ADR-0107`) — not in window
+- navigation-id: ADR 0108 (query: `ADR 0108`) — rank 11
+- navigation-id: ADR 0108 (query: `ADR-0108`) — not in window
+- navigation-id: ADR 0110 (query: `ADR 0110`) — rank 12
+- navigation-id: ADR 0110 (query: `ADR-0110`) — not in window
+- navigation-id: ADR 0111 (query: `ADR 0111`) — rank 12
+- navigation-id: ADR 0111 (query: `ADR-0111`) — rank 15
+- navigation-id: ADR 0112 (query: `ADR 0112`) — not in window
+- navigation-id: ADR 0112 (query: `ADR-0112`) — not in window
+- navigation-id: ADR 0112.1 (query: `ADR 0112.1`) — not in window
+- navigation-id: ADR 0112.1 (query: `ADR-0112.1`) — not in window
+- navigation-id: ADR 0112.2 (query: `ADR 0112.2`) — rank 18
+- navigation-id: ADR 0112.2 (query: `ADR-0112.2`) — rank 18
+- navigation-id: ADR 0112.3 (query: `ADR 0112.3`) — not in window
+- navigation-id: ADR 0112.3 (query: `ADR-0112.3`) — not in window
+- navigation-id: ADR 0112.4 (query: `ADR 0112.4`) — not in window
+- navigation-id: ADR 0112.4 (query: `ADR-0112.4`) — not in window
+- navigation-id: ADR 0113 (query: `ADR-0113`) — rank 19
+- navigation-id: ADR 0114 (query: `ADR 0114`) — rank 11
+- navigation-id: ADR 0114 (query: `ADR-0114`) — not in window
+- navigation-id: ADR 0115 (query: `ADR-0115`) — rank 13
+- navigation-id: ADR 0116 (query: `ADR 0116`) — rank 20
+- navigation-id: ADR 0116 (query: `ADR-0116`) — not in window
+- navigation-id: ADR 0117 (query: `ADR 0117`) — rank 11
+- navigation-id: ADR 0117 (query: `ADR-0117`) — not in window
+- navigation-id: ADR 0118 (query: `ADR 0118`) — rank 12
+- navigation-id: ADR 0118 (query: `ADR-0118`) — not in window
+- navigation-id: ADR 0118.1 (query: `ADR 0118.1`) — not in window
+- navigation-id: ADR 0118.1 (query: `ADR-0118.1`) — not in window
+- navigation-id: ADR 0119 (query: `ADR-0119`) — rank 12
+- navigation-id: ADR 0120 (query: `ADR-0120`) — rank 11
+- navigation-id: REF-0001 (query: `REF 0001`) — not in window
+- navigation-id: REF-0001 (query: `REF-0001`) — not in window
+- navigation-id: REF-0002 (query: `REF 0002`) — not in window
+- navigation-id: REF-0002 (query: `REF-0002`) — not in window
+- navigation-id: REF-0003 (query: `REF 0003`) — not in window
+- navigation-id: REF-0003 (query: `REF-0003`) — not in window
+- navigation-id: REF-0004 (query: `REF 0004`) — not in window
+- navigation-id: REF-0004 (query: `REF-0004`) — not in window
+- navigation-id: REF-0005 (query: `REF 0005`) — not in window
+- navigation-id: REF-0005 (query: `REF-0005`) — not in window
+- navigation-id: REF-0006 (query: `REF 0006`) — not in window
+- navigation-id: REF-0006 (query: `REF-0006`) — not in window
+- navigation-id: REF-0007 (query: `REF 0007`) — not in window
+- navigation-id: REF-0007 (query: `REF-0007`) — not in window
+- navigation-id: REF-0008 (query: `REF 0008`) — not in window
+- navigation-id: REF-0008 (query: `REF-0008`) — not in window
+- navigation-id: REF-0009 (query: `REF 0009`) — not in window
+- navigation-id: REF-0009 (query: `REF-0009`) — not in window
+- navigation-id: REF-0010 (query: `REF 0010`) — not in window
+- navigation-id: REF-0010 (query: `REF-0010`) — not in window
+- navigation-id: REF-0011 (query: `REF 0011`) — not in window
+- navigation-id: REF-0011 (query: `REF-0011`) — not in window
+- navigation-id: REF-0012 (query: `REF 0012`) — not in window
+- navigation-id: REF-0012 (query: `REF-0012`) — not in window
+- navigation-id: REF-0013 (query: `REF 0013`) — not in window
+- navigation-id: REF-0013 (query: `REF-0013`) — not in window
+- navigation-id: REF-0014 (query: `REF 0014`) — not in window
+- navigation-id: REF-0014 (query: `REF-0014`) — not in window
+- tail-reachability: ADR 0098 (query: `taskschema epicschema backlog- re-declaring`) — rank 12
+- tail-reachability: REF-0002 (query: `score-free training tune explainable`) — not in window
+- tail-reachability: REF-0006 (query: `excessive handed unvetted pillar`) — rank 13
+- tail-reachability: REF-0007 (query: `layered spec's crud-with-a-type-discriminator crisp`) — not in window
+- tail-reachability: REF-0007 (query: `substrate-declared executor speak earn`) — not in window
+- tail-reachability: REF-0009 (query: `'protect allocator' server-resident llm-in-the-loop`) — rank 11
+- tail-reachability: REF-0010 (query: `vector-db not' 'write-time reconciliation'`) — not in window
+- tail-reachability: REF-0010 (query: `plugin's injecting voluntary intent-gated`) — not in window
+- tail-reachability: REF-0012 (query: `misfits mixed-type informs upward`) — not in window
+- tail-reachability: REF-0013 (query: `'steal lafs' search-relevance chase`) — rank 16
+- tail-reachability: mcp://backlog/docs/proposals/vision-gaps-audit-2026-07.md (query: `current-decisions doctrinal re-proven possessive`) — rank 14
+
+Skipped probes: 1 (enumerated in the JSON report).
+
+## Totals
+
+Assertions: 2399, passed: 1949, failed: 450.
