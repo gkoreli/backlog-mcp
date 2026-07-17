@@ -52,6 +52,10 @@ import {
   loadAgentAttributionIndex,
 } from '../core/agent-attribution.js';
 import { asAgentActor, envActor } from '../operations/logger.js';
+import {
+  ambientAgentIdentity,
+  resetAmbientAgentIdentityCacheForTests,
+} from '../storage/local/agent-identity.js';
 import { withAgentIdentity } from '../cli/runner.js';
 import type { Actor } from '../operations/types.js';
 
@@ -367,6 +371,13 @@ describe('Agent substrate — ADR 0119 Slice A (nine-agent fixture, R8)', () => 
       delete process.env.BACKLOG_TASK_CONTEXT;
       process.env.BACKLOG_ACTOR_NAME = 'goga';
 
+      // Deterministic ladder rungs: this test proves ABSENT-identity
+      // behavior, so the process-level git-rung cache must not carry
+      // whatever an earlier test (or the host repo's real
+      // `git config backlog.agent`) probed. Seed absent rungs explicitly.
+      resetAmbientAgentIdentityCacheForTests();
+      ambientAgentIdentity({ runGit: () => undefined, env: {} });
+
       expect(envActor()).toEqual({
         type: 'user',
         name: 'goga',
@@ -382,6 +393,7 @@ describe('Agent substrate — ADR 0119 Slice A (nine-agent fixture, R8)', () => 
         taskContext: undefined,
       });
     } finally {
+      resetAmbientAgentIdentityCacheForTests();
       for (const [key, value] of Object.entries(saved)) {
         if (value === undefined) delete process.env[key];
         else process.env[key] = value;

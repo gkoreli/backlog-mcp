@@ -11,6 +11,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Entity } from '@backlog-mcp/shared';
 import { createBacklogHome } from '../core/backlog-home.js';
 import { createLocalRuntime } from '../storage/local/local-runtime.js';
+import {
+  ambientAgentIdentity,
+  resetAmbientAgentIdentityCacheForTests,
+} from '../storage/local/agent-identity.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import {
   RetrievalTelemetry,
@@ -234,7 +238,16 @@ describe('MemoryUsageTracker + Tier-1 telemetry (the grafted seam)', () => {
 describe('state-area location per home type (design ruling 1)', () => {
   let roots: string[] = [];
 
+  beforeEach(function seedAbsentIdentity() {
+    // Hermetic runtimes: seed the process-level git-rung cache with absent
+    // rungs so these tests never probe the host repo's real config — and
+    // never leak a real probe into other files sharing this worker.
+    resetAmbientAgentIdentityCacheForTests();
+    ambientAgentIdentity({ runGit: () => undefined, env: {} });
+  });
+
   afterEach(function cleanup() {
+    resetAmbientAgentIdentityCacheForTests();
     for (const root of roots) rmSync(root, { recursive: true, force: true });
     roots = [];
   });

@@ -601,6 +601,8 @@ describe('LocalRuntime', function describeLocalRuntime() {
     const changed = changedPaths(before, snapshotFiles(home.root));
     expect(changed).toEqual([
       '.backlog/state/memory-usage.jsonl',
+      // Tier-1 retrieval telemetry (ADR 0121 R7) — same ignored state area.
+      '.backlog/state/retrieval-telemetry.jsonl',
     ]);
     expect(changed.filter(function unignored(path) {
       return !ignoredByRecommendedControlLayout(path);
