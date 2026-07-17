@@ -30,7 +30,12 @@ export function formatDocsNativeMigrationReport(
   ];
   for (const action of report.actions) {
     if (action.kind === 'move') {
-      lines.push(`  move ${action.sourcePath} -> ${action.targetPath}`);
+      const verb = action.quarantined
+        ? 'quarantine'
+        : action.rewritten
+          ? 'rewrite'
+          : 'move';
+      lines.push(`  ${verb} ${action.sourcePath} -> ${action.targetPath}`);
     } else if (action.kind === 'config') {
       lines.push(
         `  config ${action.sources.map(function sourcePath(source) {

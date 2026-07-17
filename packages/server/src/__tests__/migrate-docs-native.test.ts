@@ -233,6 +233,137 @@ describe('docs-native global migration', function describeGlobalMigration() {
     });
   });
 
+  it('canonicalizes v0.58 parent aliases and YAML dates during migration', function migratesLegacyAliases() {
+    const home = globalHome('legacy-aliases');
+    const source = join(home.root, 'tasks', 'TASK-0001.md');
+    mkdirSync(join(home.root, 'tasks'), { recursive: true });
+    writeFileSync(source, [
+      '---',
+      'id: TASK-0001',
+      'type: task',
+      'title: Legacy child',
+      'status: open',
+      'epic_id: EPIC-0001',
+      'created_at: 2026-01-25T02:12:24.000Z',
+      `updated_at: '${TIMESTAMP}'`,
+      '---',
+      'Legacy body.',
+      '',
+    ].join('\n'));
+
+    const dryRun = migrateDocsNative({
+      home,
+      registry: registry(),
+      dryRun: true,
+    });
+    expect(dryRun.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        kind: 'move',
+        sourcePath: 'tasks/TASK-0001.md',
+        rewritten: true,
+      }),
+    ]));
+    const report = migrateDocsNative({
+      home,
+      registry: registry(),
+    });
+    const target = join(home.documentsDir, 'tasks', 'TASK-0001.md');
+    const migrated = matter(readFileSync(target, 'utf-8'));
+
+    expect(report.rewritten).toBe(1);
+    expect(migrated.data).toMatchObject({
+      parent_id: 'EPIC-0001',
+      created_at: '2026-01-25T02:12:24.000Z',
+    });
+    expect(migrated.data).not.toHaveProperty('epic_id');
+    expect(typeof migrated.data.created_at).toBe('string');
+    expect(migrated.content).toContain('Legacy body.');
+    expect(existsSync(source)).toBe(false);
+  });
+
+  it('quarantines conflicting legacy and canonical parents without choosing one', function quarantinesParentConflict() {
+    const home = globalHome('legacy-parent-conflict');
+    const source = writeLegacyEntity(
+      home.root,
+      entity('TASK-0001', 'task', {
+        parent_id: 'FLDR-0001',
+        epic_id: 'EPIC-0001',
+      } as Partial<Entity>),
+    );
+    const sourceBytes = readFileSync(source);
+
+    const report = migrateDocsNative({
+      home,
+      registry: registry(),
+    });
+    const target = join(home.documentsDir, 'tasks', 'TASK-0001.md');
+
+    expect(report.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        sourcePath: 'tasks/TASK-0001.md',
+        quarantined: true,
+      }),
+    ]));
+    expect(readFileSync(target)).toEqual(sourceBytes);
+    expect(existsSync(source)).toBe(false);
+  });
+
+  it('preserves invalid legacy documents as visible quarantined bytes', function quarantinesInvalidEntities() {
+    const home = globalHome('legacy-quarantine');
+    const taskSource = join(home.root, 'tasks', 'TASK-0001.md');
+    const artifactSource = join(home.root, 'tasks', 'ARTF-0001.md');
+    const unknownSource = join(home.root, 'tasks', 'NOTE-0001.md');
+    mkdirSync(join(home.root, 'tasks'), { recursive: true });
+    const taskBytes = Buffer.from([
+      '---',
+      'id: TASK-0001',
+      'type: task',
+      'title: Legacy due date',
+      'status: open',
+      'due_date: 2026-08-01',
+      `created_at: '${TIMESTAMP}'`,
+      `updated_at: '${TIMESTAMP}'`,
+      '---',
+      'Body.',
+      '',
+    ].join('\n'));
+    const artifactBytes = Buffer.from('# Plain legacy artifact\n\nNo frontmatter.\n');
+    const unknownBytes = Buffer.from('---\ntitle: broken: yaml\n---\n');
+    writeFileSync(taskSource, taskBytes);
+    writeFileSync(artifactSource, artifactBytes);
+    writeFileSync(unknownSource, unknownBytes);
+
+    const report = migrateDocsNative({
+      home,
+      registry: registry(),
+    });
+
+    expect(report.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        sourcePath: 'tasks/TASK-0001.md',
+        targetPath: 'docs/tasks/TASK-0001.md',
+        quarantined: true,
+      }),
+      expect.objectContaining({
+        sourcePath: 'tasks/ARTF-0001.md',
+        targetPath: 'docs/artifacts/ARTF-0001.md',
+        quarantined: true,
+      }),
+      expect.objectContaining({
+        sourcePath: 'tasks/NOTE-0001.md',
+        targetPath: 'docs/resources/legacy-tasks/NOTE-0001.md',
+        quarantined: true,
+      }),
+    ]));
+    expect(readFileSync(join(home.documentsDir, 'tasks', 'TASK-0001.md')))
+      .toEqual(taskBytes);
+    expect(readFileSync(join(home.documentsDir, 'artifacts', 'ARTF-0001.md')))
+      .toEqual(artifactBytes);
+    expect(readFileSync(
+      join(home.documentsDir, 'resources', 'legacy-tasks', 'NOTE-0001.md'),
+    )).toEqual(unknownBytes);
+  });
+
   it('merges the global config overlay and renames scope to context', function migratesGlobalConfig() {
     const home = globalHome('global-config');
     mkdirSync(home.root, { recursive: true });
@@ -478,20 +609,7 @@ describe('docs-native global migration', function describeGlobalMigration() {
       .toBe(false);
   });
 
-  it('fails closed on malformed entities and source symlinks', function rejectsUnsafeSources() {
-    const malformedHome = globalHome('malformed');
-    mkdirSync(join(malformedHome.root, 'tasks'), { recursive: true });
-    writeFileSync(
-      join(malformedHome.root, 'tasks', 'TASK-0001.md'),
-      '---\ntitle: broken: yaml\n---\n',
-    );
-    expect(function migrateMalformed() {
-      migrateDocsNative({
-        home: malformedHome,
-        registry: registry(),
-      });
-    }).toThrow(DocsNativeMigrationError);
-
+  it('fails closed on source symlinks', function rejectsUnsafeSources() {
     const symlinkHome = globalHome('symlink');
     mkdirSync(join(symlinkHome.root, 'resources'), { recursive: true });
     const outside = join(tmpdir(), 'migrate-docs-native-outside.txt');

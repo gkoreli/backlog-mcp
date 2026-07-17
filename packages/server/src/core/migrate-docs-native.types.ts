@@ -20,6 +20,10 @@ export interface DocsNativeMigrationMove {
   targetPath: string;
   entityId?: string;
   substrateType?: string;
+  /** Target bytes are a canonicalized form of the legacy source. */
+  rewritten?: boolean;
+  /** The source is preserved as a readable document but is not a valid entity. */
+  quarantined?: boolean;
 }
 
 export interface DocsNativeMigrationDiscard {
@@ -73,6 +77,8 @@ export interface DocsNativeMigrationPlan {
   issues: readonly DocsNativeMigrationIssue[];
   /** Planning-time hashes used to reject source changes before deletion. */
   sourceDigests: Readonly<Record<string, string>>;
+  /** Canonical target bytes for rewritten legacy entities, keyed by source path. */
+  targetContents: Readonly<Record<string, Buffer>>;
 }
 
 export interface DocsNativeMigrationReport {

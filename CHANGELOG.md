@@ -10,6 +10,16 @@ each version says why it mattered on the road to the north star
 (`docs/NORTH-STAR.md` — *your backlog is your agent's memory*). This changelog
 begins at 0.57.0 — earlier history lives in git.
 
+## [Unreleased]
+
+### Fixed
+- **Docs-native migration carries imperfect legacy corpora forward.** Known
+  `epic_id` aliases and YAML date scalars are canonicalized during the move;
+  malformed documents, unsupported fields, and conflicting parent aliases are
+  preserved byte-for-byte as visible quarantined documents instead of blocking
+  the entire migration. Dry-run output distinguishes moves, rewrites, and
+  quarantines.
+
 ## [0.65.0] — 2026-07-17
 
 *The release where the briefing faces both of its readers. Agents get the memory

@@ -85,6 +85,7 @@ interface PlannedEntityDocument {
   targetDocumentPath: string;
   content: string;
   sourceDigest: string;
+  targetContent?: Buffer;
 }
 
 const LEGACY_PROJECT_CONTROL_DIR = '.backlog-mcp';
@@ -119,6 +120,65 @@ function toPosix(path: string): string {
 
 function digest(content: Buffer): string {
   return createHash('sha256').update(content).digest('hex');
+}
+
+function normalizeLegacyValue(value: unknown): {
+  value: unknown;
+  changed: boolean;
+} {
+  if (value instanceof Date) {
+    return { value: value.toISOString(), changed: true };
+  }
+  if (Array.isArray(value)) {
+    let changed = false;
+    const normalized = value.map(function normalizeArrayValue(item) {
+      const result = normalizeLegacyValue(item);
+      changed ||= result.changed;
+      return result.value;
+    });
+    return { value: normalized, changed };
+  }
+  if (typeof value === 'object' && value !== null) {
+    let changed = false;
+    const normalized = Object.fromEntries(
+      Object.entries(value).map(function normalizeObjectEntry([key, item]) {
+        const result = normalizeLegacyValue(item);
+        changed ||= result.changed;
+        return [key, result.value];
+      }),
+    );
+    return { value: normalized, changed };
+  }
+  return { value, changed: false };
+}
+
+function normalizeLegacyEntityData(
+  data: Record<string, unknown>,
+): {
+  data: Record<string, unknown>;
+  changed: boolean;
+  parentConflict: boolean;
+} {
+  const normalized = normalizeLegacyValue(data);
+  const value = normalized.value as Record<string, unknown>;
+  let changed = normalized.changed;
+  const epicId = value.epic_id;
+  const parentId = value.parent_id;
+
+  if (
+    typeof epicId === 'string'
+    && typeof parentId === 'string'
+    && epicId !== parentId
+  ) {
+    return { data: value, changed: false, parentConflict: true };
+  }
+  if (typeof epicId === 'string') {
+    if (parentId === undefined) value.parent_id = epicId;
+    delete value.epic_id;
+    changed = true;
+  }
+
+  return { data: value, changed, parentConflict: false };
 }
 
 function configHasLegacyScope(
@@ -315,7 +375,12 @@ function createMove(
   category: DocsNativeMigrationMove['category'],
   sourcePath: string,
   targetPath: string,
-  entity?: { id: string; type: string },
+  entity?: {
+    id: string;
+    type: string;
+    rewritten?: boolean;
+    quarantined?: boolean;
+  },
 ): DocsNativeMigrationMove {
   return {
     kind: 'move',
@@ -324,7 +389,72 @@ function createMove(
     targetPath,
     ...(entity === undefined
       ? {}
-      : { entityId: entity.id, substrateType: entity.type }),
+      : {
+          entityId: entity.id,
+          substrateType: entity.type,
+          ...(entity.rewritten ? { rewritten: true } : {}),
+          ...(entity.quarantined ? { quarantined: true } : {}),
+        }),
+  };
+}
+
+function legacyTaskResourceMove(
+  file: CollectedLegacyFile,
+  tasksRoot: string,
+  documentsRootPath: string,
+): DocsNativeMigrationMove {
+  const relativeTaskPath = toPosix(relative(tasksRoot, file.absolutePath));
+  return {
+    ...createMove(
+      'resource',
+      file.sourcePath,
+      posix.join(
+        documentsRootPath,
+        'resources',
+        'legacy-tasks',
+        relativeTaskPath,
+      ),
+    ),
+    quarantined: true,
+  };
+}
+
+function inferredEntityIdentity(
+  file: CollectedLegacyFile,
+): { id: string; type: string } | undefined {
+  const id = basename(file.sourcePath, extname(file.sourcePath));
+  const parsed = parseEntityId(id);
+  return parsed === null ? undefined : { id, type: parsed.type };
+}
+
+function planQuarantinedEntity(
+  file: CollectedLegacyFile,
+  identity: { id: string; type: string },
+  raw: Buffer,
+  params: PlanDocsNativeMigrationParams,
+  documentsRootPath: string,
+): {
+  move: DocsNativeMigrationMove;
+  document: PlannedEntityDocument;
+} | undefined {
+  const claim = params.registry.getStorageClaim(identity.type);
+  if (claim === undefined) return undefined;
+  const targetDocumentPath = storageDocumentSourcePath(claim, identity.id);
+  return {
+    move: createMove(
+      'entity',
+      file.sourcePath,
+      posix.join(documentsRootPath, targetDocumentPath),
+      { ...identity, quarantined: true },
+    ),
+    document: {
+      sourcePath: file.sourcePath,
+      type: identity.type,
+      id: identity.id,
+      targetDocumentPath,
+      content: raw.toString('utf-8'),
+      sourceDigest: digest(raw),
+    },
   };
 }
 
@@ -338,18 +468,9 @@ function planEntity(
   move?: DocsNativeMigrationMove;
   document?: PlannedEntityDocument;
 } {
+  const tasksRoot = join(resolve(params.legacyRoot ?? params.home.root), 'tasks');
   if (!/\.md$/iu.test(file.sourcePath)) {
-    const relativeTaskPath = toPosix(relative(
-      join(resolve(params.legacyRoot ?? params.home.root), 'tasks'),
-      file.absolutePath,
-    ));
-    return {
-      move: createMove(
-        'resource',
-        file.sourcePath,
-        posix.join(documentsRootPath, 'resources', 'legacy-tasks', relativeTaskPath),
-      ),
-    };
+    return { move: legacyTaskResourceMove(file, tasksRoot, documentsRootPath) };
   }
 
   let raw: Buffer;
@@ -366,7 +487,13 @@ function planEntity(
 
   try {
     const markdown = matter(raw.toString('utf-8'), {});
-    const data = markdown.data as Record<string, unknown>;
+    const normalized = normalizeLegacyEntityData(
+      markdown.data as Record<string, unknown>,
+    );
+    const data = normalized.data;
+    const targetContent = normalized.changed
+      ? Buffer.from(matter.stringify(markdown.content, data))
+      : raw;
     const filenameId = basename(file.sourcePath, extname(file.sourcePath));
     const id = typeof data.id === 'string' && data.id.trim()
       ? data.id.trim()
@@ -390,51 +517,48 @@ function planEntity(
       content: markdown.content.trim(),
     };
     const validation = params.registry.validateWrite(candidate);
-    if (!validation.ok) {
-      issues.push({
-        code: 'invalid-entity',
-        message: `Invalid legacy entity ${file.sourcePath}: ${validation.issues.map(
-          function formatValidationIssue(issue) {
-            return `${issue.path} ${issue.message}`;
-          },
-        ).join('; ')}`,
-        sourcePaths: [file.sourcePath],
-      });
-      return {};
-    }
-    const entity = validation.entity;
-    const claim = params.registry.getStorageClaim(entity.type);
+    const shouldRewrite = validation.ok
+      && normalized.changed
+      && !normalized.parentConflict;
+    const plannedContent = shouldRewrite ? targetContent : raw;
+    const claim = params.registry.getStorageClaim(type);
     if (claim === undefined) {
-      issues.push({
-        code: 'missing-storage-claim',
-        message: `No docs-native storage claim for ${entity.type}: ${file.sourcePath}`,
-        sourcePaths: [file.sourcePath],
-      });
-      return {};
+      return {
+        move: legacyTaskResourceMove(file, tasksRoot, documentsRootPath),
+      };
     }
-    const targetDocumentPath = storageDocumentSourcePath(claim, entity.id);
+    const targetDocumentPath = storageDocumentSourcePath(claim, id);
     const targetPath = posix.join(documentsRootPath, targetDocumentPath);
     return {
       move: createMove('entity', file.sourcePath, targetPath, {
-        id: entity.id,
-        type: entity.type,
+        id,
+        type,
+        rewritten: shouldRewrite,
+        quarantined: !validation.ok,
       }),
       document: {
         sourcePath: file.sourcePath,
-        type: entity.type,
-        id: entity.id,
+        type,
+        id,
         targetDocumentPath,
-        content: raw.toString('utf-8'),
+        content: plannedContent.toString('utf-8'),
         sourceDigest: digest(raw),
+        ...(shouldRewrite ? { targetContent } : {}),
       },
     };
-  } catch (error) {
-    issues.push({
-      code: 'invalid-entity',
-      message: `Cannot migrate legacy entity ${file.sourcePath}: ${String(error)}`,
-      sourcePaths: [file.sourcePath],
-    });
-    return {};
+  } catch {
+    const identity = inferredEntityIdentity(file);
+    if (identity !== undefined) {
+      const quarantined = planQuarantinedEntity(
+        file,
+        identity,
+        raw,
+        params,
+        documentsRootPath,
+      );
+      if (quarantined !== undefined) return quarantined;
+    }
+    return { move: legacyTaskResourceMove(file, tasksRoot, documentsRootPath) };
   }
 }
 
@@ -926,6 +1050,17 @@ function sortedDigests(
   }));
 }
 
+function sortedTargetContents(
+  targetContents: ReadonlyMap<string, Buffer>,
+): Readonly<Record<string, Buffer>> {
+  return Object.fromEntries([...targetContents].sort(function comparePaths(
+    left,
+    right,
+  ) {
+    return left[0].localeCompare(right[0]);
+  }));
+}
+
 /** Build the complete deterministic migration plan without mutating disk. */
 export function planDocsNativeMigration(
   params: PlanDocsNativeMigrationParams,
@@ -942,6 +1077,7 @@ export function planDocsNativeMigration(
   const actions: DocsNativeMigrationAction[] = [];
   const plannedDocuments: PlannedEntityDocument[] = [];
   const sourceDigests = new Map<string, string>();
+  const targetContents = new Map<string, Buffer>();
 
   const documentsRootPath = rootRelativePath(homeRoot, params.home.documentsDir);
   const controlRootPath = rootRelativePath(homeRoot, params.home.controlDir);
@@ -973,6 +1109,7 @@ export function planDocsNativeMigration(
       actions: actions.sort(compareActions),
       issues: issues.sort(compareIssues),
       sourceDigests: sortedDigests(sourceDigests),
+      targetContents: {},
     };
   }
 
@@ -992,6 +1129,12 @@ export function planDocsNativeMigration(
         planned.document.sourcePath,
         planned.document.sourceDigest,
       );
+      if (planned.document.targetContent !== undefined) {
+        targetContents.set(
+          planned.document.sourcePath,
+          planned.document.targetContent,
+        );
+      }
     }
   }
 
@@ -1098,6 +1241,7 @@ export function planDocsNativeMigration(
     actions: actions.sort(compareActions),
     issues: issues.sort(compareIssues),
     sourceDigests: sortedDigests(sourceDigests),
+    targetContents: sortedTargetContents(targetContents),
   };
 }
 
@@ -1346,7 +1490,10 @@ function executePlan(
       if (content === undefined) {
         throw new Error(`Legacy migration source was not snapshotted: ${move.sourcePath}`);
       }
-      fs.writeFileExclusive(target, content);
+      fs.writeFileExclusive(
+        target,
+        plan.targetContents[move.sourcePath] ?? content,
+      );
       createdTargets.push(target);
     }
     for (const config of configs) {
@@ -1450,7 +1597,7 @@ function executePlan(
     dryRun: false,
     actions: plan.actions,
     moved: moves.length + movedConfigs,
-    rewritten: configs.length,
+    rewritten: configs.length + Object.keys(plan.targetContents).length,
     discarded: discards.length,
   };
 }
