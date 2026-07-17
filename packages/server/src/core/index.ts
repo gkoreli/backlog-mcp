@@ -9,7 +9,12 @@ export { updateEntity } from './update.js';
 export { deleteItem } from './delete.js';
 export { searchItems } from './search.js';
 export { editItem } from './edit.js';
-export { wakeup } from './wakeup.js';
+export { MEMORY_PROTOCOL, wakeup } from './wakeup.js';
+export {
+  WAKEUP_WIRE_CEILING_BYTES,
+  enforceWakeupCeiling,
+  serializeBriefing,
+} from './wakeup-wire.js';
 export { recall } from './recall.js';
 export type { RecallDeps } from './recall.js';
 export {

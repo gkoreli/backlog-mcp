@@ -7,11 +7,22 @@
  * completions with evidence, live activity, a visible quarantine, and
  * unfiled work. The gate asserts BOTH halves at the real MCP boundary:
  *
- *   1. every scenario-required fact above survives in one payload, and
+ *   1. every ceiling-protected fact survives in one payload, and
  *   2. the exact pretty UTF-8 payload stays ≤ 3,072 bytes.
  *
- * No runtime allocator exists — if this gate ever fails, remove redundant
- * transport metadata or lower source stub caps first (charter ruling).
+ * THE HARD CEILING (ADR 0118.1 Slice A): the memory-protocol rubric made
+ * the briefing's floor content non-droppable, so the ceiling is enforced
+ * at runtime (core/wakeup-wire.ts). The charter ruling was applied first —
+ * redundant transport metadata was removed (no generation timestamp,
+ * zero-valued omission counters absent) — and beyond that, optional
+ * detail yields down a deterministic ladder with the honest
+ * `metadata.truncated` ledger:
+ *
+ *   activity → completions → declared sections (largest first) →
+ *   knowledge → orientation docs → current epics → active tasks
+ *
+ * Never trimmed: identity, focus, constraints, vision, quarantine,
+ * omission truths, and the memory protocol.
  *
  * FOCAL YIELD RULE (wakeup(operation=X), north-star Amnesia contract —
  * recorded here as law): FOCAL WINS. If required focal facts cannot fit,
@@ -27,6 +38,7 @@
  * asserts the rule and holds the focal payload to the same 3,072-byte gate.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
+import { MEMORY_PROTOCOL } from '../core/wakeup.js';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -213,11 +225,13 @@ describe('Wakeup wire budget — all-sections pressure fixture (Slice C)', () =>
     focalBriefing = JSON.parse(focalPayload);
   });
 
-  it('retains every scenario-required fact in one payload', () => {
+  it('retains every ceiling-protected fact in one payload', () => {
     expect(briefing.identity).toContain('onyx');
     expect(briefing.now.active_tasks.map((t: any) => t.id)).toEqual(
       expect.arrayContaining(['TASK-0001', 'TASK-0002']));
     expect(briefing.now.current_epics.map((e: any) => e.id)).toContain('EPIC-0001');
+    // Knowledge outlives declared section stubs under ceiling pressure —
+    // the yield law values what the agent KNOWS above hydratable pointers.
     expect(briefing.knowledge.map((k: any) => k.id)).toEqual(
       expect.arrayContaining(['MEMO-0001', 'MEMO-0002']));
     expect(briefing.constraints[0]).toMatchObject({ id: 'REQ-0001', compliance: 'violated' });
@@ -231,21 +245,40 @@ describe('Wakeup wire budget — all-sections pressure fixture (Slice C)', () =>
     const roles = Object.fromEntries(briefing.orientation.docs.map((d: any) => [d.role, d.path]));
     expect(roles.readme).toBe('README.md');
     expect(roles.agents).toBe('AGENTS.md');
-    expect(briefing.recent.completions.find((c: any) => c.id === 'TASK-0003')?.evidence_snippet)
-      .toContain('pinned the clock');
-    expect(briefing.recent.activity.map((a: any) => a.tool)).toContain('backlog_remember');
     expect(briefing.metadata.quarantined).toEqual([
       { type: 'requirement', path: 'requirements/REQ-0008-broken.md' },
     ]);
     expect(briefing.metadata.unfiled_count).toBeGreaterThanOrEqual(1);
   });
 
-  it('decision pressure: 40 freeform-status legacy ADRs compete, the recency map picks the newest three', () => {
+  it('the rubric pair rides the briefing once, verbatim, as its final block (ADR 0118.1 R2 + flywheel F1)', () => {
+    expect(briefing.memory_protocol).toEqual(MEMORY_PROTOCOL);
+    // Once means once: the payload never repeats the policy text.
+    expect(payload.split(MEMORY_PROTOCOL.recall).length - 1).toBe(1);
+    expect(payload.split(MEMORY_PROTOCOL.remember).length - 1).toBe(1);
+    // The final line a session reads is what to do before it ends.
+    expect(Object.keys(briefing).at(-1)).toBe('memory_protocol');
+  });
+
+  it('ceiling pressure: optional detail yielded down the ladder, the truncation ledger is exact — never silent', () => {
+    // The rubric (~0.5 KB, non-droppable) cannot fit beside every optional
+    // row of the fully-pressured repo. The ladder trimmed cheapest-first
+    // (activity, the completion, then decision stubs) and said so.
+    expect(briefing.metadata.truncated).toEqual({
+      activity: 1,
+      completions: 1,
+      decisions: 2,
+    });
+    expect(briefing.recent.activity).toEqual([]);
+    expect(briefing.recent.completions).toEqual([]);
+  });
+
+  it('decision pressure: 40 freeform-status legacy ADRs compete, recency picks the survivor, the remainder stays whole', () => {
     const decisions = briefing.sections.decisions.map((d: any) => d.id);
-    expect(decisions).toHaveLength(3);
-    expect(decisions).toContain('ADR 0040');                         // newest by injected recency
-    expect(decisions).not.toContain('ADR 0001');                     // oldest-ID fallback is dead
-    expect(briefing.metadata.sections_omitted.decisions).toBe(37);   // exact remainder
+    expect(decisions).toEqual(['ADR 0040']);                         // newest by injected recency
+    // 37 cut by the declared limit + 2 by the ceiling: the exact-remainder
+    // claim survives enforcement.
+    expect(briefing.metadata.sections_omitted.decisions).toBe(39);
   });
 
   it('the complete pressure payload stays ≤ 3,072 exact pretty UTF-8 bytes at the MCP boundary', () => {
@@ -272,15 +305,23 @@ describe('Wakeup wire budget — all-sections pressure fixture (Slice C)', () =>
   });
 
   it('focal: the yield rule holds exactly — non-focal sections trim first, constraints never yield', () => {
-    // Declared sections cap at 2 under focus (decisions: 3 → 2, remainder honest).
-    const decisions = focalBriefing.sections.decisions.map((d: any) => d.id);
-    expect(decisions).toHaveLength(2);
-    expect(decisions).toContain('ADR 0040');                 // recency order unchanged by focus
-    expect(focalBriefing.metadata.sections_omitted.decisions).toBe(38);
-    // Core sections yield to their focal defaults (2/2/3 caps).
+    // Under focus the declared cap is 2 (3 → 2); the ceiling then took both
+    // remaining stubs before touching knowledge. Remainder stays whole:
+    // 38 cut by the focal cap + 2 by the ceiling.
+    expect(focalBriefing.sections.decisions).toEqual([]);
+    expect(focalBriefing.metadata.sections_omitted.decisions).toBe(40);
+    expect(focalBriefing.metadata.truncated).toEqual({
+      activity: 1,
+      completions: 1,
+      decisions: 2,
+    });
+    // Core sections yield to their focal defaults (2/2/3 caps), then the
+    // ceiling — but knowledge survives whole: FOCAL WINS, memory outlives
+    // pointer stubs.
     expect(focalBriefing.recent.completions.length).toBeLessThanOrEqual(2);
     expect(focalBriefing.recent.activity.length).toBeLessThanOrEqual(2);
-    expect(focalBriefing.knowledge.length).toBeLessThanOrEqual(3);
+    expect(focalBriefing.knowledge.map((k: any) => k.id)).toEqual(
+      expect.arrayContaining(['MEMO-0001', 'MEMO-0002']));
     // CONSTRAINTS NEVER YIELD: worst-first top three survive intact.
     expect(focalBriefing.constraints[0]).toMatchObject({ id: 'REQ-0001', compliance: 'violated' });
     expect(focalBriefing.constraints).toHaveLength(3);
@@ -291,11 +332,110 @@ describe('Wakeup wire budget — all-sections pressure fixture (Slice C)', () =>
     expect(focalBriefing.metadata.quarantined).toEqual([
       { type: 'requirement', path: 'requirements/REQ-0008-broken.md' },
     ]);
+    // The protocol survives focus too, once, still the final block.
+    expect(focalBriefing.memory_protocol).toEqual(MEMORY_PROTOCOL);
+    expect(focalPayload.split(MEMORY_PROTOCOL.remember).length - 1).toBe(1);
+    expect(Object.keys(focalBriefing).at(-1)).toBe('memory_protocol');
   });
 
   it('focal: the complete focal payload stays ≤ 3,072 exact pretty UTF-8 bytes at the MCP boundary', () => {
     const bytes = Buffer.byteLength(focalPayload, 'utf8');
     console.info(`[focal budget] exact pretty bytes: ${bytes}; ~tokens: ${Math.ceil(focalPayload.length / 4)}`);
     expect(bytes).toBeLessThanOrEqual(3072);
+  });
+});
+
+/**
+ * THE HARD TOTAL CEILING (ADR 0118.1 Slice A acceptance): active tasks
+ * and epics were the two unbounded briefing sections — the ADR names them
+ * as the reason the SessionStart recipe was "not ready to install". This
+ * fixture floods both; the gate proves the ceiling holds at the real MCP
+ * boundary with the rubric intact and an exact truncation ledger, and
+ * that no configuration knob was added to make it so.
+ */
+describe('Wakeup hard total ceiling — unbounded active work (ADR 0118.1 Slice A)', () => {
+  let briefing: Record<string, any>;
+  let payload: string;
+  const homeRoot = join(tmpdir(), 'wakeup-wire-budget', 'ceiling-repo');
+
+  beforeAll(async () => {
+    const home = createBacklogHome({ kind: 'project', root: homeRoot });
+    mkdirSync(home.documentsDir, { recursive: true });
+    writeDoc(home, 'identity.md', 'onyx — continuity engineer for the pressure fleet');
+    // 36 live tasks and 12 live epics — no per-section cap exists for
+    // either; only the total ceiling can bound this briefing.
+    for (let i = 1; i <= 36; i++) {
+      const id = String(i).padStart(4, '0');
+      writeDoc(home, `tasks/TASK-${id}.md`, fm(
+        {
+          title: `Task ${id} carries a realistically wordy in-flight title`,
+          status: 'in_progress',
+          created_at: T(1),
+          updated_at: T((i % 28) + 1),
+        },
+        'Live.'));
+    }
+    for (let i = 1; i <= 12; i++) {
+      const id = String(i).padStart(4, '0');
+      writeDoc(home, `epics/EPIC-${id}.md`, fm(
+        { title: `Epic ${id} spans several concurrent workstreams`, status: 'in_progress', created_at: T(1), updated_at: T((i % 28) + 1) },
+        'Open.'));
+    }
+    for (let i = 1; i <= 3; i++) {
+      writeDoc(home, `requirements/REQ-000${i}.md`, fm(
+        {
+          title: `Requirement ${i} must hold`, status: 'ruled',
+          compliance: i === 1 ? 'violated' : 'unchecked',
+          ...(i === 1 ? { checked_at: T(16), checked_by: 'goga', violated_by: ['TASK-0002'] } : {}),
+        },
+        'The need.'));
+    }
+    const runtime: LocalRuntime = createLocalRuntime(home, {
+      createSearch: () => new OramaSearchService({
+        cachePath: join(home.controlDir, 'cache', 'search-index.json'),
+        hybridSearch: false,
+        halfLifeDays: 30,
+      }),
+    });
+    const wakeupTool = captureHandler(s => registerBacklogWakeupTool(s, runtime.service, {
+      readLocalFile: (path: string) => {
+        try { return readFileSync(path, 'utf-8'); } catch { return null; }
+      },
+      identityPath: join(home.documentsDir, 'identity.md'),
+    }));
+    const res = await wakeupTool({});
+    payload = res.content[0]?.text ?? '{}';
+    briefing = JSON.parse(payload);
+  });
+
+  it('the payload stays ≤ 3,072 bytes even with 36 active tasks and 12 epics — no caller knob required', () => {
+    const bytes = Buffer.byteLength(payload, 'utf8');
+    console.info(`[ceiling budget] exact pretty bytes: ${bytes}; ~tokens: ${Math.ceil(payload.length / 4)}`);
+    expect(bytes).toBeLessThanOrEqual(3072);
+  });
+
+  it('the truncation ledger names both flooded surfaces and epics conserve exactly', () => {
+    const truncated = briefing.metadata.truncated as Record<string, number>;
+    expect(truncated).toBeDefined();
+    // Epics conserve exactly through the ceiling: shown + trimmed = 12
+    // live. (Active tasks reach the fold through the storage layer's own
+    // default page bound, so their conservation is asserted against the
+    // ledger, not the corpus.)
+    expect(briefing.now.current_epics.length + (truncated.current_epics ?? 0)).toBe(12);
+    expect(truncated.current_epics).toBeGreaterThan(0);
+    // Epics yield before active tasks (the ladder's last two rungs), and
+    // some active work always survives — the ceiling never zeroes the
+    // briefing's reason to exist.
+    expect(truncated.active_tasks).toBeGreaterThan(0);
+    expect(briefing.now.active_tasks.length).toBeGreaterThan(0);
+  });
+
+  it('the floor survives whole: rubric once and last, constraints intact, no knowledge stubs invented', () => {
+    expect(briefing.memory_protocol).toEqual(MEMORY_PROTOCOL);
+    expect(payload.split(MEMORY_PROTOCOL.recall).length - 1).toBe(1);
+    expect(Object.keys(briefing).at(-1)).toBe('memory_protocol');
+    expect(briefing.constraints).toHaveLength(3);
+    expect(briefing.constraints[0]).toMatchObject({ id: 'REQ-0001', compliance: 'violated' });
+    expect(briefing.knowledge).toEqual([]);
   });
 });

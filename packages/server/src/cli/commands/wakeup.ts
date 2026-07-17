@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { wakeup } from '../../core/wakeup.js';
+import { enforceWakeupCeiling } from '../../core/wakeup-wire.js';
 import { resolveContext } from '../../core/config.js';
 import type { WakeupParams, WakeupResult } from '../../core/types.js';
 import type { CrossHomeWakeupResult } from '../../core/home-read-coordinator.types.js';
@@ -14,7 +15,19 @@ function section(title: string, body: string[]): string[] {
   return ['', `── ${title} ──`, ...body];
 }
 
-function format(result: WakeupResult): string {
+/** The memory protocol prints last — the twin rubric closes the briefing. */
+function memoryProtocolSection(
+  protocol: WakeupResult['memory_protocol'],
+): string[] {
+  return [
+    '',
+    '── memory protocol ──',
+    `  recall: ${protocol.recall}`,
+    `  remember: ${protocol.remember}`,
+  ];
+}
+
+function format(result: WakeupResult | Omit<WakeupResult, 'memory_protocol'>): string {
   const lines: string[] = [];
 
   if (result.identity) {
@@ -60,7 +73,7 @@ function format(result: WakeupResult): string {
         const violations = c.violations ? ` ⚠ violated by ${c.violations.ids.join(', ')}${c.violations.count > c.violations.ids.length ? ` +${c.violations.count - c.violations.ids.length}` : ''}` : '';
         return `  ${c.id.padEnd(12)} [${c.compliance}] (${c.status} · ${checked}) ${c.title}${violations}`;
       }),
-      ...(result.metadata.constraints_omitted > 0
+      ...((result.metadata.constraints_omitted ?? 0) > 0
         ? [`  … ${result.metadata.constraints_omitted} more live constraint(s) omitted — raise --max-constraints`]
         : []),
     ]),
@@ -68,8 +81,8 @@ function format(result: WakeupResult): string {
       section(name, [
         ...stubs.map(st =>
           `  ${String(st.id).padEnd(12)} ${st.status !== undefined ? `[${st.status}] ` : ''}${st.title}`),
-        ...((result.metadata.sections_omitted[name] ?? 0) > 0
-          ? [`  … ${result.metadata.sections_omitted[name]} more omitted`]
+        ...((result.metadata.sections_omitted?.[name] ?? 0) > 0
+          ? [`  … ${result.metadata.sections_omitted?.[name]} more omitted`]
           : []),
       ]),
     ),
@@ -104,14 +117,23 @@ function format(result: WakeupResult): string {
   lines.push(
     '',
     `── meta ──`,
-    `  generated_at: ${result.metadata.generated_at}`,
     // LATTICE W1: a linked-worktree home names its family and divergence.
     ...(result.metadata.worktree !== undefined
       ? [`  worktree: ${result.metadata.worktree}`]
       : []),
     `  identity: ${result.identity !== undefined ? 'present' : 'absent'}`,
-    `  counts: active=${result.now.active_tasks.length} epics=${result.now.current_epics.length} knowledge=${result.knowledge.length} constraints=${result.constraints.length}${result.metadata.constraints_omitted > 0 ? `(+${result.metadata.constraints_omitted} omitted)` : ''} completions=${result.recent.completions.length} activity=${result.recent.activity.length} unfiled=${result.metadata.unfiled_count}`,
+    `  counts: active=${result.now.active_tasks.length} epics=${result.now.current_epics.length} knowledge=${result.knowledge.length} constraints=${result.constraints.length}${(result.metadata.constraints_omitted ?? 0) > 0 ? `(+${result.metadata.constraints_omitted} omitted)` : ''} completions=${result.recent.completions.length} activity=${result.recent.activity.length} unfiled=${result.metadata.unfiled_count ?? 0}`,
+    // The honest ceiling marker (ADR 0118.1 Slice A) — never silent.
+    ...(result.metadata.truncated !== undefined
+      ? [`  truncated by wire ceiling: ${Object.entries(result.metadata.truncated).map(([surface, count]) => `${surface}=${count}`).join(' ')}`]
+      : []),
   );
+
+  // Single-home briefings close on the protocol (flywheel F1 placement);
+  // cross-home groups omit it here — it prints once for the whole payload.
+  if ('memory_protocol' in result) {
+    lines.push(...memoryProtocolSection(result.memory_protocol));
+  }
 
   return lines.join('\n');
 }
@@ -128,6 +150,7 @@ function formatAcrossHomes(result: CrossHomeWakeupResult): string {
       sections.push(`══ unavailable: ${home.home_id} ══\n${home.reason}`);
     }
   }
+  sections.push(memoryProtocolSection(result.memory_protocol).join('\n').trimStart());
   return sections.join('\n\n');
 }
 
@@ -168,12 +191,14 @@ export function registerWakeup(program: Command): void {
           );
       }
       return run(
-            (runtime) => {
+            async (runtime) => {
               const scope = resolveContext({
                 explicit: opts.scope,
                 ...(runtime.home === undefined ? {} : { home: runtime.home }),
               });
-              return wakeup(runtime.service, {
+              // The CLI is the SessionStart recipe's transport (ADR 0118.1
+              // R3): it obeys the same hard ceiling as the MCP boundary.
+              return enforceWakeupCeiling(await wakeup(runtime.service, {
               ...baseParams,
               ...(scope === undefined ? {} : { scope }),
               readIdentity: runtime.readIdentity,
@@ -186,7 +211,7 @@ export function registerWakeup(program: Command): void {
               ...(runtime.mintMemoryEntry === undefined
                 ? {}
                 : { mintMemoryEntry: runtime.mintMemoryEntry }),
-              });
+              }));
             },
             format,
             program.opts().json,

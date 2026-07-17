@@ -4,6 +4,7 @@ import type { Memory } from '@backlog-mcp/shared';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { wakeup } from '../core/wakeup.js';
+import { enforceWakeupCeiling, serializeBriefing } from '../core/wakeup-wire.js';
 import { ValidationError, type WakeupGrounding } from '../core/types.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
 import type { ProjectSubstrateRegistry } from '../core/substrates/project-substrate-registry.js';
@@ -11,16 +12,6 @@ import {
   BACKLOG_READ_HOME_INPUT_FIELDS,
   requireHomeReadCoordinator,
 } from './home-input.js';
-
-/**
- * The briefing is the product's one hard-budgeted surface (≤3,072 pretty
- * bytes at this exact boundary — Slice C). One-space indent keeps the
- * payload human-readable while cutting pure indentation bytes; deeper
- * whitespace is transport redundancy that earns no context (Tenet 8).
- */
-function serializeBriefing(result: unknown): string {
-  return JSON.stringify(result, null, 1);
-}
 
 export interface BacklogWakeupDeps {
   operationLogger?: {
@@ -159,7 +150,14 @@ export function registerBacklogWakeupTool(
             ? {}
             : { mintMemoryEntry: deps.mintMemoryEntry }),
         });
-        return { content: [{ type: 'text', text: serializeBriefing(result) }] };
+        // The briefing is the product's one hard-budgeted surface: the
+        // ceiling is enforced at this exact boundary (ADR 0118.1 Slice A).
+        return {
+          content: [{
+            type: 'text',
+            text: serializeBriefing(enforceWakeupCeiling(result)),
+          }],
+        };
       } catch (e) {
         if (e instanceof ValidationError) {
           return {

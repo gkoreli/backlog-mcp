@@ -124,17 +124,23 @@ export type CrossHomeWakeupParams = Omit<
   'readIdentity' | 'readVision' | 'readGrounding' | 'acceptsParent' | 'readOperations' | 'mintMemoryEntry'
 >;
 
-/** One unmerged wakeup briefing grouped under its owning home. */
+/**
+ * One unmerged wakeup briefing grouped under its owning home. The memory
+ * protocol is hoisted off each group: policy appears once per orientation
+ * payload, never once per home (ADR 0118.1 R2).
+ */
 export interface CrossHomeWakeupGroup {
   home: BacklogHome['kind'];
   home_id: string;
-  briefing: WakeupResult;
+  briefing: Omit<WakeupResult, 'memory_protocol'>;
 }
 
 /** Wakeup response with independent per-home groups and availability. */
 export interface CrossHomeWakeupResult {
   groups: CrossHomeWakeupGroup[];
   homes: HomeReadStatus[];
+  /** The rubric pair, once for the whole payload — serialized last. */
+  memory_protocol: WakeupResult['memory_protocol'];
 }
 
 /** Request-scoped, transport-free cross-home read operations. */

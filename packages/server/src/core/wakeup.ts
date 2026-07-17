@@ -74,6 +74,34 @@ function compareOrientationDocs(
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
+ * THE MEMORY PROTOCOL — the rubric pair (ADR 0118.1 R2 + memory-flywheel
+ * F1). Policy text, not retrieved data: it rides every briefing once, as
+ * the payload's final block, and is non-droppable under the wire ceiling.
+ *
+ * ``recall`` is the session-start rubric (0118.1 Slice A): the agent
+ * keeps the intent decision; this makes it legible and cheap. ``remember``
+ * is its session-end twin (flywheel F1): the three capture triggers, and
+ * PROMPT 0006's first-person law — the agent that did the work writes the
+ * memory, at its own checkpoint, in its own words, while the context that
+ * earned the lesson is still live. Never post-hoc, never ghost-written.
+ *
+ * Every word here is permanent context tax on every session (Tenet 8).
+ * Tighten before extending; the recall line must stay ~50–100 tokens.
+ */
+export const MEMORY_PROTOCOL = {
+  recall:
+    'Recall before re-deriving what a prior session likely solved, on '
+    + 'unfamiliar identifiers, and before contradicting a recorded decision. '
+    + 'Skip what is generic or already visible. Stubs first; get only the '
+    + 'IDs that matter.',
+  remember:
+    'Before this session ends, remember what it earned: a lesson proven by '
+    + 'failure, a decision that changed direction, a fact that cost tokens '
+    + 'to derive and will be needed again. Write at your own checkpoint, in '
+    + "your own words — never summarize another agent's work into memory.",
+} as const;
+
+/**
  * `sectionType` is the section's implied type: a summary carries `type`
  * only when it differs (an artifact among active tasks). Staleness rides
  * as `age_days` — the same provenance grammar as knowledge and recall
@@ -682,6 +710,14 @@ export async function wakeup(
   // (git plumbing stays outside core); the fold only formats it.
   const worktree = grounding?.worktree;
 
+  // Zero-valued omission counters are redundant transport metadata:
+  // absence means complete (charter trim ruling).
+  const nonZeroEntries = Object.entries(sectionsOmitted)
+    .filter(([, count]) => count > 0);
+  const nonZeroSectionsOmitted = nonZeroEntries.length === 0
+    ? undefined
+    : Object.fromEntries(nonZeroEntries);
+
   return {
     ...(identity ? { identity } : {}),
     ...(params.scope ? { scope: params.scope } : {}),
@@ -703,19 +739,23 @@ export async function wakeup(
     },
     // Metadata carries only what the payload cannot derive: omission
     // truths, quarantine, diagnostics, and the home-wide unfiled count.
-    // Per-section counts are the arrays' own lengths (Tenet 8 — every
-    // context byte earns its place; redundant transport metadata does not).
+    // Per-section counts are the arrays' own lengths, zero-valued
+    // counters are absent, and no generation timestamp rides the wire
+    // (Tenet 8 — every context byte earns its place; redundant
+    // transport metadata does not. Charter trim ruling, 0118.1 Slice A).
     metadata: {
-      generated_at: new Date().toISOString(),
-      constraints_omitted: constraintsOmitted,
-      sections_omitted: sectionsOmitted,
+      ...(constraintsOmitted > 0 ? { constraints_omitted: constraintsOmitted } : {}),
+      ...(nonZeroSectionsOmitted === undefined ? {} : { sections_omitted: nonZeroSectionsOmitted }),
       ...(quarantined.length === 0 ? {} : { quarantined }),
       ...(ambiguousVision === undefined ? {} : { vision_candidates: ambiguousVision }),
       ...(worktree === undefined ? {} : {
         worktree: `${worktree.family} @ ${worktree.branch}, `
           + `${worktree.behind} behind ${worktree.defaultBranch}`,
       }),
-      unfiled_count: unfiledCount,
+      ...(unfiledCount > 0 ? { unfiled_count: unfiledCount } : {}),
     },
+    // The protocol closes the payload: the last line a session reads is
+    // what it must do before it ends (flywheel F1's placement law).
+    memory_protocol: MEMORY_PROTOCOL,
   };
 }

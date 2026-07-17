@@ -203,7 +203,7 @@ describe('Cold-Open Test (NORTH-STAR acceptance)', () => {
     expect(constraints[0]?.compliance).toBe('violated');
     expect(constraints[0]?.violations?.ids).toContain('TASK-0002');
     expect(constraints.map(c => c.id)).toContain('REQ-0002');
-    expect(briefing.metadata.constraints_omitted).toBe(0);  // never implies completeness
+    expect(briefing.metadata.constraints_omitted).toBeUndefined();  // complete → absent (charter trim ruling)
   });
 
   it('orients on recent history: completions carry evidence snippets', () => {

@@ -210,7 +210,7 @@ describe('first impression: claimed requirement that cannot compile (Aime EXP-1b
 
   it('wakeup exposes the incomplete constraint disclosure instead of implying completeness', () => {
     expect(briefing.constraints.map((c: { id: string }) => c.id)).toEqual(['REQ-0001']);
-    expect(briefing.metadata.constraints_omitted).toBe(0);   // live-count truth unchanged
+    expect(briefing.metadata.constraints_omitted).toBeUndefined();   // complete → absent
     expect(briefing.metadata.quarantined).toEqual([{
       type: 'requirement',
       path: 'requirements/REQ-0004-being-aime-one-mind.md',

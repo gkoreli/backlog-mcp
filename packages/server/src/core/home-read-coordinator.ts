@@ -14,7 +14,8 @@ import type {
   SearchResultItem,
   WakeupResult,
 } from './types.js';
-import { wakeup } from './wakeup.js';
+import { MEMORY_PROTOCOL, wakeup } from './wakeup.js';
+import { enforceWakeupCeiling } from './wakeup-wire.js';
 import type {
   AvailableHomeReadStatus,
   CrossHomeRecallItem,
@@ -381,10 +382,16 @@ function wakeupGroups(
   const groups: CrossHomeWakeupGroup[] = [];
   for (const execution of executions) {
     if (!execution.available) continue;
+    // Each home's briefing obeys the same wire ceiling as a single-home
+    // briefing; the memory protocol is then hoisted off the group so
+    // policy rides the cross-home payload once, not once per home
+    // (ADR 0118.1 R2 — never duplicate the orientation rubric).
+    const { memory_protocol: _hoisted, ...briefing } =
+      enforceWakeupCeiling(execution.value);
     groups.push({
       home: execution.runtime.home.kind,
       home_id: execution.runtime.home.id,
-      briefing: execution.value,
+      briefing,
     });
   }
   return groups;
@@ -491,6 +498,7 @@ export function createHomeReadCoordinator(
     return {
       groups: wakeupGroups(executions),
       homes: readStatuses(executions),
+      memory_protocol: MEMORY_PROTOCOL,
     };
   }
 

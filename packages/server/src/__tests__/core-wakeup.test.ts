@@ -52,7 +52,8 @@ describe('core/wakeup', () => {
     expect(result.recent.completions).toEqual([]);
     expect(result.recent.activity).toEqual([]);
     expect(result.identity).toBeUndefined();
-    expect(result.metadata.unfiled_count).toBe(0);
+    // Zero-valued omission counters are absent (charter trim ruling).
+    expect(result.metadata.unfiled_count).toBeUndefined();
   });
 
   it('reports parentless work while exempting parents, containers, memories, and non-parentable documents', async () => {
@@ -448,7 +449,7 @@ describe('core/wakeup', () => {
       const result = await wakeup(svc, { maxConstraints: 5 });
       expect(result.constraints.map(c => c.id)).toEqual(['REQ-0001', 'REQ-0002', 'REQ-0003', 'REQ-0004']);
       expect(result.constraints[0]?.violations).toEqual({ count: 1, ids: ['ADR-0117'] });
-      expect(result.metadata.constraints_omitted).toBe(0);
+      expect(result.metadata.constraints_omitted).toBeUndefined();  // complete → absent
     });
 
     it('excludes dropped/not_applicable, reports omitted count on truncation, 0 disables', async () => {
@@ -462,13 +463,13 @@ describe('core/wakeup', () => {
       expect(result.metadata.constraints_omitted).toBe(4);     // 7 live − 3 shown; dropped never counts
       const disabled = await wakeup(svc, { maxConstraints: 0 });
       expect(disabled.constraints).toEqual([]);
-      expect(disabled.metadata.constraints_omitted).toBe(0);
+      expect(disabled.metadata.constraints_omitted).toBeUndefined();
     });
 
     it('is absent-cheap: no requirements → empty section, zero omitted', async () => {
       const result = await wakeup(mockService([]));
       expect(result.constraints).toEqual([]);
-      expect(result.metadata.constraints_omitted).toBe(0);
+      expect(result.metadata.constraints_omitted).toBeUndefined();
     });
 
     it('a REQ parented directly to the scope container appears in the scoped wakeup (load-bearing clause)', async () => {
@@ -661,7 +662,7 @@ describe('core/wakeup', () => {
       const decisions = result.sections['decisions'] ?? [];
       expect(decisions.map(d => d.id)).toEqual(['ADR 0002', 'ADR 0003']);  // updated_at desc, limit 2
       expect(decisions[0]).toEqual({ id: 'ADR 0002', title: 'decision ADR 0002', status: 'accepted' });
-      expect(result.metadata.sections_omitted['decisions']).toBe(1);       // ADR 0001 cut, rejected never counted
+      expect(result.metadata.sections_omitted?.['decisions']).toBe(1);       // ADR 0001 cut, rejected never counted
     });
 
     it('timestamp-less corpora order by injected observed recency; without it, stable id order (Slice B / B-2)', async () => {
@@ -729,7 +730,7 @@ describe('core/wakeup', () => {
       const result = await wakeup(svc);
       const decisions = (result.sections['decisions'] ?? []).map(d => d.id);
       expect(decisions).toEqual(['ADR 0001', 'ADR 0002']);   // tokens match 'accepted'
-      expect(result.metadata.sections_omitted['decisions']).toBe(0); // parked/missing never counted
+      expect(result.metadata.sections_omitted?.['decisions']).toBeUndefined(); // parked/missing never counted
     });
 
     it('the requirement constraints declaration is satisfied by the specialized fold, never duplicated', async () => {
@@ -745,7 +746,7 @@ describe('core/wakeup', () => {
     it('legacy services (no disclosure surface) degrade to empty sections', async () => {
       const result = await wakeup(mockService([]));
       expect(result.sections).toEqual({});
-      expect(result.metadata.sections_omitted).toEqual({});
+      expect(result.metadata.sections_omitted).toBeUndefined();
     });
 
     it('vision pointer: path + first-heading title, never the body; absent without readVision', async () => {
@@ -803,7 +804,7 @@ describe('core/wakeup', () => {
       });
       // The other live op remains a stub; the focal one never repeats.
       expect((result.sections['operations'] ?? []).map(s => s.id)).toEqual(['OP-0002']);
-      expect(result.metadata.sections_omitted['operations']).toBe(0);
+      expect(result.metadata.sections_omitted?.['operations']).toBeUndefined();
     });
 
     it('is declaration-generic — any substrate with disclosure.wakeup can be focused, no "operation" hardcoding', async () => {

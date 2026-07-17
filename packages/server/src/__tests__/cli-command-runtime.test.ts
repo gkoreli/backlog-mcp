@@ -166,6 +166,7 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
         return {
           groups: [],
           homes: [unavailableHome],
+          memory_protocol: { recall: 'recall rubric', remember: 'remember rubric' },
         };
       }),
     };

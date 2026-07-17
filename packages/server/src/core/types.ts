@@ -546,14 +546,23 @@ export interface WakeupResult {
    * Only what the payload cannot derive: omission truths, quarantine,
    * diagnostics, and the home-wide unfiled count. Section sizes are the
    * arrays' own lengths — restating them is redundant transport metadata
-   * (Tenet 8; Slice C budget discipline).
+   * (Tenet 8; Slice C budget discipline). The same rule prunes the
+   * metadata itself (charter trim ruling, applied for ADR 0118.1
+   * Slice A): zero-valued omission counters are absent — absence means
+   * complete — and the payload carries no generation timestamp (a
+   * briefing is read at the moment it is made; every age in it is
+   * already folded into age_days).
    */
   metadata: {
-    generated_at: string;
-    /** Live constraints beyond the maxConstraints bound (0 = complete). */
-    constraints_omitted: number;
-    /** Per-section omitted counts for registry-declared sections (0 = complete). */
-    sections_omitted: Record<string, number>;
+    /** Live constraints beyond the maxConstraints bound; absent = complete. */
+    constraints_omitted?: number;
+    /**
+     * Per-section omitted counts for registry-declared sections; only
+     * non-zero entries appear (absent = complete). Ceiling trims
+     * increment these too — the exact-remainder claim survives
+     * enforcement (see wakeup-wire.ts).
+     */
+    sections_omitted?: Record<string, number>;
     /**
      * Claimed documents that could not compile (EXP-1 B-3) — present only
      * when non-empty. While any entry exists, no typed disclosure section
@@ -572,8 +581,33 @@ export interface WakeupResult {
      * the divergence: `<family> @ <branch>, <n> behind <defaultBranch>`.
      */
     worktree?: string;
-    /** Home-wide parentless work count; memories and containers are exempt. */
-    unfiled_count: number;
+    /**
+     * Home-wide parentless work count; memories and containers are
+     * exempt. Absent = none.
+     */
+    unfiled_count?: number;
+    /**
+     * The honest truncation marker (ADR 0118.1 Slice A): present only
+     * when the hard wire ceiling trimmed optional detail. Exact ledger,
+     * surface name → items the ceiling dropped (declared sections also
+     * increment their sections_omitted remainder). Never silent.
+     */
+    truncated?: Record<string, number>;
+  };
+  /**
+   * THE MEMORY PROTOCOL (ADR 0118.1 R2 + memory-flywheel F1) — policy,
+   * not retrieved data; the one place the briefing instructs instead of
+   * reports. ``recall`` teaches when reaching for prior knowledge beats
+   * re-deriving it; ``remember`` — the session-end twin — names the
+   * three capture triggers and the first-person law (PROMPT 0006: the
+   * doer writes, at its own checkpoint, in its own words — never a
+   * post-hoc summarizer). Serialized LAST: the final line a session
+   * reads is what it must do before it ends. Non-droppable under the
+   * wire ceiling.
+   */
+  memory_protocol: {
+    recall: string;
+    remember: string;
   };
 }
 

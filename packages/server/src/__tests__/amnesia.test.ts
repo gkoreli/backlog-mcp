@@ -303,7 +303,7 @@ describe('Amnesia Test (continuity acceptance — Cold-Open twin)', () => {
     // OP-0001 moved to focus; OP-0002 stays closed — the section is empty
     // and honest (omitted count 0, nothing hidden).
     expect(focalBriefing.sections.operations).toEqual([]);
-    expect(focalBriefing.metadata.sections_omitted.operations).toBe(0);
+    expect(focalBriefing.metadata.sections_omitted?.operations).toBeUndefined();
   });
 
   it('ARGUMENT: an unknown operation id errors honestly, naming live candidates — never a silent generic briefing', async () => {
