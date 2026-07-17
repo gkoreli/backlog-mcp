@@ -907,6 +907,22 @@ describe('core/wakeup', () => {
       expect(plain.focus).toBeUndefined();
     });
 
+    it('a focal operation IS project grounding — the empty-project note never fires over a focused briefing', async () => {
+      // The centerpiece leaves its section's stubs, so a home whose only
+      // typed content is the focal operation would otherwise misread as
+      // "nothing recorded yet" (the EXP-1 BUG-0002 note).
+      const result = await wakeup(withOps([op('OP-0001')]), {
+        operation: 'OP-0001',
+        readGrounding: () => ({
+          orientation: [{ path: 'README.md', role: 'readme' as const, title: 'README.md' }],
+          visionCandidates: [],
+          indexedDocuments: 3,
+        }),
+      });
+      expect(result.focus?.doc.id).toBe('OP-0001');
+      expect(result.orientation?.note).toBeUndefined();
+    });
+
     it('constraints never yield to the focus — the amnesiac must state them', async () => {
       const entities: Entity[] = [op('OP-0001')];
       for (let i = 1; i <= 4; i++) {

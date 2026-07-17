@@ -655,7 +655,11 @@ export async function wakeup(
   // names the first places to open. Deterministic emptiness check — not a
   // classifier; the pointer line itself remains regardless.
   if (orientation !== undefined && orientation.indexed_documents > 0) {
-    const grounded = activeTasks.length > 0
+    // A focal operation IS project grounding — the centerpiece left its
+    // section's stubs, so the stub check alone would misread a focused
+    // briefing as an empty project.
+    const grounded = focus !== undefined
+      || activeTasks.length > 0
       || currentEpics.length > 0
       || knowledge.length > 0
       || constraints.length > 0
