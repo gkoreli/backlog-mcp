@@ -2,6 +2,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import type { Hono } from 'hono';
 import { createApp } from './hono-app.js';
 import { envActor } from '../operations/logger.js';
+import { ambientAgentIdentity } from '../storage/local/agent-identity.js';
 import { paths } from '../utils/paths.js';
 import { logger } from '../utils/logger.js';
 import { setViewerCacheHeaders } from '../utils/viewer-cache.js';
@@ -26,6 +27,9 @@ export function createNodeApp(options: CreateNodeAppOptions): Hono {
     version: paths.getVersion(),
     dataDir: runtime.home?.documentsDir,
     actor: envActor(),
+    // ADR 0119.1: the attribution ladder resolves once per server boot;
+    // the wakeup briefing discloses the value and its winning rung.
+    agentIdentity: ambientAgentIdentity(),
     operationLog: runtime.operationLog,
     operationLogger: runtime.operationLogger,
     eventBus: runtime.eventBus,

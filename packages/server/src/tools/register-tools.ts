@@ -5,6 +5,7 @@ import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { Actor, IOperationLog } from '../operations/types.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
+import type { ResolvedAgentIdentity } from '../core/identity-resolution.js';
 import type { WakeupGrounding } from '../core/types.js';
 import type {
   IntentRegistryPort,
@@ -63,6 +64,8 @@ export interface ToolDeps {
   readUsageLines?: () => string[];
   homeReadCoordinator?: HomeReadCoordinator;
   intentRegistration?: IntentToolRegistration;
+  /** Ladder-resolved ambient agent identity (ADR 0119.1); boot-resolved. */
+  agentIdentity?: ResolvedAgentIdentity;
 }
 
 function requireIntentRegistration(
@@ -119,6 +122,7 @@ export function registerTools(
     ...(deps?.homeReadCoordinator
       ? { homeReadCoordinator: deps.homeReadCoordinator }
       : {}),
+    ...(deps?.agentIdentity ? { agentIdentity: deps.agentIdentity } : {}),
   });
   registerBacklogRecallTool(server, {
     ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),

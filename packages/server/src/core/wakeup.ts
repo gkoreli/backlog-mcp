@@ -27,6 +27,7 @@ import type { MemoryEntry } from '@backlog-mcp/memory';
 import { EntityType, getSubstrate, isValidEntityId, parseEntityId } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
+import { loadAgentAttributionIndex } from './agent-attribution.js';
 import { asBuiltinEntity } from './substrates/index.js';
 import { markdownTitle } from './orientation.js';
 import { matchesDeclaredStatus } from './status-token.js';
@@ -321,6 +322,20 @@ export async function wakeup(
   const snippetChars = params.evidenceSnippetChars ?? 160;
 
   const identity = params.readIdentity?.();
+  // Implicit identity disclosure (ADR 0119.1 R2): the composition already
+  // resolved the ladder — core only names the value and its winning rung.
+  // Display resolution reuses the fail-open read-side index (ADR 0119
+  // R2/R3): a declared value renders as its Agent title, an undeclared
+  // value renders raw, and a home without the agent substrate changes
+  // nothing. Absent identity emits nothing — byte-identical to today.
+  const agentIdentity = params.agentIdentity;
+  let identityDisclosure: string | undefined;
+  if (agentIdentity !== undefined) {
+    const attributionIndex = await loadAgentAttributionIndex(service);
+    const display = attributionIndex.titleFor(agentIdentity.value)
+      ?? agentIdentity.value;
+    identityDisclosure = `${display} (${agentIdentity.source})`;
+  }
   // One time anchor for every age_days in the briefing.
   const nowMs = Date.now();
   // First-impression grounding (charter Slices A/B): composition-discovered
@@ -744,6 +759,7 @@ export async function wakeup(
     // (Tenet 8 — every context byte earns its place; redundant
     // transport metadata does not. Charter trim ruling, 0118.1 Slice A).
     metadata: {
+      ...(identityDisclosure === undefined ? {} : { identity: identityDisclosure }),
       ...(constraintsOmitted > 0 ? { constraints_omitted: constraintsOmitted } : {}),
       ...(nonZeroSectionsOmitted === undefined ? {} : { sections_omitted: nonZeroSectionsOmitted }),
       ...(quarantined.length === 0 ? {} : { quarantined }),

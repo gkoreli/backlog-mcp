@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { wakeup } from '../core/wakeup.js';
 import { enforceWakeupCeiling, serializeBriefing } from '../core/wakeup-wire.js';
+import type { ResolvedAgentIdentity } from '../core/identity-resolution.js';
 import { ValidationError, type WakeupGrounding } from '../core/types.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
 import type { ProjectSubstrateRegistry } from '../core/substrates/project-substrate-registry.js';
@@ -31,6 +32,12 @@ export interface BacklogWakeupDeps {
   mintMemoryEntry?: (memory: Memory) => MemoryEntry;
   substrateRegistry?: Pick<ProjectSubstrateRegistry, 'acceptsParent'>;
   homeReadCoordinator?: HomeReadCoordinator;
+  /**
+   * The ladder-resolved ambient agent identity (ADR 0119.1), resolved
+   * once per server boot by the composition. Absent in constrained
+   * runtimes (e.g. the Worker) — the briefing simply omits disclosure.
+   */
+  agentIdentity?: ResolvedAgentIdentity;
 }
 
 /**
@@ -93,6 +100,9 @@ export function registerBacklogWakeupTool(
     }) => {
       try {
         const wakeupParams = {
+          ...(deps?.agentIdentity !== undefined
+            ? { agentIdentity: deps.agentIdentity }
+            : {}),
           ...(scope !== undefined ? { scope } : {}),
           ...(operation !== undefined ? { operation } : {}),
           ...(max_completions !== undefined ? { maxCompletions: max_completions } : {}),

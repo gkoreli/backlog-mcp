@@ -4,6 +4,7 @@ import { enforceWakeupCeiling } from '../../core/wakeup-wire.js';
 import { resolveContext } from '../../core/config.js';
 import type { WakeupParams, WakeupResult } from '../../core/types.js';
 import type { CrossHomeWakeupResult } from '../../core/home-read-coordinator.types.js';
+import { ambientAgentIdentity } from '../../storage/local/agent-identity.js';
 import {
   cliRuntimeDependencies,
   run,
@@ -27,7 +28,10 @@ function memoryProtocolSection(
   ];
 }
 
-function format(result: WakeupResult | Omit<WakeupResult, 'memory_protocol'>): string {
+/** Exported for exact-text disclosure tests (ADR 0119.1 R2). */
+export function formatWakeupBriefing(
+  result: WakeupResult | Omit<WakeupResult, 'memory_protocol'>,
+): string {
   const lines: string[] = [];
 
   if (result.identity) {
@@ -121,7 +125,11 @@ function format(result: WakeupResult | Omit<WakeupResult, 'memory_protocol'>): s
     ...(result.metadata.worktree !== undefined
       ? [`  worktree: ${result.metadata.worktree}`]
       : []),
-    `  identity: ${result.identity !== undefined ? 'present' : 'absent'}`,
+    // The attribution ladder's disclosure (ADR 0119.1 R2) names the value
+    // and its winning rung. When every rung is absent the line falls back
+    // byte-identically to the store-era identity.md presence check.
+    `  identity: ${result.metadata.identity
+      ?? (result.identity !== undefined ? 'present' : 'absent')}`,
     `  counts: active=${result.now.active_tasks.length} epics=${result.now.current_epics.length} knowledge=${result.knowledge.length} constraints=${result.constraints.length}${(result.metadata.constraints_omitted ?? 0) > 0 ? `(+${result.metadata.constraints_omitted} omitted)` : ''} completions=${result.recent.completions.length} activity=${result.recent.activity.length} unfiled=${result.metadata.unfiled_count ?? 0}`,
     // The honest ceiling marker (ADR 0118.1 Slice A) — never silent.
     ...(result.metadata.truncated !== undefined
@@ -142,7 +150,7 @@ function formatAcrossHomes(result: CrossHomeWakeupResult): string {
   const sections = result.groups.map(function formatHome(group) {
     return [
       `══ home: ${group.home_id} ══`,
-      format(group.briefing),
+      formatWakeupBriefing(group.briefing),
     ].join('\n');
   });
   for (const home of result.homes) {
@@ -167,7 +175,11 @@ export function registerWakeup(program: Command): void {
     .option('--evidence-chars <n>', 'Max chars of evidence per completion', parseInt)
     .action((opts) => {
       const deps = cliRuntimeDependencies(program);
+      // The attribution ladder resolves once per CLI process (ADR 0119.1);
+      // absent stays absent — the params key is simply not set.
+      const agentIdentity = ambientAgentIdentity();
       const baseParams: WakeupParams = {
+        ...(agentIdentity === undefined ? {} : { agentIdentity }),
         ...(opts.operation !== undefined ? { operation: opts.operation } : {}),
         ...(opts.maxCompletions !== undefined ? { maxCompletions: opts.maxCompletions } : {}),
         ...(opts.maxActivity !== undefined ? { maxActivity: opts.maxActivity } : {}),
@@ -213,7 +225,7 @@ export function registerWakeup(program: Command): void {
                 : { mintMemoryEntry: runtime.mintMemoryEntry }),
               }));
             },
-            format,
+            formatWakeupBriefing,
             program.opts().json,
             deps,
           );

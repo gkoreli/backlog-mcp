@@ -173,6 +173,7 @@ function createRequestToolDeps(
   }
   return {
     actor: deps?.actor,
+    agentIdentity: deps?.agentIdentity,
     operationLog: runtime.operationLog,
     operationLogger: runtime.operationLogger,
     substrateRegistry: runtime.substrateRegistry,

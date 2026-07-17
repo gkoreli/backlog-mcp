@@ -22,6 +22,7 @@ import type {
   MemoryLayer,
 } from '@backlog-mcp/memory';
 import type { ResourceContent } from '../resources/manager.js';
+import type { ResolvedAgentIdentity } from './identity-resolution.js';
 import type {
   Actor,
   IOperationLog,
@@ -378,6 +379,14 @@ export interface WakeupParams {
    * a frontmatter-backed store over the supplied service.
    */
   mintMemoryEntry?: (memory: Memory) => MemoryEntry;
+  /**
+   * The ladder-resolved ambient agent identity (ADR 0119.1) — plain data
+   * injected by the composition (same discipline as readIdentity: the
+   * process binding probes, core folds). Discloses in the briefing as
+   * ``metadata.identity`` with its winning rung named (R2); omitted when
+   * every rung is absent, keeping the briefing byte-identical to today.
+   */
+  agentIdentity?: ResolvedAgentIdentity;
 }
 
 /**
@@ -554,6 +563,16 @@ export interface WakeupResult {
    * already folded into age_days).
    */
   metadata: {
+    /**
+     * The disclosed agent identity (ADR 0119.1 R2): exactly
+     * `<resolved-display-or-raw> (<source>)`, where source names the
+     * ladder rung that won — `--as` / `worktree config` / `env` /
+     * `checkout config` / `user config`. The value resolves to an Agent
+     * document title when one declares it (fail-open read-side, ADR 0119
+     * R2/R3); an undeclared value renders raw. Absent when every rung is
+     * absent — byte-identical to the pre-0119.1 briefing.
+     */
+    identity?: string;
     /** Live constraints beyond the maxConstraints bound; absent = complete. */
     constraints_omitted?: number;
     /**
