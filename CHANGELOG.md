@@ -10,7 +10,12 @@ each version says why it mattered on the road to the north star
 (`docs/NORTH-STAR.md` — *your backlog is your agent's memory*). This changelog
 begins at 0.57.0 — earlier history lives in git.
 
-## [Unreleased]
+## [0.62.0] — 2026-07-16
+
+*The write surface finally matches the vision's grammar: agents don't "update a
+row," they complete a task, capture a requirement, supersede a decision. Sixteen
+verbs that mean something, compiled from the same substrate declarations a project
+can write itself.*
 
 ### Added
 - **Writes now speak substrate intent (ADR 0106.5).** The local MCP surface
