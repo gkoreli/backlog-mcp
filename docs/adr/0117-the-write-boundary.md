@@ -55,9 +55,9 @@ The recommendation preserves ADR 0113's governing law:
 - backlog-mcp's managed writes are strict and canonical;
 - neither rule authorizes heuristic mutation of a user's file.
 
-It makes one narrow correction to ADR 0113 R4: editing a document body is
-not sufficient consent to adopt noncanonical frontmatter. Canonical adoption
-is a separately named, previewable action.
+It makes one narrow correction to ADR 0113 R4: requesting any managed mutation,
+including a semantic intent, is not sufficient consent to adopt noncanonical
+frontmatter. Canonical adoption is a separately named, previewable action.
 
 Granite issued these three rulings on 2026-07-16 with Goga's delegated
 architecture authority:
@@ -210,8 +210,9 @@ The smallest missing seam is diagnostic disclosure, not repair.
 ## ADR 0113 R4 contains the remaining consent question
 
 ADR 0113 says an external document becomes canonical when backlog-mcp is asked
-to mutate it. That is coherent for an explicit canonical adoption or semantic
-intent.
+to mutate it. That is coherent for explicit canonical adoption, but a semantic
+intent to change one field does not also express consent to reserialize the
+human's frontmatter.
 
 It is less clearly authorized for a body-only edit. A request to replace one
 paragraph does not necessarily authorize:
@@ -516,14 +517,16 @@ The native lane:
 
 For a parseable but noncanonical document, this ADR recommends:
 
-- an ordinary strict body edit rejects with canonical diagnostics;
+- every managed write, including body edits and semantic intents, rejects with
+  canonical diagnostics;
 - canonical adoption requires a separately named, previewable action;
 - only that explicit action may move aliases/unknown metadata or reserialize
   frontmatter.
 
-This ruling narrows ADR 0113 R4: a general body edit is not canonical-adoption
-consent. The separate action remains design-only until its own implementation
-phase is approved.
+This ruling narrows ADR 0113 R4: no managed mutation is canonical-adoption
+consent merely because it writes the document. Adoption requires its own
+explicit consent. The separate action remains design-only until its own
+implementation phase is approved.
 
 ## R8. ADR 0094's completeness claim is scoped to managed writes
 
