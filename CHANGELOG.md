@@ -13,6 +13,18 @@ begins at 0.57.0 — earlier history lives in git.
 ## [Unreleased]
 
 ### Fixed
+- **`get` accepts plain paths.** `get README.md` and `get docs/adr/0116-….md`
+  now resolve exactly like their `mcp://backlog/...` forms; unknown paths return
+  a loud "Not found" instead of silent empty content. (Both acceptance reruns
+  burned a wasted agent call on this.)
+- **Document status is searchable (BUG-0003).** Search stubs carry the declared
+  status, and `--status` filters match freeform values ("Accepted (goga,
+  2026-07-16)") by the same leading-token rule wakeup uses — one shared
+  implementation, applied everywhere.
+- **`--sort recent` no longer degrades search.** Recency now reorders the same
+  hybrid retrieval set deterministically instead of silently swapping engines
+  and shrinking results. (Known data gap: docs-native documents without
+  `updated_at` keep relevance order — recency has nothing to sort them by yet.)
 - **An acknowledged write is searchable when the ack returns (ADR 0116 Phase
   1A).** Search initialization is now single-flight — concurrent first searches
   share one index build instead of racing duplicates — and every index mutation
