@@ -611,12 +611,16 @@ describe('docs-native project control migration', function describeProjectMigrat
       join(legacyControl, 'config.local.json'),
       '{"scope":"FLDR-LOCAL"}\n',
     );
+    writeFileSync(
+      join(legacyControl, '.gitignore'),
+      'config.local.json\ncache/\nstate/\n',
+    );
 
     expect(migrateDocsNative({
       home,
       registry: registry(),
     })).toMatchObject({
-      moved: 3,
+      moved: 4,
       rewritten: 2,
       discarded: 1,
     });
@@ -635,6 +639,9 @@ describe('docs-native project control migration', function describeProjectMigrat
     ))).toEqual({
       context: 'FLDR-LOCAL',
     });
+    expect(readFileSync(join(home.controlDir, '.gitignore'), 'utf-8')).toBe(
+      'config.local.json\ncache/\nstate/\n',
+    );
     expect(existsSync(legacyControl)).toBe(false);
     expect(existsSync(join(home.controlDir, 'cache'))).toBe(false);
     expect(migrateDocsNative({
@@ -687,10 +694,7 @@ describe('docs-native project control migration', function describeProjectMigrat
 
     const unsupportedHome = projectHome('project-unsupported');
     mkdirSync(join(unsupportedHome.root, '.backlog-mcp'), { recursive: true });
-    writeFileSync(
-      join(unsupportedHome.root, '.backlog-mcp', '.gitignore'),
-      'state/\n',
-    );
+    writeFileSync(join(unsupportedHome.root, '.backlog-mcp', 'notes.txt'), 'note');
     const unsupportedPlan = planDocsNativeMigration({
       home: unsupportedHome,
       registry: registry(),
@@ -698,7 +702,7 @@ describe('docs-native project control migration', function describeProjectMigrat
     expect(unsupportedPlan.issues).toEqual([
       expect.objectContaining({
         code: 'unsupported-source',
-        sourcePaths: ['.backlog-mcp/.gitignore'],
+        sourcePaths: ['.backlog-mcp/notes.txt'],
       }),
     ]);
   });

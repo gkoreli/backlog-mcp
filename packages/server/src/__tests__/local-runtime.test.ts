@@ -147,6 +147,52 @@ function ignoredByRecommendedControlLayout(path: string): boolean {
 }
 
 describe('LocalRuntime', function describeLocalRuntime() {
+  it('creates a project cache ignore rule when the control file is absent', function createsProjectCacheIgnore() {
+    const home = createHome('create-cache-ignore');
+
+    createLocalRuntime(home, {
+      watcher: new FakeDocsTreeWatcher(),
+      createSearch: createBm25Search,
+    });
+
+    expect(readFileSync(join(home.controlDir, '.gitignore'), 'utf-8')).toBe(
+      'cache/\n',
+    );
+  });
+
+  it('preserves human project ignore content while adding the cache rule', function preservesProjectIgnoreContent() {
+    const home = createHome('preserve-cache-ignore');
+    mkdirSync(home.controlDir, { recursive: true });
+    writeFileSync(join(home.controlDir, '.gitignore'), 'config.local.json');
+
+    createLocalRuntime(home, {
+      watcher: new FakeDocsTreeWatcher(),
+      createSearch: createBm25Search,
+    });
+
+    expect(readFileSync(join(home.controlDir, '.gitignore'), 'utf-8')).toBe(
+      'config.local.json\ncache/\n',
+    );
+  });
+
+  it('does not duplicate an existing project cache ignore rule', async function keepsProjectCacheIgnoreIdempotent() {
+    const home = createHome('idempotent-cache-ignore');
+    mkdirSync(home.controlDir, { recursive: true });
+    writeFileSync(join(home.controlDir, '.gitignore'), 'cache/\nstate/\n');
+
+    const runtime = createLocalRuntime(home, {
+      watcher: new FakeDocsTreeWatcher(),
+      createSearch: createBm25Search,
+    });
+    await runtime.start();
+
+    expect(readFileSync(join(home.controlDir, '.gitignore'), 'utf-8')).toBe(
+      'cache/\nstate/\n',
+    );
+
+    await runtime.stop();
+  });
+
   it('mints and writes ids from the runtime storage claim', async function createsClaimShapedId() {
     const home = createHome('claim-allocation');
     const builtinCatalog = new BuiltinSubstrateStorageCatalog();

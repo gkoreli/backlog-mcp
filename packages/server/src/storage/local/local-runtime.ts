@@ -1,5 +1,6 @@
 import {
   appendFileSync,
+  existsSync,
   mkdirSync,
   readFileSync,
 } from 'node:fs';
@@ -50,6 +51,19 @@ function createSearch(home: BacklogHome): OramaSearchService {
 function ensureRuntimeDirectories(home: BacklogHome): void {
   mkdirSync(home.documentsDir, { recursive: true });
   mkdirSync(home.controlDir, { recursive: true });
+  if (home.kind === 'project') ensureProjectCacheIsIgnored(home);
+}
+
+function ensureProjectCacheIsIgnored(home: BacklogHome): void {
+  const gitignorePath = join(home.controlDir, '.gitignore');
+  if (!existsSync(gitignorePath)) {
+    appendFileSync(gitignorePath, 'cache/\n');
+    return;
+  }
+
+  const content = readFileSync(gitignorePath, 'utf-8');
+  if (content.split(/\r?\n/u).includes('cache/')) return;
+  appendFileSync(gitignorePath, `${content.endsWith('\n') ? '' : '\n'}cache/\n`);
 }
 
 function usageLogPath(home: BacklogHome): string {

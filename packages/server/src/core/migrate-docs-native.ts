@@ -500,7 +500,13 @@ function addProjectControlMoves(
     ) {
       continue;
     }
-    if (file.sourcePath.startsWith('state/')) {
+    if (file.sourcePath === '.gitignore') {
+      actions.push(createMove(
+        'config',
+        file.sourcePath,
+        posix.join(controlRootPath, file.sourcePath),
+      ));
+    } else if (file.sourcePath.startsWith('state/')) {
       actions.push(createMove(
         'legacy-state',
         file.sourcePath,
@@ -509,7 +515,7 @@ function addProjectControlMoves(
     } else if (!file.sourcePath.startsWith('cache/')) {
       issues.push({
         code: 'unsupported-source',
-        message: `Project control migration only moves cache/, state/, config.json, and config.local.json; resolve ${posix.join(LEGACY_PROJECT_CONTROL_DIR, file.sourcePath)} manually`,
+        message: `Project control migration only moves .gitignore, cache/, state/, config.json, and config.local.json; resolve ${posix.join(LEGACY_PROJECT_CONTROL_DIR, file.sourcePath)} manually`,
         sourcePaths: [posix.join(LEGACY_PROJECT_CONTROL_DIR, file.sourcePath)],
       });
     }
