@@ -18,9 +18,10 @@ journal and memory-usage overlay. It emits aggregate JSON to stdout and has no
 output-file option. It does not initialize a runtime, create a control folder,
 rewrite a source, expose query text, or emit operation parameters/results.
 
-The report labels each metric `exact`, `heuristic`, or `unavailable`. This is
-load-bearing: an absent journal is not reported as a quiet session, and a recall
-hit count is not misrepresented as a hit rate.
+The report labels each metric `exact`, `partial`, `heuristic`, or `unavailable`.
+This is load-bearing: rejected source lines downgrade a count to partial, an
+absent journal is not reported as a quiet session, and a recall hit count is not
+misrepresented as a hit rate.
 
 ### Run 1 — tonight's Phase One session
 

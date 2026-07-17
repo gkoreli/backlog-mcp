@@ -26,6 +26,8 @@ const LEGACY_MUTATIONS: Readonly<Record<string, string>> = {
   backlog_delete: 'delete',
   write_resource: 'resource-edit',
 };
+const MUTATIONS = new Set(['create', 'update', 'delete', 'resource-edit']);
+const ACTOR_TYPES = new Set(['user', 'agent']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -81,19 +83,49 @@ function timestampOf(value: Record<string, unknown>): number | undefined {
   return Number.isNaN(timestamp) ? undefined : timestamp;
 }
 
+function operationMutation(value: Record<string, unknown>): string | undefined {
+  if (typeof value.tool !== 'string') return undefined;
+  const mutation = typeof value.mutation === 'string'
+    ? value.mutation
+    : LEGACY_MUTATIONS[value.tool];
+  return mutation !== undefined && MUTATIONS.has(mutation) ? mutation : undefined;
+}
+
+function validActor(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return typeof value.name === 'string'
+    && value.name.trim() !== ''
+    && typeof value.type === 'string'
+    && ACTOR_TYPES.has(value.type);
+}
+
 function validOperation(value: Record<string, unknown>): boolean {
   return timestampOf(value) !== undefined
     && typeof value.tool === 'string'
-    && value.tool.trim() !== '';
+    && value.tool.trim() !== ''
+    && operationMutation(value) !== undefined
+    && isRecord(value.params)
+    && Object.hasOwn(value, 'result')
+    && validActor(value.actor);
+}
+
+function validMemoryIds(value: unknown, allowEmpty: boolean): boolean {
+  const ids = asStringArray(value);
+  return ids !== undefined
+    && (allowEmpty || ids.length > 0)
+    && ids.every(id => id.startsWith('MEMO-'));
 }
 
 function validUsageEvent(value: Record<string, unknown>): boolean {
   const timestamp = timestampOf(value);
   if (timestamp === undefined || typeof value.type !== 'string') return false;
-  if (value.type === 'recall' || value.type === 'cite') {
-    return asStringArray(value.ids) !== undefined;
+  if (value.type === 'recall') {
+    return typeof value.query === 'string' && validMemoryIds(value.ids, false);
   }
-  if (value.type === 'expand') return typeof value.id === 'string';
+  if (value.type === 'cite') return validMemoryIds(value.ids, false);
+  if (value.type === 'expand') {
+    return typeof value.id === 'string' && value.id.startsWith('MEMO-');
+  }
   if (value.type === 'usage_summary') {
     return typeof value.memory_id === 'string'
       && Number.isSafeInteger(value.usage_count)
@@ -170,12 +202,18 @@ function observedTimeRange(timestamps: number[]): { first: string | null; last: 
 
 function exactWhenAvailable(
   source: UsageInstrumentSource,
+  rejectedLines: number,
   availableReason: string,
   missingReason: string,
-): { status: 'exact' | 'unavailable'; reason: string } {
-  return source.status === 'available'
-    ? { status: 'exact', reason: availableReason }
-    : { status: 'unavailable', reason: missingReason };
+): { status: 'exact' | 'partial' | 'unavailable'; reason: string } {
+  if (source.status === 'missing') return { status: 'unavailable', reason: missingReason };
+  if (rejectedLines > 0) {
+    return {
+      status: 'partial',
+      reason: `${availableReason} ${rejectedLines} malformed or unsupported line(s) were excluded.`,
+    };
+  }
+  return { status: 'exact', reason: availableReason };
 }
 
 /**
@@ -197,9 +235,7 @@ export function mineUsage(input: UsageInstrumentInput): UsageInstrumentReport {
     const timestamp = timestampOf(event.value);
     if (timestamp !== undefined) timestamps.push(timestamp);
     increment(byIntent, event.value.tool);
-    const mutation = typeof event.value.mutation === 'string'
-      ? event.value.mutation
-      : LEGACY_MUTATIONS[event.value.tool];
+    const mutation = operationMutation(event.value);
     if (mutation !== undefined) increment(byMutation, mutation);
   }
   operations.summary.valid_events = validOperations;
@@ -260,7 +296,8 @@ export function mineUsage(input: UsageInstrumentInput): UsageInstrumentReport {
     coverage: {
       successful_write_counts: exactWhenAvailable(
         input.operations,
-        'The operations journal appends successful managed mutations.',
+        operations.summary.malformed_or_unsupported_lines,
+        'All supported operation lines are successful managed mutations.',
         'The operations journal source is missing; zero observed events is not evidence of zero writes.',
       ),
       all_tool_call_counts: {
@@ -269,6 +306,7 @@ export function mineUsage(input: UsageInstrumentInput): UsageInstrumentReport {
       },
       observed_recall_hits: exactWhenAvailable(
         input.usage,
+        usage.summary.malformed_or_unsupported_lines,
         'The usage overlay appends recalls only when at least one memory id is returned.',
         'The usage overlay source is missing; zero observed events is not evidence of zero recall hits.',
       ),

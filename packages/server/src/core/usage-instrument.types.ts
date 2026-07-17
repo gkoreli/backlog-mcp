@@ -20,7 +20,7 @@ export interface UsageInstrumentSourceSummary {
 }
 
 export interface UsageInstrumentCoverage {
-  status: 'exact' | 'heuristic' | 'unavailable';
+  status: 'exact' | 'partial' | 'heuristic' | 'unavailable';
   reason: string;
 }
 

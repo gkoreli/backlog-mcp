@@ -9,11 +9,20 @@ describe('mineUsage', function describeMineUsage() {
   it('counts write intents and normalizes known legacy mutation classes', function countsWrites() {
     const report = mineUsage({
       operations: source('/operations.jsonl', [
-        JSON.stringify({ ts: '2026-07-16T20:00:00.000Z', tool: 'backlog_create' }),
+        JSON.stringify({
+          ts: '2026-07-16T20:00:00.000Z',
+          tool: 'backlog_create',
+          params: {},
+          result: { id: 'TASK-0001' },
+          actor: { type: 'agent', name: 'basalt' },
+        }),
         JSON.stringify({
           ts: '2026-07-16T20:01:00.000Z',
           tool: 'backlog_complete_task',
           mutation: 'update',
+          params: {},
+          result: { id: 'TASK-0001' },
+          actor: { type: 'agent', name: 'basalt' },
         }),
         JSON.stringify({ ts: 'not-a-date', tool: 'ignored' }),
         '{bad json',
@@ -34,6 +43,7 @@ describe('mineUsage', function describeMineUsage() {
       valid_events: 2,
       malformed_or_unsupported_lines: 2,
     });
+    expect(report.coverage.successful_write_counts.status).toBe('partial');
   });
 
   it('pairs returned-memory expands only until the next recall', function pairsHydration() {
@@ -119,5 +129,35 @@ describe('mineUsage', function describeMineUsage() {
       malformed_or_unsupported_lines: 3,
     });
     expect(report.memory_usage.usage_summaries).toBe(1);
+    expect(report.coverage.observed_recall_hits.status).toBe('partial');
+  });
+
+  it('rejects read calls and impossible empty hit recalls as evidence', function rejectsFalseEvidence() {
+    const report = mineUsage({
+      operations: source('/operations.jsonl', [
+        JSON.stringify({
+          ts: '2026-07-16T20:00:00.000Z',
+          tool: 'backlog_search',
+          params: {},
+          result: [],
+          actor: { type: 'agent', name: 'basalt' },
+        }),
+      ]),
+      usage: source('/memory-usage.jsonl', [
+        JSON.stringify({
+          ts: '2026-07-16T20:00:01.000Z',
+          type: 'recall',
+          query: 'missing answer',
+          ids: [],
+        }),
+      ]),
+    });
+
+    expect(report.successful_writes.total).toBe(0);
+    expect(report.memory_usage.observed_hit_recalls).toBe(0);
+    expect(report.sources.operations.malformed_or_unsupported_lines).toBe(1);
+    expect(report.sources.usage.malformed_or_unsupported_lines).toBe(1);
+    expect(report.coverage.successful_write_counts.status).toBe('partial');
+    expect(report.coverage.observed_recall_hits.status).toBe('partial');
   });
 });
