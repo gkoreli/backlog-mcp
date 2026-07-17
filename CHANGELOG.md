@@ -35,6 +35,23 @@ begins at 0.57.0 — earlier history lives in git.
   0121 freeze): fusion, scoring, and the judged-fixture behavior are unchanged.
 
 ### Added
+- **Agents are knowledge, and writes may carry their identity (ADR 0119
+  Slice A).** The Agent substrate ships as a pure project declaration —
+  `docs/substrates/agent.json`: id, title, content, role, harness, and a
+  scalar namespaced `principal` (R2) — searchable via its declared
+  projection, invisible in wakeup, zero substrate-specific product code.
+  Writes MAY name an agent: `--as <agent>` on the CLI write commands
+  (create/update/edit/delete/remember), the `BACKLOG_AGENT` env var, or the
+  optional `as` field on `backlog_remember`. The identity rides the existing
+  actor seam into the operation journal and memory provenance, and recall
+  renders `by granite` when a source resolves to an agent doc — exact
+  id/principal match only; duplicate principals fail closed. Absent identity
+  is byte-identical to before: optional, modular, never forced (PROMPT
+  0003). This fixes the class of bug where an orchestrator's memories read
+  "by goga" — first-person memory (PROMPT 0006) now knows whose first
+  person. granite is registered as the first live agent (`docs/agents/`),
+  and the nine-agent fleet fixture (R8) pins compile, search, round-trip,
+  fail-closed resolution, and wakeup invisibility.
 - **Install by telling your agent (SKILL.md).** The whole setup is now one
   message: *"Read <repo>/SKILL.md and follow it to install backlog-mcp."* The
   agent detects its harness (Claude Code, Cursor, Codex, generic MCP, or
@@ -49,6 +66,7 @@ begins at 0.57.0 — earlier history lives in git.
   substrate that declares wakeup disclosure; unknown or closed IDs error
   honestly with live candidates. The Amnesia CI gate now proves the argument
   itself (8 → 13 assertions).
+||||||| parent of 4febcef (docs(changelog): record ADR 0119 Slice A under Unreleased)
 - **Worktrees know their family (Lattice W1, PROMPT 0003).** A backlog home in a
   linked git worktree now resolves its *family* — the main checkout, its branch,
   and the default branch — and the briefing's meta section says so in one line:
