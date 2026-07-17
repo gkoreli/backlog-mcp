@@ -18,6 +18,7 @@
 import type { Entity, Memory } from '@backlog-mcp/shared';
 import { EntityType } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import { findCollisionCandidatePairs } from './collision-candidates.js';
 import {
   ValidationError,
   type ConsolidationParams,
@@ -185,11 +186,22 @@ export async function consolidationCandidates(
     .filter(m => params.context === undefined || m.parent_id === params.context);
 
   const bundles = bucketEpisodics(episodics, { minCount, minAgeDays, maxDigests, now, demand, minDemand });
+  const visibleBundles = bundles.slice(0, limit);
+  const ripeMemberIds = visibleBundles
+    .filter(function isRipe(bundle) { return bundle.ripe; })
+    .flatMap(function bundleMembers(bundle) { return bundle.member_ids; });
+  const collisionCandidates = ripeMemberIds.length === 0
+    ? []
+    : (await findCollisionCandidatePairs(service, {
+        focalIds: ripeMemberIds,
+        now,
+      })).pairs;
 
   return {
-    bundles: bundles.slice(0, limit),
+    bundles: visibleBundles,
     total_episodic: episodics.length,
     ripe_count: bundles.filter(b => b.ripe).length,
     params: { min_count: minCount, min_age_days: minAgeDays, min_demand: minDemand, limit },
+    collision_candidates: collisionCandidates,
   };
 }

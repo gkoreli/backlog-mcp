@@ -16,12 +16,22 @@
 
 import { isValidEntityId, parseEntityId, EntityType } from '@backlog-mcp/shared';
 import type { MemoryComposer, MemoryEntry } from '@backlog-mcp/memory';
-import { ValidationError, type RememberParams, type RememberResult } from './types.js';
+import {
+  ValidationError,
+  type CollisionCandidate,
+  type RememberParams,
+  type RememberResult,
+} from './types.js';
 
 export interface RememberDeps {
   memoryComposer?: MemoryComposer;
   /** Actor name recorded as source when params.source is absent. */
   actorName?: string;
+  /**
+   * Optional post-commit advisory scan. Core does not construct search
+   * dependencies: callers compose this from their selected home runtime.
+   */
+  findCollisionCandidates?: (memoryId: string) => Promise<CollisionCandidate[]>;
 }
 
 /** Strict-ish ISO check: must start YYYY-MM-DD and parse. R-7. */
@@ -103,11 +113,24 @@ export async function remember(params: RememberParams, deps: RememberDeps): Prom
 
   const stored = await deps.memoryComposer.store(entry);
 
+  // The memory is durable before this best-effort read. A failed or absent
+  // scanner deliberately leaves the receipt unannotated rather than making a
+  // false scanned-clean claim or affecting the write outcome.
+  let collisionCandidates: CollisionCandidate[] | undefined;
+  if (deps.findCollisionCandidates !== undefined) {
+    try {
+      collisionCandidates = await deps.findCollisionCandidates(stored.id);
+    } catch {
+      // Advisory scan failures must never fail or roll back a remembered fact.
+    }
+  }
+
   return {
     id: stored.id,
     layer: stored.layer,
     created_at: new Date(stored.createdAt).toISOString(),
     ...(params.supersedes ? { supersedes: params.supersedes } : {}),
     ...(params.state_key ? { state_key: params.state_key } : {}),
+    ...(collisionCandidates === undefined ? {} : { collision_candidates: collisionCandidates }),
   };
 }

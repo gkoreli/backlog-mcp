@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { remember } from '../../core/remember.js';
+import { findCollisionCandidatesForMemory } from '../../core/collision-candidates.js';
 import { resolveContext } from '../../core/config.js';
 import type { RememberResult } from '../../core/types.js';
 import { cliRuntimeDependencies, run } from '../runner.js';
@@ -8,6 +9,15 @@ function format(result: RememberResult): string {
   const lines = [`remembered ${result.id} [${result.layer}] at ${result.created_at}`];
   if (result.supersedes) lines.push(`  supersedes ${result.supersedes} (predecessor expired)`);
   if (result.state_key) lines.push(`  state_key ${result.state_key} (previous holders closed)`);
+  if (result.collision_candidates !== undefined) {
+    if (result.collision_candidates.length === 0) lines.push('  collision scan complete: no candidates');
+    else {
+      lines.push(`  collision candidates (${result.collision_candidates.length}):`);
+      for (const candidate of result.collision_candidates) {
+        lines.push(`    ${candidate.id}  ${candidate.title}  priority ${candidate.pair_priority}`);
+      }
+    }
+  }
   return lines.join('\n');
 }
 
@@ -51,6 +61,9 @@ export function registerRemember(program: Command): void {
         {
           memoryComposer: runtime.memoryComposer,
           actorName: runtime.writeContext.actor.name,
+          findCollisionCandidates: function findCandidates(memoryId) {
+            return findCollisionCandidatesForMemory(runtime.service, memoryId);
+          },
         },
         );
         // Citation signal (ADR 0092.9 R-14): cited MEMO- ids were useful.

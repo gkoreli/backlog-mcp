@@ -7,7 +7,7 @@
  * state_key, R-1/R-2) are store behavior and live in
  * memory-store-contract.test.ts.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MemoryComposer, InMemoryStore } from '@backlog-mcp/memory';
 import { remember } from '../core/remember.js';
 import { forget } from '../core/forget.js';
@@ -63,6 +63,45 @@ describe('core/remember', () => {
     expect(meta.state_key).toBe('build.bundler');
     expect(meta.occurred_at).toBe('2026-06-01');
     expect(meta.entity_refs).toEqual(['TASK-0629']);
+  });
+
+  it('returns scanned-clean advisory candidates after committing the memory', async () => {
+    const finder = vi.fn(async function findCandidates() { return []; });
+    const result = await remember(
+      { content: 'Production deploys locally', title: 'Production deployment' },
+      { memoryComposer: composer, findCollisionCandidates: finder },
+    );
+    expect(await store.size()).toBe(1);
+    expect(finder).toHaveBeenCalledWith(result.id);
+    expect(result.collision_candidates).toEqual([]);
+  });
+
+  it('returns advisory collision candidates after committing the memory', async () => {
+    const candidates = [{
+      id: 'MEMO-0002', title: 'Conflicting deployment', digest: 'Production uses a VPS.',
+      pair_priority: 0.9,
+      signals: { neighbor_rank: 1, lexical_overlap: 0.5, scope: 1, epistemic_shape: 1 },
+    }];
+    const result = await remember(
+      { content: 'Production deploys locally', title: 'Production deployment' },
+      { memoryComposer: composer, findCollisionCandidates: async function findCandidates() { return candidates; } },
+    );
+    expect(await store.size()).toBe(1);
+    expect(result.collision_candidates).toEqual(candidates);
+  });
+
+  it('keeps the durable write successful when its advisory scan fails', async () => {
+    const result = await remember(
+      { content: 'Production deploys locally', title: 'Production deployment' },
+      {
+        memoryComposer: composer,
+        findCollisionCandidates: async function failScan() {
+          throw new Error('search unavailable');
+        },
+      },
+    );
+    expect(await store.size()).toBe(1);
+    expect(result).not.toHaveProperty('collision_candidates');
   });
 
   it('rejects empty content', async () => {

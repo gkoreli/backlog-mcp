@@ -40,9 +40,13 @@ import { registerCreate } from '../cli/commands/create.js';
 import { registerRecall } from '../cli/commands/recall.js';
 import { registerSearch } from '../cli/commands/search.js';
 import { registerWakeup } from '../cli/commands/wakeup.js';
+import { registerContradictions } from '../cli/commands/contradictions.js';
 
 function createRuntime(): CliRuntime {
-  const service = {} as IBacklogService;
+  const service = {
+    list: vi.fn(async function list() { return []; }),
+    searchUnified: vi.fn(async function search() { return []; }),
+  } as unknown as IBacklogService;
   const operationLogger = createOperationLogger(
     '/cli-command-runtime/operations.jsonl',
   );
@@ -277,5 +281,22 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
     expect(mocks.run).toHaveBeenCalledOnce();
     expect(mocks.run.mock.calls[0]?.[3]).toEqual({ home: 'all' });
     expect(mocks.runAcrossHomes).not.toHaveBeenCalled();
+  });
+
+  it('routes --candidates to the same-home collision queue', async function routesCollisionCandidates() {
+    const runtime = createRuntime();
+    const formatted: string[] = [];
+    mocks.run.mockImplementation(async function runSelected(
+      handler: (selected: CliRuntime) => Promise<unknown>,
+      format: (result: never) => string,
+    ) {
+      formatted.push(format(await handler(runtime) as never));
+    });
+    const program = new Command().option('--json');
+    registerContradictions(program);
+
+    await program.parseAsync(['node', 'backlog-mcp', 'contradictions', '--candidates']);
+
+    expect(formatted).toEqual(['No collision candidates (0 live memories scanned).']);
   });
 });

@@ -562,6 +562,11 @@ export interface RememberResult {
   supersedes?: string;
   /** Echoed when a state_key was set (predecessors with the key were closed). */
   state_key?: string;
+  /**
+   * Present only when the advisory collision scan completed. An empty array
+   * means the durable write was scanned-clean; absence makes no such claim.
+   */
+  collision_candidates?: CollisionCandidate[];
 }
 
 export interface ForgetParams {
@@ -628,6 +633,8 @@ export interface ConsolidationCandidatesResult {
   total_episodic: number;
   ripe_count: number;
   params: { min_count: number; min_age_days: number; min_demand: number; limit: number };
+  /** Semantic review pairs for members of the returned ripe bundles only. */
+  collision_candidates: CollisionCandidatePair[];
 }
 
 // ── Contradiction detection (ADR-0092.13, implementing ADR-0092.5 R-9) ──

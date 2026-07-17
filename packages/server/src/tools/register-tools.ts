@@ -127,6 +127,7 @@ export function registerTools(
     ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
     ...(deps?.actor ? { actor: deps.actor } : {}),
     ...(deps?.usageTracker ? { usageTracker: deps.usageTracker } : {}),
+    service,
   });
   registerBacklogForgetTool(
     server,

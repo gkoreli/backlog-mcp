@@ -6,6 +6,7 @@ import { registerBacklogListTool } from '../tools/backlog-list.js';
 import { registerBacklogRecallTool } from '../tools/backlog-recall.js';
 import { registerBacklogSearchTool } from '../tools/backlog-search.js';
 import { registerBacklogWakeupTool } from '../tools/backlog-wakeup.js';
+import { registerBacklogContradictionsTool } from '../tools/backlog-contradictions.js';
 import {
   BACKLOG_HOME_INPUT_FIELDS,
   BACKLOG_READ_HOME_INPUT_FIELDS,
@@ -125,6 +126,26 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
     expect(RESERVED_TOOL_NAMES).toEqual(
       expect.arrayContaining(['backlog_create', 'backlog_update']),
     );
+  });
+
+  it('switches to collision candidates only when explicitly requested', async function switchesContradictionMode() {
+    const service = {
+      list: vi.fn(async function list() { return []; }),
+      searchUnified: vi.fn(async function search() { return []; }),
+    } as unknown as IBacklogService;
+    const handler = captureHandler(function register(server) {
+      registerBacklogContradictionsTool(server, service);
+    });
+
+    const defaultResponse = await handler({});
+    const candidateResponse = await handler({ candidates: true });
+
+    expect(JSON.parse(defaultResponse.content[0]?.text ?? '{}')).toEqual({
+      groups: [], total_live_keyed: 0, contradiction_count: 0,
+    });
+    expect(JSON.parse(candidateResponse.content[0]?.text ?? '{}')).toEqual({
+      pairs: [], total_live_memories: 0, focal_count: 0, candidate_count: 0,
+    });
   });
 
   it('routes home:all search through the coordinator', async function coordinatesSearch() {

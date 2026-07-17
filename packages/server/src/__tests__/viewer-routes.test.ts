@@ -220,3 +220,62 @@ describe('Viewer Routes - /search endpoint', () => {
     }));
   });
 });
+
+describe('Viewer Routes - collision candidates', () => {
+  it('keeps structural contradictions as the default and exposes candidates explicitly', async () => {
+    const service = makeService();
+    const app = createApp(service);
+
+    const structural = await app.request('/memory/contradictions');
+    const candidates = await app.request('/memory/contradictions?candidates=true');
+
+    expect(await structural.json()).toEqual({
+      groups: [], total_live_keyed: 0, contradiction_count: 0,
+    });
+    expect(await candidates.json()).toEqual({
+      pairs: [], total_live_memories: 0, focal_count: 0, candidate_count: 0,
+    });
+  });
+
+  it('adds a scanned focal collision-candidates field to memory detail', async () => {
+    const memory = {
+      id: 'MEMO-0001', type: 'memory' as EntityType, title: 'Deployment',
+      content: 'Production deploys to Cloudflare Workers.', layer: 'semantic',
+      created_at: '2026-07-16T00:00:00.000Z', updated_at: '2026-07-16T00:00:00.000Z',
+    } as Entity;
+    const service = makeService({
+      get: vi.fn().mockResolvedValue(memory),
+      getMarkdown: vi.fn().mockResolvedValue('# Deployment'),
+      list: vi.fn().mockResolvedValue([memory]),
+    });
+    const app = createApp(service);
+
+    const response = await app.request('/tasks/MEMO-0001');
+
+    expect(await response.json()).toMatchObject({
+      id: 'MEMO-0001', collision_candidates: [],
+    });
+  });
+
+  it('keeps memory detail readable when its advisory collision scan is unavailable', async () => {
+    const memory = {
+      id: 'MEMO-0001', type: 'memory' as EntityType, title: 'Deployment',
+      content: 'Production deploys to Cloudflare Workers.', layer: 'semantic',
+      created_at: '2026-07-16T00:00:00.000Z', updated_at: '2026-07-16T00:00:00.000Z',
+    } as Entity;
+    const service = makeService({
+      get: vi.fn().mockResolvedValue(memory),
+      getMarkdown: vi.fn().mockResolvedValue('# Deployment'),
+      list: vi.fn().mockResolvedValue([memory]),
+      searchUnified: vi.fn().mockRejectedValue(new Error('search unavailable')),
+    });
+    const app = createApp(service);
+
+    const response = await app.request('/tasks/MEMO-0001');
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ id: 'MEMO-0001' });
+    expect(body).not.toHaveProperty('collision_candidates');
+  });
+});

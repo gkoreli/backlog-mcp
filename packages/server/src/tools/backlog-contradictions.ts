@@ -12,6 +12,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { detectContradictions } from '../core/contradictions.js';
+import { findCollisionCandidatePairs } from '../core/collision-candidates.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export function registerBacklogContradictionsTool(
@@ -22,18 +23,21 @@ export function registerBacklogContradictionsTool(
     'backlog_contradictions',
     {
       description:
-        'List contradictions in memory: sets of ≥2 LIVE memories that share one state_key (e.g. "db.primary"), ' +
+        'List structural contradictions in memory: sets of ≥2 LIVE memories that share one state_key (e.g. "db.primary"), ' +
         'which should never happen — a new memory with a state_key auto-expires the previous holder. Each set means two ' +
         'beliefs about the same fact are both active. Resolution is yours, never automatic: pick the correct member, then ' +
         'either backlog_remember({ content, state_key, supersedes: <stale MEMO- id> }) to record the right value and retire ' +
         'the rest, or backlog_forget({ ids: [<stale MEMO- ids>] }) to expire the wrong ones. Read members with backlog_get ' +
-        'for full context before deciding.',
+        'for full context before deciding. Set candidates: true to list semantic collision candidates instead: nearby live facts that deserve review, never contradiction verdicts.',
       inputSchema: z.object({
         ...BACKLOG_HOME_INPUT_FIELDS,
+        candidates: z.boolean().optional().describe('Return semantic collision candidates instead of structural state_key contradictions.'),
       }),
     },
-    async () => {
-      const result = await detectContradictions(service);
+    async (params) => {
+      const result = params.candidates === true
+        ? await findCollisionCandidatePairs(service)
+        : await detectContradictions(service);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     },
   );

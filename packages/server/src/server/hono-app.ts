@@ -9,6 +9,7 @@ import { extractTargetFilename } from '../operations/resource-id.js';
 import { normalizeOperationEntry } from '../operations/mutation.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';
 import { detectContradictions, contradictsFor } from '../core/contradictions.js';
+import { findCollisionCandidatePairs, findCollisionCandidatesForMemory } from '../core/collision-candidates.js';
 import { usageSeries, hasUsage } from '../core/usage-series.js';
 import type { AnyEntity, Entity, Memory } from '@backlog-mcp/shared';
 import {
@@ -464,12 +465,19 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     // other live holders, surface them so MetadataCard renders navigable
     // links + a contradiction chip. Empty/absent for the no-conflict case.
     let contradicts: string[] | undefined;
+    let collisionCandidates: Awaited<ReturnType<typeof findCollisionCandidatesForMemory>> | undefined;
     // usage_series (ADR 0092.14): per-day touch counts from the JSONL, for the
     // viewer sparkline. Node-only (reader injected); omitted if no activity.
     let usage_series: number[] | undefined;
     if ((task.type ?? 'task') === 'memory') {
       const conflicts = await contradictsFor(requestService, task as Entity as Memory);
       if (conflicts.length > 0) contradicts = conflicts;
+      try {
+        collisionCandidates = await findCollisionCandidatesForMemory(requestService, id);
+      } catch {
+        // Collision review is advisory. Search unavailability must not make
+        // the authoritative memory detail unreadable or claim a clean scan.
+      }
       if (runtime.readUsageLines) {
         const series = usageSeries(runtime.readUsageLines(), id);
         if (hasUsage(series)) usage_series = series;
@@ -485,6 +493,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       parentTitle,
       children,
       ...(contradicts ? { contradicts } : {}),
+      ...(collisionCandidates === undefined ? {} : { collision_candidates: collisionCandidates }),
       ...(usage_series ? { usage_series } : {}),
     });
   });
@@ -544,7 +553,9 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   // GET /memory/contradictions — all contradiction sets (ADR 0092.13 R-9)
   app.get('/memory/contradictions', async (c) => {
     const runtime = await resolveRequestRuntime(c.req);
-    const result = await detectContradictions(runtime.service);
+    const result = c.req.query('candidates') === 'true'
+      ? await findCollisionCandidatePairs(runtime.service)
+      : await detectContradictions(runtime.service);
     return c.json(result);
   });
 

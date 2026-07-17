@@ -11,6 +11,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MemoryComposer } from '@backlog-mcp/memory';
 import { z } from 'zod';
 import { remember } from '../core/remember.js';
+import { findCollisionCandidatesForMemory } from '../core/collision-candidates.js';
+import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { ValidationError } from '../core/types.js';
 import type { Actor } from '../operations/types.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
@@ -21,6 +23,8 @@ export interface BacklogRememberDeps {
   actor?: Actor;
   /** Records MEMO- citations in remembered content as strong usage (R-14). */
   usageTracker?: MemoryUsageTracker;
+  /** Same-home service used only for the post-commit advisory scan. */
+  service?: IBacklogService;
 }
 
 export function registerBacklogRememberTool(
@@ -31,7 +35,7 @@ export function registerBacklogRememberTool(
     'backlog_remember',
     {
       description:
-        'Write a durable memory — a stable fact, a procedure, or a preference you should know next session. Use when you learn something worth keeping: "this repo deploys via wrangler", "Goga prefers terse evidence bullets". To CORRECT existing knowledge, pass supersedes (the old MEMO- id is expired, lineage kept) or state_key (previous holders of the same evolving fact are closed). Do not use for task events — completions are captured automatically.',
+        'Write a durable memory — a stable fact, a procedure, or a preference you should know next session. Use when you learn something worth keeping: "this repo deploys via wrangler", "Goga prefers terse evidence bullets". To CORRECT existing knowledge, pass supersedes (the old MEMO- id is expired, lineage kept) or state_key (previous holders of the same evolving fact are closed). The optional collision_candidates receipt is tri-state: [] means the advisory scan completed clean; a non-empty array means nearby facts deserve adjudication; absent means the advisory scan did not run or failed, not that the write failed. Do not use for task events — completions are captured automatically.',
       inputSchema: z.object({
         ...BACKLOG_HOME_INPUT_FIELDS,
         content: z.string().describe('The memory body (markdown) — the fact itself.'),
@@ -55,6 +59,7 @@ export function registerBacklogRememberTool(
       }),
     },
     async (params) => {
+      const candidateService = deps?.service;
       try {
         const result = await remember(
           {
@@ -74,6 +79,11 @@ export function registerBacklogRememberTool(
           {
             ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
             ...(deps?.actor?.name ? { actorName: deps.actor.name } : {}),
+            ...(candidateService === undefined
+              ? {}
+              : { findCollisionCandidates: function findCandidates(memoryId) {
+                return findCollisionCandidatesForMemory(candidateService, memoryId);
+              } }),
           },
         );
         // Citation signal (R-14): MEMO- ids referenced by the new memory's

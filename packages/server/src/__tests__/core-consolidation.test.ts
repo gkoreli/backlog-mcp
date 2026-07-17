@@ -159,6 +159,50 @@ describe('consolidationCandidates (service-backed)', () => {
     expect(result.bundles[0]?.ripe).toBe(true);
     expect(result.params.min_demand).toBe(3);
   });
+
+  it('appends collision candidates only for members of visible ripe bundles', async () => {
+    const old = new Date(NOW - 30 * DAY).toISOString();
+    const first = mem('MEMO-0001', {
+      parent_id: 'FLDR-0001', created_at: old,
+      title: 'Production deploys to Cloudflare Workers',
+      content: 'Production deploys to Cloudflare Workers.',
+    });
+    const second = mem('MEMO-0002', {
+      parent_id: 'FLDR-0001', created_at: old,
+      title: 'Production deploys to a local VPS',
+      content: 'Production deploys to a local VPS.',
+    });
+    const svc = mockService([first, second]);
+    vi.mocked(svc.searchUnified).mockImplementation(async function search(_query) {
+      return [{ item: first }, { item: second }] as Awaited<ReturnType<IBacklogService['searchUnified']>>;
+    });
+
+    const result = await consolidationCandidates(
+      svc,
+      { min_count: 2, min_age_days: 0 },
+      { now: NOW },
+    );
+    expect(result.bundles[0]?.ripe).toBe(true);
+    expect(result.collision_candidates).toHaveLength(1);
+    expect(result.collision_candidates[0]?.members.map(member => member.id))
+      .toEqual(['MEMO-0001', 'MEMO-0002']);
+  });
+
+  it('does not search when no visible bundle is ripe', async () => {
+    const svc = mockService([
+      mem('MEMO-0001', { parent_id: 'FLDR-0001' }),
+      mem('MEMO-0002', { parent_id: 'FLDR-0001' }),
+    ]);
+
+    const result = await consolidationCandidates(
+      svc,
+      { min_count: 3, min_age_days: 0 },
+      { now: NOW },
+    );
+
+    expect(result.collision_candidates).toEqual([]);
+    expect(svc.searchUnified).not.toHaveBeenCalled();
+  });
 });
 
 describe('demandCounts (pure fold)', () => {
