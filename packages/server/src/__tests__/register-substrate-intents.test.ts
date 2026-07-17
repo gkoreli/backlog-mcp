@@ -291,7 +291,7 @@ describe('registerSubstrateIntents', function describeIntentRegistrar() {
       },
       {
         name: 'backlog_attach_artifact',
-        description: 'Use when attaching an artifact to a project item.',
+        description: 'Use when attaching an artifact to a project item. parent_id is required.',
         schemaBytes: 476,
         schemaSha256: 'b1d630613d54e20d6eab62df5fcbfb7ebde0569bb43e5fe1f8ab5d73f323c279',
       },
@@ -321,13 +321,13 @@ describe('registerSubstrateIntents', function describeIntentRegistrar() {
       },
       {
         name: 'backlog_create_work',
-        description: 'Use when creating a project work item.',
+        description: 'Use when creating a project work item. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
         schemaBytes: 406,
         schemaSha256: '01c3c363a9fc12b41b0866cad562a6579a67c1136432e131b642277dd2771f83',
       },
       {
         name: 'backlog_organize_folder',
-        description: 'Use when creating a folder to organize project items.',
+        description: 'Use when creating a folder to organize project items. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
         schemaBytes: 237,
         schemaSha256: 'def7aedd445122642dbf14cdec89429415d838716df7c12bc6266cca5d493050',
       },
@@ -339,7 +339,7 @@ describe('registerSubstrateIntents', function describeIntentRegistrar() {
       },
       {
         name: 'backlog_plan_epic',
-        description: 'Use when planning an epic that groups related work.',
+        description: 'Use when planning an epic that groups related work. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
         schemaBytes: 406,
         schemaSha256: '01c3c363a9fc12b41b0866cad562a6579a67c1136432e131b642277dd2771f83',
       },
@@ -357,7 +357,7 @@ describe('registerSubstrateIntents', function describeIntentRegistrar() {
       },
       {
         name: 'backlog_schedule_cron',
-        description: 'Use when scheduling recurring project intake.',
+        description: 'Use when scheduling recurring project intake. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
         schemaBytes: 383,
         schemaSha256: 'eb8e4fa305ff5d5c266575d6c399c36f6641b92b4a1f440418ced4a2e605aa89',
       },
@@ -375,7 +375,7 @@ describe('registerSubstrateIntents', function describeIntentRegistrar() {
       },
       {
         name: 'backlog_target_milestone',
-        description: 'Use when creating a milestone for a project target.',
+        description: 'Use when creating a milestone for a project target. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
         schemaBytes: 435,
         schemaSha256: 'f100de1e41d33cde71382cce41260987276ecc3eec68ee2c55b6ac1be3590313',
       },
