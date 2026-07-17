@@ -10,7 +10,16 @@ each version says why it mattered on the road to the north star
 (`docs/NORTH-STAR.md` — *your backlog is your agent's memory*). This changelog
 begins at 0.57.0 — earlier history lives in git.
 
-## [Unreleased]
+## [0.66.0] — 2026-07-17
+
+*The release where identity stops costing tokens. You declare who an agent is
+once — at the scope the identity belongs to, exactly like git's own
+`user.name` — and every write and every briefing picks it up from there, with
+the winning source disclosed so implicit never means invisible. A worktree's
+stamp deliberately outranks an inherited environment: the boundary that
+protects the code is now also the boundary that protects the attribution.
+Migration meanwhile learned to carry imperfect history honestly — quarantine
+and disclose, never block, never silently rewrite.*
 
 ### Added
 - **Set your agent identity once — every write and every briefing picks it up
