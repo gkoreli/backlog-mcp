@@ -35,6 +35,11 @@ Select two deliberately unequal lanes:
    boundary it is deferred behind tool discovery, not loaded into every
    session's baseline context.
 
+`backlog_wakeup` is the sole exception to that deferred baseline. It is the
+product's front door: its schema is the one context cost the Cold-Open Test
+always pays. Recall, remember, forget, and every other tool stay deferred under
+Tenet 8 because the wakeup briefing teaches the agent which deeper doors exist.
+
 Hooks are optional diagnostic enrichment. A supported harness may report a
 successful native Edit/Write call after it occurs, but hooks do not validate
 the file, do not repair it, and do not participate in reconciliation
@@ -493,6 +498,11 @@ At the MCP boundary this tool is deferred behind the existing discovery
 mechanism. It does not tax every session's baseline context, but an agent may
 discover it when a schema-critical edit needs pre-return validation. The
 strict core/CLI boundary remains available to local operators.
+
+This does not make every MCP tool deferred: `backlog_wakeup` is explicitly
+always visible as the sole Cold-Open front door. Its bounded briefing teaches
+the agent about recall, remember, forget, and other progressively disclosed
+surfaces without loading those schemas into the baseline.
 
 ## R7. Messy external frontmatter is indexed and diagnosed, never upgraded uninvited
 

@@ -131,6 +131,21 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
         'anthropic/alwaysLoad': false,
       },
     });
+    expect(metadata.get('backlog_wakeup')).toMatchObject({
+      _meta: {
+        'anthropic/alwaysLoad': true,
+      },
+    });
+    for (const [name, meta] of metadata) {
+      if (name === 'backlog_wakeup') continue;
+      // Tenet 8 permits exactly one always-visible MCP door. Removing that
+      // door breaks the Cold-Open Test; adding another spends baseline context.
+      expect(meta).not.toMatchObject({
+        _meta: {
+          'anthropic/alwaysLoad': true,
+        },
+      });
+    }
     const crossHomeTools = new Set([
       'backlog_recall',
       'backlog_search',

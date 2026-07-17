@@ -48,6 +48,11 @@ export function registerBacklogWakeupTool(
     {
       description:
         'Dense session-start briefing: active tasks, current epics, project constraints (requirements as stubs, violated/at-risk first — treat these as standing product intent), recent completions (with evidence snippets), and recent activity. No focal entity required — use this at the start of every session to understand what you were working on. Optional `scope` narrows to a folder (for project-scoped briefing), milestone, or epic.',
+      // The Cold-Open Test makes wakeup the product's one always-visible door.
+      // Every other tool stays deferred under Tenet 8 until the briefing teaches it.
+      _meta: {
+        'anthropic/alwaysLoad': true,
+      },
       inputSchema: z.object({
         ...BACKLOG_READ_HOME_INPUT_FIELDS,
         scope: z.string().optional().describe(
