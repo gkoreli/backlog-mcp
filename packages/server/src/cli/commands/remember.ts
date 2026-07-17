@@ -61,6 +61,9 @@ export function registerRemember(program: Command): void {
         {
           memoryComposer: runtime.memoryComposer,
           actorName: runtime.writeContext.actor.name,
+          // Intent journal (EXP-1 B-4) — same attribution style as the
+          // other CLI writes ('backlog create' etc.).
+          journal: { context: runtime.writeContext, tool: 'backlog remember' },
           findCollisionCandidates: function findCandidates(memoryId) {
             return findCollisionCandidatesForMemory(runtime.service, memoryId);
           },

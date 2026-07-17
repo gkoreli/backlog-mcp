@@ -16,17 +16,30 @@
 
 import { isValidEntityId, parseEntityId, EntityType } from '@backlog-mcp/shared';
 import type { MemoryComposer, MemoryEntry } from '@backlog-mcp/memory';
+import { recordMutation } from './operation-log.js';
 import {
   ValidationError,
   type CollisionCandidate,
   type RememberParams,
   type RememberResult,
+  type WriteContext,
 } from './types.js';
 
 export interface RememberDeps {
   memoryComposer?: MemoryComposer;
   /** Actor name recorded as source when params.source is absent. */
   actorName?: string;
+  /**
+   * Intent-level journal seam (EXP-1 B-4 / ADR 0094): every successful
+   * remember emits exactly ONE actor-attributed operation row carrying the
+   * minted MEMO- id; failed writes emit none. The store's internal entity
+   * creation never journals, so the count cannot double.
+   */
+  journal?: {
+    context: WriteContext;
+    /** Surface-specific attribution ('backlog_remember' MCP, 'backlog remember' CLI). */
+    tool: string;
+  };
   /**
    * Optional post-commit advisory scan. Core does not construct search
    * dependencies: callers compose this from their selected home runtime.
@@ -112,6 +125,19 @@ export async function remember(params: RememberParams, deps: RememberDeps): Prom
   };
 
   const stored = await deps.memoryComposer.store(entry);
+
+  // Journal the intent exactly once, only after the write is durable
+  // (B-4): the row carries the minted resource id and the caller's actor.
+  // A throw above this line means no write happened and no row appears.
+  if (deps.journal !== undefined) {
+    recordMutation(
+      deps.journal.context,
+      { tool: deps.journal.tool, mutation: 'create' },
+      stored.id,
+      { title, layer, ...(params.context ? { context: params.context } : {}) },
+      { id: stored.id },
+    );
+  }
 
   // The memory is durable before this best-effort read. A failed or absent
   // scanner deliberately leaves the receipt unannotated rather than making a

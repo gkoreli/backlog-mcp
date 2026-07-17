@@ -14,13 +14,16 @@ import { remember } from '../core/remember.js';
 import { findCollisionCandidatesForMemory } from '../core/collision-candidates.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { ValidationError } from '../core/types.js';
-import type { Actor } from '../operations/types.js';
+import type { Actor, IOperationLog } from '../operations/types.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 
 export interface BacklogRememberDeps {
   memoryComposer?: MemoryComposer;
   actor?: Actor;
+  /** Intent journal (EXP-1 B-4): one operation row per successful remember. */
+  operationLog?: IOperationLog;
+  eventBus?: { emit: (event: any) => void };
   /** Records MEMO- citations in remembered content as strong usage (R-14). */
   usageTracker?: MemoryUsageTracker;
   /** Same-home service used only for the post-commit advisory scan. */
@@ -79,6 +82,18 @@ export function registerBacklogRememberTool(
           {
             ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
             ...(deps?.actor?.name ? { actorName: deps.actor.name } : {}),
+            ...(deps?.actor && deps?.operationLog
+              ? {
+                  journal: {
+                    context: {
+                      actor: deps.actor,
+                      operationLog: deps.operationLog,
+                      ...(deps.eventBus ? { eventBus: deps.eventBus } : {}),
+                    },
+                    tool: 'backlog_remember',
+                  },
+                }
+              : {}),
             ...(candidateService === undefined
               ? {}
               : { findCollisionCandidates: function findCandidates(memoryId) {

@@ -104,6 +104,75 @@ describe('core/remember', () => {
     expect(result).not.toHaveProperty('collision_candidates');
   });
 
+  describe('intent journaling (EXP-1 B-4)', () => {
+    const actor = { type: 'agent' as const, name: 'onyx' };
+
+    function journalHarness() {
+      const rows: any[] = [];
+      return {
+        rows,
+        journal: {
+          context: {
+            actor,
+            operationLog: {
+              append: (entry: any) => { rows.push(entry); },
+              query: async () => rows,
+              countForTask: async () => 0,
+            },
+          },
+          tool: 'backlog_remember',
+        },
+      };
+    }
+
+    it('a successful remember emits exactly ONE actor-attributed row with the minted resource id', async () => {
+      const { rows, journal } = journalHarness();
+      const result = await remember(
+        { content: 'Deploys via wrangler', title: 'Deploy path' },
+        { memoryComposer: composer, actorName: actor.name, journal },
+      );
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        tool: 'backlog_remember',
+        mutation: 'create',
+        resourceId: result.id,
+        actor: { type: 'agent', name: 'onyx' },
+      });
+    });
+
+    it('failed writes emit no row — validation and store failures alike', async () => {
+      const { rows, journal } = journalHarness();
+      await expect(remember(
+        { content: '', title: 'no content' },
+        { memoryComposer: composer, journal },
+      )).rejects.toThrow(ValidationError);
+
+      const failing = new MemoryComposer();
+      failing.register('semantic', {
+        store: async () => { throw new Error('disk full'); },
+      } as never);
+      await expect(remember(
+        { content: 'x', title: 'x' },
+        { memoryComposer: failing, journal },
+      )).rejects.toThrow('disk full');
+      expect(rows).toHaveLength(0);
+    });
+
+    it('the row survives an advisory-scan failure — the write already happened', async () => {
+      const { rows, journal } = journalHarness();
+      const result = await remember(
+        { content: 'Durable fact', title: 'Durable' },
+        {
+          memoryComposer: composer,
+          journal,
+          findCollisionCandidates: async () => { throw new Error('scan broke'); },
+        },
+      );
+      expect(result.id).toBeTruthy();
+      expect(rows).toHaveLength(1);
+    });
+  });
+
   it('rejects empty content', async () => {
     await expect(remember({ content: '   ', title: 't' }, { memoryComposer: composer })).rejects.toThrow(ValidationError);
   });

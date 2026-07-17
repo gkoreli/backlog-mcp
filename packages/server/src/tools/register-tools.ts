@@ -130,6 +130,8 @@ export function registerTools(
   registerBacklogRememberTool(server, {
     ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
     ...(deps?.actor ? { actor: deps.actor } : {}),
+    ...(deps?.operationLog ? { operationLog: deps.operationLog } : {}),
+    ...(deps?.eventBus ? { eventBus: deps.eventBus } : {}),
     ...(deps?.usageTracker ? { usageTracker: deps.usageTracker } : {}),
     service,
   });
