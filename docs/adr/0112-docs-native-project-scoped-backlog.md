@@ -1,7 +1,7 @@
 ---
 title: "0112. Docs-Native Project-Scoped Backlog — Open Markdown Truth, Scoped Homes, Human IDs"
 date: 2026-07-16
-status: Proposed
+status: Accepted — implemented (shipped 0.59.0–0.61.0, 2026-07-16 — foundations 0.59.0, per-home runtimes 0.60.0 Phase B, cross-home reads + docs-native default and one-shot migration 0.61.0 Phases D–E; CHANGELOG); status reconciled 2026-07-17
 supersedes_in_part:
   - "0107-loro-as-truth-local-first-history-substrate.md — project homes only: committed Markdown is authoritative; Loro may be derived history/sync or remain confined to the global home"
   - "0092.9-phase-e-usage-feedback-research-and-plan.md — project homes only: recall usage remains local overlay state and does not rewrite committed memory frontmatter"

@@ -1,13 +1,13 @@
 ---
 title: "0115. Memory Experience Uplift — Provenance-Bearing Recall Stubs, Golden Recall Suite, Honest Clocks"
 date: 2026-07-16
-status: Proposed
+status: Accepted — implemented (shipped 0.59.0, 2026-07-16 — provenance-bearing recall stubs; wakeup stubs carry age_days and usage counts; CHANGELOG 0.59.0); status reconciled 2026-07-17
 ---
 
 # 0115. Memory Experience Uplift
 
 **Date**: 2026-07-16
-**Status**: Proposed
+**Status**: Accepted — implemented (shipped 0.59.0, 2026-07-16 — recall results carry provenance and wakeup knowledge stubs surface age_days and usage counts; CHANGELOG 0.59.0). Status reconciled 2026-07-17.
 **Thread**: continues the 0092.x memory thread (0092.3 four verbs, 0092.9 usage feedback, 0092.12 demand-aware ripeness); sibling of ADR 0114 (context folded into memory-verb language)
 **Driver**: Goga — *"a stale artifact can be worse than no memory because it arrives with undeserved authority."*
 

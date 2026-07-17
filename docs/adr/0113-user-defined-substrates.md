@@ -1,7 +1,7 @@
 ---
 title: "0113. User-Defined Substrates — Substrate Definitions as Data"
 date: 2026-07-16
-status: Proposed
+status: Accepted — implemented (Phases A–B shipped 0.60.0, Phase C shipped 0.61.0, 2026-07-16 — substrate compiler, per-project registry, declared-type search projections; CHANGELOG); status reconciled 2026-07-17
 spawned_by: "PROMPT 0001 — docs/prompts/0001-tasks-and-vision.md"
 extends: 0098-unified-substrate-architecture.md
 relates_to:

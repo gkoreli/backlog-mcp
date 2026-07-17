@@ -1,13 +1,13 @@
 ---
 title: "0114. Memory vs Context — Tool-Surface Disposition: Fold Context Into the Memory-Verb Language"
 date: 2026-07-16
-status: Proposed
+status: Accepted — implemented (shipped 0.59.0, 2026-07-16 — backlog_context removed, relational context folded into backlog_get(context) stubs; CHANGELOG 0.59.0 Removed/Added, tool gone from src); status reconciled 2026-07-17
 ---
 
 # 0114. Memory vs Context — Tool-Surface Disposition
 
 **Date**: 2026-07-16
-**Status**: Proposed
+**Status**: Accepted — implemented (shipped 0.59.0, 2026-07-16 — the backlog_context tool and its hydration pipeline are removed; relational neighborhood + reverse refs arrive as role-grouped stubs via backlog_get(context); CHANGELOG 0.59.0). Status reconciled 2026-07-17.
 **Thread**: continues ADR 0106 (semantic intent-tools at the MCP boundary); disposes of the tool surface built by ADRs 0074–0078; siblings: ADR 0112 (docs-native project backlog), ADR 0113 (user-defined substrates), NORTH-STAR.md
 **Question settled**: Goga: *"I used memory much much more than the context-engineering tools… Should we remove the context related tools or no? I am slightly torn — inclined to simplify and uplift, but context engineering has merit and we just need to figure out how to extract value out of it."*
 

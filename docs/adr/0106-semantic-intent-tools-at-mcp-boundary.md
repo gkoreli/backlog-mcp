@@ -1,14 +1,14 @@
 ---
 title: "0106. Semantic Intent-Tools at the MCP Boundary — Hide the Substrate in Core"
 date: 2026-06-17
-status: Proposed
+status: Accepted — implemented (ruling recorded as Resolved in NORTH-STAR; executed via ADR 0106.5 — Phase A shipped 0.60.0, full intent surface 0.62.0, 2026-07-16); status reconciled 2026-07-17
 backlog_item: TASK-0688
 ---
 
 # 0106. Semantic Intent-Tools at the MCP Boundary — Hide the Substrate in Core
 
 **Date**: 2026-06-17
-**Status**: Proposed (vision / north star)
+**Status**: Accepted — implemented (vision ratified: NORTH-STAR "Decisions — Resolved" table, "Speak intent; hide the substrate in core"; executed via ADR 0106.5, shipped 0.60.0/0.62.0, 2026-07-16). Status reconciled 2026-07-17.
 **Backlog Item**: TASK-0688
 **Thread**: substrate architecture → continues ADR 0098; enabled by ADR 0105 (per-repo config)
 **Vocabulary**: uses the canonical terms from ADR 0106.1 (Substrate = definition, Entity = instance, Projection = response view) — verbs map to `createEntity`, never `createItem`/`createTask`
