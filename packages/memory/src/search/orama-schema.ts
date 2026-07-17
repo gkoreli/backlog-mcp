@@ -1,3 +1,4 @@
+import { statusToken } from '@backlog-mcp/shared';
 import type { SearchOptions } from './types.js';
 import { EMBEDDING_DIMENSIONS } from './embedding-service.js';
 
@@ -48,7 +49,7 @@ export type OramaInstance = import('@orama/orama').Orama<typeof schema>;
 export type OramaInstanceWithEmbeddings = import('@orama/orama').Orama<typeof schemaWithEmbeddings>;
 
 /** Bump when tokenizer or schema changes to force index rebuild. */
-export const INDEX_VERSION = 7;  // ADR-0113 Phase C: server-owned entity projections
+export const INDEX_VERSION = 8;  // BUG-0003: token-normalized status + resource status
 
 // ── Search constants ────────────────────────────────────────────────
 
@@ -90,7 +91,16 @@ export const ENUM_FACETS = { status: {}, type: {}, parent_id: {} } as const;
  */
 export function buildWhereClause(filters?: SearchOptions['filters'], docTypes?: import('./types.js').SearchableType[]): Record<string, any> | undefined {
   const where: Record<string, any> = {};
-  if (filters?.status?.length) where.status = { in: filters.status };
+  if (filters?.status?.length) {
+    // Declared statuses index as their leading token (BUG-0003), so the
+    // filter values normalize through the same shared rule. Values that
+    // don't tokenize match nothing (fail-closed, like the wakeup seams).
+    where.status = {
+      in: filters.status
+        .map(value => statusToken(value))
+        .filter((token): token is string => token !== undefined),
+    };
+  }
   if (filters?.type) where.type = { eq: filters.type };
   if (filters?.parent_id) where.parent_id = { eq: filters.parent_id };
   if (docTypes?.length) where.type = { in: docTypes };

@@ -246,6 +246,38 @@ describe('ResourceManager', () => {
     });
   });
 
+  describe('declared frontmatter status (BUG-0003)', () => {
+    const STATUS_ROOT = join(tmpdir(), 'resource-manager-status-root');
+
+    beforeAll(() => {
+      writeDocument(STATUS_ROOT, 'issues/0001-open.md', '---\nstatus: Open\n---\n\n# Open issue\n');
+      writeDocument(STATUS_ROOT, 'issues/0002-resolved.md', '---\nstatus: Resolved (2026-07-01)\n---\n\n# Resolved issue\n');
+      writeDocument(STATUS_ROOT, 'issues/0003-none.md', '# No declared status\n');
+      writeDocument(STATUS_ROOT, 'issues/0004-numeric.md', '---\nstatus: 2\n---\n\n# Numeric status\n');
+    });
+
+    function statusByPath(path: string): string | undefined {
+      const resources = new ResourceManager(STATUS_ROOT).list();
+      return resources.find(resource => resource.path === path)?.status;
+    }
+
+    it('carries the declared status raw and lossless into the catalog', () => {
+      expect(statusByPath('issues/0001-open.md')).toBe('Open');
+      expect(statusByPath('issues/0002-resolved.md')).toBe('Resolved (2026-07-01)');
+    });
+
+    it('omits status when the document declares none or declares a non-string', () => {
+      expect(statusByPath('issues/0003-none.md')).toBeUndefined();
+      expect(statusByPath('issues/0004-numeric.md')).toBeUndefined();
+    });
+
+    it('keeps content lossless — status extraction never rewrites the document', () => {
+      const resources = new ResourceManager(STATUS_ROOT).list();
+      const open = resources.find(resource => resource.path === 'issues/0001-open.md');
+      expect(open?.content).toBe('---\nstatus: Open\n---\n\n# Open issue\n');
+    });
+  });
+
   describe('toUri()', () => {
     const manager = new ResourceManager(ROOT_DIR);
 

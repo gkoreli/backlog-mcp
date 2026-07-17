@@ -1,7 +1,7 @@
 import { create, insert, insertMultiple, remove, search, save, load, type Results } from '@orama/orama';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { AnyEntity } from '@backlog-mcp/shared';
+import { matchesDeclaredStatus, statusToken, type AnyEntity } from '@backlog-mcp/shared';
 import type {
   IndexableEntity,
   Resource,
@@ -158,7 +158,10 @@ export class OramaSearchService implements SearchService {
       id: task.id,
       title: fields.get('title') ?? '',
       content: fields.get('content') ?? '',
-      status: typeof task.status === 'string' ? task.status : '',
+      // Leading-token normalization (BUG-0003): declared workflow states are
+      // freeform ("Accepted (goga, 2026-07-16)") — index the shared token so
+      // `--status accepted` matches. Raw status stays on the cached entity.
+      status: statusToken(task.status) ?? '',
       type: typeof task.type === 'string' ? task.type : 'task',
       parent_id: typeof task.parent_id === 'string' ? task.parent_id : '',
       evidence: fields.get('evidence') ?? '',
@@ -181,7 +184,10 @@ export class OramaSearchService implements SearchService {
       id: resource.id,
       title: resource.title,
       content: resource.content,  // Full content for search
-      status: '',
+      // Declared frontmatter status joins the index as its leading token
+      // (BUG-0003) so generic resources obey the same --status semantics
+      // as canonical entities. No declared status → never matches a filter.
+      status: statusToken(resource.status) ?? '',
       type: 'resource',
       parent_id: '',
       evidence: '',
@@ -684,8 +690,8 @@ export class OramaSearchService implements SearchService {
       for (const task of this.taskCache.values()) {
         // ADR-0092.3: memories excluded unless explicitly requested
         if ((task.type as string) === 'memory' && typeFilter !== 'memory' && !docTypes?.includes('memory')) continue;
-        const status = typeof task.status === 'string' ? task.status : '';
-        if (statusFilter && !statusFilter.includes(status)) continue;
+        // Same leading-token status comparison as wakeup/list (BUG-0003).
+        if (statusFilter && !statusFilter.some(declared => matchesDeclaredStatus(task.status, declared))) continue;
         if (typeFilter && (task.type || 'task') !== typeFilter) continue;
         if (docTypes && !docTypes.includes(((task.type || 'task') as SearchableType))) continue;
         if (epicFilter && task.parent_id !== epicFilter) continue;
@@ -699,10 +705,12 @@ export class OramaSearchService implements SearchService {
       }
     }
 
-    // Resources have no status/type to filter — include only when the caller's
-    // docTypes either include 'resource' or aren't restricted.
-    if (wantsResources && !statusFilter && !typeFilter && !epicFilter) {
+    // Resources have no substrate type or parent to filter, but they may
+    // declare a frontmatter status (BUG-0003) — a status filter keeps the
+    // resources whose declared status token matches, fail-closed otherwise.
+    if (wantsResources && !typeFilter && !epicFilter) {
       for (const resource of this.resourceCache.values()) {
+        if (statusFilter && !statusFilter.some(declared => matchesDeclaredStatus(resource.status, declared))) continue;
         out.push({
           id: resource.id,
           score: 1.0,
@@ -860,7 +868,8 @@ export class OramaSearchService implements SearchService {
         const changed = cached
           && (cached.path !== resource.path
             || cached.title !== resource.title
-            || cached.content !== resource.content);
+            || cached.content !== resource.content
+            || cached.status !== resource.status);
         if (changed) {
           await this.updateResource(resource);
           updated++;

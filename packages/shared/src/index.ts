@@ -14,6 +14,8 @@ export {
   getTypeFromId,
 } from './entity-types.js';
 
+export { statusToken, matchesDeclaredStatus } from './status-token.js';
+
 export {
   SUBSTRATES,
   EntitySchema,

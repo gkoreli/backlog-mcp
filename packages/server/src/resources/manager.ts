@@ -36,6 +36,20 @@ function extractTitle(content: string, filename: string): string {
   return match?.[1]?.trim() || fallback;
 }
 
+/**
+ * Declared frontmatter status of a document, raw and lossless (BUG-0003).
+ * Lenient by contract: malformed frontmatter or a non-string status simply
+ * yields undefined — the document stays indexed, it just declares nothing.
+ */
+function extractDeclaredStatus(content: string): string | undefined {
+  try {
+    const status = matter(content, {}).data?.status;
+    return typeof status === 'string' && status.trim() ? status : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function normalizeRelativePath(rootDir: string, filePath: string): string {
   return relative(rootDir, filePath).split(sep).join('/');
 }
@@ -117,11 +131,15 @@ export class ResourceManager {
         continue;
       }
 
+      const status = document.format === 'markdown'
+        ? extractDeclaredStatus(document.content)
+        : undefined;
       resources.push({
         id: uri,
         path: normalizeRelativePath(this.rootDir, document.absolutePath),
         title: extractTitle(document.content, basename(document.absolutePath)),
         content: document.content,
+        ...(status === undefined ? {} : { status }),
       });
     }
     resources.push(...this.listOrientationRootFiles());
@@ -153,11 +171,13 @@ export class ResourceManager {
         if (!statSync(absolutePath).isFile()) continue;
         if (!isCanonicalPathContained(this.rootDir, absolutePath)) continue;
         const content = readFileSync(absolutePath, 'utf-8');
+        const status = extractDeclaredStatus(content);
         resources.push({
           id: `mcp://backlog/${name}`,
           path: name,
           title: extractTitle(content, name),
           content,
+          ...(status === undefined ? {} : { status }),
         });
       } catch {
         // An unreadable root file simply stays out of the catalog.

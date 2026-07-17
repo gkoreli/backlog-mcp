@@ -11,6 +11,12 @@ export interface Resource {
   path: string;    // Relative path: resources/path/to/file.md
   title: string;   // First # heading or filename
   content: string; // Full markdown content
+  /**
+   * Declared frontmatter status, raw and lossless (BUG-0003). Indexed and
+   * filtered through the shared leading-token rule; absent when the
+   * document declares none.
+   */
+  status?: string;
 }
 
 /**

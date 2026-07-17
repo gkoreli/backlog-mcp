@@ -24,7 +24,10 @@ function format(result: SearchCommandResult): string {
   }
   const lines = result.results.map(r => {
     const home = 'home_id' in r ? `[${r.home_id}] ` : '';
-    let line = `${home}${(r.id ?? r.path ?? '').padEnd(12)} ${r.type.padEnd(8)} ${r.title}`;
+    // Declared status is part of the stub (BUG-0003) — same [status] shape
+    // as wakeup section stubs.
+    const status = r.status ? `[${r.status}] ` : '';
+    let line = `${home}${(r.id ?? r.path ?? '').padEnd(12)} ${r.type.padEnd(8)} ${status}${r.title}`;
     if (r.snippet) line += `\n  ${r.snippet}`;
     return line;
   });

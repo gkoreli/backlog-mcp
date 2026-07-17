@@ -25,7 +25,15 @@ export async function searchItems(service: IBacklogService, params: SearchParams
   const formattedResults: SearchResultItem[] = results.map(r => {
     if (isResource(r.type)) {
       const resource = r.item as Resource;
-      const item: SearchResultItem = { id: resource.id, title: resource.title, type: 'resource', path: resource.path };
+      const item: SearchResultItem = {
+        id: resource.id,
+        title: resource.title,
+        type: 'resource',
+        path: resource.path,
+        // Declared frontmatter status flows into the stub (BUG-0003) so an
+        // agent can see resolved vs open work without hydrating the body.
+        ...(typeof resource.status === 'string' ? { status: resource.status } : {}),
+      };
       if (r.snippet) { item.snippet = r.snippet.text; item.matched_fields = r.snippet.matched_fields; }
       if (include_scores) item.score = Math.round(r.score * 1000) / 1000;
       if (include_content) item.content = resource.content;

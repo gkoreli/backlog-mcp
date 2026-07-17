@@ -751,6 +751,25 @@ describe('core/searchItems', () => {
     expect((await searchItems(svc, { query: 'test' })).search_mode).toBe('hybrid');
   });
 
+  it('carries declared resource status into the search stub (BUG-0003)', async () => {
+    const svc = mockService();
+    (svc.searchUnified as any).mockResolvedValue([
+      {
+        item: { id: 'mcp://backlog/docs/issues/0016.md', path: 'docs/issues/0016.md', title: 'Issue 16', content: '…', status: 'Resolved (2026-07-01)' },
+        score: 1,
+        type: 'resource',
+      },
+      {
+        item: { id: 'mcp://backlog/docs/notes/plain.md', path: 'docs/notes/plain.md', title: 'Plain', content: '…' },
+        score: 0.5,
+        type: 'resource',
+      },
+    ]);
+    const result = await searchItems(svc, { query: 'issue' });
+    expect(result.results[0].status).toBe('Resolved (2026-07-01)');
+    expect(result.results[1].status).toBeUndefined();
+  });
+
   it('passes all filters through to service', async () => {
     const svc = mockService();
     await searchItems(svc, { query: 'test', types: ['task'], status: ['open'], parent_id: 'EPIC-0001', sort: 'recent', limit: 5 });

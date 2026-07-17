@@ -12,7 +12,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { join } from 'node:path';
-import { OramaSearchService, type SearchSnippet } from '@backlog-mcp/memory/search';
+import { OramaSearchService, type SearchEntityDocument, type SearchSnippet } from '@backlog-mcp/memory/search';
 import { generateTaskSnippet, generateResourceSnippet } from '@backlog-mcp/memory/search';
 import type { Entity, TaskEntity } from '@backlog-mcp/shared';
 import type { Resource } from '@backlog-mcp/memory/search';
@@ -337,5 +337,110 @@ describe('Invariant: edge cases (ADR-0073)', () => {
     delete task.references;
     const snippet = generateTaskSnippet(task, 'test');
     expect(snippet).toBeDefined();
+  });
+});
+
+// ── Invariant 8: declared resource status is searchable (BUG-0003) ──
+//
+// Original failure shape (byte-identical across trial and rerun 0006):
+// generic issue resources with frontmatter `status:` came back as search
+// candidates with no status in the stub, and --status open / --status
+// resolved both returned 0 generic resources. Declared statuses must flow
+// into the search document and obey the same leading-token filter
+// semantics as canonical entities (packages/shared/src/status-token.ts).
+
+describe('Invariant: declared resource status is searchable (BUG-0003)', () => {
+  let service: OramaSearchService;
+
+  const resources: Resource[] = [
+    makeResource({
+      id: 'mcp://backlog/docs/issues/0016-router-ssg.md',
+      path: 'docs/issues/0016-router-ssg.md',
+      title: 'Router SSG lifecycle breakage',
+      content: '# Router SSG lifecycle breakage\n\nLifecycle router work for SSG output.',
+      status: 'Resolved (2026-07-01)',
+    }),
+    makeResource({
+      id: 'mcp://backlog/docs/issues/0021-router-followup.md',
+      path: 'docs/issues/0021-router-followup.md',
+      title: 'Router follow-up work',
+      content: '# Router follow-up work\n\nCurrent open issues for the lifecycle router.',
+      status: 'Open',
+    }),
+    makeResource({
+      id: 'mcp://backlog/docs/notes/router-background.md',
+      path: 'docs/notes/router-background.md',
+      title: 'Router background note',
+      content: '# Router background note\n\nContext about the lifecycle router.',
+    }),
+  ];
+
+  // Declared-substrate statuses are freeform in real corpora — model an
+  // ADR-style runtime document projected the way the registry projects it.
+  const adrDocument: SearchEntityDocument = {
+    kind: 'entity-document',
+    entity: {
+      id: 'ADR-0042',
+      type: 'adr',
+      title: 'Freeform declared decision',
+      status: 'Accepted (goga, 2026-07-16)',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as unknown as Entity,
+    fields: [
+      { name: 'title', value: 'Freeform declared decision' },
+      { name: 'content', value: 'A declared decision about the router' },
+    ],
+  };
+
+  beforeEach(async () => {
+    service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
+    await service.index([adrDocument]);
+    await service.indexResources(resources);
+  });
+
+  it('unfiltered search carries the declared status on resource results', async () => {
+    const results = await service.searchAll('lifecycle router');
+    const resolved = results.find(r => r.id === 'mcp://backlog/docs/issues/0016-router-ssg.md');
+    expect(resolved).toBeDefined();
+    expect((resolved!.item as Resource).status).toBe('Resolved (2026-07-01)');
+  });
+
+  it('--status open returns the open generic resource (was 0)', async () => {
+    const results = await service.searchAll('lifecycle router', { filters: { status: ['open'] } });
+    const ids = results.map(r => r.id);
+    expect(ids).toContain('mcp://backlog/docs/issues/0021-router-followup.md');
+    expect(ids).not.toContain('mcp://backlog/docs/issues/0016-router-ssg.md');
+  });
+
+  it('--status resolved matches a freeform declared status by leading token (was 0)', async () => {
+    const results = await service.searchAll('lifecycle router', { filters: { status: ['resolved'] } });
+    const ids = results.map(r => r.id);
+    expect(ids).toEqual(['mcp://backlog/docs/issues/0016-router-ssg.md']);
+  });
+
+  it('a resource without declared status never matches a status filter (fail-closed)', async () => {
+    const results = await service.searchAll('lifecycle router', { filters: { status: ['open', 'resolved'] } });
+    expect(results.map(r => r.id)).not.toContain('mcp://backlog/docs/notes/router-background.md');
+  });
+
+  it('entity freeform declared status matches its leading token', async () => {
+    const results = await service.searchAll('declared decision', { filters: { status: ['accepted'] } });
+    expect(results.map(r => r.id)).toContain('ADR-0042');
+  });
+
+  it('filter values normalize through the same rule as indexed statuses', async () => {
+    const results = await service.searchAll('lifecycle router', { filters: { status: ['RESOLVED, verified'] } });
+    expect(results.map(r => r.id)).toEqual(['mcp://backlog/docs/issues/0016-router-ssg.md']);
+  });
+
+  it('pure status-intent queries list status-matching resources too', async () => {
+    // "open" decomposes to a status filter with no residual text — the
+    // no-BM25 listing lane must apply the same declared-status semantics.
+    const results = await service.searchAll('open');
+    const ids = results.map(r => r.id);
+    expect(ids).toContain('mcp://backlog/docs/issues/0021-router-followup.md');
+    expect(ids).not.toContain('mcp://backlog/docs/issues/0016-router-ssg.md');
+    expect(ids).not.toContain('mcp://backlog/docs/notes/router-background.md');
   });
 });
