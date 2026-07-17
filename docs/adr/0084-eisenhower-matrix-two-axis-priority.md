@@ -1,3 +1,7 @@
+---
+attention: awaiting zombie-sweep ruling (report 0009 #7)
+---
+
 # 0084. Eisenhower Matrix: Two-Axis Priority Model
 
 **Date**: 2026-02-17
