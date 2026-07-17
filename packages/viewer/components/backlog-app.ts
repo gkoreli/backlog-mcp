@@ -18,6 +18,7 @@ import { CopyButton } from './copy-button.js';
 import { ResizeHandle } from './resize-handle.js';
 import { ThemeToggle } from './theme-toggle.js';
 import { HomeSelector } from './home-selector.js';
+import { CollisionCandidates } from './collision-candidates.js';
 import { AppState } from '../services/app-state.js';
 import { SplitPaneState } from '../services/split-pane-state.js';
 
@@ -47,6 +48,10 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
 
   function handleActivityClick() {
     splitState.openActivity(undefined, app.homeSelection.value);
+  }
+
+  function handleCollisionCandidatesClick() {
+    splitState.openCollisionCandidates(app.homeSelection.value);
   }
 
   function handleSystemInfoClick() {
@@ -95,6 +100,7 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
   const splitPaneContent = computed(() => {
     const type = splitState.activePane.value;
     if (type === 'activity') return html`<activity-panel></activity-panel>`;
+    if (type === 'collision-candidates') return CollisionCandidates({});
     return html`<resource-viewer></resource-viewer>`;
   });
 
@@ -163,6 +169,8 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
             </button>
             ${HomeSelector({})}
             ${ThemeToggle({})}
+            <button class="btn-outline collision-candidates-btn" title="Review collision candidates"
+                    @click="${handleCollisionCandidatesClick}">Candidates</button>
             <button class="btn-outline activity-btn" title="Recent Activity" @click="${handleActivityClick}">
               ${activityIconEl}
             </button>

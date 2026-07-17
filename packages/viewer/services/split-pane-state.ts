@@ -16,7 +16,7 @@ import {
   type HomeSelection,
 } from '../utils/api.js';
 
-export type PaneContent = 'resource' | 'mcp' | 'activity';
+export type PaneContent = 'resource' | 'mcp' | 'activity' | 'collision-candidates';
 
 const STORAGE_KEY = 'openPane';
 
@@ -96,6 +96,20 @@ export class SplitPaneState {
     this.persist(`activity:${taskId || ''}`);
   }
 
+  /** Open the read-only, server-ordered collision-candidate queue. */
+  openCollisionCandidates(selection?: HomeSelection) {
+    this.activePane.value = 'collision-candidates';
+    this.homeSelection.value = selection;
+    this.activityTaskId.value = null;
+    this.resourcePath.value = null;
+    this.mcpUri.value = null;
+    this.headerTitle.value = 'Collision Candidates';
+    this.headerSubtitle.value = 'Server-ordered review queue';
+    this.headerFileUri.value = null;
+    this.headerMcpUri.value = null;
+    this.persist('collision-candidates:');
+  }
+
   /** Close the split pane */
   close() {
     this.activePane.value = null;
@@ -163,6 +177,8 @@ export class SplitPaneState {
         this.openActivity(taskId, persisted.selection);
       } else if (persisted.value.startsWith('mcp://')) {
         this.openMcpResource(persisted.value, persisted.selection);
+      } else if (persisted.value === 'collision-candidates:') {
+        this.openCollisionCandidates(persisted.selection);
       } else {
         this.openResource(persisted.value, persisted.selection);
       }

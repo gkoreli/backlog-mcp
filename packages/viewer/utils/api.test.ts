@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   buildApiUrl,
   getHomeId,
@@ -6,6 +6,7 @@ import {
   getHomeRequestSelection,
   getHomeSelection,
   getProvenanceSelection,
+  fetchCollisionCandidates,
 } from './api.js';
 
 describe('viewer home API helpers', () => {
@@ -75,5 +76,24 @@ describe('viewer home API helpers', () => {
       getHomeRequestId(contradictory),
       getHomeRequestId(invalid),
     ]).size).toBe(3);
+  });
+
+  it('requests the candidate queue in the selected home without changing server order', async () => {
+    const payload = {
+      pairs: [{ pair_id: 'worst-first' }, { pair_id: 'second' }],
+      total_live_memories: 2,
+      focal_count: 2,
+      candidate_count: 2,
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => payload })));
+
+    const result = await fetchCollisionCandidates({ home: 'project', projectRoot: '/repo' });
+
+    expect(result.pairs.map((pair) => pair.pair_id)).toEqual(['worst-first', 'second']);
+    const url = new URL(vi.mocked(fetch).mock.calls[0]?.[0] as string);
+    expect(url.pathname).toBe('/memory/contradictions');
+    expect(url.searchParams.get('candidates')).toBe('true');
+    expect(url.searchParams.get('home')).toBe('project');
+    expect(url.searchParams.get('project_root')).toBe('/repo');
   });
 });

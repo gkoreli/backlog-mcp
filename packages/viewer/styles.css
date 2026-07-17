@@ -938,6 +938,104 @@ task-detail .markdown-body {
   color: var(--t-fg-muted);
 }
 
+/* Semantic collision candidates — an intentionally read-only review queue. */
+.collision-candidates {
+  padding: 16px;
+  color: var(--t-fg-default);
+}
+.collision-guidance,
+.collision-summary,
+.collision-member-digest,
+.collision-member-context {
+  margin: 0;
+}
+.collision-guidance {
+  color: var(--t-fg-secondary);
+  line-height: 1.5;
+}
+.collision-summary,
+.collision-member-context,
+.collision-signals {
+  color: var(--t-fg-muted);
+  font-size: 12px;
+}
+.collision-summary {
+  margin-top: 8px;
+}
+.collision-state {
+  padding: 32px 12px;
+  text-align: center;
+  color: var(--t-fg-muted);
+}
+.collision-state--error {
+  color: var(--t-error-fg);
+}
+.collision-pair-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.collision-pair {
+  border: 1px solid var(--t-border-default);
+  border-radius: var(--t-radius-xl);
+  background: var(--t-bg-surface);
+  overflow: hidden;
+}
+.collision-pair-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--t-bg-inset);
+}
+.collision-priority {
+  color: var(--t-purple);
+  font-size: 12px;
+  font-weight: 600;
+}
+.collision-members {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.collision-member {
+  min-width: 0;
+  padding: 10px;
+}
+.collision-member + .collision-member {
+  border-left: 1px solid var(--t-border-default);
+}
+.collision-member-link {
+  color: var(--t-fg-link);
+  font-weight: 600;
+  word-break: break-word;
+}
+.collision-member-digest {
+  margin-top: 6px;
+  color: var(--t-fg-default);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.collision-member-context {
+  margin-top: 6px;
+  word-break: break-word;
+}
+@media (max-width: 700px) {
+  .collision-pair-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .collision-members {
+    grid-template-columns: 1fr;
+  }
+  .collision-member + .collision-member {
+    border-top: 1px solid var(--t-border-default);
+    border-left: 0;
+  }
+}
+
 /* Frontmatter Metadata — now handled by metadata-card component */
 document-view {
   display: block;
@@ -1000,6 +1098,21 @@ metadata-card {
   color: var(--t-orange-emphasis);
   border: 1px solid var(--t-orange-border);
   margin-bottom: 4px;
+}
+.meta-chip--collision {
+  background: var(--t-purple-bg);
+  color: var(--t-purple);
+  border: 1px solid var(--t-purple-border);
+  margin-bottom: 4px;
+}
+.collision-candidate-detail,
+.collision-candidate-signals {
+  display: block;
+  color: var(--t-fg-muted);
+  font-size: 12px;
+}
+.collision-candidate-signals {
+  color: var(--t-fg-subtle);
 }
 /* ADR 0092.14 — per-memory usage history as an inline bar sparkline. */
 .sparkline {

@@ -11,12 +11,39 @@
 import { signal, computed, type ReadonlySignal, component, html, when, each, type TemplateResult, inject } from '@nisli/core';
 import { isValidEntityId } from '@backlog-mcp/shared';
 import { SplitPaneState } from '../services/split-pane-state.js';
-import type { HomeSelection } from '../utils/api.js';
+import type {
+  CollisionCandidate,
+  CollisionCandidateSignals,
+  HomeSelection,
+} from '../utils/api.js';
 
 type MetadataCardProps = {
   entries: Array<{ key: string; value: unknown }>;
   homeSelection: HomeSelection | undefined;
 };
+
+/** Present a candidate's bounded signals without exposing raw search scores. */
+export function formatCollisionSignals(signals: CollisionCandidateSignals): string {
+  const entries = Object.entries(signals)
+    .filter(([, value]) => Number.isFinite(value))
+    .map(([key, value]) => `${key.replace(/_/g, ' ')} ${value.toFixed(2)}`);
+  return entries.join(' · ');
+}
+
+function isCollisionCandidate(value: unknown): value is CollisionCandidate {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<CollisionCandidate>;
+  return typeof candidate.id === 'string'
+    && typeof candidate.title === 'string'
+    && typeof candidate.digest === 'string'
+    && typeof candidate.pair_priority === 'number'
+    && typeof candidate.signals === 'object'
+    && candidate.signals !== null
+    && typeof candidate.signals.neighbor_rank === 'number'
+    && typeof candidate.signals.lexical_overlap === 'number'
+    && typeof candidate.signals.scope === 'number'
+    && typeof candidate.signals.epistemic_shape === 'number';
+}
 
 /**
  * Render a single frontmatter value as a template.
@@ -45,6 +72,23 @@ function renderValue(
 
   // Array
   if (Array.isArray(value)) {
+    if (key === 'collision candidates' || key === 'collision_candidates') {
+      const candidates = value.filter(isCollisionCandidate);
+      const items = signal(candidates);
+      return html`<span>
+        <span class="meta-chip meta-chip--collision">${candidates.length} collision ${candidates.length === 1 ? 'candidate' : 'candidates'}</span>
+        ${candidates.length === 0 ? html`<span class="meta-empty">No candidates were returned by the completed scan.</span>` : html`
+          <ul class="meta-list collision-candidate-list">${each(items, (candidate) => candidate.id, (candidate) => {
+            const item = candidate.value;
+            return html`<li>
+              ${renderLink(`mcp://backlog/tasks/${item.id}.md`, item.title || item.id, splitState, selection)}
+              <span class="collision-candidate-detail">priority ${item.pair_priority.toFixed(3)} · ${item.digest}</span>
+              <span class="collision-candidate-signals">${formatCollisionSignals(item.signals)}</span>
+            </li>`;
+          })}</ul>
+        `}
+      </span>`;
+    }
     if (value.length === 0) return html`<span class="meta-empty">—</span>`;
     // Array of numbers → sparkline (ADR 0092.14). Generic, key-agnostic:
     // usage_series (per-day memory touches from the JSONL) renders as an

@@ -147,6 +147,45 @@ export interface TaskResponse extends Task {
   children?: Task[];
 }
 
+export interface CollisionCandidateSignals {
+  neighbor_rank: number;
+  lexical_overlap: number;
+  scope: number;
+  epistemic_shape: number;
+}
+
+export interface CollisionCandidate {
+  id: string;
+  title: string;
+  digest: string;
+  pair_priority: number;
+  signals: CollisionCandidateSignals;
+}
+
+export interface CollisionCandidateMember {
+  id: string;
+  title: string;
+  digest: string;
+  kind?: string;
+  context?: string;
+  entity_refs: string[];
+  tags: string[];
+}
+
+export interface CollisionCandidatePair {
+  pair_id: string;
+  pair_priority: number;
+  signals: CollisionCandidateSignals;
+  members: [CollisionCandidateMember, CollisionCandidateMember];
+}
+
+export interface CollisionCandidateQueue {
+  pairs: CollisionCandidatePair[];
+  total_live_memories: number;
+  focal_count: number;
+  candidate_count: number;
+}
+
 export async function fetchTasks(
   filter: 'active' | 'completed' | 'all' = 'all',
   query?: string,
@@ -178,4 +217,20 @@ export async function fetchOperationCount(
   ));
   const data = await response.json();
   return data.count || 0;
+}
+
+/** Fetch the server-authoritative, worst-first collision-candidate queue. */
+export async function fetchCollisionCandidates(
+  selection?: HomeRequestSelection,
+): Promise<CollisionCandidateQueue> {
+  const response = await fetch(buildApiUrl(
+    '/memory/contradictions',
+    { candidates: 'true' },
+    selection,
+ ));
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Collision candidates are unavailable');
+  }
+  return data;
 }

@@ -39,4 +39,17 @@ describe('SplitPaneState home persistence', () => {
     otherHome.restore({ home: 'project', projectRoot: '/other' });
     expect(otherHome.activePane.value).toBeNull();
   });
+
+  it('persists the collision-candidate queue only within its selected home', () => {
+    const original = new SplitPaneState();
+    original.openCollisionCandidates({ home: 'project', projectRoot: '/repo' });
+
+    const sameHome = new SplitPaneState();
+    sameHome.restore({ home: 'project', projectRoot: '/repo' });
+    expect(sameHome.activePane.value).toBe('collision-candidates');
+
+    const otherHome = new SplitPaneState();
+    otherHome.restore({ home: 'global' });
+    expect(otherHome.activePane.value).toBeNull();
+  });
 });
