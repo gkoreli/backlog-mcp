@@ -858,8 +858,14 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     });
 
     // Typed-URL chrome alias (same class as /open — a redirect into the
-    // SPA, zero composition): the human starts the day at /desk.
-    app.get('/desk', (c) => c.redirect('/?view=desk'));
+    // SPA, zero composition): the human starts the day at /desk. Existing
+    // query params (home/project_root) ride along — home-scoped like
+    // every page.
+    app.get('/desk', (c) => {
+      const params = new URLSearchParams(new URL(c.req.url).search);
+      params.set('view', 'desk');
+      return c.redirect(`/?${params.toString()}`);
+    });
   }
 
   // Shutdown remains app-scoped and retains its existing Node registration.

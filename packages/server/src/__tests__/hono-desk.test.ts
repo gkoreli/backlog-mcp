@@ -114,4 +114,24 @@ describe('GET /desk', () => {
     expect(response.status).toBe(302);
     expect(response.headers.get('location')).toBe('/?view=desk');
   });
+
+  it('carries the home selection through the redirect (home-scoped like every page)', async () => {
+    const service = createService();
+    const app = createApp(service, {
+      resolveRuntime: vi.fn(async function resolveRuntime() {
+        return createRuntime(service);
+      }),
+    });
+
+    const response = await app.request(
+      `/desk?home=project&project_root=${encodeURIComponent(PROJECT_ROOT)}`,
+    );
+
+    expect(response.status).toBe(302);
+    const location = response.headers.get('location') ?? '';
+    const params = new URLSearchParams(location.slice(location.indexOf('?') + 1));
+    expect(params.get('view')).toBe('desk');
+    expect(params.get('home')).toBe('project');
+    expect(params.get('project_root')).toBe(PROJECT_ROOT);
+  });
 });
