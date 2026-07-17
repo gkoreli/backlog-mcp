@@ -10,6 +10,15 @@ each version says why it mattered on the road to the north star
 (`docs/NORTH-STAR.md` — *your backlog is your agent's memory*). This changelog
 begins at 0.57.0 — earlier history lives in git.
 
+## [Unreleased]
+
+### Added
+- **Memory collision candidates (ADR 0120).** Remember receipts, consolidation,
+  the existing contradictions command/tool, and a per-home viewer queue can now
+  surface nearby live memories for review without declaring a contradiction or
+  changing recall order. False collisions can be dismissed durably with the
+  human-readable `distinct_from` Markdown field.
+
 ## [0.62.0] — 2026-07-16
 
 *The write surface finally matches the vision's grammar: agents don't "update a
