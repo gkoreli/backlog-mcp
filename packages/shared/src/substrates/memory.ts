@@ -51,6 +51,8 @@ export type MemoryLayerName = (typeof MEMORY_LAYERS)[number];
 export const MEMORY_KINDS = ['current', 'historical', 'plan', 'preference', 'timeless'] as const;
 export type MemoryKind = (typeof MEMORY_KINDS)[number];
 
+const MEMORY_ID_PATTERN = /^MEMO-\d{4,}$/;
+
 export const MemorySchema = BaseEntitySchema.extend({
   type: z.literal('memory'),
   /**
@@ -104,6 +106,13 @@ export const MemorySchema = BaseEntitySchema.extend({
    * occurred_at ?? created_at.
    */
   occurred_at: z.string().optional(),
+  /**
+   * Human/agent adjudication that another nearby memory genuinely coexists.
+   * The collision detector reads this artifact but never writes it (ADR 0120).
+   */
+  distinct_from: z.array(
+    z.string().regex(MEMORY_ID_PATTERN, 'distinct_from entries must be MEMO- ids'),
+  ).optional(),
 }).strict();
 
 export type Memory = z.infer<typeof MemorySchema>;
@@ -120,7 +129,7 @@ export const MemorySubstrate = {
     // folder, epic, or milestone. Scoped recall = subtree filtering.
     validParents: ['folder', 'epic', 'milestone', 'task'],
   },
-  extraFields: ['layer', 'kind', 'derived', 'state_key', 'source', 'entity_refs', 'tags', 'occurred_at', 'valid_until', 'usage_count', 'last_used_at', 'supersedes'],
+  extraFields: ['layer', 'kind', 'derived', 'state_key', 'source', 'entity_refs', 'tags', 'occurred_at', 'valid_until', 'usage_count', 'last_used_at', 'supersedes', 'distinct_from'],
   hint: 'Agent memory record (ADR 0092.3). Body = the memory content. layer: episodic|semantic|procedural. Written via backlog_remember or implicit capture; read via backlog_recall. Excluded from default list/search — recall is the read surface.',
   ui: {
     gradient: 'linear-gradient(135deg, #f7b955, #a371f7)',

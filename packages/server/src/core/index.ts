@@ -12,6 +12,14 @@ export { editItem } from './edit.js';
 export { wakeup } from './wakeup.js';
 export { recall } from './recall.js';
 export type { RecallDeps } from './recall.js';
+export {
+  COLLISION_NEIGHBOR_LIMIT,
+  COLLISION_PRIORITY_THRESHOLD,
+  collisionPairKey,
+  findCollisionCandidatePairs,
+  findCollisionCandidatesForMemory,
+  scoreCollisionPair,
+} from './collision-candidates.js';
 export { recordMutation } from './operation-log.js';
 export { routeContainer } from './container-routing.js';
 export type {
@@ -32,6 +40,8 @@ export type {
   RecallParams, RecallResult, RecallItem,
   WriteContext, Actor, IOperationLog,
   MemoryLayer,
+  CollisionCandidate, CollisionCandidateMember, CollisionCandidatePair,
+  CollisionCandidateSignals, CollisionCandidatesResult, ScoredCollisionPair,
 } from './types.js';
 export {
   BACKLOG_CONTROL_DIR,

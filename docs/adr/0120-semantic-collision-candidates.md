@@ -187,8 +187,9 @@ This decision does not change index mutation ordering.
 
 ### R4. Candidates have one deterministic identity and total order
 
-The unordered pair key is the two memory IDs sorted bytewise and joined with a
-delimiter that cannot occur in an entity ID. A pair is emitted once.
+The unordered pair key is the JSON serialization of the two memory IDs sorted
+by UTF-8 byte order. JSON escaping keeps it unambiguous even for a malformed
+legacy ID containing separator characters. A pair is emitted once.
 
 Every list uses the same total order:
 

@@ -664,6 +664,62 @@ export interface ContradictionsResult {
   contradiction_count: number;
 }
 
+// ── Semantic collision candidates (ADR 0120) ──
+
+/** Pure, bounded signals behind a collision review priority. */
+export interface CollisionCandidateSignals {
+  /** Reciprocal 1-based neighbor rank. */
+  neighbor_rank: number;
+  /** Jaccard overlap of normalized title/body tokens. */
+  lexical_overlap: number;
+  /** Same-context/shared-anchor/unscoped scope signal. */
+  scope: number;
+  /** Current/current pairs carry the strongest adjudication pressure. */
+  epistemic_shape: number;
+}
+
+/** Scored pair before the write-time threshold is applied. */
+export interface ScoredCollisionPair {
+  pair_id: string;
+  pair_priority: number;
+  signals: CollisionCandidateSignals;
+}
+
+/** The other-memory stub returned for one focal memory. */
+export interface CollisionCandidate {
+  id: string;
+  title: string;
+  digest: string;
+  pair_priority: number;
+  signals: CollisionCandidateSignals;
+}
+
+/** Bounded member evidence for the full-home review queue. */
+export interface CollisionCandidateMember {
+  id: string;
+  title: string;
+  digest: string;
+  kind?: string;
+  context?: string;
+  entity_refs: string[];
+  tags: string[];
+}
+
+/** One canonical unordered pair, emitted once in deterministic order. */
+export interface CollisionCandidatePair {
+  pair_id: string;
+  pair_priority: number;
+  signals: CollisionCandidateSignals;
+  members: [CollisionCandidateMember, CollisionCandidateMember];
+}
+
+export interface CollisionCandidatesResult {
+  pairs: CollisionCandidatePair[];
+  total_live_memories: number;
+  focal_count: number;
+  candidate_count: number;
+}
+
 // ── Edit (body operations) ──
 // EditOperation is the shared loose boundary form (@backlog-mcp/shared).
 
