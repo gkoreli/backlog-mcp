@@ -3,6 +3,7 @@
  * Coordinates storage, resource ID extraction, and actor info.
  */
 
+import { ambientAgentIdentity } from '../storage/local/agent-identity.js';
 import { OperationStorage } from './storage.js';
 import type { Actor, OperationEntry, OperationFilter, IOperationLog } from './types.js';
 
@@ -14,10 +15,12 @@ import type { Actor, OperationEntry, OperationFilter, IOperationLog } from './ty
  * boundary (core functions) takes Actor as a parameter so attribution is
  * never ambient — see ADR 0094.
  *
- * ADR 0119 Slice A: `BACKLOG_AGENT` optionally names an agent identity —
- * an AGENT- doc id or a declared principal (e.g. "aime:granite", herdr
- * pane metadata). When set, the actor is that agent; when absent, the
- * actor is exactly what it was before ADR 0119. Identity is OPTIONAL,
+ * ADR 0119.1: the ambient agent identity resolves through the attribution
+ * ladder — worktree config → BACKLOG_AGENT env → checkout config → user
+ * config (`git config backlog.agent` at each scope; git rungs probed once
+ * per process, cached). The value is an AGENT- doc id or a declared
+ * principal (e.g. "aime:granite"). When every rung is absent, the actor
+ * is exactly what it was before ADR 0119. Identity stays OPTIONAL,
  * modular, never forced (PROMPT 0003).
  */
 export function envActor(): Actor {
@@ -27,8 +30,8 @@ export function envActor(): Actor {
     delegatedBy: process.env.BACKLOG_DELEGATED_BY,
     taskContext: process.env.BACKLOG_TASK_CONTEXT,
   };
-  const agentIdentity = process.env.BACKLOG_AGENT;
-  return agentIdentity ? asAgentActor(agentIdentity, base) : base;
+  const agentIdentity = ambientAgentIdentity();
+  return agentIdentity ? asAgentActor(agentIdentity.value, base) : base;
 }
 
 /**
@@ -37,8 +40,8 @@ export function envActor(): Actor {
  * The identity becomes the journal's `actor.name` and downstream memory
  * provenance source; everything else about the base actor (delegation,
  * task context) is preserved. Callers pass the identity from `--as`, the
- * MCP write field, or `BACKLOG_AGENT` — attribution stays a parameter,
- * never a lookup.
+ * MCP write field, or the resolved attribution ladder (ADR 0119.1) —
+ * attribution stays a parameter, never a lookup.
  */
 export function asAgentActor(identity: string, base: Actor = envActor()): Actor {
   return { ...base, type: 'agent', name: identity };
