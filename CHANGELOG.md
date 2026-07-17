@@ -12,6 +12,16 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+### Fixed
+- **An acknowledged write is searchable when the ack returns (ADR 0116 Phase
+  1A).** Search initialization is now single-flight — concurrent first searches
+  share one index build instead of racing duplicates — and every index mutation
+  runs on one awaited, ordered chain, so same-entity updates can no longer
+  reorder and an add-then-delete can no longer leave a searchable ghost. Full
+  reconciliation runs on the same chain, closing the lost-write window the old
+  pending-ops queue left between drain and ready. Ranking is untouched (ADR
+  0121 freeze): fusion, scoring, and the judged-fixture behavior are unchanged.
+
 ### Added
 - **Install by telling your agent (SKILL.md).** The whole setup is now one
   message: *"Read <repo>/SKILL.md and follow it to install backlog-mcp."* The

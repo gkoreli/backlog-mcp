@@ -13,7 +13,6 @@ import type {
 } from '../storage-adapter.js';
 import {
   OramaSearchService,
-  type IndexableEntity,
   type SearchableType,
   type UnifiedSearchResult,
 } from '@backlog-mcp/memory/search';
@@ -28,12 +27,6 @@ import type {
   BacklogServiceDependencies,
   SearchReconciliationStats,
 } from './backlog-service.types.js';
-
-type PendingSearchOperation = {
-  op: 'add' | 'update' | 'remove';
-  entity?: IndexableEntity;
-  id?: string;
-};
 
 function isDocumentStorageAdapter(
   storageAdapter: StorageAdapter,
@@ -89,7 +82,10 @@ export class BacklogService implements IBacklogService {
   readonly listWakeupDisclosures: NonNullable<BacklogServiceDependencies['listWakeupDisclosures']> | undefined;
   private readonly allocateEntityId: BacklogServiceDependencies['allocateId'];
   private searchReady = false;
-  private pendingOps: PendingSearchOperation[] = [];
+  /** Single-flight first initialization — concurrent first searches share it. */
+  private searchInitialization: Promise<BacklogReconciliationResult> | null = null;
+  /** Tail of the ordered search mutation chain (ADR 0116 Phase 1A). */
+  private searchOperationTail: Promise<unknown> = Promise.resolve();
 
   constructor(dependencies: BacklogServiceDependencies) {
     this.storage = dependencies.storage;
@@ -101,22 +97,39 @@ export class BacklogService implements IBacklogService {
     this.allocateEntityId = dependencies.allocateId;
   }
 
-  private async ensureSearchReady(): Promise<void> {
-    if (this.searchReady) return;
-    await this.reconcile();
+  /**
+   * Append one search-index operation to the ordered mutation chain
+   * (ADR 0116 Phase 1A).
+   *
+   * Every index write — full reconciliation included — runs through this
+   * chain, so operations apply in submission order and an awaited ack means
+   * the index accepted the mutation. A failed operation rejects its own
+   * caller without stalling later operations.
+   *
+   * Before the first index build, document-level operations no-op on the
+   * unmaterialized index; that is sound because initialization reads the
+   * storage snapshot afterward, which already contains every acknowledged
+   * write, and reconciliation runs through this same chain so it cannot
+   * interleave with individual mutations.
+   */
+  private enqueueSearchOperation<T>(operation: () => Promise<T>): Promise<T> {
+    const scheduled = this.searchOperationTail.then(operation);
+    this.searchOperationTail = scheduled.then(
+      () => undefined,
+      () => undefined,
+    );
+    return scheduled;
   }
 
-  private async drainPendingOperations(): Promise<void> {
-    for (const operation of this.pendingOps) {
-      if (operation.op === 'add' && operation.entity) {
-        await this.search.addDocument(operation.entity);
-      } else if (operation.op === 'update' && operation.entity) {
-        await this.search.updateDocument(operation.entity);
-      } else if (operation.op === 'remove' && operation.id) {
-        await this.search.removeDocument(operation.id);
-      }
-    }
-    this.pendingOps = [];
+  private async ensureSearchReady(): Promise<void> {
+    if (this.searchReady) return;
+    // Single-flight (ADR 0116 Phase 1A): concurrent first searches share one
+    // initialization instead of racing duplicate index builds. A failed
+    // initialization clears the slot so the next search can retry.
+    this.searchInitialization ??= this.reconcile().finally(() => {
+      this.searchInitialization = null;
+    });
+    await this.searchInitialization;
   }
 
   /**
@@ -124,8 +137,14 @@ export class BacklogService implements IBacklogService {
    *
    * This is the watcher-facing refresh boundary: entity and generic-resource
    * drift are repaired together, including stale removals and native edits.
+   * The pass runs on the ordered mutation chain, so it serializes against
+   * individual index mutations instead of interleaving with them.
    */
   async reconcile(): Promise<BacklogReconciliationResult> {
+    return this.enqueueSearchOperation(() => this.reconcileSearchIndex());
+  }
+
+  private async reconcileSearchIndex(): Promise<BacklogReconciliationResult> {
     const allEntities = Array.from(this.storage.iterateEntities()).flatMap(
       (entity) => {
         const document = createSearchEntityDocument(entity, this.getSearchFields);
@@ -139,8 +158,6 @@ export class BacklogService implements IBacklogService {
     if (hasChanges(entityStats)) {
       logger.info('Search index reconciled', entityStats);
     }
-
-    await this.drainPendingOperations();
 
     const resources = listIndexableResources(
       this.storage,
@@ -267,11 +284,7 @@ export class BacklogService implements IBacklogService {
     const entity = this.storage.add(candidate);
     const document = createSearchEntityDocument(entity, this.getSearchFields);
     if (document !== undefined) {
-      if (this.searchReady) {
-        this.search.addDocument(document);
-      } else {
-        this.pendingOps.push({ op: 'add', entity: document });
-      }
+      await this.enqueueSearchOperation(() => this.search.addDocument(document));
     }
     return entity;
   }
@@ -283,11 +296,7 @@ export class BacklogService implements IBacklogService {
     const entity = this.storage.save(candidate, options);
     const document = createSearchEntityDocument(entity, this.getSearchFields);
     if (document !== undefined) {
-      if (this.searchReady) {
-        this.search.updateDocument(document);
-      } else {
-        this.pendingOps.push({ op: 'update', entity: document });
-      }
+      await this.enqueueSearchOperation(() => this.search.updateDocument(document));
     }
     return entity;
   }
@@ -295,11 +304,7 @@ export class BacklogService implements IBacklogService {
   async delete(id: string): Promise<boolean> {
     const deleted = this.storage.delete(id);
     if (deleted) {
-      if (this.searchReady) {
-        this.search.removeDocument(id);
-      } else {
-        this.pendingOps.push({ op: 'remove', id });
-      }
+      await this.enqueueSearchOperation(() => this.search.removeDocument(id));
     }
     return deleted;
   }

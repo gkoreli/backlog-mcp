@@ -927,6 +927,10 @@ export class OramaSearchService implements SearchService {
   }
 
   async updateDocument(task: IndexableEntity): Promise<void> {
+    // Pre-initialization no-op (ADR 0116 Phase 1A): before the first index
+    // build there is nothing to update — initialization reads the storage
+    // snapshot afterward, which already reflects this write.
+    if (!this.db) return;
     // ADR-0083 #2: atomic remove → insert. If the insert fails (e.g.
     // embedding service error), restore the previous document so the index
     // and taskCache don't drift apart.
@@ -1043,6 +1047,8 @@ export class OramaSearchService implements SearchService {
   }
 
   async updateResource(resource: Resource): Promise<void> {
+    // Pre-initialization no-op (ADR 0116 Phase 1A): see updateDocument.
+    if (!this.db) return;
     // ADR-0083 #2: atomic remove → insert (see updateDocument).
     const prev = this.resourceCache.get(resource.id);
     await this.removeResource(resource.id);
