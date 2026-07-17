@@ -22,6 +22,7 @@
 import type { Memory, Entity } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { MemoryUsageSummaryStore } from './memory-usage.contract.js';
+import type { RetrievalTelemetry } from './retrieval-telemetry.js';
 
 /** Fibonacci flush buckets — diminishing flush frequency as counts grow. */
 const FLUSH_BUCKETS = new Set([1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]);
@@ -41,6 +42,11 @@ export interface UsageTrackerDeps {
   appendLine?: (line: string) => void;
   /** Project-home summary overlay. Omit to keep global frontmatter writes. */
   summaryStore?: MemoryUsageSummaryStore;
+  /**
+   * Tier-1 retrieval telemetry sink (ADR 0121 R7 / B18): session-stamped
+   * recall/search/expand events including recall misses. Omit to disable.
+   */
+  telemetry?: RetrievalTelemetry;
   now?: () => number;
 }
 
@@ -49,13 +55,27 @@ export class MemoryUsageTracker {
 
   /** Log recall demand (R-16). Weak signal — JSONL only, no counter bump. */
   recordRecall(query: string, returnedIds: string[]): void {
+    // Tier-1 telemetry fires BEFORE the empty guard (ADR 0121 R7): a
+    // zero-id recall is the first-class miss event — exactly the case the
+    // overlay line below has always skipped. No query text on the event.
+    this.deps.telemetry?.record('recall', returnedIds);
     if (returnedIds.length === 0) return;
     this.append({ type: 'recall', query, ids: returnedIds });
+  }
+
+  /**
+   * Log search demand as returned ids only (ADR 0121 R7 Tier 1). No
+   * overlay line and no counter bump — query-text search-demand logging
+   * is Tier 2, gated separately and deliberately not built here.
+   */
+  recordSearch(returnedIds: string[]): void {
+    this.deps.telemetry?.record('search', returnedIds);
   }
 
   /** Strong signal: the agent expanded a recalled stub via backlog_get. */
   async recordExpand(id: string): Promise<void> {
     if (!id.startsWith('MEMO-')) return;
+    this.deps.telemetry?.record('expand', [id]);
     this.append({ type: 'expand', id });
     await this.bump(id);
   }

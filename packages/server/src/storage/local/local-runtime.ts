@@ -20,6 +20,8 @@ import { BacklogMemoryStore } from '../../memory/backlog-memory-store.js';
 import { createComposerForStore } from '../../memory/bootstrap.js';
 import { MemoryUsageOverlay } from '../../memory/memory-usage-overlay.js';
 import { MemoryUsageTracker } from '../../memory/usage-tracker.js';
+import { RetrievalTelemetry } from '../../memory/retrieval-telemetry.js';
+import { ambientAgentIdentity } from './agent-identity.js';
 import {
   createOperationLogger,
   type OperationLogger,
@@ -40,6 +42,7 @@ import { nextStorageDocumentId } from '../storage-identity.js';
 
 const SEARCH_HALF_LIFE_DAYS = 30;
 const MEMORY_USAGE_LOG = 'memory-usage.jsonl';
+const RETRIEVAL_TELEMETRY_LOG = 'retrieval-telemetry.jsonl';
 
 function createSearch(home: BacklogHome): OramaSearchService {
   return new OramaSearchService({
@@ -95,6 +98,16 @@ function ensureProjectControlIgnores(home: BacklogHome): void {
 
 function usageLogPath(home: BacklogHome): string {
   return join(home.controlDir, 'state', MEMORY_USAGE_LOG);
+}
+
+/**
+ * Tier-1 retrieval telemetry sink (ADR 0121 R7): same uncommitted state
+ * area as the usage overlay — `state/` is gitignored in project homes via
+ * DERIVED_CONTROL_RULES, and the global home's state lives under
+ * `~/.backlog`, outside any repo. Never a committed doc.
+ */
+function retrievalTelemetryPath(home: BacklogHome): string {
+  return join(home.controlDir, 'state', RETRIEVAL_TELEMETRY_LOG);
 }
 
 function appendUsageLine(path: string, line: string): void {
@@ -311,6 +324,17 @@ export function createLocalRuntime(
   );
   const memoryComposer = createComposerForStore(memoryStore);
   const runtimeUsagePath = usageLogPath(home);
+  const runtimeTelemetryPath = retrievalTelemetryPath(home);
+  const retrievalTelemetry = new RetrievalTelemetry({
+    home: home.id,
+    appendLine: function appendTelemetryLine(line) {
+      appendUsageLine(runtimeTelemetryPath, line);
+    },
+    // ADR 0119.1 attribution ladder, reused — never re-implemented.
+    resolveActor: function telemetryActor() {
+      return ambientAgentIdentity()?.value;
+    },
+  });
   const usageTracker = new MemoryUsageTracker({
     getService: getRuntimeService,
     appendLine: usageOverlay === undefined
@@ -323,6 +347,7 @@ export function createLocalRuntime(
     ...(usageOverlay === undefined
       ? {}
       : { summaryStore: usageOverlay }),
+    telemetry: retrievalTelemetry,
   });
   const runtimeReadUsageLines = usageOverlay === undefined
     ? function readGlobalUsage(): string[] {
