@@ -189,7 +189,8 @@ export const DeskPage = component('desk-page', () => {
     });
   }
 
-  const sections = CLASS_ORDER.map(renderSection);
+  const [judgeSection, reviewSection, readSection, healthSection] =
+    CLASS_ORDER.map(renderSection);
 
   const summary = computed(() => {
     const value = briefing.value;
@@ -221,7 +222,7 @@ export const DeskPage = component('desk-page', () => {
     if (value !== undefined && value.items.length === 0) {
       return html`<div class="desk-state desk-state--clear">The Desk is clear — nothing waits on your judgment.</div>`;
     }
-    return html`${summary}${diagnostics}${sections}`;
+    return html`${summary}${diagnostics}${judgeSection}${reviewSection}${readSection}${healthSection}`;
   });
 
   return html`
