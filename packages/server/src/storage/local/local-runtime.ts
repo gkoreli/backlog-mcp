@@ -51,19 +51,46 @@ function createSearch(home: BacklogHome): OramaSearchService {
 function ensureRuntimeDirectories(home: BacklogHome): void {
   mkdirSync(home.documentsDir, { recursive: true });
   mkdirSync(home.controlDir, { recursive: true });
-  if (home.kind === 'project') ensureProjectCacheIsIgnored(home);
+  if (home.kind === 'project') ensureProjectControlIgnores(home);
 }
 
-function ensureProjectCacheIsIgnored(home: BacklogHome): void {
+/**
+ * Derived control paths the tool itself writes. BUG-0005 measured multi-MB
+ * cache indexes AND state journals (operations/memory-usage JSONL) landing
+ * as untracked project content — both must never surface in git status.
+ */
+const DERIVED_CONTROL_RULES = ['cache/', 'state/'] as const;
+
+/**
+ * Derived-state hygiene (EXP-1 BUG-0005 / B-1): the first read must not
+ * leave `.backlog/` git-visible.
+ *
+ * - Absent file → create a tool-owned boundary that also ignores itself,
+ *   so a zero-setup read leaves a clean `git status`. (A repo that WANTS
+ *   the boundary tracked — like this one — simply commits it; ignore rules
+ *   never affect tracked files.)
+ * - Existing file → human-authored lines are preserved verbatim; only
+ *   missing derived-state rules (cache/, state/) are appended, and a file
+ *   that already covers them is left byte-identical. Never overwritten.
+ */
+function ensureProjectControlIgnores(home: BacklogHome): void {
   const gitignorePath = join(home.controlDir, '.gitignore');
   if (!existsSync(gitignorePath)) {
-    appendFileSync(gitignorePath, 'cache/\n');
+    appendFileSync(
+      gitignorePath,
+      `.gitignore\nconfig.local.json\n${DERIVED_CONTROL_RULES.join('\n')}\n`,
+    );
     return;
   }
 
   const content = readFileSync(gitignorePath, 'utf-8');
-  if (content.split(/\r?\n/u).includes('cache/')) return;
-  appendFileSync(gitignorePath, `${content.endsWith('\n') ? '' : '\n'}cache/\n`);
+  const lines = content.split(/\r?\n/u);
+  const missing = DERIVED_CONTROL_RULES.filter(rule => !lines.includes(rule));
+  if (missing.length === 0) return;
+  appendFileSync(
+    gitignorePath,
+    `${content.endsWith('\n') || content === '' ? '' : '\n'}${missing.join('\n')}\n`,
+  );
 }
 
 function usageLogPath(home: BacklogHome): string {

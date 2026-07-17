@@ -147,7 +147,7 @@ function ignoredByRecommendedControlLayout(path: string): boolean {
 }
 
 describe('LocalRuntime', function describeLocalRuntime() {
-  it('creates a project cache ignore rule when the control file is absent', function createsProjectCacheIgnore() {
+  it('creates a self-ignoring tool-owned boundary when the control file is absent (BUG-0005)', function createsProjectControlIgnores() {
     const home = createHome('create-cache-ignore');
 
     createLocalRuntime(home, {
@@ -155,12 +155,14 @@ describe('LocalRuntime', function describeLocalRuntime() {
       createSearch: createBm25Search,
     });
 
+    // Covers itself plus every derived path the tool writes — a zero-setup
+    // first read leaves git status clean.
     expect(readFileSync(join(home.controlDir, '.gitignore'), 'utf-8')).toBe(
-      'cache/\n',
+      '.gitignore\nconfig.local.json\ncache/\nstate/\n',
     );
   });
 
-  it('preserves human project ignore content while adding the cache rule', function preservesProjectIgnoreContent() {
+  it('preserves human project ignore content while adding the missing derived-state rules', function preservesProjectIgnoreContent() {
     const home = createHome('preserve-cache-ignore');
     mkdirSync(home.controlDir, { recursive: true });
     writeFileSync(join(home.controlDir, '.gitignore'), 'config.local.json');
@@ -171,8 +173,48 @@ describe('LocalRuntime', function describeLocalRuntime() {
     });
 
     expect(readFileSync(join(home.controlDir, '.gitignore'), 'utf-8')).toBe(
-      'config.local.json\ncache/\n',
+      'config.local.json\ncache/\nstate/\n',
     );
+  });
+
+  it('every path the first read-plus-write session creates under .backlog is ignore-covered (BUG-0005)', async function firstSessionStaysGitInvisible() {
+    const home = createHome('git-invisible-session');
+    writeEntity(home, 'tasks/TASK-0001.md', buildEntity({
+      id: 'TASK-0001',
+      title: 'Pre-existing work',
+    }));
+
+    const runtime = createLocalRuntime(home, {
+      watcher: new FakeDocsTreeWatcher(),
+      createSearch: createBm25Search,
+    });
+    await runtime.start();                                   // the first read
+    runtime.operationLogger.append({                         // a state write
+      ts: new Date().toISOString(),
+      tool: 'backlog_remember',
+      mutation: 'create',
+      params: {},
+      result: {},
+      resourceId: 'MEMO-0001',
+      actor: { type: 'agent', name: 'onyx' },
+    });
+    runtime.service.flush();                                 // cache write
+    await runtime.stop();
+
+    // Git-cleanliness proxy (the suite runs on an in-memory fs): every file
+    // the session left under .backlog must be covered by the tool-owned
+    // boundary, .gitignore itself included.
+    const ignoreRules = readFileSync(join(home.controlDir, '.gitignore'), 'utf-8')
+      .split('\n')
+      .filter(rule => rule.length > 0);
+    const controlPaths = [...snapshotFiles(home.controlDir).keys()];
+    expect(controlPaths.length).toBeGreaterThan(1);          // cache + gitignore at least
+    for (const path of controlPaths) {
+      const covered = ignoreRules.some(rule => rule.endsWith('/')
+        ? path.startsWith(rule)
+        : path === rule);
+      expect(covered, `${path} must be ignore-covered`).toBe(true);
+    }
   });
 
   it('does not duplicate an existing project cache ignore rule', async function keepsProjectCacheIgnoreIdempotent() {
