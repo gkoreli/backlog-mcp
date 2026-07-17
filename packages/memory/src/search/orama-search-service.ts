@@ -27,7 +27,14 @@ import {
   buildWhereClause,
 } from './orama-schema.js';
 import { rankNormalize, linearFusion, applyCoordinationBonus, applyTemporalDecay, applyExactTitlePin, type ScoredHit } from './scoring.js';
-import { parseQueryIntent, canonicalizeIdQuery } from './query-intent.js';
+import {
+  parseQueryIntent,
+  canonicalizeIdQuery,
+  idIntentSpecsFromIdentities,
+  BUILTIN_ID_INTENT_SPECS,
+  type IdentityDeclaration,
+  type IdIntentSpec,
+} from './query-intent.js';
 
 export interface OramaSearchOptions {
   cachePath: string;
@@ -95,10 +102,27 @@ export class OramaSearchService implements SearchService {
   // Temporal decay (ADR-0092.1) — undefined/≤0 → disabled
   private readonly halfLifeDays: number | undefined;
 
+  // Exact-ID navigation rules — built-in prefixes until a registry configures
+  // the declared vocabulary (nav-01 plumbing fix, ADR 0121 R9).
+  private idIntentSpecs: readonly IdIntentSpec[] = BUILTIN_ID_INTENT_SPECS;
+
   constructor(options: OramaSearchOptions) {
     this.cachePath = options.cachePath;
     this.hybridEnabled = options.hybridSearch ?? true;
     this.halfLifeDays = options.halfLifeDays;
+  }
+
+  /**
+   * Derive the exact-ID fast-path vocabulary from the ACTIVE substrate
+   * registry's identity declarations (nav-01 plumbing bug, ADR 0121 R9).
+   *
+   * Docs-native substrates mint display ids the built-in prefix list never
+   * matched ("ADR 0116", "REF-0004"), so their ID queries fell through to
+   * BM25 where thread children and citations swamp the entity itself.
+   * Replaces the rule set: the registry already includes the built-ins.
+   */
+  configureIdIntent(identities: readonly IdentityDeclaration[]): void {
+    this.idIntentSpecs = idIntentSpecsFromIdentities(identities);
   }
 
   private get indexPath(): string {
@@ -531,7 +555,7 @@ export class OramaSearchService implements SearchService {
     // ID-shaped queries short-circuit to a direct cache hit (ADR-0083 #4) —
     // with `id` removed from TEXT_PROPERTIES, this is the canonical ID path
     // for the task-only method, mirroring searchAll()'s intent routing.
-    const canonicalId = canonicalizeIdQuery(query);
+    const canonicalId = canonicalizeIdQuery(query, this.idIntentSpecs);
     if (canonicalId) {
       const task = this.taskCache.get(canonicalId);
       if (task) return [{ id: canonicalId, score: 1.0, task }];
@@ -579,7 +603,7 @@ export class OramaSearchService implements SearchService {
     // short-circuit to a direct cache lookup; leading status/type words
     // become native `where` filters so the fusion pipeline doesn't waste
     // BM25 time on tokens that are really filter intent.
-    const intent = parseQueryIntent(query);
+    let intent = parseQueryIntent(query, this.idIntentSpecs);
 
     if (intent.type === 'id_lookup' && intent.id) {
       const hit = this._buildIdLookupHit(intent.id, query);
@@ -587,6 +611,24 @@ export class OramaSearchService implements SearchService {
       // Fall through to fulltext if the canonical ID isn't in the cache —
       // the user may have typed a near-miss and the existing fusion
       // pipeline (with tolerance) is the correct fallback.
+    }
+
+    // Fail-open type-word guard (structural-suite evidence: ADR 0096's own
+    // exact title returned zero results because its leading word became a
+    // type:cron filter over a corpus with no crons). A type-word reading
+    // that would produce an empty universe cannot be filter intent — the
+    // word is content, so the full query runs as fulltext. Only applies
+    // when the parsed type would actually govern the result set: caller
+    // docTypes or an explicit type filter override intent and keep their
+    // exact (fail-closed) semantics.
+    if (
+      intent.type === 'filtered'
+      && intent.filters?.type !== undefined
+      && options?.docTypes === undefined
+      && options?.filters?.type === undefined
+      && !this._hasEntityOfType(intent.filters.type)
+    ) {
+      intent = { type: 'fulltext', query: query.trim() };
     }
 
     // Merge filters from intent with caller-supplied options.
@@ -641,6 +683,14 @@ export class OramaSearchService implements SearchService {
         return { id: h.id, score: h.score, type: docType, item, snippet };
       })
       .filter((h): h is NonNullable<typeof h> => h !== null);
+  }
+
+  /** Whether any indexed entity carries this substrate type. */
+  private _hasEntityOfType(type: string): boolean {
+    for (const task of this.taskCache.values()) {
+      if ((task.type || 'task') === type) return true;
+    }
+    return false;
   }
 
   /**

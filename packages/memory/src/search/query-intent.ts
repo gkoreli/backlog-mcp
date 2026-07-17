@@ -28,21 +28,94 @@ export interface QueryIntent {
 // ── ID detection ────────────────────────────────────────────────────
 
 /**
- * Map lowercase prefix → uppercase prefix used in canonical IDs.
- * Built from `TYPE_PREFIXES` so adding a new substrate updates this for free.
+ * Identity declaration for one active substrate — structurally the same
+ * shape the substrate registry's storage claims carry (strategy, prefix,
+ * minimumDigits, displayTemplate). The search package stays registry-
+ * agnostic: callers hand these in, nothing here imports server code.
  */
-const PREFIX_LOOKUP: Record<string, string> = Object.fromEntries(
-  Object.values(TYPE_PREFIXES).map(p => [p.toLowerCase(), p]),
-);
+export interface IdentityDeclaration {
+  strategy: string;
+  prefix?: string | undefined;
+  minimumDigits?: number | undefined;
+  displayTemplate?: string | undefined;
+}
 
 /**
- * Pattern: a known prefix, optional separator (hyphen/space/none), digits.
- * Group 1: prefix. Group 2: digits.
+ * One derived ID-intent rule: recognize `<word><sep?><digits>` queries and
+ * rebuild the substrate's canonical display id from them.
  */
-const ID_INTENT_PATTERN: RegExp = (() => {
-  const prefixes = Object.keys(PREFIX_LOOKUP).join('|');
-  return new RegExp(`^(${prefixes})[-\\s]?(\\d+)$`, 'i');
-})();
+export interface IdIntentSpec {
+  /** Identity word matched case-insensitively, e.g. "ADR", "REF", "TASK". */
+  word: string;
+  /** Canonical-id text the key is appended to, e.g. "ADR " or "REF-". */
+  idPrefix: string;
+  /** Zero-pad the key's root segment to this many digits. */
+  minimumDigits: number;
+  /** Whether dotted thread keys ("0092.1") are valid for this substrate. */
+  threaded: boolean;
+}
+
+const IDENTITY_KEY_PLACEHOLDER = '{key}';
+const IDENTITY_WORD_PATTERN = /^[A-Za-z][A-Za-z0-9]*$/u;
+
+/**
+ * Derive the ID-intent rule set from the active registry's identity
+ * declarations (nav-01 plumbing fix, ADR 0121 R9). Docs-native substrates
+ * mint display ids through their declared templates — space-form
+ * ("ADR 0116"), hyphen-form ("REF-0004"), threaded ("ADR 0092.1") — so the
+ * recognizable prefix vocabulary must come from those declarations, never
+ * from a hardcoded list.
+ *
+ * Identities whose display ids carry no leading word (bare numbered
+ * substrates) or that place text after the key produce no rule: their ids
+ * cannot be recognized from a `<word> <digits>` query.
+ */
+export function idIntentSpecsFromIdentities(
+  identities: readonly IdentityDeclaration[],
+): IdIntentSpec[] {
+  const specs = new Map<string, IdIntentSpec>();
+  for (const identity of identities) {
+    // Same template default as the storage-identity boundary.
+    const template = identity.displayTemplate
+      ?? (identity.prefix === undefined
+        ? IDENTITY_KEY_PLACEHOLDER
+        : `${identity.prefix}-${IDENTITY_KEY_PLACEHOLDER}`);
+    const placeholderIndex = template.indexOf(IDENTITY_KEY_PLACEHOLDER);
+    if (
+      placeholderIndex < 0
+      || placeholderIndex !== template.lastIndexOf(IDENTITY_KEY_PLACEHOLDER)
+    ) continue;
+    if (template.slice(placeholderIndex + IDENTITY_KEY_PLACEHOLDER.length) !== '') continue;
+    const idPrefix = template.slice(0, placeholderIndex);
+    const word = idPrefix.replace(/[-\s]+$/u, '');
+    if (word === '' || !IDENTITY_WORD_PATTERN.test(word)) continue;
+    const minimumDigits = Number.isInteger(identity.minimumDigits)
+      && (identity.minimumDigits as number) >= 1
+      ? (identity.minimumDigits as number)
+      : 1;
+    specs.set(word.toLowerCase(), {
+      word,
+      idPrefix,
+      minimumDigits,
+      threaded: identity.strategy === 'numbered-threaded',
+    });
+  }
+  return [...specs.values()];
+}
+
+/**
+ * Default rule set — the built-in substrates (TASK, EPIC, …) with their
+ * canonical `PREFIX-0000` claims. Used when no registry has been supplied,
+ * preserving the pre-registry behavior for standalone service use.
+ */
+export const BUILTIN_ID_INTENT_SPECS: readonly IdIntentSpec[] =
+  idIntentSpecsFromIdentities(
+    Object.values(TYPE_PREFIXES).map(prefix => ({
+      strategy: 'prefixed-number',
+      prefix,
+      minimumDigits: 4,
+    })),
+  );
 
 /**
  * Canonicalize a candidate ID-shaped query into a real entity ID, or null
@@ -50,7 +123,12 @@ const ID_INTENT_PATTERN: RegExp = (() => {
  * be the ID — partial matches like "task 596 viewer" do NOT short-circuit
  * (they may contain genuine fulltext intent).
  *
- * Examples:
+ * Both separator families canonicalize to the substrate's declared display
+ * id: "ADR 0116" and "ADR-0116" → "ADR 0116"; "REF 4" and "REF-0004" →
+ * "REF-0004". Thread-child keys round-trip for numbered-threaded
+ * substrates ("ADR-0092.1" → "ADR 0092.1").
+ *
+ * Examples (built-in specs):
  *   "TASK-0596"  → "TASK-0596"
  *   "task-0596"  → "TASK-0596"
  *   "task 596"   → "TASK-0596"   (zero-padded to 4 digits)
@@ -59,21 +137,31 @@ const ID_INTENT_PATTERN: RegExp = (() => {
  *   "596"        → null          (ambiguous: which type?)
  *   "task 596 viewer" → null     (extra terms present)
  */
-export function canonicalizeIdQuery(query: string): string | null {
+export function canonicalizeIdQuery(
+  query: string,
+  specs: readonly IdIntentSpec[] = BUILTIN_ID_INTENT_SPECS,
+): string | null {
   // Collapse whitespace so "TASK   0596" still matches.
   const trimmed = query.trim().replace(/\s+/g, ' ');
   if (!trimmed) return null;
 
-  const match = ID_INTENT_PATTERN.exec(trimmed);
-  if (!match || !match[1] || !match[2]) return null;
-
-  const prefix = PREFIX_LOOKUP[match[1].toLowerCase()];
-  if (!prefix) return null;
-
-  // Pad numeric portion to at least 4 digits to match canonical ID format.
-  // Inputs that already exceed 4 digits are preserved (TASK-12345 stays as-is).
-  const digits = match[2].length >= 4 ? match[2] : match[2].padStart(4, '0');
-  return `${prefix}-${digits}`;
+  for (const spec of specs) {
+    const match = new RegExp(
+      `^${spec.word}[-\\s]?(\\d+(?:\\.\\d+)*)$`,
+      'i',
+    ).exec(trimmed);
+    const key = match?.[1];
+    if (!key) continue;
+    if (key.includes('.') && !spec.threaded) continue;
+    const [root = '', ...childSegments] = key.split('.');
+    // Pad the root to the declared width; wider inputs are preserved
+    // (TASK-12345 stays as-is). Thread-child segments pass through.
+    const paddedRoot = root.length >= spec.minimumDigits
+      ? root
+      : root.padStart(spec.minimumDigits, '0');
+    return `${spec.idPrefix}${[paddedRoot, ...childSegments].join('.')}`;
+  }
+  return null;
 }
 
 // ── Status / type detection ─────────────────────────────────────────
@@ -180,12 +268,18 @@ export function extractLeadingFilters(query: string): { filters: { status?: Stat
 /**
  * Classify a search query and produce a `QueryIntent` describing how to
  * retrieve it. Always succeeds — the default route is `fulltext`.
+ *
+ * `specs` is the active registry's derived ID-intent rule set; omitting it
+ * falls back to the built-in substrate prefixes.
  */
-export function parseQueryIntent(query: string): QueryIntent {
+export function parseQueryIntent(
+  query: string,
+  specs: readonly IdIntentSpec[] = BUILTIN_ID_INTENT_SPECS,
+): QueryIntent {
   const trimmed = query.trim();
 
   // 1. ID lookup wins if the entire query is ID-shaped.
-  const canonicalId = canonicalizeIdQuery(trimmed);
+  const canonicalId = canonicalizeIdQuery(trimmed, specs);
   if (canonicalId !== null) {
     return { type: 'id_lookup', id: canonicalId, query: trimmed };
   }

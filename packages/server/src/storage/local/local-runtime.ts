@@ -259,6 +259,15 @@ export function createLocalRuntime(
   const substrateRegistry = definitions.registry;
   const storage = new DocsNativeFilesystemStorage(home, substrateRegistry);
   const search = deps.createSearch?.(home) ?? createSearch(home);
+  // Exact-ID navigation derives its prefix vocabulary from the ACTIVE
+  // registry (nav-01 plumbing bug, ADR 0121 R9): docs-native substrates
+  // mint display ids ("ADR 0116", "REF-0004") the built-in prefix list
+  // never matched, so their ID queries drowned in BM25.
+  search.configureIdIntent(
+    substrateRegistry.listSubstrates().map(
+      substrate => substrate.storageClaim.identity,
+    ),
+  );
   // Root-anchored catalog (first-impression charter, Slice A): resource
   // IDs/paths are home-root-relative so repo-root orientation files
   // (README.md, AGENTS.md, the vision doc) hydrate by the same address

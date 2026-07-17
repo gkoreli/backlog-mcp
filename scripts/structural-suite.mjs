@@ -980,6 +980,11 @@ async function main() {
         cachePath: join(suiteDirectory, `${mode}-index.json`),
         hybridSearch,
       });
+      // Production wiring: exact-ID navigation derives its prefix vocabulary
+      // from the active registry's identity declarations (ADR 0121 R9).
+      searchService.configureIdIntent(
+        corpus.registry.listSubstrates().map(substrate => substrate.storageClaim.identity),
+      );
       await searchService.index(corpus.entityDocuments.map(({ sourcePath, ...document }) => document));
       await searchService.reconcileResources(corpus.resources);
       searchService.flush();

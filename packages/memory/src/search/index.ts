@@ -31,8 +31,17 @@ export { minmaxNormalize, rankNormalize, linearFusion, applyCoordinationBonus, a
 
 // Tokenizer
 export { compoundWordTokenizer, splitCamelCase } from './tokenizer.js';
-// Query intent parser (ADR 0083 #4)
-export { parseQueryIntent, canonicalizeIdQuery, extractLeadingFilters, type QueryIntent } from './query-intent.js';
+// Query intent parser (ADR 0083 #4; registry-derived ID intent per ADR 0121 R9)
+export {
+  parseQueryIntent,
+  canonicalizeIdQuery,
+  extractLeadingFilters,
+  idIntentSpecsFromIdentities,
+  BUILTIN_ID_INTENT_SPECS,
+  type QueryIntent,
+  type IdentityDeclaration,
+  type IdIntentSpec,
+} from './query-intent.js';
 
 // Cross-home rank fusion (ADR 0112.1 / ADR 0116)
 export { mergeCrossHomeRrf, RRF_K } from './cross-home-rrf.js';

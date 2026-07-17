@@ -706,6 +706,7 @@ async function benchmarkMode({
   hybridSearch,
   entityDocuments,
   resources,
+  identityDeclarations,
   queries,
   qrels,
   warmups,
@@ -719,6 +720,9 @@ async function benchmarkMode({
   const serviceBuildStart = process.hrtime.bigint();
   recordRss(rssSamples, 'before_index');
   const searchService = new OramaSearchService({ cachePath, hybridSearch });
+  // Production wiring: exact-ID navigation derives its prefix vocabulary
+  // from the active registry's identity declarations (ADR 0121 R9).
+  searchService.configureIdIntent(identityDeclarations);
   const adapter = new BenchmarkServiceAdapter(searchService);
   const memoryStore = new BacklogMemoryStore(() => adapter);
   const indexStart = process.hrtime.bigint();
@@ -890,7 +894,7 @@ function loadProductCorpus(args, runtime) {
     ids.add(id);
   }
   if (ids.size === 0) fail(`Project corpus is empty: ${home.documentsDir}`);
-  return { home, entityDocuments, resources, ids };
+  return { home, registry: definitions.registry, entityDocuments, resources, ids };
 }
 
 async function main() {
@@ -939,6 +943,9 @@ async function main() {
     const common = {
       entityDocuments: corpus.entityDocuments,
       resources: corpus.resources,
+      identityDeclarations: corpus.registry.listSubstrates().map(
+        substrate => substrate.storageClaim.identity,
+      ),
       queries,
       qrels,
       warmups: args.warmups,
