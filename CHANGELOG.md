@@ -13,6 +13,14 @@ begins at 0.57.0 — earlier history lives in git.
 ## [Unreleased]
 
 ### Added
+- **`wakeup(operation=…)` — the Amnesia Test's missing argument.** A fresh agent
+  handed nothing but one wakeup call with an operation ID receives that
+  document's live state as the briefing's leading FOCUS centerpiece — goal,
+  next action, and constraints in a single payload — with non-focal sections
+  yielding budget deterministically (constraints never yield). Works for any
+  substrate that declares wakeup disclosure; unknown or closed IDs error
+  honestly with live candidates. The Amnesia CI gate now proves the argument
+  itself (8 → 13 assertions).
 - **Worktrees know their family (Lattice W1, PROMPT 0003).** A backlog home in a
   linked git worktree now resolves its *family* — the main checkout, its branch,
   and the default branch — and the briefing's meta section says so in one line:
