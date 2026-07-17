@@ -232,7 +232,11 @@ export function createLocalRuntime(
   const substrateRegistry = definitions.registry;
   const storage = new DocsNativeFilesystemStorage(home, substrateRegistry);
   const search = deps.createSearch?.(home) ?? createSearch(home);
-  const resourceManager = new ResourceManager(home.documentsDir);
+  // Root-anchored catalog (first-impression charter, Slice A): resource
+  // IDs/paths are home-root-relative so repo-root orientation files
+  // (README.md, AGENTS.md, the vision doc) hydrate by the same address
+  // as everything under the documents directory.
+  const resourceManager = new ResourceManager(home.root, home.documentsDir);
   function allocateId(type: SubstrateType, currentMaxId: number): string {
     return nextStorageDocumentId(substrateRegistry, type, currentMaxId);
   }

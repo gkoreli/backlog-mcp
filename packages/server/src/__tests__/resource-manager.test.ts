@@ -184,6 +184,68 @@ describe('ResourceManager', () => {
     });
   });
 
+  describe('docs-native root anchoring (first-impression Slice A)', () => {
+    const HOME_ROOT = join(tmpdir(), 'resource-manager-home-root');
+    const DOCS_DIR = join(HOME_ROOT, 'docs');
+    let manager: ResourceManager;
+
+    beforeAll(() => {
+      writeDocument(HOME_ROOT, 'README.md', '# Repo Overview\n\nEcosystem framing.');
+      writeDocument(HOME_ROOT, 'AGENTS.md', '# Contributor Rules');
+      writeDocument(HOME_ROOT, 'NORTH_STAR.md', '# The Vision');
+      writeDocument(HOME_ROOT, 'package.json', '{"name":"not-a-resource"}');
+      writeDocument(HOME_ROOT, 'src/secret.md', '# Never Addressable');
+      writeDocument(DOCS_DIR, 'adr/0001-first.md', '# First Decision');
+      manager = new ResourceManager(HOME_ROOT, DOCS_DIR);
+    });
+
+    it('lists docs under a root-relative prefix plus the repo-root orientation files', () => {
+      const paths = manager.list().map(function getPath(resource) {
+        return resource.path;
+      });
+      expect(paths).toEqual([
+        'AGENTS.md',
+        'NORTH_STAR.md',
+        'README.md',
+        'docs/adr/0001-first.md',
+      ]);
+      expect(manager.scanPrefix).toBe('docs');
+    });
+
+    it('orientation files hydrate by the same listed ID', () => {
+      expect(manager.read('mcp://backlog/README.md').content)
+        .toContain('Ecosystem framing');
+      expect(manager.read('mcp://backlog/NORTH_STAR.md').content)
+        .toContain('The Vision');
+      expect(manager.read('mcp://backlog/docs/adr/0001-first.md').content)
+        .toContain('First Decision');
+    });
+
+    it('the rest of the repository stays unaddressable', () => {
+      expect(() => manager.resolve('mcp://backlog/src/secret.md'))
+        .toThrow('outside the documents surface');
+      expect(() => manager.resolve('mcp://backlog/package.json'))
+        .toThrow('outside the documents surface');
+      expect(manager.toUri(join(HOME_ROOT, 'src', 'secret.md'))).toBeNull();
+      expect(manager.toUri(join(HOME_ROOT, 'README.md')))
+        .toBe('mcp://backlog/README.md');
+    });
+  });
+
+  describe('lenient markdown reads (EXP-1 B-3)', () => {
+    it('returns the raw bytes with a labeled diagnostic when frontmatter cannot parse', () => {
+      const malformed = '---\ntitle: broken (domain: aime)\n---\n\n# Body survives\n';
+      writeDocument(ROOT_DIR, 'requirements/REQ-0004-broken.md', malformed);
+      const manager = new ResourceManager(ROOT_DIR);
+
+      const resource = manager.read('mcp://backlog/requirements/REQ-0004-broken.md');
+      expect(resource.content).toBe(malformed);          // lossless — never coerced
+      expect(resource.frontmatter).toBeUndefined();
+      expect(resource.frontmatterError).toContain('mapping');
+      expect(resource.mimeType).toBe('text/markdown');
+    });
+  });
+
   describe('toUri()', () => {
     const manager = new ResourceManager(ROOT_DIR);
 

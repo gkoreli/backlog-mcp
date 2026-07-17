@@ -53,10 +53,15 @@ function listIndexableResources(
   const resources = manager.list();
   if (!isDocumentStorageAdapter(storageAdapter)) return resources;
 
+  // Entity source paths are documents-dir-relative; resource paths are
+  // root-relative — align through the manager's scan prefix.
+  const scanPrefix = manager.scanPrefix;
   const entitySourcePaths = new Set(Array.from(
     storageAdapter.iterateDocuments(),
   ).map(function getCompiledSourcePath(document) {
-    return document.sourcePath;
+    return scanPrefix === ''
+      ? document.sourcePath
+      : `${scanPrefix}/${document.sourcePath}`;
   }));
   return resources.filter(function isGenericResource(resource) {
     return !entitySourcePaths.has(resource.path);

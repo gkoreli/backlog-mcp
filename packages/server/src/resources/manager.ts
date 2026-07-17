@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import {
   basename,
+  dirname,
   extname,
   isAbsolute,
   join,
@@ -12,10 +13,13 @@ import matter from 'gray-matter';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Resource } from '@backlog-mcp/memory/search';
 import { discoverDocuments } from '../core/document-discovery.js';
+import { isOrientationRootFilename } from '../core/orientation.js';
 
 export interface ResourceContent {
   content: string;
   frontmatter?: Record<string, any>;
+  /** Labeled parse diagnostic when frontmatter exists but cannot compile. */
+  frontmatterError?: string;
   mimeType: string;
 }
 
@@ -72,9 +76,14 @@ function hasParentPathSegment(uri: string): boolean {
 
 /**
  * ResourceManager - Single point of responsibility for MCP resource operations.
- * 
+ *
  * Pure catch-all design: mcp://backlog/{+path} → {rootDir}/{path}
  * No special cases, no magic behavior.
+ *
+ * When the scan directory is narrower than the root (docs-native homes:
+ * root = project root, scan = docs/), the addressable surface is the scan
+ * directory plus the bounded set of repo-root orientation files (README.md,
+ * AGENTS.md, the vision document) — never the whole repository.
  */
 export class ResourceManager {
   private readonly rootDir: string;
@@ -85,9 +94,15 @@ export class ResourceManager {
     this.scanDir = resolve(scanDir);
   }
 
+  /** Root-relative prefix of the scan directory ('' when scan == root). */
+  get scanPrefix(): string {
+    return normalizeRelativePath(this.rootDir, this.scanDir);
+  }
+
   /**
-   * List all supported documents beneath the configured scan directory.
-   * Returns Resource objects ready for search indexing.
+   * List all supported documents beneath the configured scan directory,
+   * plus repo-root orientation files when the scan is narrower than the
+   * root. Returns Resource objects ready for search indexing.
    */
   list(): Resource[] {
     const discovery = discoverDocuments({ documentsDir: this.scanDir });
@@ -109,7 +124,58 @@ export class ResourceManager {
         content: document.content,
       });
     }
+    resources.push(...this.listOrientationRootFiles());
+    return resources.sort(function byPath(left, right) {
+      return left.path < right.path ? -1 : left.path > right.path ? 1 : 0;
+    });
+  }
+
+  /**
+   * Repo-root orientation documents (charter Slice A): README.md, AGENTS.md,
+   * and the vision document join the catalog losslessly so the briefing's
+   * pointer stubs hydrate through the same ID/path as every other resource.
+   */
+  private listOrientationRootFiles(): Resource[] {
+    if (this.scanDir === this.rootDir) return [];
+
+    let names: string[];
+    try {
+      names = readdirSync(this.rootDir, { encoding: 'utf8' });
+    } catch {
+      return [];
+    }
+
+    const resources: Resource[] = [];
+    for (const name of names.sort()) {
+      if (!isOrientationRootFilename(name)) continue;
+      const absolutePath = join(this.rootDir, name);
+      try {
+        if (!statSync(absolutePath).isFile()) continue;
+        if (!isCanonicalPathContained(this.rootDir, absolutePath)) continue;
+        const content = readFileSync(absolutePath, 'utf-8');
+        resources.push({
+          id: `mcp://backlog/${name}`,
+          path: name,
+          title: extractTitle(content, name),
+          content,
+        });
+      } catch {
+        // An unreadable root file simply stays out of the catalog.
+      }
+    }
     return resources;
+  }
+
+  /**
+   * True when a resolved absolute path is addressable: inside the scan
+   * directory, or a repo-root orientation file. With scan == root the whole
+   * root stays addressable (legacy catch-all homes).
+   */
+  private isAddressablePath(filePath: string): boolean {
+    if (this.scanDir === this.rootDir) return true;
+    if (isPathContained(this.scanDir, filePath)) return true;
+    return dirname(filePath) === this.rootDir
+      && isOrientationRootFilename(basename(filePath));
   }
 
   /**
@@ -147,6 +213,9 @@ export class ResourceManager {
     if (!isPathContained(this.rootDir, filePath)) {
       throw new Error(`Path traversal not allowed: ${uri}`);
     }
+    if (!this.isAddressablePath(filePath)) {
+      throw new Error(`Resource outside the documents surface: ${uri}`);
+    }
     return filePath;
   }
 
@@ -178,16 +247,29 @@ export class ResourceManager {
     const ext = filePath.split('.').pop()?.toLowerCase() || 'txt';
     const mimeType = this.getMimeType(ext);
     
-    // Parse frontmatter for markdown files
+    // Parse frontmatter for markdown files. Lenient by contract (Invariant 8 /
+    // EXP-1 B-3): a malformed frontmatter block must not make the document
+    // unreadable — the raw bytes return losslessly with a labeled diagnostic,
+    // and the file is never coerced or rewritten.
     if (ext === 'md' || ext === 'markdown') {
-      const parsed = matter(content);
-      return {
-        content: parsed.content,
-        frontmatter: Object.keys(parsed.data).length > 0 ? parsed.data : undefined,
-        mimeType,
-      };
+      try {
+        // Options disable gray-matter's content-keyed cache, which would
+        // otherwise replay a pre-error parse for identical malformed content.
+        const parsed = matter(content, {});
+        return {
+          content: parsed.content,
+          frontmatter: Object.keys(parsed.data).length > 0 ? parsed.data : undefined,
+          mimeType,
+        };
+      } catch (error) {
+        return {
+          content,
+          frontmatterError: error instanceof Error ? error.message : String(error),
+          mimeType,
+        };
+      }
     }
-    
+
     return {
       content,
       mimeType,
@@ -204,6 +286,9 @@ export class ResourceManager {
   toUri(filePath: string): string | null {
     const absolutePath = resolve(filePath);
     if (!isPathContained(this.rootDir, absolutePath)) {
+      return null;
+    }
+    if (!this.isAddressablePath(absolutePath)) {
       return null;
     }
     if (existsSync(absolutePath) && !isCanonicalPathContained(this.rootDir, absolutePath)) {
