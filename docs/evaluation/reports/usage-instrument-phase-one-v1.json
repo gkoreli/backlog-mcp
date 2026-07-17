@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "operations": {
+      "path": "/Users/goga/Documents/goga/backlog-mcp/.backlog/state/operations.jsonl",
+      "status": "missing",
+      "nonempty_lines": 0,
+      "valid_events": 0,
+      "malformed_or_unsupported_lines": 0
+    },
+    "usage": {
+      "path": "/Users/goga/Documents/goga/backlog-mcp/.backlog/state/memory-usage.jsonl",
+      "status": "missing",
+      "nonempty_lines": 0,
+      "valid_events": 0,
+      "malformed_or_unsupported_lines": 0
+    }
+  },
+  "observed_time_range": {
+    "first": null,
+    "last": null
+  },
+  "successful_writes": {
+    "total": 0,
+    "by_intent": {},
+    "by_mutation": {}
+  },
+  "memory_usage": {
+    "observed_hit_recalls": 0,
+    "returned_memory_ids": 0,
+    "expands": 0,
+    "citations": 0,
+    "usage_summaries": 0,
+    "recall_to_hydration": {
+      "candidate_chains": 0,
+      "recalls_with_candidate_hydration": 0,
+      "returned_ids_hydrated": 0,
+      "unmatched_expands": 0
+    },
+    "hit_vs_miss": {
+      "observed_hits": 0,
+      "observed_misses": null,
+      "hit_rate": null
+    }
+  },
+  "section_usage": {
+    "observed_sections": null
+  },
+  "coverage": {
+    "successful_write_counts": {
+      "status": "unavailable",
+      "reason": "The operations journal source is missing; zero observed events is not evidence of zero writes."
+    },
+    "all_tool_call_counts": {
+      "status": "unavailable",
+      "reason": "Read tools do not append to the operations journal."
+    },
+    "observed_recall_hits": {
+      "status": "unavailable",
+      "reason": "The usage overlay source is missing; zero observed events is not evidence of zero recall hits."
+    },
+    "recall_misses_and_hit_rate": {
+      "status": "unavailable",
+      "reason": "Recall calls with zero returned ids do not append an event."
+    },
+    "recall_to_hydration": {
+      "status": "unavailable",
+      "reason": "The usage overlay source is missing."
+    },
+    "wakeup_section_usage": {
+      "status": "unavailable",
+      "reason": "Wakeup calls and consumed briefing sections are not logged."
+    }
+  }
+}
