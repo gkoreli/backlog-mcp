@@ -10,6 +10,21 @@ each version says why it mattered on the road to the north star
 (`docs/NORTH-STAR.md` — *your backlog is your agent's memory*). This changelog
 begins at 0.57.0 — earlier history lives in git.
 
+## [Unreleased]
+
+### Added
+- **Writes now speak substrate intent (ADR 0106.5).** The local MCP surface
+  compiles sixteen narrow verbs such as `backlog_create_work`,
+  `backlog_complete_task`, and `backlog_capture_requirement` from the active
+  substrate registry, disclosing only the fields needed for that action. The
+  low-level CLI create/update commands remain available for the rare tail.
+
+### Removed
+- **Generic MCP create/update tools.** `backlog_create` and `backlog_update`
+  are no longer exposed alongside the semantic verbs; their names remain
+  reserved so a project declaration cannot reclaim them with different
+  behavior.
+
 ## [0.61.0] — 2026-07-16
 
 *The flip: the repo's docs folder IS the backlog now, by default, with one explicit
