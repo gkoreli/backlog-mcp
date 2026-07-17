@@ -1,5 +1,5 @@
 ---
-attention: awaiting zombie-sweep ruling (report 0009 #7)
+attention: "awaiting zombie-sweep ruling (report 0009 #7)"
 ---
 
 # 0037. Partial Array Updates with add_/remove_ Convention

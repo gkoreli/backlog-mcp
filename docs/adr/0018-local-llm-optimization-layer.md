@@ -1,5 +1,5 @@
 ---
-attention: awaiting zombie-sweep ruling (report 0009 #7)
+attention: "awaiting zombie-sweep ruling (report 0009 #7)"
 ---
 
 # ADR 0018: Local LLM as Meta-Learning Optimization Layer

@@ -1,5 +1,5 @@
 ---
-attention: awaiting zombie-sweep ruling (report 0009 #7)
+attention: "awaiting zombie-sweep ruling (report 0009 #7)"
 ---
 
 # ADR-0021: ChatGPT Apps SDK Integration Strategy

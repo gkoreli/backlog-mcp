@@ -1,5 +1,5 @@
 ---
-attention: awaiting zombie-sweep ruling (report 0009 #7)
+attention: "awaiting zombie-sweep ruling (report 0009 #7)"
 ---
 
 # 0083. Search Service Architectural Review & Next-Generation Search
