@@ -163,6 +163,9 @@ Reports are durable evidence. The output parent directory is created when
 needed, and the report is written to a temporary sibling before an atomic
 rename. Do not check in a report until its corpus, queries, and qrels are the
 reviewed product-corpus baseline authorized by ADR 0116.
+Comparisons are valid only between runs with the same corpus hash; after drift,
+run both control and candidate on the current corpus with the frozen qrels and
+judge only newly pooled documents under `JUDGING.md`.
 
 Baseline v1 is deliberately search-only because the post-Phase-C project
 corpus contains no real memories. It must state that recall evidence is absent.

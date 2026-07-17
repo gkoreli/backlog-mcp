@@ -58,6 +58,7 @@
     }
   },
   "provenance": {
+    "git_ref": "baseline/0116-v1",
     "git_commit": "ccf5784045997c143fa7ad6e3a2fcfbb3fe2d0c7",
     "runner_sha256": "5e69f4351158a5fea1dbadad21cb9c18fa3cb65a9b356d9d9fb623c14e0da479",
     "corpus_membership_ruling": "Beryl domain ruling, 2026-07-16: record after ADR 0113 Phase C so packaged substrate documents are members of the measured corpus.",
