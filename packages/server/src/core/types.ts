@@ -297,8 +297,10 @@ export interface WakeupParams {
    */
   maxKnowledge?: number;
   /**
-   * Max requirement constraint stubs (ADR 0113.1 R-2). Default: 5. Set 0 to
-   * omit the section. Truncation is reported via metadata.constraints_omitted.
+   * Max requirement constraint stubs (ADR 0113.1 R-2). Default: 3 (Slice C
+   * budget discipline — worst-first top three carry the live risk; raise
+   * per-call when auditing). Set 0 to omit the section. Truncation is
+   * reported via metadata.constraints_omitted.
    */
   maxConstraints?: number;
   /**
@@ -389,12 +391,16 @@ export interface WakeupEntitySummary {
   id: string;
   title: string;
   status: Status | string;
-  type: string;
+  /** Present only when it differs from the section's implied type (Tenet 8). */
+  type?: string;
   parent_id?: string;
-  updated_at?: string;
+  /** Days since updated_at — the ADR 0115 R-4 staleness grammar. */
+  age_days?: number;
 }
 
-export interface WakeupCompletion extends WakeupEntitySummary {
+/** Completed work; status is omitted — done by construction (Tenet 8). */
+export interface WakeupCompletion extends Omit<WakeupEntitySummary, 'status'> {
+  status?: Status | string;
   evidence_snippet?: string;
 }
 
@@ -475,12 +481,14 @@ export interface WakeupResult {
     completions: WakeupCompletion[];
     activity: WakeupActivity[];
   };
+  /**
+   * Only what the payload cannot derive: omission truths, quarantine,
+   * diagnostics, and the home-wide unfiled count. Section sizes are the
+   * arrays' own lengths — restating them is redundant transport metadata
+   * (Tenet 8; Slice C budget discipline).
+   */
   metadata: {
     generated_at: string;
-    identity_present: boolean;
-    active_task_count: number;
-    epic_count: number;
-    knowledge_count: number;
     /** Live constraints beyond the maxConstraints bound (0 = complete). */
     constraints_omitted: number;
     /** Per-section omitted counts for registry-declared sections (0 = complete). */
@@ -497,8 +505,6 @@ export interface WakeupResult {
      * silently chosen authority (charter Slice A).
      */
     vision_candidates?: string[];
-    completion_count: number;
-    activity_count: number;
     /** Home-wide parentless work count; memories and containers are exempt. */
     unfiled_count: number;
   };

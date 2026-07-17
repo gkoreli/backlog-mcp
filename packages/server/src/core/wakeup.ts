@@ -65,21 +65,37 @@ function compareOrientationDocs(
   return roleDelta !== 0 ? roleDelta : a.path.localeCompare(b.path);
 }
 
-function toSummary(e: Entity): WakeupEntitySummary {
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * `sectionType` is the section's implied type: a summary carries `type`
+ * only when it differs (an artifact among active tasks). Staleness rides
+ * as `age_days` — the same provenance grammar as knowledge and recall
+ * stubs (ADR 0115 R-4) at a fraction of a full ISO timestamp's bytes.
+ * Every byte in the briefing earns its place (Tenet 8).
+ */
+function toSummary(e: Entity, sectionType: string, now: number): WakeupEntitySummary {
   const s: WakeupEntitySummary = {
     id: e.id,
     title: e.title,
     status: e.status ?? 'open',
-    type: e.type ?? 'task',
   };
+  const type = e.type ?? 'task';
+  if (type !== sectionType) s.type = type;
   const parent = e.parent_id;
   if (parent) s.parent_id = parent;
-  if (e.updated_at) s.updated_at = e.updated_at;
+  const updated = e.updated_at === undefined ? Number.NaN : Date.parse(e.updated_at);
+  if (!Number.isNaN(updated)) {
+    s.age_days = Math.max(0, Math.floor((now - updated) / MS_PER_DAY));
+  }
   return s;
 }
 
-function toCompletion(e: Entity, snippetChars: number): WakeupCompletion {
-  const base = toSummary(e);
+function toCompletion(e: Entity, snippetChars: number, now: number): WakeupCompletion {
+  const base = toSummary(e, 'task', now);
+  // Everything in this section is done by construction — restating the
+  // status on each row is transport redundancy (Tenet 8).
+  delete (base as { status?: unknown }).status;
   const first = e.evidence?.[0];
   if (first) {
     const snippet = first.length > snippetChars
@@ -200,6 +216,8 @@ export async function wakeup(
   const snippetChars = params.evidenceSnippetChars ?? 160;
 
   const identity = params.readIdentity?.();
+  // One time anchor for every age_days in the briefing.
+  const nowMs = Date.now();
   // First-impression grounding (charter Slices A/B): composition-discovered
   // plain data — orientation pointers, vision candidates, observed recency.
   const grounding = params.readGrounding?.();
@@ -243,13 +261,13 @@ export async function wakeup(
     return builtin === undefined || builtin.type === 'epic' ? [] : [builtin];
   }))
     .sort(byUpdatedAtDesc)
-    .map(toSummary);
+    .map(e => toSummary(e, 'task', nowMs));
 
   const epics = await service.list({ type: EntityType.Epic, status: ['open', 'in_progress'] });
   const currentEpics = inScope(epics.flatMap(function getEpic(entity) {
     const builtin = asBuiltinEntity(entity);
     return builtin?.type === EntityType.Epic ? [builtin] : [];
-  })).sort(byUpdatedAtDesc).map(toSummary);
+  })).sort(byUpdatedAtDesc).map(e => toSummary(e, 'epic', nowMs));
 
   // L2.5 Knowledge (ADR-0092.5 R-6, after MemPalace's L1 "essential story"):
   // top semantic/procedural memories for the scope — what the agent KNOWS
@@ -269,8 +287,7 @@ export async function wakeup(
       ?? function mintFrontmatterMemory(memory: Memory): MemoryEntry {
         return fallbackStore.toMemoryEntry(memory);
       };
-    const now = Date.now();
-    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+    const now = nowMs;
     knowledge = memories
       .sort(byUpdatedAtDesc)
       // R-5 store boundary (ADR 0115): provenance/usage signals reach read
@@ -315,7 +332,7 @@ export async function wakeup(
   // with a parent_id follow the scope filter like knowledge; requirements
   // without one are home-wide constraints and always appear — a violated
   // REQ must not vanish because the briefing was folder-scoped.
-  const maxConstraints = params.maxConstraints ?? 5;
+  const maxConstraints = params.maxConstraints ?? 3;
   let constraints: ConstraintStub[] = [];
   let constraintsOmitted = 0;
   if (maxConstraints > 0) {
@@ -469,7 +486,7 @@ export async function wakeup(
   }))
     .sort(byUpdatedAtDesc)
     .slice(0, maxCompletions)
-    .map(e => toCompletion(e, snippetChars));
+    .map(e => toCompletion(e, snippetChars, nowMs));
 
   // Pull extra activity entries when scoped — we filter client-side and
   // want to end up with at least maxActivity after filtering when possible.
@@ -536,18 +553,16 @@ export async function wakeup(
       completions,
       activity,
     },
+    // Metadata carries only what the payload cannot derive: omission
+    // truths, quarantine, diagnostics, and the home-wide unfiled count.
+    // Per-section counts are the arrays' own lengths (Tenet 8 — every
+    // context byte earns its place; redundant transport metadata does not).
     metadata: {
       generated_at: new Date().toISOString(),
-      identity_present: identity !== undefined,
-      active_task_count: activeTasks.length,
-      epic_count: currentEpics.length,
-      knowledge_count: knowledge.length,
       constraints_omitted: constraintsOmitted,
       sections_omitted: sectionsOmitted,
       ...(quarantined.length === 0 ? {} : { quarantined }),
       ...(ambiguousVision === undefined ? {} : { vision_candidates: ambiguousVision }),
-      completion_count: completions.length,
-      activity_count: activity.length,
       unfiled_count: unfiledCount,
     },
   };

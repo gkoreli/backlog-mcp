@@ -186,6 +186,7 @@ describe('Amnesia Test (continuity acceptance — Cold-Open twin)', () => {
   let wakeupTool: ToolHandler;
   let getTool: ToolHandler;
   let briefing: Record<string, any>;
+  let payload: string;
   let committedBefore: Map<string, string>;
   const homeRoot = join(tmpdir(), 'amnesia', 'fixture-repo');
 
@@ -213,7 +214,8 @@ describe('Amnesia Test (continuity acceptance — Cold-Open twin)', () => {
 
     // ONE call.
     const res = await wakeupTool({});
-    briefing = JSON.parse(res.content[0]?.text ?? '{}');
+    payload = res.content[0]?.text ?? '{}';
+    briefing = JSON.parse(payload);
   });
 
   it('the declared operation substrate compiled and claimed — a substrate the server has never heard of', () => {
@@ -258,8 +260,10 @@ describe('Amnesia Test (continuity acceptance — Cold-Open twin)', () => {
     expect(text).toContain('parked pending Goga');
   });
 
-  it('the whole recovery stays inside the briefing budget discipline', () => {
-    expect(Math.ceil(JSON.stringify(briefing).length / 4)).toBeLessThanOrEqual(1200);
+  it('the whole recovery stays inside the wire budget: exact pretty payload ≤ 3,072 bytes (Slice C)', () => {
+    const bytes = Buffer.byteLength(payload, 'utf8');
+    console.info(`[amnesia budget] exact pretty bytes: ${bytes}; ~tokens: ${Math.ceil(payload.length / 4)}`);
+    expect(bytes).toBeLessThanOrEqual(3072);
   });
 
   it('the committed anchor is byte-identical after recovery — the store never rewrites the mind it restores', () => {

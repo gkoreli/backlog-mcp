@@ -292,7 +292,10 @@ export const PACKAGED_SUBSTRATE_DEFINITIONS = [
           // orientation is ABOUT the accepted record — a cold agent needs
           // the decisions that shaped the codebase, not only open proposals.
           includeStatuses: ['proposed', 'accepted', 'living'],
-          limit: 5,
+          // 3, not 5 (Slice C budget discipline): the recency-ordered top
+          // three carry the current record; sections_omitted states the
+          // exact remainder and get() hydrates the rest on demand.
+          limit: 3,
           projection: ['id', 'title', 'status'],
         },
       },

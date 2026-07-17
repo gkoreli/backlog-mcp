@@ -149,6 +149,7 @@ describe('Cold-Open Test (NORTH-STAR acceptance)', () => {
   let wakeupTool: ToolHandler;
   let getTool: ToolHandler;
   let briefing: Record<string, any>;
+  let payload: string;
   let committedBefore: Map<string, string>;
   const homeRoot = join(tmpdir(), 'cold-open', 'fixture-repo');
 
@@ -177,7 +178,8 @@ describe('Cold-Open Test (NORTH-STAR acceptance)', () => {
 
     // ONE command.
     const res = await wakeupTool({});
-    briefing = JSON.parse(res.content[0]?.text ?? '{}');
+    payload = res.content[0]?.text ?? '{}';
+    briefing = JSON.parse(payload);
   });
 
   it('orients on active work: in-progress and blocked tasks are present', () => {
@@ -209,11 +211,15 @@ describe('Cold-Open Test (NORTH-STAR acceptance)', () => {
     expect(done?.evidence_snippet).toContain('pinned the clock');
   });
 
-  it('respects the ~600-token order budget (base + additive constraints, 0113.1 COND-2)', () => {
-    // Order-of-magnitude tripwire, not a byte pin: base ~600 + constraints
-    // ~150 (additive) + JSON overhead. If this briefing ever needs >1200
-    // tokens for a 10-document repo, cold-open orientation has regressed.
-    expect(estimateTokens(JSON.stringify(briefing))).toBeLessThanOrEqual(1200);
+  it('the exact wire payload stays within 3,072 pretty UTF-8 bytes with every fact above intact (Slice C)', () => {
+    // The budget gate measures what users receive: the pretty JSON emitted
+    // by the real MCP adapter, not a compact-JSON proxy. 3 KiB is the
+    // evidenced ceiling (validated-wakeup-byte-budget-2026-07): smaller
+    // caps began deleting required Cold-Open facts. The ~600-token product
+    // target stays visible through the reported estimate.
+    const bytes = Buffer.byteLength(payload, 'utf8');
+    console.info(`[cold-open budget] exact pretty bytes: ${bytes}; ~tokens: ${estimateTokens(payload)}`);
+    expect(bytes).toBeLessThanOrEqual(3072);
   });
 
   it('stubs hydrate on demand: one get() expands a constraint to its full document', async () => {

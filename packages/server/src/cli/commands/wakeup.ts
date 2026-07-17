@@ -90,8 +90,8 @@ function format(result: WakeupResult): string {
     '',
     `── meta ──`,
     `  generated_at: ${result.metadata.generated_at}`,
-    `  identity: ${result.metadata.identity_present ? 'present' : 'absent'}`,
-    `  counts: active=${result.metadata.active_task_count} epics=${result.metadata.epic_count} knowledge=${result.metadata.knowledge_count} constraints=${result.constraints.length}${result.metadata.constraints_omitted > 0 ? `(+${result.metadata.constraints_omitted} omitted)` : ''} completions=${result.metadata.completion_count} activity=${result.metadata.activity_count} unfiled=${result.metadata.unfiled_count}`,
+    `  identity: ${result.identity !== undefined ? 'present' : 'absent'}`,
+    `  counts: active=${result.now.active_tasks.length} epics=${result.now.current_epics.length} knowledge=${result.knowledge.length} constraints=${result.constraints.length}${result.metadata.constraints_omitted > 0 ? `(+${result.metadata.constraints_omitted} omitted)` : ''} completions=${result.recent.completions.length} activity=${result.recent.activity.length} unfiled=${result.metadata.unfiled_count}`,
   );
 
   return lines.join('\n');

@@ -12,6 +12,16 @@ import {
   requireHomeReadCoordinator,
 } from './home-input.js';
 
+/**
+ * The briefing is the product's one hard-budgeted surface (≤3,072 pretty
+ * bytes at this exact boundary — Slice C). One-space indent keeps the
+ * payload human-readable while cutting pure indentation bytes; deeper
+ * whitespace is transport redundancy that earns no context (Tenet 8).
+ */
+function serializeBriefing(result: unknown): string {
+  return JSON.stringify(result, null, 1);
+}
+
 export interface BacklogWakeupDeps {
   operationLogger?: {
     read: (options: { limit?: number }) => Array<{
@@ -70,7 +80,7 @@ export function registerBacklogWakeupTool(
           'Max recent activity-log entries. Default: 5.',
         ),
         max_constraints: z.number().min(0).max(50).optional().describe(
-          'Max requirement constraint stubs. Default: 5; 0 disables. Truncation is reported via metadata.constraints_omitted.',
+          'Max requirement constraint stubs. Default: 3; 0 disables. Truncation is reported via metadata.constraints_omitted.',
         ),
         evidence_snippet_chars: z.number().min(40).max(1000).optional().describe(
           'Max chars of evidence to include per completion. Default: 160.',
@@ -106,7 +116,7 @@ export function registerBacklogWakeupTool(
           return {
             content: [{
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: serializeBriefing(result),
             }],
           };
         }
@@ -144,7 +154,7 @@ export function registerBacklogWakeupTool(
             ? {}
             : { mintMemoryEntry: deps.mintMemoryEntry }),
         });
-        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        return { content: [{ type: 'text', text: serializeBriefing(result) }] };
       } catch (e) {
         if (e instanceof ValidationError) {
           return {

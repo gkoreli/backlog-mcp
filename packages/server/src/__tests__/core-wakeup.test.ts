@@ -52,7 +52,6 @@ describe('core/wakeup', () => {
     expect(result.recent.completions).toEqual([]);
     expect(result.recent.activity).toEqual([]);
     expect(result.identity).toBeUndefined();
-    expect(result.metadata.identity_present).toBe(false);
     expect(result.metadata.unfiled_count).toBe(0);
   });
 
@@ -90,14 +89,12 @@ describe('core/wakeup', () => {
     const svc = mockService([]);
     const result = await wakeup(svc, { readIdentity: () => 'I am Goga.' });
     expect(result.identity).toBe('I am Goga.');
-    expect(result.metadata.identity_present).toBe(true);
   });
 
   it('omits identity when readIdentity returns undefined', async () => {
     const svc = mockService([]);
     const result = await wakeup(svc, { readIdentity: () => undefined });
     expect(result.identity).toBeUndefined();
-    expect(result.metadata.identity_present).toBe(false);
   });
 
   it('L1 active_tasks: includes in_progress and blocked tasks, excludes epics', async () => {
@@ -189,7 +186,7 @@ describe('core/wakeup', () => {
     const svc = mockService([]);
     const result = await wakeup(svc);
     expect(result.recent.activity).toEqual([]);
-    expect(result.metadata.activity_count).toBe(0);
+    expect(result.recent.activity).toHaveLength(0);
   });
 
   it('metadata counts are accurate', async () => {
@@ -201,10 +198,12 @@ describe('core/wakeup', () => {
     const result = await wakeup(svc, { readOperations: () => [
       { ts: '2026-05-07T10:00:00.000Z', tool: 'backlog_update', params: {}, actor: { type: 'agent', name: 'a' } },
     ]});
-    expect(result.metadata.active_task_count).toBe(1);
-    expect(result.metadata.epic_count).toBe(1);
-    expect(result.metadata.completion_count).toBe(1);
-    expect(result.metadata.activity_count).toBe(1);
+    // Section sizes are the arrays' own lengths — metadata carries only
+    // what the payload cannot derive (Slice C budget discipline).
+    expect(result.now.active_tasks).toHaveLength(1);
+    expect(result.now.current_epics).toHaveLength(1);
+    expect(result.recent.completions).toHaveLength(1);
+    expect(result.recent.activity).toHaveLength(1);
   });
 
   it('parent_id resolution uses the canonical relationship field', async () => {
@@ -354,7 +353,7 @@ describe('core/wakeup', () => {
       expect(k1?.source_ref).toBe('TASK-0676');
       const k2 = result.knowledge.find(k => k.id === 'MEMO-0002');
       expect(k2?.kind).toBe('timeless');
-      expect(result.metadata.knowledge_count).toBe(2);
+      expect(result.knowledge).toHaveLength(2);
       // Provenance (ADR 0115 R-4): same age/usage grammar as recall stubs.
       expect(typeof k1?.age_days).toBe('number');
       expect(k1?.uses).toBe(0);
@@ -429,7 +428,7 @@ describe('core/wakeup', () => {
       const svc = mockService([mem('MEMO-0001')]);
       const result = await wakeup(svc, { maxKnowledge: 0 });
       expect(result.knowledge).toEqual([]);
-      expect(result.metadata.knowledge_count).toBe(0);
+      expect(result.knowledge).toHaveLength(0);
     });
   });
 
@@ -446,7 +445,7 @@ describe('core/wakeup', () => {
         req('REQ-0001', { compliance: 'violated', checked_at: '2026-07-10T00:00:00.000Z', checked_by: 'goga', violated_by: ['ADR-0117'] }),
         req('REQ-0002', { compliance: 'at_risk', checked_at: '2026-07-10T00:00:00.000Z', checked_by: 'goga' }),
       ]);
-      const result = await wakeup(svc);
+      const result = await wakeup(svc, { maxConstraints: 5 });
       expect(result.constraints.map(c => c.id)).toEqual(['REQ-0001', 'REQ-0002', 'REQ-0003', 'REQ-0004']);
       expect(result.constraints[0]?.violations).toEqual({ count: 1, ids: ['ADR-0117'] });
       expect(result.metadata.constraints_omitted).toBe(0);
@@ -459,8 +458,8 @@ describe('core/wakeup', () => {
       ];
       const svc = mockService(reqs);
       const result = await wakeup(svc);
-      expect(result.constraints).toHaveLength(5);              // default bound
-      expect(result.metadata.constraints_omitted).toBe(2);     // 7 live − 5 shown; dropped never counts
+      expect(result.constraints).toHaveLength(3);              // default bound (Slice C)
+      expect(result.metadata.constraints_omitted).toBe(4);     // 7 live − 3 shown; dropped never counts
       const disabled = await wakeup(svc, { maxConstraints: 0 });
       expect(disabled.constraints).toEqual([]);
       expect(disabled.metadata.constraints_omitted).toBe(0);
