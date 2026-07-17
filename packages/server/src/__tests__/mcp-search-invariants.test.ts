@@ -235,13 +235,18 @@ describe('Invariant: searchAll sort modes (ADR-0073)', () => {
     makeEntity({ id: 'TASK-0003', title: 'Yesterday search task', updated_at: yesterday.toISOString() }),
   ];
 
+  const resources: Resource[] = [
+    makeResource({ id: 'mcp://backlog/docs/search-notes.md', title: 'Search notes', content: '# Search notes\n\nUndated search background.', path: 'docs/search-notes.md' }),
+  ];
+
   beforeEach(async () => {
     service = new OramaSearchService({ cachePath: freshCachePath(), hybridSearch: false });
     await service.index(searchDocuments(tasks));
+    await service.indexResources(resources);
   });
 
   it('sort=recent orders by updated_at descending', async () => {
-    const results = await service.searchAll('search', { sort: 'recent' });
+    const results = await service.searchAll('search', { docTypes: ['task'], sort: 'recent' });
     expect(results.length).toBe(3);
     // Most recent first
     expect(results[0].id).toBe('TASK-0002');
@@ -256,6 +261,21 @@ describe('Invariant: searchAll sort modes (ADR-0073)', () => {
     for (const r of results) {
       expect(r.score).toBeGreaterThan(0);
     }
+  });
+
+  // 0003 friction-log fix: recency must reorder the retrieval set, never
+  // change which documents are retrieved.
+  it('sort=recent returns exactly the sort=relevant result set', async () => {
+    const relevant = await service.searchAll('search');
+    const recent = await service.searchAll('search', { sort: 'recent' });
+    expect(new Set(recent.map(r => r.id))).toEqual(new Set(relevant.map(r => r.id)));
+  });
+
+  it('sort=recent keeps undated resources in the set, after dated documents', async () => {
+    const results = await service.searchAll('search', { sort: 'recent' });
+    const ids = results.map(r => r.id);
+    expect(ids).toContain('mcp://backlog/docs/search-notes.md');
+    expect(ids.indexOf('mcp://backlog/docs/search-notes.md')).toBe(ids.length - 1);
   });
 });
 

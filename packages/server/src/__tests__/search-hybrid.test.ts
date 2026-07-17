@@ -24,6 +24,11 @@ function makeEntity(overrides: Partial<Entity> & { id: string; title: string }):
 
 const TEST_CACHE_PATH = join(process.cwd(), 'test-data', '.cache', 'hybrid-search-index.json');
 
+/** Distinct updated_at per task so sort=recent has a deterministic order. */
+function daysAgo(days: number): string {
+  return new Date(Date.now() - days * 86400000).toISOString();
+}
+
 describe('Hybrid Search (Semantic)', () => {
   let service: OramaSearchService;
 
@@ -33,26 +38,31 @@ describe('Hybrid Search (Semantic)', () => {
       id: 'TASK-0001',
       title: 'Implement user authentication',
       content: 'Add OAuth2 and SSO support for secure user access',
+      updated_at: daysAgo(4),
     }),
     makeEntity({
       id: 'TASK-0002',
       title: 'Fix CI/CD pipeline',
       content: 'Deployment automation is failing on staging environment',
+      updated_at: daysAgo(0),
     }),
     makeEntity({
       id: 'TASK-0003',
       title: 'Database performance optimization',
       content: 'Query response times are too slow, need indexing improvements',
+      updated_at: daysAgo(2),
     }),
     makeEntity({
       id: 'TASK-0004',
       title: 'Add user profile page',
       content: 'Users should be able to view and edit their account settings',
+      updated_at: daysAgo(1),
     }),
     makeEntity({
       id: 'TASK-0005',
       title: 'Implement rate limiting',
       content: 'Protect API endpoints from abuse and DDoS attacks',
+      updated_at: daysAgo(3),
     }),
   ];
 
@@ -119,6 +129,30 @@ describe('Hybrid Search (Semantic)', () => {
       const results = await bm25Service.search('authentication');
       expect(results.length).toBeGreaterThan(0);
       expect(results[0].task.id).toBe('TASK-0001');
+    });
+  });
+
+  describe('sort=recent keeps the hybrid retrieval set (0003 friction log)', () => {
+    // Original failure shape: --sort recent silently swapped the hybrid
+    // engine for a native BM25 sortBy query, shrinking 10 results to 2
+    // in the internal ADR mine's dogfood. "login" appears nowhere as a
+    // literal token in this corpus, so any result is vector-lane only —
+    // under the old code, recent mode returned nothing for it.
+
+    it('returns the same result set as sort=relevant, reordered', async () => {
+      const relevant = await service.searchAll('login');
+      const recent = await service.searchAll('login', { sort: 'recent' });
+
+      expect(relevant.length).toBeGreaterThan(0);
+      expect(new Set(recent.map(r => r.id))).toEqual(new Set(relevant.map(r => r.id)));
+    });
+
+    it('keeps the semantic-only hit and orders by updated_at descending', async () => {
+      const recent = await service.searchAll('login', { sort: 'recent' });
+
+      expect(recent.map(r => r.id)).toContain('TASK-0001');
+      const updatedAts = recent.map(r => (r.item as TaskEntity).updated_at);
+      expect(updatedAts).toEqual([...updatedAts].sort().reverse());
     });
   });
 

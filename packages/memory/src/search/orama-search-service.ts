@@ -75,7 +75,7 @@ function normalizeDocument(
  * fused via linear combination (ADR-0081).
  *
  * Gracefully falls back to BM25-only if embeddings fail to load.
- * Uses native filtering (ADR-0079), sortBy, facets (ADR-0080).
+ * Uses native filtering (ADR-0079) and facets (ADR-0080).
  */
 export class OramaSearchService implements SearchService {
   private db: OramaInstance | OramaInstanceWithEmbeddings | null = null;
@@ -332,9 +332,8 @@ export class OramaSearchService implements SearchService {
     limit: number;
     boost: Record<string, number>;
     where?: Record<string, any>;
-    sortBy?: { property: string; order: 'ASC' | 'DESC' };
   }): Promise<Results<OramaDoc | OramaDocWithEmbeddings>> {
-    const { query, limit, boost, where, sortBy } = params;
+    const { query, limit, boost, where } = params;
     return search(this.db!, {
       term: query,
       properties: [...TEXT_PROPERTIES],
@@ -343,7 +342,6 @@ export class OramaSearchService implements SearchService {
       tolerance: 1,
       where,
       facets: ENUM_FACETS,  // ADR-0080: free facet counts
-      ...(sortBy ? { sortBy } : {}),
     });
   }
 
@@ -376,25 +374,19 @@ export class OramaSearchService implements SearchService {
    * per-retriever, then combined: score = 0.7 * norm_bm25 + 0.3 * norm_vector.
    *
    * When embeddings are unavailable, degenerates to pure BM25 ranking.
-   * When sortBy is specified (e.g., "recent" mode), skips fusion entirely.
+   * There is deliberately no sort/bypass parameter here: every retrieval
+   * flows through the same fusion pipeline. Sorting is a presentation
+   * concern applied AFTER retrieval (see searchAll's recent mode) — the
+   * old native-sortBy branch silently swapped hybrid retrieval for plain
+   * BM25 and shrank the result set (docs/reports/0003 friction log).
    */
   private async _fusedSearch(params: {
     query: string;
     limit: number;
     boost: Record<string, number>;
     where?: Record<string, any>;
-    sortBy?: { property: string; order: 'ASC' | 'DESC' };
   }): Promise<{ hits: Array<{ id: string; score: number }>; bm25Results: Results<OramaDoc | OramaDocWithEmbeddings> }> {
-    const { query, limit, boost, where, sortBy } = params;
-
-    // Native sortBy mode (ADR-0080) — skip fusion, use Orama's sort directly
-    if (sortBy) {
-      const results = await this._executeBM25Search({ query, limit, boost, where, sortBy });
-      return {
-        hits: results.hits.map(h => ({ id: h.document.id, score: h.score })),
-        bm25Results: results,
-      };
-    }
+    const { query, limit, boost, where } = params;
 
     // Over-fetch for better fusion coverage
     const fetchLimit = limit * 2;
@@ -482,6 +474,23 @@ export class OramaSearchService implements SearchService {
   }
 
   /**
+   * Reorder an already-retrieved hit list by document recency (sort=recent).
+   *
+   * Recency is a presentation order over the SAME retrieval set that
+   * sort=relevant returns — it must never swap engines or shrink the set
+   * (docs/reports/0003 friction log: hybrid 10 results silently became
+   * BM25's 2). Documents without an updated_at (resources) sort after all
+   * dated documents; ties keep their fused relevance order (stable sort).
+   */
+  private _reorderByRecency<Hit extends { id: string }>(hits: Hit[]): Hit[] {
+    const updatedAt = (id: string): string => {
+      const value = this.taskCache.get(id)?.updated_at;
+      return typeof value === 'string' ? value : '';
+    };
+    return [...hits].sort((a, b) => updatedAt(b.id).localeCompare(updatedAt(a.id)));
+  }
+
+  /**
    * Get creation timestamp for a document by ID, as epoch ms.
    * Used by post-fusion temporal decay (ADR-0092.1).
    *
@@ -555,8 +564,9 @@ export class OramaSearchService implements SearchService {
    * This is the canonical search method — both MCP tools and HTTP endpoints
    * should call this (via BacklogService.searchUnified). (ADR-0073)
    *
-   * ADR-0080: Uses native sortBy for "recent" mode instead of JS post-sort.
-   * ADR-0081: Uses independent retrievers + linear fusion for relevance mode.
+   * ADR-0081: independent retrievers + linear fusion for every mode.
+   * "recent" reorders the fused result list by updated_at — same set and
+   * engine as "relevant" (docs/reports/0003 friction-log fix).
    */
   async searchAll(query: string, options?: SearchOptions): Promise<Array<{ id: string; score: number; type: SearchableType; item: AnyEntity | Resource; snippet: SearchSnippet }>> {
     if (!this.db || !query.trim()) return [];
@@ -607,10 +617,13 @@ export class OramaSearchService implements SearchService {
       limit,
       boost: options?.boost ?? { title: 3 },  // ADR-0083 #4: id boost removed
       where,
-      ...(sortMode === 'recent' ? { sortBy: { property: 'updated_at', order: 'DESC' as const } } : {}),
     });
 
-    return hits
+    // Recency reorders the fused result list — same retrieval set and
+    // engine as sort=relevant, different presentation order (0003 fix).
+    const ordered = sortMode === 'recent' ? this._reorderByRecency(hits) : hits;
+
+    return ordered
       .map(h => {
         const task = this.taskCache.get(h.id);
         const resource = this.resourceCache.get(h.id);
