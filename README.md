@@ -48,6 +48,14 @@ Add to your MCP config (`.mcp.json` or your MCP client config):
 }
 ```
 
+### Install by telling your agent
+
+The whole setup is one message to your agent:
+
+> Read https://raw.githubusercontent.com/gkoreli/backlog-mcp/main/SKILL.md and follow it to install backlog-mcp.
+
+[SKILL.md](SKILL.md) is written for the agent, not for you: it detects the host harness (Claude Code, Cursor, Codex, any MCP client, or plain CLI), registers the server, runs the first `wakeup` against your repo, and verifies that git stayed clean and the briefing stayed under budget.
+
 ## Self-hosting (legacy, descoped)
 
 A Cloudflare Workers + D1 build exists for an always-on remote endpoint, but it is **descoped** — retained, not evolved. It lacks local embeddings, hybrid-search/RAG parity, and agentic memory, and no new capability targets it. Local-first is the architecture; remoteness is meant to be reached by **syncing local stores**, not by promoting a remote database to the source of truth.
