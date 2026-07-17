@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { editItem } from '../../core/edit.js';
 import type { EditOperation } from '@backlog-mcp/shared';
-import { cliRuntimeDependencies, run } from '../runner.js';
+import { cliRuntimeDependencies, run, withAgentIdentity } from '../runner.js';
 
 const CLI_EDIT_ATTRIBUTION = {
   tool: 'backlog edit',
@@ -21,6 +21,7 @@ function editAction(
   id: string,
   operation: EditOperation,
   json: boolean,
+  asAgent?: string,
 ) {
   return run(
     (runtime) => editItem(
@@ -31,9 +32,12 @@ function editAction(
     ),
     formatResult,
     json,
-    cliRuntimeDependencies(program),
+    withAgentIdentity(cliRuntimeDependencies(program), asAgent),
   );
 }
+
+const AS_AGENT_DESCRIPTION =
+  'Attribute this write to an agent identity — an AGENT- doc id or declared principal (e.g. aime:granite). Optional; also via BACKLOG_AGENT env (ADR 0119)';
 
 export function registerEdit(program: Command): void {
   const edit = program
@@ -43,18 +47,21 @@ export function registerEdit(program: Command): void {
   edit
     .command('replace <id> <old> <new>')
     .description('Replace text in body')
-    .action((id: string, old_str: string, new_str: string) =>
-      editAction(program, id, { type: 'str_replace', old_str, new_str }, program.opts().json));
+    .option('--as <agent>', AS_AGENT_DESCRIPTION)
+    .action((id: string, old_str: string, new_str: string, opts: { as?: string }) =>
+      editAction(program, id, { type: 'str_replace', old_str, new_str }, program.opts().json, opts.as));
 
   edit
     .command('append <id> <text>')
     .description('Append text to body')
-    .action((id: string, text: string) =>
-      editAction(program, id, { type: 'append', new_str: text }, program.opts().json));
+    .option('--as <agent>', AS_AGENT_DESCRIPTION)
+    .action((id: string, text: string, opts: { as?: string }) =>
+      editAction(program, id, { type: 'append', new_str: text }, program.opts().json, opts.as));
 
   edit
     .command('insert <id> <line> <text>')
     .description('Insert text at line number')
-    .action((id: string, line: string, text: string) =>
-      editAction(program, id, { type: 'insert', insert_line: parseInt(line), new_str: text }, program.opts().json));
+    .option('--as <agent>', AS_AGENT_DESCRIPTION)
+    .action((id: string, line: string, text: string, opts: { as?: string }) =>
+      editAction(program, id, { type: 'insert', insert_line: parseInt(line), new_str: text }, program.opts().json, opts.as));
 }

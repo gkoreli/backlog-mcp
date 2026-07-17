@@ -59,10 +59,18 @@ export function registerBacklogRememberTool(
         valid_until: z.string().optional().describe('Expiry — ISO date/datetime. After this the memory drops out of recall.'),
         supersedes: z.string().optional().describe('MEMO- id this memory replaces. The predecessor is soft-expired.'),
         derived: z.boolean().optional().describe('Mark as inference (consolidator output). Requires non-empty entity_refs citing the sources.'),
+        as: z.string().min(1).optional().describe(
+          'OPTIONAL agent identity to attribute this memory to — an AGENT- doc id or declared principal (e.g. "aime:granite"). First-person capture: pass your own identity, never another agent\'s. Absent: attribution is the ambient actor, unchanged.',
+        ),
       }),
     },
     async (params) => {
       const candidateService = deps?.service;
+      // ADR 0119 Slice A: an explicit `as` identity overlays the ambient
+      // actor for this one write; absent, the actor is exactly deps.actor.
+      const actor: Actor | undefined = params.as === undefined
+        ? deps?.actor
+        : { ...deps?.actor, type: 'agent', name: params.as };
       try {
         const result = await remember(
           {
@@ -81,12 +89,12 @@ export function registerBacklogRememberTool(
           },
           {
             ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
-            ...(deps?.actor?.name ? { actorName: deps.actor.name } : {}),
-            ...(deps?.actor && deps?.operationLog
+            ...(actor?.name ? { actorName: actor.name } : {}),
+            ...(actor && deps?.operationLog
               ? {
                   journal: {
                     context: {
-                      actor: deps.actor,
+                      actor,
                       operationLog: deps.operationLog,
                       ...(deps.eventBus ? { eventBus: deps.eventBus } : {}),
                     },

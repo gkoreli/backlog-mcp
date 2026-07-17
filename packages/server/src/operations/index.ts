@@ -1,5 +1,6 @@
 export {
   OperationLogger,
+  asAgentActor,
   createOperationLogger,
   envActor,
   type OperationEntry,

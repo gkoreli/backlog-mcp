@@ -1,5 +1,9 @@
 import type { Command } from 'commander';
 import { recall } from '../../core/recall.js';
+import {
+  annotateRecallProvenance,
+  loadAgentAttributionIndex,
+} from '../../core/agent-attribution.js';
 import { resolveContext } from '../../core/config.js';
 import type { RecallParams, RecallResult } from '../../core/types.js';
 import type { CrossHomeRecallResult } from '../../core/home-read-coordinator.types.js';
@@ -41,7 +45,9 @@ function format(result: RecallCommandResult): string {
     if (item.idle_days !== undefined) provenance.push(`idle ${item.idle_days}d`);
     if (item.supersedes) provenance.push(`corrects ${item.supersedes}`);
     if (item.derived) provenance.push('derived');
-    lines.push(`         ${provenance.join(' · ')}  by ${item.source}`);
+    // "by <agent-title>" when the source resolves to an Agent doc
+    // (ADR 0119); the raw source ("by goga") is the unchanged fallback.
+    lines.push(`         ${provenance.join(' · ')}  by ${item.source_title ?? item.source}`);
     lines.push('');
   }
   if ('homes' in result) {
@@ -107,6 +113,15 @@ export function registerRecall(program: Command): void {
                 params,
                 { memoryComposer: runtime.memoryComposer },
               );
+              // Resolve agent provenance (ADR 0119 Slice A): only when
+              // there is something to annotate; unresolved sources stay
+              // untouched, keeping absent-identity output byte-identical.
+              if (result.items.length > 0) {
+                annotateRecallProvenance(
+                  result.items,
+                  await loadAgentAttributionIndex(runtime.service),
+                );
+              }
               // Recall demand log (ADR 0092.9 R-16) — weak signal, JSONL only.
               runtime.usageTracker?.recordRecall(
                 params.query,

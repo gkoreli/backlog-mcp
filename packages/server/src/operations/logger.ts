@@ -13,14 +13,35 @@ import type { Actor, OperationEntry, OperationFilter, IOperationLog } from './ty
  * process sees the env at the time it runs, not at import time. The write
  * boundary (core functions) takes Actor as a parameter so attribution is
  * never ambient — see ADR 0094.
+ *
+ * ADR 0119 Slice A: `BACKLOG_AGENT` optionally names an agent identity —
+ * an AGENT- doc id or a declared principal (e.g. "aime:granite", herdr
+ * pane metadata). When set, the actor is that agent; when absent, the
+ * actor is exactly what it was before ADR 0119. Identity is OPTIONAL,
+ * modular, never forced (PROMPT 0003).
  */
 export function envActor(): Actor {
-  return {
+  const base: Actor = {
     type: (process.env.BACKLOG_ACTOR_TYPE as 'user' | 'agent') || 'user',
     name: process.env.BACKLOG_ACTOR_NAME || process.env.USER || 'unknown',
     delegatedBy: process.env.BACKLOG_DELEGATED_BY,
     taskContext: process.env.BACKLOG_TASK_CONTEXT,
   };
+  const agentIdentity = process.env.BACKLOG_AGENT;
+  return agentIdentity ? asAgentActor(agentIdentity, base) : base;
+}
+
+/**
+ * Overlay an explicit agent identity on a base actor (ADR 0119 R3).
+ *
+ * The identity becomes the journal's `actor.name` and downstream memory
+ * provenance source; everything else about the base actor (delegation,
+ * task context) is preserved. Callers pass the identity from `--as`, the
+ * MCP write field, or `BACKLOG_AGENT` — attribution stays a parameter,
+ * never a lookup.
+ */
+export function asAgentActor(identity: string, base: Actor = envActor()): Actor {
+  return { ...base, type: 'agent', name: identity };
 }
 
 export class OperationLogger implements IOperationLog {

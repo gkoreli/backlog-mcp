@@ -21,6 +21,13 @@ export {
   scoreCollisionPair,
 } from './collision-candidates.js';
 export { recordMutation } from './operation-log.js';
+export {
+  AGENT_SUBSTRATE_TYPE,
+  annotateRecallProvenance,
+  buildAgentAttributionIndex,
+  loadAgentAttributionIndex,
+} from './agent-attribution.js';
+export type { AgentAttributionIndex } from './agent-attribution.js';
 export { routeContainer } from './container-routing.js';
 export type {
   ContainerRoute,

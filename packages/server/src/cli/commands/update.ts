@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { updateEntity } from '../../core/update.js';
-import { cliRuntimeDependencies, run } from '../runner.js';
+import { cliRuntimeDependencies, run, withAgentIdentity } from '../runner.js';
 import { parseFields } from '../parse-fields.js';
 
 const CLI_UPDATE_ATTRIBUTION = {
@@ -19,6 +19,7 @@ export function registerUpdate(program: Command): void {
     .option('--blocked-reason <text...>', 'Blocked reasons')
     .option('--due-date <date>', 'Due date (use "" to clear)')
     .option('--fields <json-object>', 'Low-level substrate-specific fields as a JSON object')
+    .option('--as <agent>', 'Attribute this write to an agent identity — an AGENT- doc id or declared principal (e.g. aime:granite). Optional; also via BACKLOG_AGENT env (ADR 0119)')
     .action((id, opts) => run(
       (runtime) => updateEntity(
         runtime.service,
@@ -37,6 +38,6 @@ export function registerUpdate(program: Command): void {
       ),
       (r) => `Updated ${r.id}`,
       program.opts().json,
-      cliRuntimeDependencies(program),
+      withAgentIdentity(cliRuntimeDependencies(program), opts.as),
     ));
 }

@@ -631,6 +631,12 @@ export interface RecallItem {
   content?: string;
   layer: MemoryLayer;
   source: string;
+  /**
+   * Agent display title when `source` resolves to an Agent document
+   * (ADR 0119 Slice A) — renderers show "by <source_title>". Absent when
+   * no agent doc matches, so pre-0119 output is byte-identical.
+   */
+  source_title?: string;
   context?: string;
   tags?: string[];
   score: number;

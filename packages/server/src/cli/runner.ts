@@ -14,7 +14,7 @@ import type {
   HomeReadRuntimeSelection,
   HomeReadSelection,
 } from '../core/home-read-coordinator.types.js';
-import { envActor } from '../operations/logger.js';
+import { asAgentActor, envActor } from '../operations/logger.js';
 import { createLocalAppRequestRuntime } from '../server/local-app-request-runtime.js';
 import { validateLocalRuntimeSelection } from '../server/local-runtime-request-resolver.js';
 import { resolveGitFamily } from '../storage/local/git-family.js';
@@ -189,6 +189,28 @@ export function cliRuntimeDependencies(
     ...(options.projectRoot === undefined
       ? {}
       : { projectRoot: options.projectRoot }),
+  };
+}
+
+/**
+ * Overlay an OPTIONAL `--as <agent>` identity onto runner dependencies
+ * (ADR 0119 Slice A). The identity is an AGENT- doc id or a declared
+ * principal (e.g. "aime:granite"); it rides the existing actor seam into
+ * the operation journal and memory provenance. Absent identity returns
+ * the deps untouched, so every write without an agent stays byte-identical
+ * to pre-0119 behavior.
+ */
+export function withAgentIdentity(
+  deps: CliRunnerDependencies,
+  agentIdentity: string | undefined,
+): CliRunnerDependencies {
+  if (agentIdentity === undefined || agentIdentity.trim() === '') return deps;
+  const baseActor = deps.actor;
+  return {
+    ...deps,
+    actor: function agentAttributedActor() {
+      return asAgentActor(agentIdentity, baseActor?.() ?? envActor());
+    },
   };
 }
 

@@ -4,7 +4,7 @@ import { findCollisionCandidatesForMemory } from '../../core/collision-candidate
 import { resolveContext } from '../../core/config.js';
 import type { RememberResult } from '../../core/types.js';
 import { parseCommaList } from '../parse-fields.js';
-import { cliRuntimeDependencies, run } from '../runner.js';
+import { cliRuntimeDependencies, run, withAgentIdentity } from '../runner.js';
 
 function format(result: RememberResult): string {
   const lines = [`remembered ${result.id} [${result.layer}] at ${result.created_at}`];
@@ -39,6 +39,7 @@ export function registerRemember(program: Command): void {
     .option('--valid-until <iso>', 'Expiry (ISO date)')
     .option('--supersedes <id>', 'MEMO- id this memory replaces')
     .option('--derived', 'Mark as inference (consolidator output) — requires --refs')
+    .option('--as <agent>', 'Attribute this memory to an agent identity — an AGENT- doc id or declared principal (e.g. aime:granite). Optional; also via BACKLOG_AGENT env (ADR 0119)')
     .action((contentParts: string[], opts) => run(
       async (runtime) => {
         // ADR 0105: explicit --context wins; else per-repo config / env default.
@@ -89,6 +90,6 @@ export function registerRemember(program: Command): void {
       },
       format,
       program.opts().json,
-      cliRuntimeDependencies(program),
+      withAgentIdentity(cliRuntimeDependencies(program), opts.as),
     ));
 }
