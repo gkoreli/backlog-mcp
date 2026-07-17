@@ -1,6 +1,6 @@
 {
   "name": "backlog-mcp",
-  "version": "0.63.0",
+  "version": "0.64.0",
   "description": "Context & memory engineering for AI agents — a markdown-backed, local-first storage engine (substrates, agent memory, progressive disclosure). Your backlog is your agent's memory.",
   "keywords": [
     "mcp",

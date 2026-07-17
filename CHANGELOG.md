@@ -12,6 +12,14 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+## [0.64.0] — 2026-07-17
+
+*The release whose headline is an experiment result: the corpora that graded the
+first briefing 0/10, 1.0/5, and 8/10 two days ago were re-run blind against this
+build and measured 10/10, 3.0/5, and 10/10-twice. The remaining aime gap is the
+honest boundary of zero-setup: work tracked in conventions a repo never declared.
+Orientation quality now scales with what the repo declares — which is the thesis.*
+
 ### Added
 - **Wakeup's first impression of an existing repo (charter, Slices A-C).** The
   briefing gains a budgeted orientation map — repo-root README/AGENTS.md, the
@@ -21,8 +29,17 @@ begins at 0.57.0 — earlier history lives in git.
   temporally grounded: a git-backed recency map (injected as plain data, core
   stays pure) orders decisions newest-first when frontmatter dates are absent.
   The byte-budget acceptance gate now asserts the exact pretty wire payload
-  (≤3,072 bytes) instead of a token estimate. *Acceptance reruns on the three
-  trial corpora are pending.*
+  (≤3,072 bytes) instead of a token estimate.
+  **Measured acceptance (reports 0006/0007/0008):** nisli first wakeup
+  0/10 → **10/10** in 3.24s at 1,214 bytes, git provably untouched; erent blind
+  A/B **10/10 in both tool sessions** (was 8/10), temporal-grounding and
+  run-guidance questions both closed, `NORTH_STAR.md` surfaced as the vision;
+  aime 1.0/5 → **3.0/5** — recency ordering, quarantine visibility, and
+  git-cleanliness all passed; the remaining gap is work tracked in an undeclared
+  `docs/issues/` convention, which the tool refuses to guess at (no inference by
+  design). Known issues carried forward: document status is not searchable
+  (BUG-0003); bare-path `get README.md` returns empty instead of resolving
+  (use the `mcp://backlog/...` form).
 
 ### Fixed
 - **Freeform statuses disclose correctly.** "Accepted (goga, 2026-07-16)" and
