@@ -12,6 +12,16 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+### Added
+- **Worktrees know their family (Lattice W1, PROMPT 0003).** A backlog home in a
+  linked git worktree now resolves its *family* — the main checkout, its branch,
+  and the default branch — and the briefing's meta section says so in one line:
+  `worktree: <family> @ <branch>, N behind main`. A canonical read path can fetch
+  a file's committed content from the family's default branch, pinned to a SHA,
+  without touching any sibling checkout. Fail-open everywhere: non-git repos,
+  main checkouts, and old gits behave exactly as before. Groundwork for
+  canonical-fresh disclosure of law-shaped documents (W2).
+
 ## [0.64.0] — 2026-07-17
 
 *The release whose headline is an experiment result: the corpora that graded the
