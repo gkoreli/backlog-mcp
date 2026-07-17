@@ -11,16 +11,33 @@ author: agate
 
 ## Reproduction
 
-1. Search the Nisli project for `current open issues next work`.
-2. Hydrate a returned issue resource with `get` and observe its frontmatter
-   `status: resolved`.
-3. Repeat the search with `--status open`, then `--status resolved`.
+Run the exact query from the trial, then repeat it with each status filter:
+
+```sh
+npx --yes backlog-mcp@0.62.0 --json \
+  --home project --project-root "$PWD" \
+  search "current open issues next work lifecycle router SSG" --limit 10
+
+npx --yes backlog-mcp@0.62.0 --json \
+  --home project --project-root "$PWD" \
+  search "current open issues next work lifecycle router SSG" \
+  --status open --limit 10
+
+npx --yes backlog-mcp@0.62.0 --json \
+  --home project --project-root "$PWD" \
+  search "current open issues next work lifecycle router SSG" \
+  --status resolved --limit 10
+```
+
+Hydrate a returned issue resource with `get` and observe its frontmatter
+`status: resolved`.
 
 ## Actual
 
-The natural search returns resolved issue documents as candidates. Search stubs
-omit their frontmatter status, while both explicit status filters return zero
-generic resources. `get` proves the status exists in the same document.
+The unfiltered search returns resolved issues 0019, 0017, and 0016 as
+candidates. Search stubs omit their frontmatter status, while both explicit
+status filters return zero generic resources. `get` proves the status exists in
+the same document.
 
 ## Expected
 

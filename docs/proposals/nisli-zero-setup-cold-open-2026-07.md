@@ -88,9 +88,17 @@ not another search engine.
 
 ### Usage and friction data
 
-The trial used two tasks, one requirement, seven durable memories (including
-one automatic completion memory), two recalls, search, hydration, and repeated
-wakeups. No Nisli source file was changed and no server crashed or lost data.
+At the reporting cutoff, the trial had used two tasks, one requirement, seven
+durable memories (including one automatic completion memory), two recalls,
+search, hydration, and repeated wakeups. No Nisli source file was changed and no
+server crashed or lost data.
+
+There is one telemetry-integrity caveat. I omitted the `BACKLOG_ACTOR_*`
+environment on the `TASK-0002` command block. Operations 4–6 and memories
+`MEMO-0006`/`MEMO-0007` therefore attribute Agate's actions to the process-user
+fallback, `goga`. The final experiment close restored the explicit Agate actor.
+Tool-call counts and outcomes remain usable; actor-level attribution for that
+block does not. This was experiment operator error, not filed as a product bug.
 
 Five product frictions were logged as they occurred:
 

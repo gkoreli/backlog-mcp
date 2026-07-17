@@ -15,7 +15,9 @@ Run `remember` with its positional content after a variadic tags option, a shape
 consistent with the displayed `remember [options] <content...>` usage:
 
 ```sh
-npx --yes backlog-mcp@0.62.0 remember \
+npx --yes backlog-mcp@0.62.0 --json \
+  --home project --project-root "$PWD" \
+  remember --title "EXP-1 friction" \
   --tags exp-1 bolton friction \
   "The first wakeup indexed docs but returned an empty briefing."
 ```

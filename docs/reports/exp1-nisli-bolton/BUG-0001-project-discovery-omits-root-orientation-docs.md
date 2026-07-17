@@ -31,7 +31,8 @@ files to move under `docs/`.
 
 ## Impact
 
-Two of the five cold-open questions—what the repo is and how to run it—cannot be
-answered from the tool's discovered corpus. This violates the bolt-on posture:
-the relevant human-readable files already exist and should not be migrated or
-duplicated for the tool.
+The discovered ADR index can identify Nisli generically as a reactive
+web-component library, but it omits the canonical root overview's ecosystem,
+standards-first, and current package framing. The run commands are absent
+entirely. This violates the bolt-on posture: the fuller human-readable files
+already exist and should not be migrated or duplicated for the tool.
