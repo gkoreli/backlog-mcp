@@ -69,9 +69,10 @@ it. (The viewer is the natural surface; the collision queue is the prototype.)
 **Smallest probe.** Count adjudication-shaped items currently waiting silently
 (collisions, quarantines, candidate qrels, parked decisions) and design one "needs a
 human" view in the viewer.
-**Kind.** Research → engineering; the doctrine is taste. **Tenet gap: yes** — something
-like "the engine asks for human judgment rarely, precisely, and durably records the
-verdict as memory."
+**Kind.** Research → engineering; the doctrine is taste. **Tenet gap: CLOSED
+2026-07-17** — Goga supplied the tenet verbatim (PROMPT 0005 → NORTH-STAR Tenet 11:
+scale human judgment, never absorb it; adaptive loop position earned by trust).
+The surface design remains open work under that law.
 
 ## GAP 5 — Committed memory is shared memory, and the vision doesn't say so
 

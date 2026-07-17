@@ -213,6 +213,16 @@ product's retrieval story.** Context engineering does not disappear — it survi
     forgets what we are building. The North Star outranks the finding: when a fix would
     over-engineer, complicate, or drift from the vision, the vision wins and the fix shrinks
     to fit (PROMPT 0002 #4).
+11. **Scale human judgment; never absorb it.** We absorb *ergonomics* — surfacing,
+    evidence, visibility, and control — so that sparse human attention and judgment scale
+    up in depth and breadth. Bring to attention everything that matters, which is never
+    everything: automating something away exists to free attention for another judgment,
+    or for judgment one level higher. The values in force at every judgment surface:
+    truth, evidence-seeking, validity, correctness, stewardship, visibility, control,
+    enablement. And *where* the human sits in the loop is adaptable, not fixed — as a
+    process or layer proves itself deterministic, resilient, and trustworthy, it is
+    absorbed and the human moves up a level. Absorption is earned by demonstrated trust,
+    never assumed (PROMPT 0005, verbatim).
 
 ## Invariants (violate these = malfunctioning)
 

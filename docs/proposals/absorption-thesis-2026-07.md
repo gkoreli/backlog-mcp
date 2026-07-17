@@ -49,6 +49,16 @@ Each domain Goga names maps onto those primitives, and most are partially built:
 
 ## The human judgment & attention branch (chartered)
 
+**Governing law: NORTH-STAR Tenet 11 (PROMPT 0005, captured before any build).**
+We do not absorb human judgment — we absorb the ergonomics that let sparse human
+judgment scale in depth and breadth. Every surface this branch builds is judged
+by: does it bring what *matters* to attention (never everything), does it free
+attention to go one level higher, and does it preserve visibility and control?
+The loop position is adaptive: a layer earns absorption only by demonstrated
+determinism, resilience, and trust — which is also why the two acceptance gates
+(Cold-Open, Amnesia) and the evaluation reset (ADR 0121) matter to this branch:
+they are how layers *demonstrate* the trust that moves the human up a level.
+
 The insight that makes this branch trunk-shaped rather than a dashboard feature:
 **the discipline we built for agent attention applies verbatim to human
 attention.** Byte budgets, worst-first ordering, provenance, honest omission —
