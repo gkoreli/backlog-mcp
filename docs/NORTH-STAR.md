@@ -280,7 +280,7 @@ registry line — and touches nothing generic.
   memory). **Entity** = instance (N). **Projection** = a shaped response view. This
   class/instance vocabulary is canonical (ADR 0106.1).
 - The catalog is **open-ended by design** (ADR 0097, Extension 4 ratifies: rule, context,
-  session, cli_tool, agent, skill, prompt, alarm). ADR 0113 (in flight) makes **ADR** and
+  session, cli_tool, agent, skill, prompt, alarm). ADR 0113 (shipped) makes **ADR** and
   **Requirement** first-class *flagship* substrates — ADR with its own semantics
   (`supersedes`, proposed/accepted lifecycle, threads), Requirement so product intent from
   the human isn't derailed during architecture work — plus **Prompt**, a smaller
@@ -325,7 +325,7 @@ verb is its name + one line, not its full schema (ADR 0106). The durable justifi
 generalize the shipped `backlog_remember` pattern into the guiding rule for the whole
 surface, hiding the substrate behind one `createEntity` funnel.
 
-### 4. Docs-native, project-scoped backlog (the frontier · ADRs 0112, 0113 in flight)
+### 4. Docs-native, project-scoped backlog (shipped · ADRs 0112, 0113 — now the core architecture)
 
 Today the backlog lives in a global `~/.backlog`. The vision: it also **bolts onto your
 repo's `docs/` folder** with zero migration, so you end up with two scopes — a **global**
@@ -417,25 +417,26 @@ constraints are not negotiable:
 - [x] Contradiction detection surfaced to the human (ADR 0092.13)
 - [x] Per-repo auto-scope for wakeup/recall/remember (ADR 0105)
 
-### Phase 2 — Progressive disclosure & the intent port 🔨 GENERALIZING
+### Phase 2 — Progressive disclosure & the intent port ✅ SHIPPED (0.60–0.65)
 
 - [x] Wakeup briefing → stubs → hydration; token budgets (ADR 0092.3)
 - [x] `backlog_remember` proves intent-at-the-port
-- [ ] Generalize: all MCP tools speak intent; substrate hidden behind one `createEntity`
-      funnel; lean per-tool server instructions for Tool Search (ADR 0106)
+- [x] Generalize: all MCP tools speak intent; fat generic create/update retired
+      (ADR 0106.5, shipped 2026-07-16); lean per-tool instructions for Tool Search
 
-### Phase 3 — Docs-native, project-scoped backlog 🔨 FRONTIER (ADR 0112, 0113)
+### Phase 3 — Docs-native, project-scoped backlog ✅ SHIPPED (ADR 0112, 0.60–0.61)
 
-- [ ] Bolt onto `./docs` with zero migration; global + project scopes compose
-- [ ] Open per-substrate folders; `NNNN-slug.md` / `NNNN.T-slug.md` self-describing filenames (grammar per ADR 0112)
-- [ ] `cwd → project scope` auto-resolution extended to the docs-native layout
+- [x] Bolt onto `./docs` with zero migration; global + project scopes compose
+- [x] Open per-substrate folders; `NNNN-slug.md` / `NNNN.T-slug.md` self-describing filenames (grammar per ADR 0112)
+- [x] `cwd → project scope` auto-resolution extended to the docs-native layout
 
-### Phase 4 — New substrate types 🔨 (ADR 0113)
+### Phase 4 — New substrate types ✅ SHIPPED (ADR 0113)
 
-- [ ] **ADR** substrate/extension with `supersedes`, proposed/accepted lifecycle, threads
-- [ ] **Requirements** substrate — product requirements from the human, protected during
+- [x] **ADR** substrate/extension with `supersedes`, proposed/accepted lifecycle, threads
+- [x] **Requirements** substrate — product requirements from the human, protected during
       architecture work so features and vision don't get derailed
-- [ ] User-defined substrates (substrate-as-data), so a project declares its own types
+- [x] User-defined substrates (substrate-as-data), so a project declares its own types —
+      proven by the reference, agent, and operation substrates (pure declarations)
 
 ### Phase 5 — History substrate & convergence (later · ADR 0107)
 

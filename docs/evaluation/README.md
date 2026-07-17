@@ -1,4 +1,4 @@
-# ADR 0116 recorded search baseline
+# Search evaluation — the 0116 recorded baseline and the 0121 structural truth suite
 
 `scripts/search-eval.mjs` records the real BM25-only and MiniLM fp32 hybrid
 behavior of the production Orama search service. It loads the selected

@@ -240,7 +240,7 @@ markdown storage, Orama hybrid BM25+vector search with local embeddings, RAG,
 context hydration, agentic memory, live viewer over SSE) is where the product
 grows. The Cloudflare Workers + D1 remote mode lost too many of these
 capabilities (no local embeddings, no hybrid search/RAG parity) and is
-maintained as a constrained satellite, not evolved as an equal. Do not
+descoped — retained, no parity owed (NORTH-STAR Invariant 4). Do not
 compromise local-mode capabilities for D1 parity; new features target local
 mode first and need no D1 story to ship.
 
@@ -248,12 +248,13 @@ mode first and need no D1 story to ship.
 
 ### Package Structure
 
-Three workspace packages:
+Four workspace packages:
 
 | Package | npm name | Published | Purpose |
 |---------|----------|-----------|---------|
 | `packages/shared` | `@backlog-mcp/shared` | No (private) | Entity types, ID utilities |
 | `packages/server` | `backlog-mcp` | Yes | MCP server, CLI, HTTP API |
+| `packages/memory` | `@backlog-mcp/memory` | No (private) | Hybrid search (Orama BM25 + vector), memory retrieval/ranking |
 | `packages/viewer` | `@backlog-mcp/viewer` | No (private) | Web UI, built assets copied into server |
 
 `@nisli/core` is now maintained externally at <https://github.com/gkoreli/nisli>

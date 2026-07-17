@@ -8,7 +8,7 @@ This is **agent-first**, and that is the whole difference. Agents mutate the sto
 
 Three ideas do the work:
 
-- **Substrates** — one declaration per type drives its schema, validation, storage, UI, and agent hints. Most durable knowledge in a project is expressible this way (tasks, memories, crons… and, on the roadmap, ADRs and requirements). A project can even **declare its own substrate types as data** — a JSON definition plus a bounded JSON Schema, no code — validated and stored through the same registry.
+- **Substrates** — one declaration per type drives its schema, validation, storage, UI, and agent hints. Most durable knowledge in a project is expressible this way — tasks, memories, crons, ADRs, requirements, prompts, references, agents. A project can even **declare its own substrate types as data** — a JSON definition plus a bounded JSON Schema, no code — validated and stored through the same registry.
 - **Progressive disclosure** — agent context expands like a filesystem: names first, shape on demand, full content only when opened. A dense ~600-token wakeup briefing → memory stubs → `backlog_get` hydration.
 - **Docs-native, local-first** — plain markdown on your disk, in your git. Your files, local hybrid (BM25 + vector) search and embeddings — no cloud required.
 
@@ -68,6 +68,8 @@ If you specifically need the legacy remote mode, its Workers config lives in `pa
 
 Open `http://localhost:3030` — always available when the server is running.
 
+**The Desk** — `http://localhost:3030/desk` — is the viewer's attention page: one server-composed briefing answering *"what should I look at, read, review and judge right now."* At most 7 items above the fold, worst-first, across four classes (JUDGE / REVIEW / READ / HEALTH); every item says why it surfaced, carries provenance chips (home, author, worktree), and offers a copy-ready instruction to hand your agent. Read-only by law — verdicts flow through your agent, never through the UI.
+
 Features:
 - Split pane layout with task list and detail view
 - Spotlight search with hybrid text + semantic matching
@@ -125,10 +127,13 @@ Four verbs, zero ceremony — orient, ask, keep, correct. Memories are first-cla
 
 ```
 backlog_wakeup                            # Orient: one dense briefing (active work, top knowledge)
+backlog_wakeup operation="OP-0001"        # Orient mid-flight: that operation's live state leads the briefing (goal, next action, constraints)
 backlog_recall query="how do we release?" # Ask: hybrid-ranked recall, returns stubs to expand
 backlog_remember content="..." layer="procedural"   # Keep: one durable, atomic fact
 backlog_forget id="MEMO-0042"             # Correct: soft-expire (stays auditable in the viewer)
 ```
+
+The briefing ends with a two-line memory protocol (when to recall, when to remember) and enforces a hard byte ceiling with a deterministic yield ladder — constraints never yield.
 
 Retrieval is one language: **orient** (`wakeup`) → **ask** (`recall` / `search`) → **expand** (`backlog_get id=… context=true`).
 
@@ -250,7 +255,7 @@ Sample outputs:
 ```
 $ npx backlog-mcp status
 Server is running on port 3030
-Version: 0.59.0
+Version: 0.65.0
 Data directory: /Users/you/.backlog/docs
 Task count: 451
 Uptime: 3515s
@@ -399,8 +404,7 @@ packages/
 ├── viewer/       # Web UI built with @nisli/core
 └── shared/       # Entity types, ID utilities
 docs/
-├── adr/              # backlog-mcp architecture decision records
-└── framework-adr/    # Pointer to Nisli ADRs
+└── adr/              # backlog-mcp architecture decision records
 ```
 
 Backlog ADRs document significant design decisions. See [docs/adr/README.md](docs/adr/README.md) for the full index. Nisli ADRs live in the [Nisli repository](https://github.com/gkoreli/nisli/tree/main/docs/adr).
