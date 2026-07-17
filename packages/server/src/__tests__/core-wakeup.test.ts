@@ -759,4 +759,165 @@ describe('core/wakeup', () => {
       expect(without.vision).toBeUndefined();
     });
   });
+
+  describe('operation focus — wakeup(operation=X) (north-star Amnesia contract)', () => {
+    const OPERATIONS = {
+      type: 'operation',
+      wakeup: {
+        section: 'operations',
+        includeStatuses: ['live'],
+        limit: 3,
+        projection: ['id', 'title', 'agent', 'mission', 'next_action', 'updated_at'],
+      },
+    };
+    const op = (id: string, over: Record<string, unknown> = {}) => makeEntity({
+      id, title: `operation ${id}`, type: 'operation', status: 'live',
+      agent: 'onyx', mission: `mission ${id}`, next_action: `next ${id}`,
+      updated_at: '2026-07-16T00:00:00.000Z',
+      ...over,
+    } as never);
+    const withOps = (
+      entities: Entity[],
+      declared: unknown[] = [OPERATIONS],
+    ): IBacklogService => {
+      const svc = mockService(entities);
+      (svc as any).listWakeupDisclosures = () => declared;
+      return svc;
+    };
+
+    it('hydrates the focal doc through its DECLARED projection and removes it from its section stubs', async () => {
+      const result = await wakeup(withOps([
+        op('OP-0001'),
+        op('OP-0002', { updated_at: '2026-07-15T00:00:00.000Z' }),
+      ]), { operation: 'OP-0001' });
+      expect(result.focus).toEqual({
+        section: 'operations',
+        doc: {
+          id: 'OP-0001',
+          title: 'operation OP-0001',
+          agent: 'onyx',
+          mission: 'mission OP-0001',
+          next_action: 'next OP-0001',
+          updated_at: '2026-07-16T00:00:00.000Z',
+        },
+      });
+      // The other live op remains a stub; the focal one never repeats.
+      expect((result.sections['operations'] ?? []).map(s => s.id)).toEqual(['OP-0002']);
+      expect(result.metadata.sections_omitted['operations']).toBe(0);
+    });
+
+    it('is declaration-generic — any substrate with disclosure.wakeup can be focused, no "operation" hardcoding', async () => {
+      const DECISIONS = {
+        type: 'adr',
+        wakeup: { section: 'decisions', includeStatuses: ['accepted'], limit: 2, projection: ['id', 'title', 'status'] },
+      };
+      const result = await wakeup(withOps([
+        makeEntity({ id: 'ADR 0007', title: 'decide things', type: 'adr', status: 'accepted' } as never),
+      ], [DECISIONS]), { operation: 'ADR 0007' });
+      expect(result.focus).toEqual({
+        section: 'decisions',
+        doc: { id: 'ADR 0007', title: 'decide things', status: 'accepted' },
+      });
+    });
+
+    it('unknown id: honest ValidationError naming nearby live candidates, prefix matches first', async () => {
+      const svc = withOps(
+        [
+          op('OP-0001'),
+          makeEntity({ id: 'ADR 0001', title: 'decision', type: 'adr', status: 'accepted' } as never),
+        ],
+        [OPERATIONS, {
+          type: 'adr',
+          wakeup: { section: 'decisions', includeStatuses: ['accepted'], limit: 2, projection: ['id', 'title'] },
+        }],
+      );
+      await expect(wakeup(svc, { operation: 'OP-9999' })).rejects.toThrow(ValidationError);
+      await expect(wakeup(svc, { operation: 'OP-9999' })).rejects.toThrow(
+        /Unknown operation "OP-9999"\. Live candidates: OP-0001 \(operations\), ADR 0001 \(decisions\)\./,
+      );
+    });
+
+    it('a status-excluded doc cannot be focused: the error names the excluding status and the live alternatives', async () => {
+      const svc = withOps([
+        op('OP-0001'),
+        op('OP-0002', { status: 'closed' }),
+      ]);
+      await expect(wakeup(svc, { operation: 'OP-0002' })).rejects.toThrow(
+        /"OP-0002" exists in section "operations" but its status "closed" is not disclosed at wakeup .*OP-0001 \(operations\)/,
+      );
+    });
+
+    it('a doc whose substrate declares no wakeup disclosure cannot be focused: the error names its type', async () => {
+      const svc = withOps([
+        op('OP-0001'),
+        makeEntity({ id: 'TASK-0001', title: 'a task', status: 'in_progress' }),
+      ]);
+      await expect(wakeup(svc, { operation: 'TASK-0001' })).rejects.toThrow(
+        /TASK-0001 is a task, not an operation-style document/,
+      );
+    });
+
+    it('an empty home says so instead of inventing candidates', async () => {
+      await expect(wakeup(withOps([]), { operation: 'OP-0001' })).rejects.toThrow(
+        /Unknown operation "OP-0001"\. No live operation documents exist in this home\./,
+      );
+    });
+
+    it('focal yield rule: non-focal defaults trim (completions 2, activity 2, knowledge 3, sections cap 2); explicit caps win', async () => {
+      const entities: Entity[] = [op('OP-0001')];
+      for (let i = 1; i <= 6; i++) {
+        entities.push(op(`OP-000${i + 1}`, { updated_at: `2026-07-0${i}T00:00:00.000Z` }));
+        entities.push(makeEntity({
+          id: `TASK-000${i}`, title: `done ${i}`, status: 'done',
+          updated_at: `2026-07-0${i}T00:00:00.000Z`,
+        }));
+        entities.push(makeEntity({
+          id: `MEMO-000${i}`, title: `knows ${i}`, type: 'memory', status: undefined,
+          layer: 'semantic', content: `knowledge body ${i}`,
+          updated_at: `2026-07-0${i}T00:00:00.000Z`,
+        } as never));
+      }
+      const readOperations = () => Array.from({ length: 6 }, (_, i) => ({
+        ts: `2026-07-1${i}T00:00:00.000Z`, tool: 'backlog_update',
+        params: { id: 'OP-0001' }, actor: { type: 'agent', name: 'onyx' },
+      }));
+
+      const focal = await wakeup(withOps(entities), { operation: 'OP-0001', readOperations });
+      expect(focal.recent.completions).toHaveLength(2);
+      expect(focal.recent.activity).toHaveLength(2);
+      expect(focal.knowledge).toHaveLength(3);
+      // Declared limit 3 caps at 2 under focus; the omitted count stays honest.
+      expect(focal.sections['operations']).toHaveLength(2);
+      expect(focal.metadata.sections_omitted['operations']).toBe(4);
+
+      // Explicit caller caps always beat the yielded defaults.
+      const overridden = await wakeup(withOps(entities), {
+        operation: 'OP-0001', readOperations, maxCompletions: 5, maxActivity: 4, maxKnowledge: 5,
+      });
+      expect(overridden.recent.completions).toHaveLength(5);
+      expect(overridden.recent.activity).toHaveLength(4);
+      expect(overridden.knowledge).toHaveLength(5);
+
+      // Without focus, nothing yields.
+      const plain = await wakeup(withOps(entities), { readOperations });
+      expect(plain.recent.completions).toHaveLength(5);
+      expect(plain.recent.activity).toHaveLength(5);
+      expect(plain.knowledge).toHaveLength(5);
+      expect(plain.sections['operations']).toHaveLength(3);
+      expect(plain.focus).toBeUndefined();
+    });
+
+    it('constraints never yield to the focus — the amnesiac must state them', async () => {
+      const entities: Entity[] = [op('OP-0001')];
+      for (let i = 1; i <= 4; i++) {
+        entities.push(makeEntity({
+          id: `REQ-000${i}`, title: `must hold ${i}`, type: 'requirement',
+          status: 'ruled', compliance: 'unchecked',
+        } as never));
+      }
+      const result = await wakeup(withOps(entities), { operation: 'OP-0001' });
+      expect(result.constraints).toHaveLength(3);          // default 3, unyielded
+      expect(result.metadata.constraints_omitted).toBe(1);
+    });
+  });
 });

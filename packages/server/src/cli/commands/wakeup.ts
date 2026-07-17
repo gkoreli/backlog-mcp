@@ -24,6 +24,21 @@ function format(result: WakeupResult): string {
     lines.push('', `scope: ${result.scope}`);
   }
 
+  // The focal operation leads (north-star Amnesia contract): an amnesiac
+  // reads its own operation before anything else. Fields beyond id/title
+  // are whatever the substrate's declaration projected — printed as-is.
+  if (result.focus) {
+    lines.push(
+      '',
+      `── FOCUS: ${result.focus.doc.id} (${result.focus.section}) ──`,
+      `  ${result.focus.doc.title}`,
+      ...Object.entries(result.focus.doc)
+        .filter(([key]) => key !== 'id' && key !== 'title')
+        .map(([key, value]) =>
+          `  ${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`),
+    );
+  }
+
   lines.push(
     ...section('now: active tasks', result.now.active_tasks.map(t =>
       `  ${t.id.padEnd(12)} ${(t.status ?? '-').padEnd(12)} ${t.title}`,
@@ -121,6 +136,7 @@ export function registerWakeup(program: Command): void {
     .command('wakeup')
     .description('Session-start briefing (active tasks, epics, recent completions, activity)')
     .option('--scope <id>', 'Scope to a container entity (folder/milestone/epic)')
+    .option('--operation <id>', 'Focus the briefing on one live operation document (its declared projection becomes the centerpiece; non-focal sections yield budget)')
     .option('--max-completions <n>', 'Max recent completions', parseInt)
     .option('--max-activity <n>', 'Max recent activity entries', parseInt)
     .option('--max-knowledge <n>', 'Max knowledge items (semantic/procedural memories)', parseInt)
@@ -129,6 +145,7 @@ export function registerWakeup(program: Command): void {
     .action((opts) => {
       const deps = cliRuntimeDependencies(program);
       const baseParams: WakeupParams = {
+        ...(opts.operation !== undefined ? { operation: opts.operation } : {}),
         ...(opts.maxCompletions !== undefined ? { maxCompletions: opts.maxCompletions } : {}),
         ...(opts.maxActivity !== undefined ? { maxActivity: opts.maxActivity } : {}),
         ...(opts.maxKnowledge !== undefined ? { maxKnowledge: opts.maxKnowledge } : {}),

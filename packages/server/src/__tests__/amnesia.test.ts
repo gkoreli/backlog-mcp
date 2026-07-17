@@ -20,12 +20,18 @@
  * the amnesiac's empty context) runs wakeup once and must be able to state
  * its GOAL (mission), its NEXT ACTION, and its CONSTRAINTS — then continue.
  *
- * Deferred by design: `wakeup(operation=<agent>)` focal selection rides ADR
- * 0119's identity substrate; with one live operation doc per project the
- * declared section already delivers the briefing. The projection carries
- * `updated_at` deliberately — an operation doc has the steepest staleness
- * curve of any substrate (stale in hours), so its authority signal is
- * load-bearing, not decorative (ADR 0115's law at its sharpest).
+ * THE ARGUMENT (built here — formerly "deferred by design", pinned by the
+ * 2026-07 ADR mine as B4): `wakeup(operation=X)` is the north-star contract
+ * verbatim — "hand a fresh agent nothing but `wakeup(operation=…)`, and
+ * assert it can state its goal, its next action, and its constraints
+ * without reading anything else." The second half of this file proves the
+ * ARGUMENT, not just the substrate: one focal call carries every
+ * scenario-required operation fact as the briefing's centerpiece, unknown
+ * ids error honestly with live candidates, and closed operations cannot be
+ * focused. The projection carries `updated_at` deliberately — an operation
+ * doc has the steepest staleness curve of any substrate (stale in hours),
+ * so its authority signal is load-bearing, not decorative (ADR 0115's law
+ * at its sharpest).
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
@@ -187,6 +193,8 @@ describe('Amnesia Test (continuity acceptance — Cold-Open twin)', () => {
   let getTool: ToolHandler;
   let briefing: Record<string, any>;
   let payload: string;
+  let focalBriefing: Record<string, any>;
+  let focalPayload: string;
   let committedBefore: Map<string, string>;
   const homeRoot = join(tmpdir(), 'amnesia', 'fixture-repo');
 
@@ -216,6 +224,12 @@ describe('Amnesia Test (continuity acceptance — Cold-Open twin)', () => {
     const res = await wakeupTool({});
     payload = res.content[0]?.text ?? '{}';
     briefing = JSON.parse(payload);
+
+    // THE ARGUMENT: one call, nothing but the operation id (north-star
+    // Amnesia contract — the amnesiac was handed `wakeup(operation=X)`).
+    const focalRes = await wakeupTool({ operation: 'OP-0001' });
+    focalPayload = focalRes.content[0]?.text ?? '{}';
+    focalBriefing = JSON.parse(focalPayload);
   });
 
   it('the declared operation substrate compiled and claimed — a substrate the server has never heard of', () => {
@@ -258,6 +272,66 @@ describe('Amnesia Test (continuity acceptance — Cold-Open twin)', () => {
     const text = res.content[0]?.text ?? '';
     expect(text).toContain('DO NOT regenerate goldens');
     expect(text).toContain('parked pending Goga');
+  });
+
+  // ── THE ARGUMENT — wakeup(operation=X) (north-star Amnesia contract) ──
+
+  it('ARGUMENT: wakeup(operation=OP-0001) alone carries GOAL, NEXT ACTION, and CONSTRAINTS in one payload', () => {
+    // The focal centerpiece is the operation substrate's DECLARED
+    // projection, hydrated — nothing the declaration didn't name.
+    expect(focalBriefing.focus).toEqual({
+      section: 'operations',
+      doc: {
+        id: 'OP-0001',
+        title: 'Migrate the importer to streaming',
+        agent: 'onyx',
+        mission: 'Ship the streaming importer without breaking resume support',
+        next_action: 'Fix the checkpoint serializer, then rerun the golden import',
+        updated_at: '2026-07-16T21:40:00.000Z',   // staleness authority rides the focus
+      },
+    });
+    // CONSTRAINTS never yield to the focus — the amnesiac must state them
+    // from the SAME payload.
+    const constraints = focalBriefing.constraints as Array<Record<string, any>>;
+    expect(constraints[0]?.id).toBe('REQ-0001');
+    expect(constraints[0]?.compliance).toBe('at_risk');
+    // The vision pointer survives focus: goal above, direction beneath it.
+    expect(focalBriefing.vision?.path).toBe('docs/NORTH-STAR.md');
+  });
+
+  it('ARGUMENT: the focal doc is the centerpiece, not a duplicate — it leaves its section stubs', () => {
+    // OP-0001 moved to focus; OP-0002 stays closed — the section is empty
+    // and honest (omitted count 0, nothing hidden).
+    expect(focalBriefing.sections.operations).toEqual([]);
+    expect(focalBriefing.metadata.sections_omitted.operations).toBe(0);
+  });
+
+  it('ARGUMENT: an unknown operation id errors honestly, naming live candidates — never a silent generic briefing', async () => {
+    const res = await wakeupTool({ operation: 'OP-9999' }) as {
+      content: Array<{ text: string }>; isError?: boolean;
+    };
+    expect(res.isError).toBe(true);
+    const message = JSON.parse(res.content[0]?.text ?? '{}').error as string;
+    expect(message).toContain('OP-9999');
+    expect(message).toContain('OP-0001 (operations)');   // the nearby live candidate
+    expect(message).not.toContain('"sections"');         // an error, not a briefing
+  });
+
+  it('ARGUMENT: a closed operation cannot be focused — closed never resurfaces, not even as a centerpiece', async () => {
+    const res = await wakeupTool({ operation: 'OP-0002' }) as {
+      content: Array<{ text: string }>; isError?: boolean;
+    };
+    expect(res.isError).toBe(true);
+    const message = JSON.parse(res.content[0]?.text ?? '{}').error as string;
+    expect(message).toContain('OP-0002');
+    expect(message).toContain('"closed"');               // names the excluding status
+    expect(message).toContain('OP-0001 (operations)');   // and the live alternative
+  });
+
+  it('ARGUMENT: the complete focal briefing stays inside the wire budget (≤ 3,072 pretty bytes)', () => {
+    const bytes = Buffer.byteLength(focalPayload, 'utf8');
+    console.info(`[amnesia focal budget] exact pretty bytes: ${bytes}; ~tokens: ${Math.ceil(focalPayload.length / 4)}`);
+    expect(bytes).toBeLessThanOrEqual(3072);
   });
 
   it('the whole recovery stays inside the wire budget: exact pretty payload ≤ 3,072 bytes (Slice C)', () => {

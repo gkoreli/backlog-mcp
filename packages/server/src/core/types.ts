@@ -287,13 +287,37 @@ export interface WakeupParams {
    * Omit ``scope`` to get everything across all projects.
    */
   scope?: string;
-  /** Max recent completions in the "recent" section. Default: 5. */
+  /**
+   * Focal document ID — the north-star Amnesia contract's
+   * ``wakeup(operation=X)``. Names a document whose substrate declares
+   * ``disclosure.wakeup`` (ADR 0113 — e.g. a project-declared operation
+   * substrate); the briefing gains a ``focus`` centerpiece carrying that
+   * document hydrated through its declared projection, and the focal doc
+   * leaves its own section's stubs (Tenet 8 — never twice).
+   *
+   * **Focal yield rule (deterministic, recorded in
+   * wakeup-wire-budget.test.ts):** focal wins the budget. When ``operation``
+   * is present, non-focal defaults yield — ``maxCompletions`` 5→2,
+   * ``maxActivity`` 5→2, ``maxKnowledge`` 5→3, and every declared section's
+   * limit caps at 2. Constraints NEVER yield: the amnesiac must state its
+   * constraints (NORTH-STAR, Amnesia Test). Explicit caller caps always win
+   * over the yielded defaults.
+   *
+   * **Honesty rule:** an ID that resolves to nothing briefing-eligible
+   * throws ``ValidationError`` naming nearby live candidates — never a
+   * silent generic briefing. A document excluded by its declaration's
+   * ``includeStatuses`` (e.g. a closed operation) is named as such: closed
+   * operations never resurface, not even as a focus.
+   */
+  operation?: string;
+  /** Max recent completions in the "recent" section. Default: 5 (2 under operation focus). */
   maxCompletions?: number;
-  /** Max recent activity entries (from the operation log). Default: 5. */
+  /** Max recent activity entries (from the operation log). Default: 5 (2 under operation focus). */
   maxActivity?: number;
   /**
    * Max knowledge items (semantic/procedural memories) in the L2.5 knowledge
-   * section (ADR-0092.5 R-6). Default: 5. Set 0 to omit the section.
+   * section (ADR-0092.5 R-6). Default: 5 (3 under operation focus). Set 0 to
+   * omit the section.
    */
   maxKnowledge?: number;
   /**
@@ -454,6 +478,22 @@ export interface WakeupResult {
   identity?: string;
   /** Echoes the scope param so callers can confirm what was included. */
   scope?: string;
+  /**
+   * FOCAL OPERATION (north-star Amnesia contract) — present only when the
+   * caller passed ``operation``. ``doc`` is the focal document hydrated
+   * through its substrate's DECLARED wakeup projection (ADR 0113: the
+   * declaration is the disclosure law — core surfaces nothing the
+   * declaration didn't name). The focal doc is excluded from its own
+   * section's stubs, and non-focal sections yield budget deterministically
+   * (see WakeupParams.operation). Serialized first after identity/scope:
+   * the centerpiece leads the payload.
+   */
+  focus?: {
+    /** The declared wakeup section the focal document belongs to. */
+    section: string;
+    /** Declared-projection hydration of the focal document. */
+    doc: WakeupSectionStub;
+  };
   now: {
     active_tasks: WakeupEntitySummary[];
     current_epics: WakeupEntitySummary[];

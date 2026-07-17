@@ -62,7 +62,7 @@ export function registerBacklogWakeupTool(
     'backlog_wakeup',
     {
       description:
-        'Dense session-start briefing: active tasks, current epics, project constraints (requirements as stubs, violated/at-risk first — treat these as standing product intent), recent completions (with evidence snippets), recent activity, and the home-wide unfiled work count. No focal entity required — use this at the start of every session to understand what you were working on. Optional `scope` narrows the entity sections to a folder, milestone, or epic; unfiled remains home-wide because parentless work has no subtree ancestry.',
+        'Dense session-start briefing: active tasks, current epics, project constraints (requirements as stubs, violated/at-risk first — treat these as standing product intent), recent completions (with evidence snippets), recent activity, and the home-wide unfiled work count. No focal entity required — use this at the start of every session to understand what you were working on. Optional `scope` narrows the entity sections to a folder, milestone, or epic; unfiled remains home-wide because parentless work has no subtree ancestry. Optional `operation` resumes a mid-flight operation document: its live state becomes the briefing\'s FOCUS centerpiece and the rest of the briefing yields budget to it.',
       // The Cold-Open Test makes wakeup the product's one always-visible door.
       // Every other tool stays deferred under Tenet 8 until the briefing teaches it.
       _meta: {
@@ -72,6 +72,9 @@ export function registerBacklogWakeupTool(
         ...BACKLOG_READ_HOME_INPUT_FIELDS,
         scope: z.string().optional().describe(
           'Optional entity ID to scope the briefing to a subtree. Must be a container (folder/milestone/epic). Use a folder ID for project-scoped wake-up (e.g. "FLDR-0001"). Omit to get everything across the whole backlog.',
+        ),
+        operation: z.string().optional().describe(
+          'Optional focal document ID (e.g. "OP-0001") to resume a mid-flight operation: the briefing gains a `focus` centerpiece carrying that document\'s declared wakeup projection, and non-focal sections yield budget deterministically (completions 5→2, activity 5→2, knowledge 5→3, declared sections capped at 2; constraints never yield). Works for any document whose substrate declares `disclosure.wakeup`. Unknown or non-live IDs error honestly, naming live candidates.',
         ),
         max_completions: z.number().min(0).max(50).optional().describe(
           'Max done tasks in the "recent" section. Default: 5.',
@@ -91,6 +94,7 @@ export function registerBacklogWakeupTool(
       home,
       project_root,
       scope,
+      operation,
       max_completions,
       max_activity,
       max_constraints,
@@ -99,6 +103,7 @@ export function registerBacklogWakeupTool(
       try {
         const wakeupParams = {
           ...(scope !== undefined ? { scope } : {}),
+          ...(operation !== undefined ? { operation } : {}),
           ...(max_completions !== undefined ? { maxCompletions: max_completions } : {}),
           ...(max_activity !== undefined ? { maxActivity: max_activity } : {}),
           ...(max_constraints !== undefined ? { maxConstraints: max_constraints } : {}),

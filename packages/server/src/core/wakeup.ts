@@ -5,6 +5,12 @@
  * required. Wake-up is time-oriented; use ``backlog_get({ context: true })``
  * to expand a specific entity or recall to retrieve learned knowledge.
  *
+ * ``wakeup(operation=X)`` (north-star Amnesia contract) turns one declared
+ * disclosure document into the briefing's centerpiece: its declared
+ * projection rides ``focus`` while every non-focal section yields budget
+ * deterministically (see WakeupParams.operation). The declaration drives
+ * everything — core has no builtin notion of an "operation".
+ *
  * Layering mirrors MemPalace's L0–L3 adapted to our substrates:
  *
  *   L0 Identity  — static text from the caller's environment (``readIdentity``)
@@ -207,12 +213,83 @@ function visionTitle(text: string): string {
   return markdownTitle(text, 'NORTH-STAR');
 }
 
+/**
+ * Under operation focus every declared section's limit caps here (part of
+ * the focal yield rule — see WakeupParams.operation; recorded as law in
+ * wakeup-wire-budget.test.ts). The focal doc itself never counts against
+ * this: it rides `focus`, not its section.
+ */
+const FOCAL_SECTION_LIMIT = 2;
+
+/** Max nearby candidates named by the honest unknown-operation error. */
+const FOCAL_CANDIDATE_LIMIT = 5;
+
+/**
+ * Shape one entity through a declared wakeup projection (ADR 0113 C.2).
+ * id/title always lead; every other surfaced field was named by the
+ * declaration — core adds nothing.
+ */
+function projectSectionStub(
+  entity: { id: string; title: string },
+  projection: readonly string[],
+): WakeupSectionStub {
+  const record = entity as unknown as Record<string, unknown>;
+  const stub: WakeupSectionStub = { id: entity.id, title: entity.title };
+  for (const field of projection) {
+    if (field === 'id' || field === 'title') continue;
+    const value = record[field];
+    if (value !== undefined && value !== null) stub[field] = value;
+  }
+  return stub;
+}
+
+/**
+ * Order the honest-error candidate list: IDs sharing the requested ID's
+ * leading non-digit prefix first (asking for "OP-9999" names other OPs
+ * before anything else), then stable id order. Deterministic — no ranking
+ * model, no fuzzy match.
+ */
+function nearbyFocalCandidates(
+  requested: string,
+  pool: ReadonlyArray<{ id: string; section: string }>,
+): Array<{ id: string; section: string }> {
+  const prefix = /^[^0-9]*/.exec(requested)?.[0] ?? '';
+  const sharesPrefix = (id: string): boolean =>
+    prefix.length > 0 && id.startsWith(prefix);
+  return [...pool]
+    .sort((a, b) => {
+      const prefixDelta = Number(sharesPrefix(b.id)) - Number(sharesPrefix(a.id));
+      if (prefixDelta !== 0) return prefixDelta;
+      const sectionDelta = a.section.localeCompare(b.section);
+      if (sectionDelta !== 0) return sectionDelta;
+      return a.id.localeCompare(b.id);
+    })
+    .slice(0, FOCAL_CANDIDATE_LIMIT);
+}
+
+function describeFocalCandidates(
+  candidates: ReadonlyArray<{ id: string; section: string }>,
+): string {
+  if (candidates.length === 0) {
+    return ' No live operation documents exist in this home.';
+  }
+  return ` Live candidates: ${candidates
+    .map(c => `${c.id} (${c.section})`)
+    .join(', ')}.`;
+}
+
 export async function wakeup(
   service: IBacklogService,
   params: WakeupParams = {},
 ): Promise<WakeupResult> {
-  const maxCompletions = params.maxCompletions ?? 5;
-  const maxActivity = params.maxActivity ?? 5;
+  // Focal yield rule (north-star Amnesia contract): when an operation focus
+  // is requested, non-focal defaults yield budget to the focal section —
+  // completions 5→2, activity 5→2, knowledge 5→3, declared sections capped
+  // at FOCAL_SECTION_LIMIT. Constraints never yield (the amnesiac must
+  // state its constraints). Explicit caller caps always win.
+  const focalId = params.operation;
+  const maxCompletions = params.maxCompletions ?? (focalId !== undefined ? 2 : 5);
+  const maxActivity = params.maxActivity ?? (focalId !== undefined ? 2 : 5);
   const snippetChars = params.evidenceSnippetChars ?? 160;
 
   const identity = params.readIdentity?.();
@@ -272,7 +349,7 @@ export async function wakeup(
   // L2.5 Knowledge (ADR-0092.5 R-6, after MemPalace's L1 "essential story"):
   // top semantic/procedural memories for the scope — what the agent KNOWS
   // here, not what happened. Char-bounded lines, one source pointer each.
-  const maxKnowledge = params.maxKnowledge ?? 5;
+  const maxKnowledge = params.maxKnowledge ?? (focalId !== undefined ? 3 : 5);
   let knowledge: WakeupKnowledgeItem[] = [];
   if (maxKnowledge > 0) {
     const memories = (await service.list({ type: EntityType.Memory }))
@@ -385,10 +462,17 @@ export async function wakeup(
   const sections: Record<string, WakeupSectionStub[]> = {};
   const sectionsOmitted: Record<string, number> = {};
   const declaredSections = service.listWakeupDisclosures?.() ?? [];
+  // Focal resolution (north-star Amnesia contract) rides the SAME fold:
+  // the operation argument selects one status-eligible document out of the
+  // declared disclosure pipeline — no new substrate, no classifier. The
+  // candidate pool doubles as the honest-error vocabulary.
+  let focus: WakeupResult['focus'];
+  let focalStatusConflict: { section: string; status: unknown } | undefined;
+  const focalPool: Array<{ id: string; section: string }> = [];
   for (const declared of declaredSections) {
     if (declared.type === REQUIREMENT_TYPE && declared.wakeup.section === 'constraints') continue;
     const entities = await service.list({ type: declared.type, limit: 100_000 });
-    const included = entities
+    const statusIncluded = entities
       .filter(e => {
         if (declared.wakeup.includeStatuses.length === 0) return true;
         // Workflow states are JsonScalars (string | number | boolean) — read
@@ -399,30 +483,81 @@ export async function wakeup(
         const status: unknown = (e as Record<string, unknown>)['status'];
         return (declared.wakeup.includeStatuses as readonly unknown[])
           .some(declaredStatus => matchesDeclaredStatus(status, declaredStatus));
-      })
+      });
+    if (focalId !== undefined) {
+      // Focal selection is by explicit ID and status-eligibility only —
+      // scope never gates an explicitly named focus. The declaration's
+      // includeStatuses DOES gate it: a closed operation must not resurface,
+      // not even as a focus (it errors honestly below instead).
+      const focalEntity = statusIncluded.find(e => e.id === focalId);
+      if (focalEntity !== undefined) {
+        focus = {
+          section: declared.wakeup.section,
+          doc: projectSectionStub(focalEntity, declared.wakeup.projection),
+        };
+      } else {
+        const shelved = entities.find(e => e.id === focalId);
+        if (shelved !== undefined) {
+          focalStatusConflict = {
+            section: declared.wakeup.section,
+            status: (shelved as Record<string, unknown>)['status'],
+          };
+        }
+      }
+      for (const e of statusIncluded) {
+        if (e.id !== focalId) {
+          focalPool.push({ id: e.id, section: declared.wakeup.section });
+        }
+      }
+    }
+    const included = statusIncluded
       .filter(e => {
         const parentId = typeof e.parent_id === 'string' ? e.parent_id : undefined;
         return !scopeFilter || parentId === undefined ||
           scopeFilter(parentId) || parentId === params.scope;
       })
+      // The focal doc leaves its own section's stubs — it is the
+      // centerpiece, and the briefing never carries the same fact twice.
+      .filter(e => e.id !== focalId)
       .sort((a, b) => {
         const recencyDelta = entityRecencyMs(b) - entityRecencyMs(a);
         if (recencyDelta !== 0 && !Number.isNaN(recencyDelta)) return recencyDelta;
         return a.id.localeCompare(b.id);
       });
-    const limit = declared.wakeup.limit;
-    const stubs = included.slice(0, limit).map(e => {
-      const record = e as Record<string, unknown>;
-      const stub: WakeupSectionStub = { id: e.id, title: e.title };
-      for (const field of declared.wakeup.projection) {
-        if (field === 'id' || field === 'title') continue;
-        const value = record[field];
-        if (value !== undefined && value !== null) stub[field] = value;
-      }
-      return stub;
-    });
+    const limit = focalId !== undefined
+      ? Math.min(declared.wakeup.limit, FOCAL_SECTION_LIMIT)
+      : declared.wakeup.limit;
+    const stubs = included.slice(0, limit)
+      .map(e => projectSectionStub(e, declared.wakeup.projection));
     sections[declared.wakeup.section] = stubs;
     sectionsOmitted[declared.wakeup.section] = included.length - stubs.length;
+  }
+
+  // The honest error (never a silent generic briefing): an unresolved focus
+  // names what CAN be focused, distinguishing "excluded by its declared
+  // statuses" and "exists but isn't an operation-style document" from
+  // "unknown".
+  if (focalId !== undefined && focus === undefined) {
+    const candidates = describeFocalCandidates(
+      nearbyFocalCandidates(focalId, focalPool),
+    );
+    if (focalStatusConflict !== undefined) {
+      throw new ValidationError(
+        `Operation ${JSON.stringify(focalId)} exists in section "${focalStatusConflict.section}" `
+        + `but its status ${JSON.stringify(focalStatusConflict.status)} is not disclosed at wakeup `
+        + `(closed operations never resurface in a live briefing).${candidates}`,
+      );
+    }
+    const other = await service.get(focalId);
+    if (other !== undefined) {
+      throw new ValidationError(
+        `${focalId} is a ${other.type ?? 'document'}, not an operation-style document — `
+        + `wakeup(operation=…) focuses documents whose substrate declares disclosure.wakeup.${candidates}`,
+      );
+    }
+    throw new ValidationError(
+      `Unknown operation ${JSON.stringify(focalId)}.${candidates}`,
+    );
   }
 
   // Visible quarantine (EXP-1 B-3): claimed documents that could not compile
@@ -546,6 +681,9 @@ export async function wakeup(
   return {
     ...(identity ? { identity } : {}),
     ...(params.scope ? { scope: params.scope } : {}),
+    // The centerpiece leads the payload: an amnesiac reads its own
+    // operation before anything else (north-star Amnesia contract).
+    ...(focus === undefined ? {} : { focus }),
     now: {
       active_tasks: activeTasks,
       current_epics: currentEpics,

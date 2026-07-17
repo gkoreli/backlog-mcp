@@ -12,6 +12,19 @@
  *
  * No runtime allocator exists — if this gate ever fails, remove redundant
  * transport metadata or lower source stub caps first (charter ruling).
+ *
+ * FOCAL YIELD RULE (wakeup(operation=X), north-star Amnesia contract —
+ * recorded here as law): FOCAL WINS. If required focal facts cannot fit,
+ * trim the non-focal sections first — never the focus. The deterministic
+ * yield when `operation` is present and the caller set no explicit caps:
+ *
+ *   completions 5→2 · activity 5→2 · knowledge 5→3 · every declared
+ *   section's limit caps at 2 · the focal doc leaves its own section's
+ *   stubs (it is the centerpiece, never a duplicate).
+ *
+ * CONSTRAINTS NEVER YIELD: the amnesiac must state its constraints from
+ * the same payload (NORTH-STAR, Amnesia Test). The focal fixture below
+ * asserts the rule and holds the focal payload to the same 3,072-byte gate.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -150,6 +163,8 @@ function commitPressureRepo(home: BacklogHome): void {
 describe('Wakeup wire budget — all-sections pressure fixture (Slice C)', () => {
   let briefing: Record<string, any>;
   let payload: string;
+  let focalBriefing: Record<string, any>;
+  let focalPayload: string;
   const homeRoot = join(tmpdir(), 'wakeup-wire-budget', 'pressure-repo');
 
   beforeAll(async () => {
@@ -191,6 +206,11 @@ describe('Wakeup wire budget — all-sections pressure fixture (Slice C)', () =>
     const res = await wakeupTool({});
     payload = res.content[0]?.text ?? '{}';
     briefing = JSON.parse(payload);
+
+    // The FOCAL fixture: same fully-pressured repo, operation focus on.
+    const focalRes = await wakeupTool({ operation: 'OP-0001' });
+    focalPayload = focalRes.content[0]?.text ?? '{}';
+    focalBriefing = JSON.parse(focalPayload);
   });
 
   it('retains every scenario-required fact in one payload', () => {
@@ -231,6 +251,51 @@ describe('Wakeup wire budget — all-sections pressure fixture (Slice C)', () =>
   it('the complete pressure payload stays ≤ 3,072 exact pretty UTF-8 bytes at the MCP boundary', () => {
     const bytes = Buffer.byteLength(payload, 'utf8');
     console.info(`[pressure budget] exact pretty bytes: ${bytes}; ~tokens: ${Math.ceil(payload.length / 4)}`);
+    expect(bytes).toBeLessThanOrEqual(3072);
+  });
+
+  // ── FOCAL fixture: wakeup(operation=OP-0001) under full pressure ──
+
+  it('focal: the centerpiece is the declared projection, hydrated — and it left its own section', () => {
+    expect(focalBriefing.focus).toEqual({
+      section: 'operations',
+      doc: {
+        id: 'OP-0001',
+        title: 'Migrate the importer to streaming',
+        agent: 'onyx',
+        mission: 'Ship streaming without breaking resume',
+        next_action: 'Fix the checkpoint serializer',
+        updated_at: T(16, 21),
+      },
+    });
+    expect(focalBriefing.sections.operations).toEqual([]);   // moved, not duplicated
+  });
+
+  it('focal: the yield rule holds exactly — non-focal sections trim first, constraints never yield', () => {
+    // Declared sections cap at 2 under focus (decisions: 3 → 2, remainder honest).
+    const decisions = focalBriefing.sections.decisions.map((d: any) => d.id);
+    expect(decisions).toHaveLength(2);
+    expect(decisions).toContain('ADR 0040');                 // recency order unchanged by focus
+    expect(focalBriefing.metadata.sections_omitted.decisions).toBe(38);
+    // Core sections yield to their focal defaults (2/2/3 caps).
+    expect(focalBriefing.recent.completions.length).toBeLessThanOrEqual(2);
+    expect(focalBriefing.recent.activity.length).toBeLessThanOrEqual(2);
+    expect(focalBriefing.knowledge.length).toBeLessThanOrEqual(3);
+    // CONSTRAINTS NEVER YIELD: worst-first top three survive intact.
+    expect(focalBriefing.constraints[0]).toMatchObject({ id: 'REQ-0001', compliance: 'violated' });
+    expect(focalBriefing.constraints).toHaveLength(3);
+    expect(focalBriefing.metadata.constraints_omitted).toBe(4);
+    // Identity, vision, quarantine — the rest of the briefing stays intact.
+    expect(focalBriefing.identity).toContain('onyx');
+    expect(focalBriefing.vision?.path).toBe('docs/NORTH-STAR.md');
+    expect(focalBriefing.metadata.quarantined).toEqual([
+      { type: 'requirement', path: 'requirements/REQ-0008-broken.md' },
+    ]);
+  });
+
+  it('focal: the complete focal payload stays ≤ 3,072 exact pretty UTF-8 bytes at the MCP boundary', () => {
+    const bytes = Buffer.byteLength(focalPayload, 'utf8');
+    console.info(`[focal budget] exact pretty bytes: ${bytes}; ~tokens: ${Math.ceil(focalPayload.length / 4)}`);
     expect(bytes).toBeLessThanOrEqual(3072);
   });
 });
