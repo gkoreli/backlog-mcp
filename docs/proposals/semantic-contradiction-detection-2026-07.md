@@ -1,9 +1,9 @@
 # Semantic Contradiction Detection — Proposal (July 2026)
 
-**Status**: Proposal — design exploration from the idea garden (granite
-assignment, Goga green-lit). Proposal-grade, no implementation. Governing
-law: R1 store-boundary, R2 fusion scopes, R3 fixture gate, no LLM in the
-server write path, store-doesn't-act, markdown is truth.
+**Status**: Validated build — implemented under ADR 0120; Phase Two dogfood
+evidence is recorded below. Governing law: R1 store-boundary, R2 fusion scopes,
+R3 fixture gate, no LLM in the server write path, store-doesn't-act, markdown
+is truth.
 
 ## What exists and what's missing
 
@@ -119,3 +119,14 @@ S/M as scoped: the fold is a pure function beside `contradictions.ts`
 reusing the live index; `remember` response enrichment through the
 existing store boundary; one viewer chip + one computed view; frontmatter
 mark + fold exclusion. The fixture cases ride the existing harness.
+
+## Phase Two dogfood friction ledger
+
+The build used released `backlog-mcp@0.62.0` as its memory surface. These are
+observations from the real workflow, not synthetic acceptance cases.
+
+| ID | Observed friction | Evidence and disposition |
+|---|---|---|
+| `F-01` | Project wakeup/recall could not start while this repository still carried the legacy `.backlog-mcp/` control directory. | The released tool failed closed and required the explicit docs-native project migration. This is expected migration pressure, but it prevented project-scoped dogfood until the repository itself adopted the shipped layout; global-home wakeup/recall remained usable. |
+| `F-02` | `backlog remember --tags <tag...>` greedily consumed trailing positional content when the variadic flag preceded the memory body. | The first remember attempt failed; placing content before `--tags` succeeded. This is a data-loss-shaped CLI footgun, not user error. File as a bug; the smallest likely fix is command grammar that cannot make a variadic option absorb required content. |
+| `F-03` | The authorized project migration dry-run rejected the repository's tracked `.backlog-mcp/.gitignore`. | Main's one-shot reports `unsupported-source`: it only accepts `cache/`, `state/`, `config.json`, and `config.local.json`, while the operating directive expected the recommended `.gitignore` to move too. Dry-run made no changes. Execution remains stopped pending an explicit fix or bounded manual-relocation ruling. |
