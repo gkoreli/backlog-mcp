@@ -21,8 +21,11 @@ const mocks = vi.hoisted(function createMocks() {
   };
 });
 
-vi.mock('../cli/runner.js', function mockRunner() {
+vi.mock('../cli/runner.js', async function mockRunner(importOriginal) {
+  // Real withAgentIdentity (ADR 0119) and helpers; only the runners are stubbed.
+  const actual = await importOriginal<typeof import('../cli/runner.js')>();
   return {
+    ...actual,
     run: mocks.run,
     runAcrossHomes: mocks.runAcrossHomes,
     cliRuntimeDependencies(program: Command) {
