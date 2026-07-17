@@ -10,8 +10,22 @@ or mocked embeddings. The selected output file is excluded from resource
 discovery so rerunning a checked-in report cannot make the benchmark consume
 its own derived evidence as corpus input.
 
-The input judgments must already have independent human review. The runner
-rejects a query or qrel whose `assessor` does not contain `reviewed:`.
+Input judgments carry tiered assessors (`JUDGING.md` "Assessor tiers").
+The runner rejects a query or qrel whose assessor entries do not declare a
+tier (`constructive:`, `human:`, or `llm:`), and stamps the report's
+`gate_eligibility`: constructively-true judgments gate by construction,
+human-tier judgments gate, llm-tier judgments are recorded evidence that
+never gates alone. The former `reviewed:` substring check is retired — it
+demanded nine characters, not review (report 0004, lens A; ADR 0121 R9).
+
+**Correction to the record (ADR 0121 R9).** This README previously claimed
+the v1 judgments "must already have independent human review". What
+actually happened: all 24 queries and 235 qrels were drafted by one fleet
+agent (chert) and reviewed by another (beryl) — both LLM agents; 2 of 235
+grades changed in that review; the human final authority was exercised
+zero times. The v1 assessor fields are re-marked truthfully as `llm:` and
+the baseline does not gate alone until ADR 0121 R8's human review (Goga
+as human assessor of record) executes.
 
 ## Commands
 
@@ -74,7 +88,7 @@ Each line has this schema:
   surface: "search" | "recall",
   query: string,
   options?: SearchOptions | RecallOptions,
-  assessor: string containing "reviewed:",
+  assessor: tiered assessor history (JUDGING.md "Assessor tiers"),
   rationale: non-empty string,
   provenance: non-empty string[]
 }
@@ -107,8 +121,8 @@ Recall options are strict:
 Example:
 
 ```json
-{"id":"search-01","class":"aboutness","surface":"search","query":"embedding startup retry","assessor":"alice-initial; reviewed:bob 2026-07-16","rationale":"Daily query for the retry task.","provenance":["TASK-0001"]}
-{"id":"recall-01","class":"memory-recall","surface":"recall","query":"what governs fusion changes","options":{"layers":["semantic"],"limit":20},"assessor":"alice-initial; reviewed:bob 2026-07-16","rationale":"Exercises the real recall path and usage multiplier.","provenance":["MEMO-0001"]}
+{"id":"search-01","class":"aboutness","surface":"search","query":"embedding startup retry","assessor":"llm:alice-initial; human:bob 2026-07-16","rationale":"Daily query for the retry task.","provenance":["TASK-0001"]}
+{"id":"recall-01","class":"memory-recall","surface":"recall","query":"what governs fusion changes","options":{"layers":["semantic"],"limit":20},"assessor":"llm:alice-initial; human:bob 2026-07-16","rationale":"Exercises the real recall path and usage multiplier.","provenance":["MEMO-0001"]}
 ```
 
 Query IDs must be unique.
@@ -122,7 +136,7 @@ Every relevance judgment is a separate line:
   query_id: string,
   document_id: string,
   grade: 0 | 1 | 2 | 3,
-  assessor: string containing "reviewed:",
+  assessor: tiered assessor history (JUDGING.md "Assessor tiers"),
   rationale: non-empty string
 }
 ```
@@ -130,14 +144,14 @@ Every relevance judgment is a separate line:
 Example:
 
 ```json
-{"query_id":"search-01","document_id":"TASK-0001","grade":3,"assessor":"alice-initial; reviewed:bob 2026-07-16","rationale":"The task directly owns embedding retry behavior."}
-{"query_id":"recall-01","document_id":"MEMO-0001","grade":3,"assessor":"alice-initial; reviewed:bob 2026-07-16","rationale":"The live semantic memory states the governing fusion law."}
+{"query_id":"search-01","document_id":"TASK-0001","grade":3,"assessor":"llm:alice-initial; human:bob 2026-07-16","rationale":"The task directly owns embedding retry behavior."}
+{"query_id":"recall-01","document_id":"MEMO-0001","grade":3,"assessor":"llm:alice-initial; human:bob 2026-07-16","rationale":"The live semantic memory states the governing fusion law."}
 ```
 
 The runner rejects duplicate `(query_id, document_id)` pairs, unknown queries,
 unknown corpus documents, missing per-qrel rationale or assessor, and any
-builder-only assessor without an independent `reviewed:` entry. Every query
-must have at least one qrel.
+assessor entry that does not declare its tier. Every query must have at
+least one qrel.
 
 ## Report
 
@@ -190,3 +204,40 @@ Baseline v1's known failures make the next pressure points explicit. In BM25,
 class at nDCG@10 `0.528` for BM25 and `0.572` for hybrid, while tail retrieval
 scores `0.800` and `0.846` respectively. These are measured failures to test,
 not authority to change ranking without the judged gate.
+
+The `nav-01` finding is a real plumbing bug, credited to the fixture
+(ADR 0121 R9): ID-intent canonicalization produces built-in hyphenated IDs
+(`TASK-0596`) while docs-native substrates mint space-form display IDs
+(`ADR 0116`), so the exact-ID short-circuit never fires for the corpus
+majority and space-form ID queries fall through to BM25. The structural
+truth suite's `navigation-id` class now probes both ID families for every
+entity on every run.
+
+## Structural truth suite (ADR 0121 R2)
+
+`scripts/structural-suite.mjs` is the deterministic instrument: it walks
+the real project corpus at run time and emits judge-free,
+constructively-true assertions — navigation by every document's title and
+both ID forms, membership (every claimed document retrievable at all),
+wakeup disclosed-count reconciliation, filter compliance as executable
+law, frontmatter-declared supersedes-ordering, and tail-reachability
+probes at the declared MiniLM token offsets (257–512, beyond 512).
+Assertions are regenerated from the corpus on every run, so drift is
+impossible and no judge exists to be circular; results carry the
+`constructive:` assessor tier.
+
+```bash
+pnpm build
+pnpm suite:structural -- \
+  --project-root /absolute/path/to/project \
+  --output docs/evaluation/reports/structural-suite-report.json \
+  --summary docs/evaluation/reports/structural-suite-summary.md
+```
+
+Both output files are excluded from the measured corpus (the same
+self-reference guard as the baseline runner). The report declares its
+limits in its own header: structural navigation partly measures the
+product's exact-ID and title-boost special cases — a tripwire, never
+improvement evidence — and aboutness is out of scope by design. The
+report contains no timestamps or timings; two runs over the same corpus
+and commit are byte-identical, which is the suite's determinism check.

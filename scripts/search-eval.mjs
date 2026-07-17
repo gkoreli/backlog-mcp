@@ -113,12 +113,76 @@ function requireNonEmptyStringArray(value, location) {
   return values;
 }
 
-function requireReviewedAssessor(value, location) {
+/**
+ * Assessor tier validation (ADR 0121 R9; JUDGING.md "Assessor tiers").
+ *
+ * Replaces the former `includes('reviewed:')` substring check, which nine
+ * characters satisfied regardless of who actually reviewed (report 0004,
+ * lens A). Every semicolon-separated assessor entry must declare its tier:
+ *
+ *   constructive:<generator>  truth by construction — no reviewer exists
+ *   human:<name>              a human assessor of record
+ *   llm:<agent-or-model>      provisional — never gates alone
+ *
+ * Fleet persona names are the llm tier: naming an agent does not make a
+ * human. A judgment's tier is its strongest entry (constructive > human >
+ * llm); llm-tier judgments are accepted as input but mark the whole report
+ * gate-ineligible until a human assessor of record confirms them.
+ */
+const ASSESSOR_TIERS = new Set(['constructive', 'human', 'llm']);
+
+function requireTieredAssessor(value, location) {
   const assessor = requireString(value, location);
-  if (!assessor.includes('reviewed:')) {
-    fail(`${location} must include an independent "reviewed:" assessor`);
+  const entries = assessor.split(';').map(entry => entry.trim()).filter(Boolean);
+  if (entries.length === 0) {
+    fail(`${location} must contain at least one tiered assessor entry`);
   }
-  return assessor;
+  const tiers = [];
+  for (const entry of entries) {
+    const separator = entry.indexOf(':');
+    const tier = separator === -1 ? '' : entry.slice(0, separator).trim();
+    const detail = separator === -1 ? '' : entry.slice(separator + 1).trim();
+    if (!ASSESSOR_TIERS.has(tier)) {
+      fail(`${location} entry "${entry}" must declare an assessor tier `
+        + '("constructive:", "human:", or "llm:" — see docs/evaluation/JUDGING.md)');
+    }
+    if (detail === '') {
+      fail(`${location} entry "${entry}" must name its assessor of record`);
+    }
+    tiers.push(tier);
+  }
+  return { assessor, tier: judgmentTier(tiers) };
+}
+
+function judgmentTier(tiers) {
+  if (tiers.includes('constructive')) return 'constructive';
+  if (tiers.includes('human')) return 'human';
+  return 'llm';
+}
+
+function countTiers(records) {
+  const counts = { constructive: 0, human: 0, llm: 0 };
+  for (const record of records) counts[record.assessor_tier] += 1;
+  return counts;
+}
+
+/**
+ * A report gates only when every judgment is constructively true or carries
+ * a human assessor of record. llm-tier judgments are recorded evidence, not
+ * gate authority (JUDGING.md "LLM-proposed judgments"; ADR 0121 R9).
+ */
+function gateEligibility(queries, qrels) {
+  const llmJudged = [...queries, ...qrels]
+    .some(record => record.assessor_tier === 'llm');
+  return {
+    eligible: !llmJudged,
+    rule: 'JUDGING.md assessor tiers: constructively-true assertions gate by construction; human-tier judgments gate; llm-tier judgments never gate alone.',
+    ...(llmJudged
+      ? {
+          reason: 'llm-tier judgments present without a human assessor of record; this report is recorded evidence and does not gate alone until ADR 0121 R8 human review executes.',
+        }
+      : {}),
+  };
 }
 
 function requirePositiveInteger(value, name, defaultValue) {
@@ -257,6 +321,7 @@ function validateQueries(records) {
     if (surface !== 'search' && surface !== 'recall') {
       fail(`${location}.surface must be "search" or "recall"`);
     }
+    const assessor = requireTieredAssessor(query.assessor, `${location}.assessor`);
     queries.push({
       id,
       class: requireString(query.class, `${location}.class`),
@@ -269,7 +334,8 @@ function validateQueries(records) {
               ? validateSearchOptions(query.options, `${location}.options`)
               : validateRecallOptions(query.options, `${location}.options`),
           }),
-      assessor: requireReviewedAssessor(query.assessor, `${location}.assessor`),
+      assessor: assessor.assessor,
+      assessor_tier: assessor.tier,
       rationale: requireString(query.rationale, `${location}.rationale`),
       provenance: requireNonEmptyStringArray(query.provenance, `${location}.provenance`),
     });
@@ -293,11 +359,13 @@ function validateQrels(records, queryIds, documentIds) {
     if (!Number.isInteger(qrel.grade) || qrel.grade < 0 || qrel.grade > 3) {
       fail(`${location}.grade must be one of 0, 1, 2, or 3`);
     }
+    const assessor = requireTieredAssessor(qrel.assessor, `${location}.assessor`);
     qrels.push({
       query_id: queryId,
       document_id: documentId,
       grade: qrel.grade,
-      assessor: requireReviewedAssessor(qrel.assessor, `${location}.assessor`),
+      assessor: assessor.assessor,
+      assessor_tier: assessor.tier,
       rationale: requireString(qrel.rationale, `${location}.rationale`),
     });
   });
@@ -949,6 +1017,11 @@ async function main() {
         corpus_membership_ruling: 'Beryl domain ruling, 2026-07-16: record after ADR 0113 Phase C so packaged substrate documents are members of the measured corpus.',
         query_assessors: [...new Set(queries.map(query => query.assessor))].sort(),
         qrel_assessors: [...new Set(qrels.map(qrel => qrel.assessor))].sort(),
+        judgment_tiers: {
+          queries: countTiers(queries),
+          qrels: countTiers(qrels),
+        },
+        gate_eligibility: gateEligibility(queries, qrels),
         query_sources: Object.fromEntries(queries.map(function querySource(query) {
           return [query.id, query.provenance];
         })),

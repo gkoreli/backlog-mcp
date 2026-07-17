@@ -15,9 +15,42 @@ builder.
 - **Final authority** — the maintainer (Goga). Any disputed grade or gate
   decision escalates here and nowhere else.
 
-The `assessor` field is append-only history, e.g.
-`chert-initial; reviewed:beryl 2026-07-16`. A qrel with a builder-only
+The assessor role is **adjudication, not an engine** (ADR 0121 R9): its
+job is judging disputed or novel relevance claims, a minutes-per-week
+trickle — never bulk grade production. Any process that needs an assessor
+to mass-produce judgments is misdesigned; volume belongs to the
+constructively-true tier below or to task-success evidence (ADR 0121 R3).
+
+The `assessor` field is append-only history. Every entry declares its
+tier (see "Assessor tiers"), e.g.
+`llm:chert-initial; llm:reviewed:beryl 2026-07-16` or
+`llm:chert-initial; human:goga 2026-07-20`. A qrel with a builder-only
 assessor is a draft, not a gate input.
+
+## Assessor tiers
+
+Every assessor entry is `tier:detail`. The runner
+(`scripts/search-eval.mjs`) enforces the grammar — the former
+`reviewed:` substring check is retired (any nine characters satisfied it;
+report 0004, lens A).
+
+- **`constructive:<generator>`** — a constructively-true assertion emitted
+  by a generator that walks the corpus at run time
+  (`scripts/structural-suite.mjs`). Truth by construction: the target is
+  defined by the corpus itself (a document is the grade-3 target for its
+  own title and ID; a typed filter's law is its own declaration), so no
+  reviewer exists to disagree and no judge exists to be circular.
+  Regenerated every run — drift is impossible. **No reviewer needed.**
+  This tier covers retrievability and structural compliance only; it can
+  never mint an aboutness judgment.
+- **`human:<name>`** — a human assessor of record. Required before any
+  graded relevance judgment counts toward a gate.
+- **`llm:<agent-or-model>`** — provisional drafts (see "LLM-proposed
+  judgments"). Never gate alone. Fleet persona names are this tier:
+  naming an agent does not make a human (report 0004, lens A).
+
+A judgment's effective tier is its strongest entry
+(constructive > human > llm).
 
 ## Grading scale (graded, 0–3)
 
@@ -66,9 +99,12 @@ is invalid.
 
 Permitted only as *provisional* drafts: marked `assessor: llm:<model>`,
 with prompt and rationale recorded, and never counted toward a gate until a
-human assessor of record confirms them. Project Markdown is untrusted judge
-input — term-stuffing and embedded instructions can fool an LLM judge
-(ADR 0116 Finding 8 sources). No automatic LLM-judged releases.
+human assessor of record confirms them (recorded as an appended
+`human:<name>` entry). Project Markdown is untrusted judge input —
+term-stuffing and embedded instructions can fool an LLM judge
+(ADR 0116 Finding 8 sources). No automatic LLM-judged releases. The
+runner enforces the marking and stamps any report whose judgments are
+llm-tier as not gate-eligible on its own.
 
 ## Pools and refresh
 
