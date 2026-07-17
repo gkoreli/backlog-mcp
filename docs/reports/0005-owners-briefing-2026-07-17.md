@@ -96,3 +96,30 @@ build (0121 R2) after your ruling, Tier-1 telemetry, viewer polish.
 - 20 min: ADR 0121 (the evaluation reset) — decision #2.
 - 45 min: the vision-gaps audit + the memory-flywheel proposal (both new today) —
   they are the "what's next" conversation.
+
+---
+
+## Resolved since writing (status reconciliation, 2026-07-17)
+
+Appended by the status-ledger reconciliation; the decision table above is
+preserved as written. Of its nine rows:
+
+- **#1 API credits — closed.** The acceptance reruns executed 2026-07-17
+  (reports 0006/0007/0008 exist).
+- **#2 ADR 0121 — closed.** Frontmatter now reads "Accepted (goga,
+  2026-07-17)" (commit a42b3ff).
+- **#4 Release 0.64.0 — closed.** Released 2026-07-17 with the measured rerun
+  results in the notes (CHANGELOG), exactly as row 4 asked.
+- **#5 ADR 0117 Phase A — closed (GO).** Goga's batch approval accepted ADR
+  0117 (commit 0c96810); Phase A implementation is in flight on
+  `feat/adr-0117-write-boundary`.
+- **#6 ADR 0119 — closed (Slice A authorized).** Same batch approval (commit
+  0c96810); identity work in flight (report 0009 §HEALTH: "0119-A in flight").
+- **The memory-flywheel trunk question** (worry #1 / the reading list) —
+  ruled: accepted with the first-person capture law (PROMPT 0006, verbatim;
+  flywheel F2 revised accordingly, commit a42b3ff).
+
+Still open: **#3 R8** (four recall queries awaiting the final-authority human
+tier), **#7 the NAME**, **#9 @nisli/ui 0.4.0**, and **#8 historical memory
+data** — the flywheel proposal still records "whether older data lives
+elsewhere is an open question on Goga."
