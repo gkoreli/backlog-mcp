@@ -36,6 +36,7 @@ export interface AppRequestRuntime {
   identityPath?: string;
   /** Absolute path to the vision doc (NORTH-STAR.md) — docs-native only. */
   visionPath?: string;
+  intentRegistrationMode: 'required' | 'unavailable';
   intentRegistry?: IntentRegistryPort;
   intentWriteValidator?: IntentWriteValidatorPort;
 }

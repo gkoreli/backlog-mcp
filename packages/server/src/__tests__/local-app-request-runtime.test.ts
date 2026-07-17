@@ -80,6 +80,7 @@ describe('createLocalAppRequestRuntime', function describeLocalAppRuntime() {
       resourceManager: runtime.resourceManager,
       readUsageLines: runtime.readUsageLines,
       identityPath: join(runtime.home.documentsDir, 'identity.md'),
+      intentRegistrationMode: 'required',
       intentRegistry: runtime.substrateRegistry,
       intentWriteValidator: runtime.substrateRegistry,
     });

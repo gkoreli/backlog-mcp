@@ -24,6 +24,20 @@ import { registerWriteResourceTool } from './backlog-write-resource.js';
 import { registerSubstrateIntents } from './register-substrate-intents.js';
 import type { SubstrateIntentQuarantineDiagnostic } from './register-substrate-intents.types.js';
 
+export type IntentToolRegistration =
+  | {
+    mode: 'required';
+    intentRegistry: IntentRegistryPort;
+    intentWriteValidator: IntentWriteValidatorPort;
+    reportIntentQuarantine: (
+      diagnostic: SubstrateIntentQuarantineDiagnostic,
+    ) => void;
+  }
+  | {
+    mode: 'unavailable';
+    reason: 'constrained-runtime';
+  };
+
 /** Per-request dependencies for the static and registry-declared MCP tools. */
 export interface ToolDeps {
   resourceManager?: any;
@@ -45,11 +59,30 @@ export interface ToolDeps {
   visionPath?: string;
   readUsageLines?: () => string[];
   homeReadCoordinator?: HomeReadCoordinator;
-  intentRegistry?: IntentRegistryPort;
-  intentWriteValidator?: IntentWriteValidatorPort;
-  reportIntentQuarantine?: (
-    diagnostic: SubstrateIntentQuarantineDiagnostic,
-  ) => void;
+  intentRegistration?: IntentToolRegistration;
+}
+
+function requireIntentRegistration(
+  deps: ToolDeps | undefined,
+): IntentToolRegistration {
+  const registration = deps?.intentRegistration;
+  if (
+    registration?.mode === 'required'
+    && registration.intentRegistry !== undefined
+    && registration.intentWriteValidator !== undefined
+    && registration.reportIntentQuarantine !== undefined
+  ) {
+    return registration;
+  }
+  if (
+    registration?.mode === 'unavailable'
+    && registration.reason === 'constrained-runtime'
+  ) {
+    return registration;
+  }
+  throw new Error(
+    'MCP tool registration requires an explicit complete intent registration mode',
+  );
 }
 
 /** Register the request-selected static reads and semantic write intents. */
@@ -58,6 +91,7 @@ export function registerTools(
   service: IBacklogService,
   deps?: ToolDeps,
 ): void {
+  const intentRegistration = requireIntentRegistration(deps);
   registerBacklogListTool(server, service);
   registerBacklogGetTool(server, service, deps?.usageTracker
     ? { usageTracker: deps.usageTracker }
@@ -104,16 +138,12 @@ export function registerTools(
     deps?.readUsageLines ? { readUsageLines: deps.readUsageLines } : undefined,
   );
   registerBacklogContradictionsTool(server, service);
-  if (
-    deps?.intentRegistry !== undefined
-    && deps.intentWriteValidator !== undefined
-    && deps.reportIntentQuarantine !== undefined
-  ) {
+  if (intentRegistration.mode === 'required') {
     registerSubstrateIntents(server, service, {
-      intentRegistry: deps.intentRegistry,
-      validator: deps.intentWriteValidator,
-      toolDeps: deps,
-      reportQuarantine: deps.reportIntentQuarantine,
+      intentRegistry: intentRegistration.intentRegistry,
+      validator: intentRegistration.intentWriteValidator,
+      toolDeps: deps ?? { intentRegistration },
+      reportQuarantine: intentRegistration.reportIntentQuarantine,
     });
   }
 }

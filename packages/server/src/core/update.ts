@@ -42,6 +42,27 @@ function normalizeWriteError(error: unknown): never {
   throw error;
 }
 
+/** Pin update identity and apply the shared server-owned timestamp policy. */
+export function stampUpdatePostimage(
+  current: AnyEntity,
+  postimage: AnyEntity,
+  updatedAt: string = new Date().toISOString(),
+): AnyEntity {
+  const stamped = {
+    ...(postimage as unknown as Record<string, unknown>),
+  };
+  stamped.id = current.id;
+  stamped.type = current.type;
+  if ('created_at' in current) stamped.created_at = current.created_at;
+  else delete stamped.created_at;
+  if (isBuiltinSubstrateType(current.type) || 'updated_at' in current) {
+    stamped.updated_at = updatedAt;
+  } else {
+    delete stamped.updated_at;
+  }
+  return stamped as AnyEntity;
+}
+
 /**
  * Persist one already-constructed update postimage through the shared capture,
  * journal, event, identity, and timestamp funnel.
@@ -58,26 +79,11 @@ export async function updateEntityPostimage(
   ctx: WriteContext,
   attribution: MutationAttribution,
 ): Promise<UpdateResult> {
-  const merged = {
-    ...(postimage as unknown as Record<string, unknown>),
-  };
-
   delete effectiveChanges.id;
   delete effectiveChanges.type;
   delete effectiveChanges.created_at;
   delete effectiveChanges.updated_at;
-
-  merged.id = current.id;
-  merged.type = current.type;
-  if ('created_at' in current) merged.created_at = current.created_at;
-  else delete merged.created_at;
-  if (isBuiltinSubstrateType(current.type)) {
-    merged.updated_at = new Date().toISOString();
-  } else if ('updated_at' in current) {
-    merged.updated_at = current.updated_at;
-  } else {
-    delete merged.updated_at;
-  }
+  const merged = stampUpdatePostimage(current, postimage);
 
   let stored: AnyEntity;
   try {

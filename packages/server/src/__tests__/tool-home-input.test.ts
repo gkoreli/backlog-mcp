@@ -75,7 +75,12 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
       },
     } as unknown as McpServer;
 
-    registerTools(server, {} as IBacklogService);
+    registerTools(server, {} as IBacklogService, {
+      intentRegistration: {
+        mode: 'unavailable',
+        reason: 'constrained-runtime',
+      },
+    });
 
     expect([...metadata.keys()].sort()).toEqual(STATIC_TOOL_NAMES);
     expect(metadata.get('write_resource')).toMatchObject({

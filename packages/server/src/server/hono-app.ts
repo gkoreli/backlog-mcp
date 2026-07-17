@@ -129,6 +129,7 @@ function createStaticRequestRuntime(
     readUsageLines: deps?.readUsageLines,
     identityPath: deps?.identityPath,
     visionPath: deps?.visionPath,
+    intentRegistrationMode: 'unavailable',
   };
 }
 
@@ -140,6 +141,34 @@ function createRequestToolDeps(
     diagnostic: SubstrateIntentQuarantineDiagnostic,
   ) => void,
 ): ToolDeps {
+  function createIntentRegistration(): NonNullable<ToolDeps['intentRegistration']> {
+    if (runtime.intentRegistrationMode === 'unavailable') {
+      return {
+        mode: 'unavailable' as const,
+        reason: 'constrained-runtime' as const,
+      };
+    }
+    if (runtime.intentRegistrationMode !== 'required') {
+      throw new Error('Runtime has no explicit intent registration mode');
+    }
+    const intentRegistry = runtime.intentRegistry;
+    const intentWriteValidator = runtime.intentWriteValidator;
+    if (
+      intentRegistry === undefined
+      || intentWriteValidator === undefined
+      || reportIntentQuarantine === undefined
+    ) {
+      throw new Error(
+        'Writable local runtime has incomplete intent registration dependencies',
+      );
+    }
+    return {
+      mode: 'required',
+      intentRegistry,
+      intentWriteValidator,
+      reportIntentQuarantine,
+    };
+  }
   return {
     actor: deps?.actor,
     operationLog: runtime.operationLog,
@@ -156,9 +185,7 @@ function createRequestToolDeps(
     identityPath: runtime.identityPath,
     visionPath: runtime.visionPath,
     homeReadCoordinator,
-    intentRegistry: runtime.intentRegistry,
-    intentWriteValidator: runtime.intentWriteValidator,
-    reportIntentQuarantine,
+    intentRegistration: createIntentRegistration(),
   };
 }
 

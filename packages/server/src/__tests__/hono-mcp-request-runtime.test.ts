@@ -81,9 +81,15 @@ describe('/mcp explicit tool home selection', function describeMcpRouting() {
     const resolver = vi.fn(async function resolveRuntime(
       _selection: AppRequestRuntimeSelection,
     ) {
-      return { service: EMPTY_SERVICE };
+      return {
+        service: EMPTY_SERVICE,
+        intentRegistrationMode: 'unavailable' as const,
+      };
     });
-    const app = createApp(EMPTY_SERVICE, { resolveRuntime: resolver });
+    const app = createApp(EMPTY_SERVICE, {
+      resolveRuntime: resolver,
+      logError: vi.fn(),
+    });
     const body = JSON.stringify({
       jsonrpc: '2.0',
       id: 1,
@@ -110,6 +116,32 @@ describe('/mcp explicit tool home selection', function describeMcpRouting() {
     expect(resolver).toHaveBeenCalledWith({ home: 'global' });
     expect(transportRequests).toHaveBeenCalledOnce();
     expect(await response.text()).toBe(body);
+  });
+
+  it('fails before transport when a writable runtime has incomplete intent ports', async function rejectsIncompleteIntentRuntime() {
+    const resolver = vi.fn(async function resolveRuntime() {
+      return {
+        service: EMPTY_SERVICE,
+        intentRegistrationMode: 'required' as const,
+      };
+    });
+    const app = createApp(EMPTY_SERVICE, {
+      resolveRuntime: resolver,
+      logError: vi.fn(),
+    });
+    const response = await app.request('/mcp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/list',
+        params: {},
+      }),
+    });
+
+    expect(response.status).toBe(500);
+    expect(transportRequests).not.toHaveBeenCalled();
   });
 
   it('executes home:all search through global plus the bridged project runtime', async function coordinatesAllSearch() {

@@ -461,8 +461,14 @@ describe('executeSubstrateIntent', () => {
     const replacement = entity('ADR 0002', 'adr', {
       status: 'proposed',
       supersedes: [],
+      created_at: NOW,
+      updated_at: NOW,
     });
-    const superseded = entity('ADR 0001', 'adr', { status: 'accepted' });
+    const superseded = entity('ADR 0001', 'adr', {
+      status: 'accepted',
+      created_at: NOW,
+      updated_at: NOW,
+    });
     const { service, store } = serviceHarness([replacement, superseded]);
     const { context, entries } = contextHarness();
     const { validator, validateWrite } = validatorHarness();
@@ -485,6 +491,10 @@ describe('executeSubstrateIntent', () => {
     expect(validateWrite).toHaveBeenCalledTimes(2);
     expect(store.get(replacement.id)?.supersedes).toEqual([superseded.id]);
     expect(store.get(superseded.id)?.status).toBe('superseded');
+    const replacementUpdatedAt = store.get(replacement.id)?.updated_at;
+    const supersededUpdatedAt = store.get(superseded.id)?.updated_at;
+    expect(replacementUpdatedAt).not.toBe(NOW);
+    expect(replacementUpdatedAt).toBe(supersededUpdatedAt);
     expect(entries).toEqual([
       expect.objectContaining({
         tool: 'backlog_supersede_adr',
@@ -570,8 +580,14 @@ describe('executeSubstrateIntent', () => {
     const replacement = entity('ADR 0002', 'adr', {
       status: 'proposed',
       supersedes: [],
+      created_at: NOW,
+      updated_at: NOW,
     });
-    const superseded = entity('ADR 0001', 'adr', { status: 'accepted' });
+    const superseded = entity('ADR 0001', 'adr', {
+      status: 'accepted',
+      created_at: NOW,
+      updated_at: NOW,
+    });
     const { service, store } = serviceHarness([replacement, superseded]);
     const { context, entries } = contextHarness();
     const { validator } = validatorHarness();
@@ -599,6 +615,10 @@ describe('executeSubstrateIntent', () => {
     expect(store.get(replacement.id)).toEqual(replacement);
     expect(store.get(superseded.id)).toEqual(superseded);
     expect(service.save).toHaveBeenCalledTimes(4);
+    expect(vi.mocked(service.save).mock.calls[0]?.[0].updated_at).not.toBe(NOW);
+    expect(vi.mocked(service.save).mock.calls[1]?.[0].updated_at).not.toBe(NOW);
+    expect(vi.mocked(service.save).mock.calls[2]?.[0]).toEqual(superseded);
+    expect(vi.mocked(service.save).mock.calls[3]?.[0]).toEqual(replacement);
     expect(entries).toEqual([]);
   });
 

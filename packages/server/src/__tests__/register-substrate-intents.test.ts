@@ -182,22 +182,59 @@ describe('registerSubstrateIntents', function describeIntentRegistrar() {
     const { service } = serviceHarness();
 
     registerTools(server, service, {
-      intentRegistry: {
-        listIntents: function listIntents() {
-          return [intent];
+      intentRegistration: {
+        mode: 'required',
+        intentRegistry: {
+          listIntents: function listIntents() {
+            return [intent];
+          },
         },
-      },
-      intentWriteValidator: {
-        validateWrite: function validateWrite(candidate: unknown) {
-          return { ok: true as const, entity: candidate as AnyEntity };
+        intentWriteValidator: {
+          validateWrite: function validateWrite(candidate: unknown) {
+            return { ok: true as const, entity: candidate as AnyEntity };
+          },
         },
+        reportIntentQuarantine: vi.fn(),
       },
-      reportIntentQuarantine: vi.fn(),
     });
 
     expect(tools.has('backlog_capture_requirement')).toBe(true);
     expect(tools.has('backlog_create')).toBe(false);
     expect(tools.has('backlog_update')).toBe(false);
+  });
+
+  it('fails before exposing a partial surface when intent mode is missing or incomplete', function rejectsPartialComposition() {
+    const { service } = serviceHarness();
+    const missing = captureServer();
+    expect(function registerMissingMode() {
+      registerTools(missing.server, service, undefined);
+    }).toThrow(/explicit complete intent registration mode/);
+    expect(missing.tools.size).toBe(0);
+
+    const intentRegistry = {
+      listIntents: function listIntents() {
+        return [];
+      },
+    };
+    const intentWriteValidator = {
+      validateWrite: function validateWrite(candidate: unknown) {
+        return { ok: true as const, entity: candidate as AnyEntity };
+      },
+    };
+    const incompleteRegistrations = [
+      { mode: 'required', intentWriteValidator, reportIntentQuarantine: vi.fn() },
+      { mode: 'required', intentRegistry, reportIntentQuarantine: vi.fn() },
+      { mode: 'required', intentRegistry, intentWriteValidator },
+    ];
+    for (const intentRegistration of incompleteRegistrations) {
+      const incomplete = captureServer();
+      expect(function registerIncompleteMode() {
+        registerTools(incomplete.server, service, {
+          intentRegistration,
+        } as never);
+      }).toThrow(/explicit complete intent registration mode/);
+      expect(incomplete.tools.size).toBe(0);
+    }
   });
 
   it('freezes the initial semantic tool manifest including descriptions and schemas', function freezesManifest() {

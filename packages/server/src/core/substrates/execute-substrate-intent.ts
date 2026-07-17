@@ -14,7 +14,10 @@ import {
   ValidationError,
   type MutationAttribution,
 } from '../types.js';
-import { updateEntityPostimage } from '../update.js';
+import {
+  stampUpdatePostimage,
+  updateEntityPostimage,
+} from '../update.js';
 import type { IntentWriteValidatorPort } from './intent-registry.contract.js';
 import {
   SubstrateIntentExecutionError,
@@ -262,14 +265,21 @@ async function executeRelateAndTransition(
 
   const relation = relationValue(source, targetId, operation.relation);
   const transition = transitionValue(target, operation.targetTransition);
-  const sourcePostimage = validatedPostimage(params.validator, {
-    ...source,
-    [operation.relation.field]: relation.value,
-  });
-  const targetPostimage = validatedPostimage(params.validator, {
-    ...target,
-    [operation.targetTransition.field]: transition.value,
-  });
+  const updatedAt = new Date().toISOString();
+  const sourcePostimage = validatedPostimage(
+    params.validator,
+    stampUpdatePostimage(source, {
+      ...source,
+      [operation.relation.field]: relation.value,
+    } as AnyEntity, updatedAt),
+  );
+  const targetPostimage = validatedPostimage(
+    params.validator,
+    stampUpdatePostimage(target, {
+      ...target,
+      [operation.targetTransition.field]: transition.value,
+    } as AnyEntity, updatedAt),
+  );
 
   if (!relation.changed && !transition.changed) {
     return { ids: [sourceId, targetId], changed: false };
