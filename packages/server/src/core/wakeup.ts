@@ -370,6 +370,15 @@ export async function wakeup(
     sectionsOmitted[declared.wakeup.section] = included.length - stubs.length;
   }
 
+  // Visible quarantine (EXP-1 B-3): claimed documents that could not compile
+  // are named in the briefing so no typed section can imply completeness
+  // while a claimed document is missing from it. Path + type only — the
+  // lossless resource carries the full diagnostic on hydration.
+  const quarantined = (service.listClaimQuarantines?.() ?? []).map(entry => ({
+    type: entry.type,
+    path: entry.sourcePath,
+  }));
+
   // Vision pointer (ADR 0113 C.2; Cold-Open's fifth orientation): path +
   // first-heading title only — the briefing points at the vision, the agent
   // hydrates it when it matters. Never inlined (budget discipline).
@@ -438,6 +447,7 @@ export async function wakeup(
       knowledge_count: knowledge.length,
       constraints_omitted: constraintsOmitted,
       sections_omitted: sectionsOmitted,
+      ...(quarantined.length === 0 ? {} : { quarantined }),
       completion_count: completions.length,
       activity_count: activity.length,
       unfiled_count: unfiledCount,

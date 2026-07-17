@@ -186,6 +186,36 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     expect(storage.getDocumentBySourcePath('README.md')).toBeUndefined();
   });
 
+  it('surfaces claimed documents that cannot compile as visible quarantines (EXP-1 B-3)', function surfacesClaimQuarantines() {
+    const { home, storage } = createStorage('claim-quarantines');
+    writeRawDocument(
+      home,
+      'requirements/REQ-0001-valid.md',
+      '---\ntitle: Valid requirement\nstatus: ruled\ncompliance: unchecked\n---\n\n## The need\nRuled.',
+    );
+    // The Aime EXP-1b shape: an unquoted `(domain: aime)` inside the title
+    // makes the whole frontmatter block unparseable YAML.
+    writeRawDocument(
+      home,
+      'requirements/REQ-0004-being-aime-one-mind.md',
+      '---\ntitle: Being Aime (domain: aime)\nstatus: intake\n---\n\n## The need\nOne mind.',
+    );
+
+    expect(Array.from(storage.iterateEntities()).map(function getId(entity) {
+      return entity.id;
+    })).toEqual(['REQ-0001']);
+    expect(storage.listClaimQuarantines()).toEqual([{
+      type: 'requirement',
+      sourcePath: 'requirements/REQ-0004-being-aime-one-mind.md',
+      reason: expect.stringContaining('frontmatter cannot parse'),
+    }]);
+    // Quarantine is read-only observation: the human file is never rewritten.
+    expect(readFileSync(
+      join(home.documentsDir, 'requirements', 'REQ-0004-being-aime-one-mind.md'),
+      'utf-8',
+    )).toContain('title: Being Aime (domain: aime)');
+  });
+
   it('claims bare declarative documents without trusting frontmatter type', function readsBareDeclarativeDocuments() {
     const { home, storage } = createStorage('bare-declarative');
     writeRawDocument(

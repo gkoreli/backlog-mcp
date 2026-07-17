@@ -497,6 +497,29 @@ describe('core/wakeup', () => {
     });
   });
 
+  describe('visible quarantine (EXP-1 B-3)', () => {
+    it('names claimed-but-uncompilable documents so no section implies completeness', async () => {
+      const svc = mockService([]);
+      (svc as any).listClaimQuarantines = () => [{
+        type: 'requirement',
+        sourcePath: 'requirements/REQ-0004-being-aime-one-mind.md',
+        reason: 'frontmatter cannot parse: bad mapping',
+      }];
+      const result = await wakeup(svc);
+      expect(result.metadata.quarantined).toEqual([{
+        type: 'requirement',
+        path: 'requirements/REQ-0004-being-aime-one-mind.md',
+      }]);
+      // Path + type only — the verbose parse reason never rides the briefing.
+      expect(JSON.stringify(result)).not.toContain('bad mapping');
+    });
+
+    it('stays absent-cheap when nothing is quarantined', async () => {
+      const result = await wakeup(mockService([]));
+      expect(result.metadata.quarantined).toBeUndefined();
+    });
+  });
+
   describe('registry-declared sections + vision (ADR 0113 C.2)', () => {
     const DECISIONS = {
       type: 'adr',

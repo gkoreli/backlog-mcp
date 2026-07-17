@@ -428,6 +428,12 @@ export interface WakeupResult {
     constraints_omitted: number;
     /** Per-section omitted counts for registry-declared sections (0 = complete). */
     sections_omitted: Record<string, number>;
+    /**
+     * Claimed documents that could not compile (EXP-1 B-3) — present only
+     * when non-empty. While any entry exists, no typed disclosure section
+     * may be read as complete; the path hydrates as a lossless resource.
+     */
+    quarantined?: Array<{ type: string; path: string }>;
     completion_count: number;
     activity_count: number;
     /** Home-wide parentless work count; memories and containers are exempt. */

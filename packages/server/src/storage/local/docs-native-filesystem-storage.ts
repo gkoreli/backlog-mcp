@@ -27,6 +27,7 @@ import {
   type ProjectSubstrateRegistry,
 } from '../../core/substrates/index.js';
 import type {
+  ClaimQuarantine,
   DocumentStorageAdapter,
   ListFilter,
   StorageSaveOptions,
@@ -62,20 +63,38 @@ function stringField(
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
+interface ParsedClaimedDocument {
+  document?: StoredEntityDocument;
+  quarantine?: ClaimQuarantine;
+}
+
+function quarantineClaim(
+  claimed: ClaimedSubstrateDocument,
+  reason: string,
+): ParsedClaimedDocument {
+  return {
+    quarantine: {
+      type: claimed.type,
+      sourcePath: claimed.document.sourcePath,
+      reason,
+    },
+  };
+}
+
 function parseStoredDocument(
   claimed: ClaimedSubstrateDocument,
   registry: ProjectSubstrateRegistry,
-): StoredEntityDocument | undefined {
+): ParsedClaimedDocument {
   const document = claimed.document;
   if (document.format !== 'markdown' || document.content === undefined) {
-    return undefined;
+    return quarantineClaim(claimed, 'document is not readable markdown');
   }
 
   try {
     const parsedMarkdown = matter(document.content, {});
     const data = parsedMarkdown.data as Record<string, unknown>;
     const claim = registry.getStorageClaim(claimed.type);
-    if (claim === undefined) return undefined;
+    if (claim === undefined) return {};
 
     const id = formatStorageDisplayId(claim, claimed.storageKey);
     const title = stringField(data, 'title')
@@ -92,13 +111,21 @@ function parseStoredDocument(
     };
 
     return {
-      entity: projection,
-      sourcePath: document.sourcePath,
-      identity: document.identity,
-      markdown: document.content,
+      document: {
+        entity: projection,
+        sourcePath: document.sourcePath,
+        identity: document.identity,
+        markdown: document.content,
+      },
     };
-  } catch {
-    return undefined;
+  } catch (error) {
+    // A claimed document that cannot compile stays quarantined as a generic
+    // lossless resource (EXP-1 B-3). The visible record here is what keeps
+    // typed disclosure from silently implying completeness.
+    return quarantineClaim(
+      claimed,
+      `frontmatter cannot parse: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
@@ -233,15 +260,21 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   }
 
   private documents(): StoredEntityDocument[] {
-    const claims = this.discoverClaims();
     const documents: StoredEntityDocument[] = [];
-
-    for (const claimed of claims.claimed) {
-      const storedDocument = parseStoredDocument(claimed, this.registry);
-      if (storedDocument !== undefined) documents.push(storedDocument);
+    for (const claimed of this.discoverClaims().claimed) {
+      const parsed = parseStoredDocument(claimed, this.registry);
+      if (parsed.document !== undefined) documents.push(parsed.document);
     }
-
     return documents;
+  }
+
+  listClaimQuarantines(): ClaimQuarantine[] {
+    const quarantines: ClaimQuarantine[] = [];
+    for (const claimed of this.discoverClaims().claimed) {
+      const parsed = parseStoredDocument(claimed, this.registry);
+      if (parsed.quarantine !== undefined) quarantines.push(parsed.quarantine);
+    }
+    return quarantines;
   }
 
   private claimFor(entity: AnyEntity): Readonly<SubstrateStorageClaim> {

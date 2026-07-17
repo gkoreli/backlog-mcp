@@ -15,7 +15,7 @@ import type {
 } from '@backlog-mcp/shared';
 import type { UnifiedSearchResult, SearchableType } from '@backlog-mcp/memory/search';
 import type { ResourceContent } from '../resources/manager.js';
-import type { StorageSaveOptions } from './storage-adapter.js';
+import type { ClaimQuarantine, StorageSaveOptions } from './storage-adapter.js';
 
 export interface ListFilter {
   status?: string[];
@@ -48,6 +48,8 @@ export interface IBacklogService {
   listDisclosureRelations?(): readonly CompiledDisclosureRelation[];
   /** Registry-declared wakeup sections (0113 C.2) — docs-native only. */
   listWakeupDisclosures?(): ReadonlyArray<{ type: string; wakeup: CompiledSubstrateWakeupDisclosure }>;
+  /** Claimed-but-uncompilable documents (EXP-1 B-3) — docs-native only. */
+  listClaimQuarantines?(): ClaimQuarantine[];
   getResource?(uri: string): ResourceContent | undefined;
   isHybridSearchActive?(): boolean;
   getFilePath?(id: string): string | null;

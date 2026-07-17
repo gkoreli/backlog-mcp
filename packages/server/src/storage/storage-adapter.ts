@@ -58,12 +58,25 @@ export interface StoredEntityDocument {
   markdown: string;
 }
 
+/**
+ * A document a substrate claimed but could not compile (EXP-1 B-3). It stays
+ * readable as a generic lossless resource; this record makes the downgrade
+ * visible so read surfaces never imply the typed disclosure is complete.
+ */
+export interface ClaimQuarantine {
+  type: string;
+  sourcePath: string;
+  reason: string;
+}
+
 /** Local storage contract for path-addressed, docs-native entity documents. */
 export interface DocumentStorageAdapter extends StorageAdapter {
   getDocumentById(id: string): StoredEntityDocument | undefined;
   getDocumentBySourcePath(sourcePath: string): StoredEntityDocument | undefined;
   iterateDocuments(): Iterable<StoredEntityDocument>;
   createDocument(entity: AnyEntity, sourcePath: string): AnyEntity;
+  /** Claimed-but-uncompilable documents, sourcePath-ordered. */
+  listClaimQuarantines?(): ClaimQuarantine[];
 }
 
 /**

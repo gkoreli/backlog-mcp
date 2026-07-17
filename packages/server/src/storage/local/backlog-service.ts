@@ -6,6 +6,7 @@ import {
   type SubstrateType,
 } from '@backlog-mcp/shared';
 import type {
+  ClaimQuarantine,
   DocumentStorageAdapter,
   StorageSaveOptions,
   StorageAdapter,
@@ -159,6 +160,12 @@ export class BacklogService implements IBacklogService {
 
   getFilePath(id: string): string | null {
     return this.storage.getFilePath(id);
+  }
+
+  /** Visible downgrade record (EXP-1 B-3) — empty for non-document storage. */
+  listClaimQuarantines(): ClaimQuarantine[] {
+    if (!isDocumentStorageAdapter(this.storage)) return [];
+    return this.storage.listClaimQuarantines?.() ?? [];
   }
 
   getSync(id: string): AnyEntity | undefined {

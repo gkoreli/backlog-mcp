@@ -58,6 +58,12 @@ function format(result: WakeupResult): string {
           : []),
       ]),
     ),
+    // A quarantined claim means a typed section above is NOT complete —
+    // the downgrade must be as visible as the sections it hollows (B-3).
+    ...section('quarantined (claimed but could not compile)',
+      (result.metadata.quarantined ?? []).map(q =>
+        `  ${q.type.padEnd(12)} ${q.path} — still readable via search/get`,
+      )),
     ...section('vision', result.vision
       ? [`  ${result.vision.title} — ${result.vision.path} (hydrate on demand)`]
       : []),
