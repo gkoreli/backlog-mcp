@@ -35,6 +35,19 @@ begins at 0.57.0 — earlier history lives in git.
   0121 freeze): fusion, scoring, and the judged-fixture behavior are unchanged.
 
 ### Added
+- **The Desk — a wakeup for the human (`/desk`).** The viewer's alternative
+  attention page: one server-composed briefing (`GET /api/desk`) answers
+  "what should I look at, read, review and judge right now" — at most 7
+  items above the fold, worst-first across four declared classes (JUDGE:
+  open-decision statuses + `attention:` markers by age × weight; REVIEW:
+  collision pairs, quarantines, mined qrel candidates; READ: law-shaped
+  changes in the last 7 days, agent-authored first; HEALTH: violated /
+  at-risk requirements). Every item states why it surfaced (one testable
+  sentence), carries provenance chips (home, `by <agent>`, worktree
+  family), and offers a copy-ready agent instruction. Per-class "N more"
+  lines state the honest omission. The page is read-only by law — verdicts
+  flow through your agent, and items leave the Desk only because the store
+  changed. The task-heavy UI is untouched; `/desk` is an alternative entry.
 - **The briefing teaches the memory protocol (ADR 0118.1-A + flywheel F1).**
   Wakeup's final block is now a two-line rubric: when to recall (before
   re-deriving, on unfamiliar identifiers, before contradicting a recorded
