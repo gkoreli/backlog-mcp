@@ -43,9 +43,38 @@ form one finding:
 The finding: **the read side has budgets, provenance, ranking, and gates; the write
 side has a verb and a hope.** Nothing in the product causes memory to accumulate.
 
+## The first-person capture law (PROMPT 0006, governs every build below)
+
+Goga's ruling, distilled: **the agent that did the work writes the memory** — at
+completion or at its own natural checkpoints, in its own words, while the
+context that earned the lesson is still live. Never post-hoc, never by an
+observer: an assessor summarizing someone else's work into memory is a
+broken compressed telephone, and quality degrades irrecoverably. Rules:
+
+- **Who:** first person only. The doer writes the doer's memories. An
+  orchestrator or reviewer may write its *own* first-person observations as its
+  own memories (provenance-attributed), but never ghost-writes the doer's.
+- **When:** during or at the end of the doing — checkpoint or completion —
+  while the session that did the work is still alive. Memory written after the
+  agent is gone is reconstruction, not memory.
+- **What:** atomic facts in the author's own words, linking to artifacts rather
+  than retelling them. No summarization, no compression at capture time.
+  (Tenet 7's "compress upward" is untouched: later consolidation distills
+  clusters of *first-person atoms* with provenance — it never replaces
+  first-person capture.)
+- **Trigger:** explicit and mechanical — the rubric's named conditions, or the
+  agent's own receipts surfaced back to *it* — never an external judgment call
+  about what someone else's work meant.
+
+Evidence this law is right, already on record: the harness-summary drift
+incident (a summary claimed "Goga picks before build" while the disk prompt
+said "delegate the engineering") is exactly the compressed-telephone failure,
+caught live during Phase One.
+
 ## The proposal
 
-Three small builds, in order, each independently valuable:
+Three small builds, in order, each independently valuable — F2 revised under
+the capture law:
 
 **F1 — The remember rubric rides the briefing (S).** ADR 0118.1 Slice A (Accepted)
 already puts a session-start *recall* rubric in wakeup. Add its twin: a session-end
@@ -56,13 +85,16 @@ the documented harness recipe (SessionEnd / PreCompact hooks — the same lifecy
 events aime already uses for receipts) invokes it. No server code beyond the rubric
 text; the client owns the hook, per 0117/0118.1 law.
 
-**F2 — Receipts become candidate memories (S/M).** The operations journal already
-records every semantic mutation with intent attribution. A deterministic fold (same
-shape as 0120's collision candidates — candidates, never verdicts) proposes memory
-candidates from a session's receipts: completions with recorded friction, decisions
-superseded mid-session, repeated derivations. Candidates land in the existing viewer
-adjudication pattern; a human or agent accepts with one action. No LLM in the server;
-the fold is pure; acceptance is the write.
+**F2 — Receipts remind the doer, never replace it (S/M, revised per PROMPT 0006).**
+The operations journal already records every semantic mutation with intent
+attribution. A deterministic fold surfaces a session's own receipts back to the
+agent that produced them — at its checkpoint or session end — as *remember-prompts*:
+"you completed X after recorded friction; you superseded decision Y mid-session;
+worth keeping?" The DOER then writes (or declines) the memory in its own words while
+its context is still live. No third party ever distills receipts into memory on the
+doer's behalf; if the doer is already gone, the receipts remain receipts — journal
+history, not manufactured memory. No LLM in the server; the fold is pure; the write
+is always first-person.
 
 **F3 — The dogfood covenant (0 code).** I move my own operational memory into the
 product: session-state anchors, incident lore, and fleet protocols become memories in

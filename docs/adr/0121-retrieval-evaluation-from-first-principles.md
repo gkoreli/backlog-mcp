@@ -1,7 +1,7 @@
 ---
 title: "ADR 0121: Retrieval Evaluation from First Principles — Evidence That Binds"
 date: 2026-07-17
-status: Proposed (for Goga's ruling — opened on his directive)
+status: Accepted (goga, 2026-07-17)
 author: granite
 relates_to:
   - ../reports/0004-evaluation-adversarial-panel-2026-07.md
