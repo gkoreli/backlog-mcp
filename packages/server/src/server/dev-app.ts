@@ -1,4 +1,5 @@
 import { resolveBacklogHome } from '../core/backlog-home.js';
+import { resolveGitFamily } from '../storage/local/git-family.js';
 import { createLocalRuntime } from '../storage/local/local-runtime.js';
 import { LocalRuntimeRegistry } from '../storage/local/local-runtime-registry.js';
 import { resolveLegacyDataRoot } from '../utils/legacy-data-root.js';
@@ -20,7 +21,11 @@ export async function createDevApp(
   }),
   cwd = process.cwd(),
 ): Promise<DevAppComposition> {
-  const defaultHome = resolveBacklogHome({ cwd, env });
+  const defaultHome = resolveBacklogHome({
+    cwd,
+    env,
+    deps: { resolveFamily: resolveGitFamily },
+  });
   const defaultSelection: AppRequestRuntimeSelection = defaultHome.kind === 'global'
     ? { home: 'global' }
     : { home: 'project', projectRoot: defaultHome.root };

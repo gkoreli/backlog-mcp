@@ -17,6 +17,7 @@ import type {
 import { envActor } from '../operations/logger.js';
 import { createLocalAppRequestRuntime } from '../server/local-app-request-runtime.js';
 import { validateLocalRuntimeSelection } from '../server/local-runtime-request-resolver.js';
+import { resolveGitFamily } from '../storage/local/git-family.js';
 import {
   createLocalRuntime,
   type LocalRuntime,
@@ -68,6 +69,9 @@ async function createDocsNativeCliRuntime(
     projectRoot: explicitSelection?.projectRoot,
     cwd: deps.cwd ?? process.cwd(),
     env,
+    // Family awareness (LATTICE W1): a CLI run inside a linked worktree
+    // knows its family; main checkouts and non-git roots are unchanged.
+    deps: { resolveFamily: resolveGitFamily },
   });
   const adaptLocalRuntime = deps.adaptLocalRuntime
     ?? createLocalAppRequestRuntime;

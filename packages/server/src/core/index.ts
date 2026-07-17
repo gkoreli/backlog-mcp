@@ -59,6 +59,7 @@ export {
 export type {
   BacklogHome,
   BacklogHomeDeps,
+  BacklogHomeFamily,
   BacklogHomeSelector,
   CreateBacklogHomeParams,
   DiscoverProjectRootParams,

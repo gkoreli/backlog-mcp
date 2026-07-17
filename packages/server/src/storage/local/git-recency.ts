@@ -19,11 +19,9 @@
  * missed 0027), so git is the source and mtime only covers untracked files.
  */
 
-import { spawnSync } from 'node:child_process';
+import { runGitCommand } from './git-runner.js';
 
 const ENTRY_SEPARATOR = '\u0001';
-const MAX_LOG_BUFFER_BYTES = 32 * 1024 * 1024;
-
 /**
  * Last-commit ISO date per file beneath `documentsDir`, keyed by
  * documents-dir-relative POSIX path. Returns an empty map when git is
@@ -33,11 +31,11 @@ const MAX_LOG_BUFFER_BYTES = 32 * 1024 * 1024;
 export function buildGitRecencyMap(
   documentsDir: string,
 ): Record<string, string> {
-  const prefix = runGit(documentsDir, ['rev-parse', '--show-prefix']);
+  const prefix = runGitCommand(documentsDir, ['rev-parse', '--show-prefix']);
   if (prefix === undefined) return {};
   const normalizedPrefix = prefix.trim();
 
-  const log = runGit(documentsDir, [
+  const log = runGitCommand(documentsDir, [
     'log',
     '--pretty=format:%x01%cI',
     '--name-only',
@@ -60,20 +58,4 @@ export function buildGitRecencyMap(
     }
   }
   return map;
-}
-
-function runGit(cwd: string, args: readonly string[]): string | undefined {
-  try {
-    const result = spawnSync('git', [...args], {
-      cwd,
-      encoding: 'utf8',
-      maxBuffer: MAX_LOG_BUFFER_BYTES,
-    });
-    if (result.status !== 0 || typeof result.stdout !== 'string') {
-      return undefined;
-    }
-    return result.stdout;
-  } catch {
-    return undefined;
-  }
 }

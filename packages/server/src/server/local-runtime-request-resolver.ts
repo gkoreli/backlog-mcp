@@ -3,6 +3,7 @@ import {
   resolveBacklogHome,
 } from '../core/backlog-home.js';
 import type { BacklogHomeSelector } from '../core/backlog-home.types.js';
+import { resolveGitFamily } from '../storage/local/git-family.js';
 import { LocalRuntimeRegistry } from '../storage/local/local-runtime-registry.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
 import type {
@@ -73,6 +74,10 @@ export class LocalRuntimeRequestResolver {
       projectRoot: validated.projectRoot,
       globalRoot: this.options.globalRoot,
       env: {},
+      // Family awareness (LATTICE W1): a request selecting a linked-
+      // worktree project root resolves a family-aware home; everyone
+      // else is unchanged.
+      deps: { resolveFamily: resolveGitFamily },
     });
     return this.registry.get(home);
   }

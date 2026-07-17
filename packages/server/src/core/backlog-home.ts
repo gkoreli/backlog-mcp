@@ -34,6 +34,16 @@ const realDeps: BacklogHomeDeps = {
   homeDir: homedir,
 };
 
+/**
+ * Merge caller overrides over the real filesystem dependencies. Family
+ * resolution (LATTICE W1) arrives here as an injected probe — core never
+ * shells out; compositions wire the git-plumbing resolver from the local
+ * layer, and its absence simply means no family awareness.
+ */
+function mergeDeps(deps: Partial<BacklogHomeDeps> | undefined): BacklogHomeDeps {
+  return deps === undefined ? realDeps : { ...realDeps, ...deps };
+}
+
 interface ProjectContext {
   projectRoot?: string;
   config: RepoConfig;
@@ -266,8 +276,9 @@ export function isPathWithin(root: string, candidate: string): boolean {
  */
 export function createBacklogHome(
   params: CreateBacklogHomeParams,
-  deps: BacklogHomeDeps = realDeps,
+  partialDeps?: Partial<BacklogHomeDeps>,
 ): BacklogHome {
+  const deps = mergeDeps(partialDeps);
   const root = deps.canonicalize(params.root);
   const documentsDir = resolveHomeChild(
     root,
@@ -282,12 +293,20 @@ export function createBacklogHome(
     deps,
   );
 
+  // Family awareness (LATTICE W1): a linked-worktree project root learns
+  // its family through the injected probe. Fail-open — no probe, or a
+  // failed one, and the home is exactly what it was before families existed.
+  const family = params.kind === 'project'
+    ? deps.resolveFamily?.(root)
+    : undefined;
+
   return {
     kind: params.kind,
     id: params.kind === 'global' ? 'global' : root,
     root,
     documentsDir,
     controlDir,
+    ...(family === undefined ? {} : { family }),
   };
 }
 
@@ -302,7 +321,7 @@ export function createBacklogHome(
 export function discoverProjectRoot(
   params: DiscoverProjectRootParams,
 ): string | undefined {
-  const deps = params.deps ?? realDeps;
+  const deps = mergeDeps(params.deps);
   const startDir = deps.canonicalize(params.startDir);
   const selectedStopDir = clean(params.stopDir);
   const stopDir = selectedStopDir !== undefined
@@ -321,7 +340,7 @@ export function discoverProjectRoot(
 export function resolveBacklogHome(
   params: ResolveBacklogHomeParams = {},
 ): BacklogHome {
-  const deps = params.deps ?? realDeps;
+  const deps = mergeDeps(params.deps);
   const explicitSelector = normalizeSelector(params.home);
   const explicitProjectRoot = clean(params.projectRoot);
   const env = params.env ?? process.env;
