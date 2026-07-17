@@ -10,7 +10,16 @@ each version says why it mattered on the road to the north star
 (`docs/NORTH-STAR.md` — *your backlog is your agent's memory*). This changelog
 begins at 0.57.0 — earlier history lives in git.
 
-## [Unreleased]
+## [0.65.0] — 2026-07-17
+
+*The release where the briefing faces both of its readers. Agents get the memory
+protocol as part of wakeup itself, first-person attribution on every memory
+(`by granite`), a hard deterministic wire ceiling, and docs-native IDs that
+navigate at rank 1 — the structural truth suite fell 459 → 25 on the same corpus
+with every non-navigation ranked list proven byte-identical (the 0121 freeze,
+honored). The human gets the Desk: a read-only wakeup for judgment — at most
+seven items, worst-first, each saying why it surfaced and what to tell your
+agent. Worktrees now know their family. Judgment scales; it is never absorbed.*
 
 ### Fixed
 - **Docs-native IDs navigate like built-in ones.** Asking for "ADR 0116",
