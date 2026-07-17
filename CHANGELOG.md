@@ -13,6 +13,18 @@ begins at 0.57.0 — earlier history lives in git.
 ## [Unreleased]
 
 ### Fixed
+- **Docs-native IDs navigate like built-in ones.** Asking for "ADR 0116",
+  "REF-0004", or "AGENT-0001" now routes straight to that document at rank 1:
+  the exact-ID fast path derives its vocabulary from the active substrate
+  registry's identity declarations (both `ADR 0092.1` and `ADR-0092.1` forms,
+  thread children included) instead of a hard-coded built-in prefix list. And
+  a type-word filter over a type with zero indexed entities fails open — "Cron
+  Entity Type — Scheduled Task Intake" is content on a cron-less corpus, not
+  an empty-universe filter. Structural truth suite: 459 → 25 failures on the
+  same corpus (all 25 remaining are the known, ADR 0116 R-8-gated embedding
+  window probes — byte-identical before and after); every non-navigation
+  ranked list in the judged eval is byte-identical, honoring the ADR 0121
+  ranking freeze.
 - **`get` accepts plain paths.** `get README.md` and `get docs/adr/0116-….md`
   now resolve exactly like their `mcp://backlog/...` forms; unknown paths return
   a loud "Not found" instead of silent empty content. (Both acceptance reruns
