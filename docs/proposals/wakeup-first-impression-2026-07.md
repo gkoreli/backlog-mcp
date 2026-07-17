@@ -172,6 +172,10 @@ fixture proves required facts genuinely cannot coexist.
 The dogfood trials also exposed three evidence-integrity defects. They accompany
 the same repair batch but do not justify new wakeup concepts:
 
+The first two are reproduced as B-4 and B-3 respectively in
+`docs/reports/0002-exp1-aime-bolt-on-bugs.md` at `b39080f`; their scope remains
+the observed defect, not a new policy layer.
+
 1. **Remember journaling.** Every successful CLI/MCP `remember` intent emits
    exactly one actor-attributed operation row with its resource ID; failed
    writes emit none. Internal entity creation must not double-count it.
