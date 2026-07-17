@@ -24,9 +24,14 @@ export type HomeReadRuntimeSelection =
   | { home: 'global' }
   | { home: 'project'; projectRoot: string };
 
-/** Weak recall-demand recorder owned by one selected home runtime. */
+/** Weak retrieval-demand recorder owned by one selected home runtime. */
 export interface HomeRecallDemandRecorder {
   recordRecall: (query: string, returnedIds: string[]) => void;
+  /**
+   * Tier-1 search telemetry (ADR 0121 R7): returned ids only, no query
+   * text. Optional — runtimes without the telemetry sink stay valid.
+   */
+  recordSearch?: (returnedIds: string[]) => void;
 }
 
 /**

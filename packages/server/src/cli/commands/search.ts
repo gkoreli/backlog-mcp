@@ -74,7 +74,17 @@ export function registerSearch(program: Command): void {
             deps,
           )
         : run(
-            (runtime) => searchItems(runtime.service, params),
+            async (runtime) => {
+              const result = await searchItems(runtime.service, params);
+              // Tier-1 telemetry (ADR 0121 R7) — returned ids only,
+              // fail-open; never query text (Tier 2, gated separately).
+              runtime.usageTracker?.recordSearch(
+                result.results.map(function resultId(item) {
+                  return item.id;
+                }),
+              );
+              return result;
+            },
             format,
             program.opts().json,
             deps,

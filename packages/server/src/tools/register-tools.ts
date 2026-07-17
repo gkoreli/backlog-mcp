@@ -103,9 +103,12 @@ export function registerTools(
     ? { usageTracker: deps.usageTracker }
     : undefined);
   registerBacklogDeleteTool(server, service, deps);
-  registerBacklogSearchTool(server, service, deps?.homeReadCoordinator
-    ? { homeReadCoordinator: deps.homeReadCoordinator }
-    : undefined);
+  registerBacklogSearchTool(server, service, {
+    ...(deps?.homeReadCoordinator
+      ? { homeReadCoordinator: deps.homeReadCoordinator }
+      : {}),
+    ...(deps?.usageTracker ? { usageTracker: deps.usageTracker } : {}),
+  });
   registerWriteResourceTool(server, service, deps);
   registerBacklogWakeupTool(server, service, {
     ...(deps?.operationLogger ? { operationLogger: deps.operationLogger } : {}),

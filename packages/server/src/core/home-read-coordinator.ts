@@ -367,11 +367,36 @@ function recordRecallDemand(
       .map(function localId(item) {
         return item.id;
       });
-    if (ids.length === 0) continue;
+    // A consulted home with zero returned ids still records: that is the
+    // per-home recall-miss event (ADR 0121 R7 Tier 1) and the promotion
+    // lane's cross-home demand signal. The overlay line is unaffected —
+    // the tracker has always skipped it for empty ids.
     try {
       execution.runtime.usageTracker?.recordRecall(query, ids);
     } catch {
       // Usage demand is derived telemetry and must not break recall.
+    }
+  }
+}
+
+function recordSearchDemand(
+  executions: readonly HomeExecution<SearchResult>[],
+  items: readonly CrossHomeSearchResultItem[],
+): void {
+  for (const execution of executions) {
+    if (!execution.available) continue;
+    const ids = items
+      .filter(function ownedByRuntime(item) {
+        return item.home_id === execution.runtime.home.id;
+      })
+      .map(function localId(item) {
+        return item.id;
+      });
+    try {
+      // Tier-1 telemetry only (ADR 0121 R7): ids, never query text.
+      execution.runtime.usageTracker?.recordSearch?.(ids);
+    } catch {
+      // Derived telemetry must not break search.
     }
   }
 }
@@ -422,6 +447,7 @@ export function createHomeReadCoordinator(
       params.limit ?? DEFAULT_SEARCH_LIMIT,
       searchCandidateId,
     ).map(toCrossHomeSearchItem);
+    recordSearchDemand(executions, merged);
 
     return {
       results: merged,

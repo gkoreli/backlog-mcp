@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { searchItems } from '../core/search.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
+import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import {
   BACKLOG_READ_HOME_INPUT_FIELDS,
   requireHomeReadCoordinator,
@@ -10,6 +11,8 @@ import {
 
 export interface BacklogSearchDeps {
   homeReadCoordinator?: HomeReadCoordinator;
+  /** Tier-1 search telemetry (ADR 0121 R7): returned ids, never query text. */
+  usageTracker?: MemoryUsageTracker;
 }
 
 export function registerBacklogSearchTool(
@@ -45,6 +48,16 @@ export function registerBacklogSearchTool(
                 : { projectRoot: project_root },
             )
           : await searchItems(service, params);
+        if (home !== 'all') {
+          // Tier-1 telemetry (ADR 0121 R7) — session-stamped returned ids,
+          // fail-open; the cross-home path records per home inside the
+          // coordinator. Search behavior stays byte-identical.
+          deps?.usageTracker?.recordSearch(
+            result.results.map(function resultId(item) {
+              return item.id;
+            }),
+          );
+        }
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       } catch (error) {
         return { content: [{ type: 'text', text: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }) }], isError: true };
