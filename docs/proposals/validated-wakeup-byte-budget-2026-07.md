@@ -122,4 +122,3 @@ all-sections fixture exceeds 3,072 pretty bytes while required facts genuinely
 need to coexist. First remove redundant transport metadata or lower source stub
 caps. If any proposed cap cannot preserve every Cold-Open and Amnesia fact, it
 must fail closed rather than return an authoritative-looking partial briefing.
-

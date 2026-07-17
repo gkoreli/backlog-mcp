@@ -114,4 +114,3 @@ Reverse this rejection only if at least 40 real atomic memories achieve at least
 field correctly changes at least 20% of reviewed recall or contradiction
 decisions beyond existing metadata. Until then, the smallest answer is to make
 `derived`, source evidence, and staleness more legible—not add another enum.
-
