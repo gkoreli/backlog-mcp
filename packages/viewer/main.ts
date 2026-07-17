@@ -16,6 +16,7 @@ import './components/copy-button.js';
 import './components/spotlight-search.js';
 import './components/activity-panel.js';
 import './components/collision-candidates.js';
+import './components/desk-page.js';
 import './components/theme-toggle.js';
 import './components/backlog-app.js';
 import { backlogEvents } from './services/event-source-client.js';

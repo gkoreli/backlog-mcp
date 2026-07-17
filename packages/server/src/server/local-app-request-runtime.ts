@@ -16,6 +16,10 @@ import {
   createObservedRecencyReader,
   createWakeupGroundingReader,
 } from './wakeup-grounding.js';
+import {
+  createDeskDocumentsReader,
+  createEvaluationCandidatesReader,
+} from './desk-grounding.js';
 
 function containedFile(
   root: string,
@@ -92,6 +96,13 @@ export function createLocalAppRequestRuntime(
         runtime.home.documentsDir,
       ),
     }),
+    readDeskDocuments: createDeskDocumentsReader({
+      home: runtime.home,
+      listResources: function listResources() {
+        return runtime.resourceManager.list();
+      },
+    }),
+    readEvaluationCandidates: createEvaluationCandidatesReader(runtime.home),
     intentRegistrationMode: 'required',
     intentRegistry: runtime.substrateRegistry,
     intentWriteValidator: runtime.substrateRegistry,

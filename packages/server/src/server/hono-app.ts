@@ -9,6 +9,7 @@ import { extractTargetFilename } from '../operations/resource-id.js';
 import { normalizeOperationEntry } from '../operations/mutation.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';
 import { detectContradictions, contradictsFor } from '../core/contradictions.js';
+import { desk } from '../core/desk.js';
 import { findCollisionCandidatePairs, findCollisionCandidatesForMemory } from '../core/collision-candidates.js';
 import { usageSeries, hasUsage } from '../core/usage-series.js';
 import type { AnyEntity, Entity, Memory } from '@backlog-mcp/shared';
@@ -563,6 +564,22 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     return c.json(result);
   });
 
+  // GET /api/desk — the Desk briefing (attention-viewer V1): ONE new
+  // composition endpoint by design law. The server composes the fold from
+  // store state; the viewer renders it verbatim, read-only.
+  app.get('/api/desk', async (c) => {
+    const runtime = await resolveRequestRuntime(c.req);
+    const briefing = await desk(runtime.service, {
+      readDocuments: runtime.readDeskDocuments,
+      readEvaluationCandidates: runtime.readEvaluationCandidates,
+      readGrounding: runtime.readGrounding,
+    });
+    return c.json({
+      ...briefing,
+      ...getHomeProvenance(runtime),
+    });
+  });
+
   // GET /api/status
   const startTime = Date.now();
   app.get('/api/status', async (c) => {
@@ -839,6 +856,10 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       if (!uri) return c.json({ error: 'Missing uri' }, 400);
       return c.redirect(`/?resource=${encodeURIComponent(uri)}`);
     });
+
+    // Typed-URL chrome alias (same class as /open — a redirect into the
+    // SPA, zero composition): the human starts the day at /desk.
+    app.get('/desk', (c) => c.redirect('/?view=desk'));
   }
 
   // Shutdown remains app-scoped and retains its existing Node registration.

@@ -12,6 +12,7 @@ export class UrlState {
   readonly type = signal('all');
   readonly id = signal<string | null>(null);
   readonly q = signal<string | null>(null);
+  readonly view = signal<string | null>(null);
   readonly home = signal<string | null>(null);
   readonly projectRoot = signal<string | null>(null);
 
@@ -24,9 +25,10 @@ export class UrlState {
       const t = this.type.value;
       const id = this.id.value;
       const q = this.q.value;
+      const view = this.view.value;
       const home = this.home.value;
       const projectRoot = this.projectRoot.value;
-      this.pushUrl(f, t, id, q, home, projectRoot);
+      this.pushUrl(f, t, id, q, view, home, projectRoot);
     });
   }
 
@@ -49,6 +51,7 @@ export class UrlState {
     this.type.value = params.get('type') || 'all';
     this.id.value = params.get('id');
     this.q.value = params.get('q');
+    this.view.value = params.get('view');
     this.home.value = params.get('home');
     this.projectRoot.value = params.get('project_root');
   }
@@ -58,6 +61,7 @@ export class UrlState {
     t: string,
     id: string | null,
     q: string | null,
+    view: string | null,
     home: string | null,
     projectRoot: string | null,
   ) {
@@ -70,6 +74,7 @@ export class UrlState {
     set('type', t, 'all');
     set('id', id);
     set('q', q);
+    set('view', view);
     if (home === null) url.searchParams.delete('home');
     else url.searchParams.set('home', home);
     if (projectRoot === null) url.searchParams.delete('project_root');

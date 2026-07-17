@@ -219,6 +219,44 @@ export async function fetchOperationCount(
   return data.count || 0;
 }
 
+// ── The Desk (attention-viewer V1) ─────────────────────────────────────
+
+export type DeskClass = 'judge' | 'review' | 'read' | 'health';
+
+export interface DeskItem {
+  id: string;
+  title: string;
+  class: DeskClass;
+  why_surfaced: string;
+  instruction: string;
+  age_days?: number;
+  path?: string;
+  agent?: string;
+}
+
+export interface DeskBriefing extends Partial<HomeProvenance> {
+  items: DeskItem[];
+  omitted: Record<DeskClass, number>;
+  metadata: {
+    generated_at: string;
+    budget: number;
+    worktree?: string;
+    diagnostics?: string[];
+  };
+}
+
+/** Fetch the server-composed Desk briefing. The viewer renders it verbatim. */
+export async function fetchDesk(
+  selection?: HomeRequestSelection,
+): Promise<DeskBriefing> {
+  const response = await fetch(buildApiUrl('/api/desk', {}, selection));
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'The Desk is unavailable');
+  }
+  return data;
+}
+
 /** Fetch the server-authoritative, worst-first collision-candidate queue. */
 export async function fetchCollisionCandidates(
   selection?: HomeRequestSelection,

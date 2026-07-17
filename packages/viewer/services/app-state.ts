@@ -52,6 +52,8 @@ export class AppState {
   readonly type = this.url.type;
   readonly selectedTaskId = this.url.id;
   readonly query = this.url.q;
+  /** Alternative page selector (?view=desk) — null renders the task UI. */
+  readonly view = this.url.view;
   readonly home = this.url.home;
   readonly projectRoot = this.url.projectRoot;
 

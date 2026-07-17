@@ -58,6 +58,14 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
     app.isSystemInfoOpen.value = true;
   }
 
+  function handleDeskClick() {
+    app.view.value = 'desk';
+  }
+
+  function handleLeaveDeskClick() {
+    app.view.value = null;
+  }
+
   // ── Split pane reactive rendering ─────────────────────────────────
 
   // Pane header content (reactive)
@@ -125,8 +133,10 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
     `;
   });
 
-  // Effect: toggle split-active class on right-pane
+  // Effect: toggle split-active class on right-pane. Reads the view so it
+  // re-applies after returning from the Desk remounts the task layout.
   effect(() => {
+    app.view.value;
     const rightPane = host.querySelector('#right-pane') as HTMLElement;
     if (!rightPane) return;
     if (splitState.activePane.value) {
@@ -148,12 +158,12 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
     return () => document.removeEventListener('keydown', onKeydown);
   });
 
-  // ── Template ─────────────────────────────────────────────────────
-  return html`
-    <div class="app-container" id="app-container">
-      <system-info-modal></system-info-modal>
-      <spotlight-search></spotlight-search>
+  // ── Templates ────────────────────────────────────────────────────
 
+  // Task-heavy main UI — stays as-is; the Desk is an alternative entry,
+  // not a replacement (attention-viewer proposal).
+  const taskLayout = html`
+    <div class="app-container" id="app-container">
       <div class="left-pane" id="left-pane">
         <div class="pane-header">
           <div class="pane-title home-button" style="cursor: pointer;" title="Go to All Tasks" @click="${handleHomeClick}">
@@ -169,6 +179,8 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
             </button>
             ${HomeSelector({})}
             ${ThemeToggle({})}
+            <button class="btn-outline desk-btn" title="The Desk — what needs your attention"
+                    @click="${handleDeskClick}">Desk</button>
             <button class="btn-outline collision-candidates-btn" title="Review collision candidates"
                     @click="${handleCollisionCandidatesClick}">Candidates</button>
             <button class="btn-outline activity-btn" title="Recent Activity" @click="${handleActivityClick}">
@@ -195,5 +207,39 @@ export const BacklogApp = component('backlog-app', (_props, host) => {
         ${splitPaneView}
       </div>
     </div>
+  `;
+
+  // The Desk (?view=desk / /desk): read-only attention page. Same chrome
+  // grammar, same home badge — home-scoped like every page.
+  const deskLayout = html`
+    <div class="app-container desk-shell" id="app-container">
+      <div class="desk-main">
+        <div class="pane-header">
+          <div class="pane-title home-button" style="cursor: pointer;" title="Back to tasks" @click="${handleLeaveDeskClick}">
+            <img src="./logo.svg" class="logo" alt="">
+            The Desk
+          </div>
+          <div class="header-actions">
+            ${HomeSelector({})}
+            ${ThemeToggle({})}
+            <button class="btn-outline desk-leave-btn" title="Back to the task UI"
+                    @click="${handleLeaveDeskClick}">Tasks</button>
+          </div>
+        </div>
+        <div class="pane-content desk-scroll">
+          <desk-page></desk-page>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const activeLayout = computed(() =>
+    app.view.value === 'desk' ? deskLayout : taskLayout
+  );
+
+  return html`
+    <system-info-modal></system-info-modal>
+    <spotlight-search></spotlight-search>
+    ${activeLayout}
   `;
 });

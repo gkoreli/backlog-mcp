@@ -16,6 +16,10 @@ import type {
   IntentWriteValidatorPort,
 } from '../core/substrates/index.js';
 import type { WakeupGrounding } from '../core/types.js';
+import type {
+  DeskDocument,
+  DeskEvaluationCandidateFile,
+} from '../core/desk.types.js';
 
 /** Runtime-owned services selected for one transport request. */
 export interface AppRequestRuntime {
@@ -39,6 +43,10 @@ export interface AppRequestRuntime {
   visionPath?: string;
   /** First-impression grounding reader (charter Slices A/B) — docs-native only. */
   readGrounding?: () => WakeupGrounding | undefined;
+  /** Desk documents reader (attention-viewer V1) — docs-native only. */
+  readDeskDocuments?: () => DeskDocument[];
+  /** Mined evaluation-candidate files reader — docs-native only. */
+  readEvaluationCandidates?: () => DeskEvaluationCandidateFile[];
   intentRegistrationMode: 'required' | 'unavailable';
   intentRegistry?: IntentRegistryPort;
   intentWriteValidator?: IntentWriteValidatorPort;
