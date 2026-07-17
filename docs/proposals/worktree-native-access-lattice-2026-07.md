@@ -45,6 +45,13 @@ Running the released wakeup inside one (`backlog-mcp-wt-0116`, branch sealed at
   --git-common-dir` resolves any worktree to its main checkout — we shipped exactly
   this yesterday in aime's project-scoped questions.
 
+Prior-art check (code-verified, see `uplift-exploration-ledger-2026-07.md` UQ3):
+beads ships worktree plumbing (`bd worktree`, a family-shared `.beads/` store), so
+the pain is market-validated — but its mechanism is one shared database outside
+every branch, which cannot express branch-scoped truth, divergence, or reviewable
+memory diffs. What this proposal designs is precisely what that architecture
+structurally cannot do.
+
 This is the strongest kind of evidence: the product's own development process hits
 the gap daily. Every mid-operation directive we broadcast to the fleet by message
 (rebase-first, review keys, protocol changes) is a workaround for worktree agents

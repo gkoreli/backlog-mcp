@@ -151,6 +151,23 @@ existing benchmarks cannot express it because they have no repo.
   official validators, M2's window narrows. The public-substrate pack is the
   cheapest land-grab in this document.
 
+## Epistemic status (added 2026-07-17, Goga's directive: don't trust READMEs)
+
+Claims in this document are two-tier. **Code-verified**: beads' dependency graph
+and worktree plumbing (go.mod, cmd/bd/worktree.go), memU's store/embedding reality
+(pyproject, agentic.py), agentmemory's benchmark composition (benchmark/README +
+tree). **README-only (unverified)**: all star-count-adjacent quality claims — Mem0's
+LoCoMo 92.5, memvid's "+35% SOTA", TencentDB's "fully local", memU's "500 lines"
+(verified FALSE — marketing framing). Verifications and one correction live in
+`uplift-exploration-ledger-2026-07.md`.
+
+**Correction (UQ3):** "git-native memory space unclaimed" overstated — beads ships
+worktree plumbing (`bd worktree`, family-shared `.beads/`). Its mechanism is one
+shared external store, which *eliminates* branch-scoped truth rather than composing
+with it: no divergence concept, nothing in PR diffs. Accurate sentence: worktree
+plumbing exists at scale; **branch-aware, review-native worktree memory does not.**
+M1/M4 stand, sharpened.
+
 ## Follow-ups
 
 Reference substrate: add REF documents for beads, memU, agentmemory, model2vec,
