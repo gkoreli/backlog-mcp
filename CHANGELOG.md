@@ -12,6 +12,32 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+### Added
+- **Wakeup's first impression of an existing repo (charter, Slices A-C).** The
+  briefing gains a budgeted orientation map — repo-root README/AGENTS.md, the
+  vision document (found under both NORTH-STAR and NORTH_STAR spellings), and
+  existing index documents as openable pointers, never ingested bodies. A rich
+  corpus no longer renders as an authoritative empty project. Disclosure is
+  temporally grounded: a git-backed recency map (injected as plain data, core
+  stays pure) orders decisions newest-first when frontmatter dates are absent.
+  The byte-budget acceptance gate now asserts the exact pretty wire payload
+  (≤3,072 bytes) instead of a token estimate. *Acceptance reruns on the three
+  trial corpora are pending.*
+
+### Fixed
+- **Freeform statuses disclose correctly.** "Accepted (goga, 2026-07-16)" and
+  friends now match declared substrate statuses by leading token — wakeup shows
+  ~45 decisions in this repo where it previously showed one; `list --status`
+  agrees.
+- **Remember journals its intent exactly once**; failed writes journal nothing.
+- **Quarantined documents are visible**: a malformed file in a claimed folder
+  surfaces as a readable resource and wakeup says constraint disclosure is
+  incomplete instead of implying completeness.
+- **First read leaves git clean**: tool-owned ignores cover all derived control
+  state (cache and journals).
+- **CLI tags no longer swallow remember content** (comma-separated where a
+  variadic positional follows).
+
 ## [0.63.0] — 2026-07-17
 
 *The store starts noticing when it disagrees with itself: nearby memories that
