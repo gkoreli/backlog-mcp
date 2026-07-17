@@ -2,6 +2,7 @@
 title: "BUG-0003: Generic Resource Status Is Not Searchable"
 date: 2026-07-16
 status: Open
+note: fix in flight — retrieval defect batch (report 0009 §HEALTH); still a known issue in CHANGELOG 0.64.0
 priority: P1
 affected_version: 0.62.0
 author: agate

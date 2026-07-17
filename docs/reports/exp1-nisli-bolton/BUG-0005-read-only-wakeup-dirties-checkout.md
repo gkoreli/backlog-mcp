@@ -1,7 +1,7 @@
 ---
 title: "BUG-0005: Read-Only Wakeup Dirties the Checkout"
 date: 2026-07-16
-status: Open
+status: Fixed (0.64.0 — tool-owned ignores cover all derived control state; reruns 0006/0007/0008 all verified git porcelain identical before/after); status reconciled 2026-07-17
 priority: P1
 affected_version: 0.62.0
 author: agate

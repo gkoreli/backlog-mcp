@@ -1,7 +1,7 @@
 ---
 title: "BUG-0001: Project Discovery Omits Root Orientation Docs"
 date: 2026-07-16
-status: Open
+status: Fixed (0.64.0 — orientation map surfaces root README/AGENTS.md/vision/index docs; rerun report 0006 graded first wakeup 10/10); status reconciled 2026-07-17
 priority: P0
 affected_version: 0.62.0
 author: agate

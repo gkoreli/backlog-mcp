@@ -1,7 +1,7 @@
 ---
 title: "BUG-0004: Variadic Tags Consume Remember Content"
 date: 2026-07-16
-status: Open
+status: Fixed (0.64.0 — CLI tags are comma-separated and no longer swallow remember content; CHANGELOG 0.64.0 Fixed, rerun cycle reports 0006–0008); status reconciled 2026-07-17
 priority: P1
 affected_version: 0.62.0
 author: agate

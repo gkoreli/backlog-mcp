@@ -1,7 +1,7 @@
 ---
 title: "BUG-0002: Wakeup Hides an Indexed Existing-Docs Corpus"
 date: 2026-07-16
-status: Open
+status: Fixed (0.64.0 — orientation map + freeform-status disclosure; rerun reports 0006 (10/10) and 0008 (10/10 twice)); status reconciled 2026-07-17
 priority: P0
 affected_version: 0.62.0
 author: agate
