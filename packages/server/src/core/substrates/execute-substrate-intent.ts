@@ -266,19 +266,20 @@ async function executeRelateAndTransition(
   const relation = relationValue(source, targetId, operation.relation);
   const transition = transitionValue(target, operation.targetTransition);
   const updatedAt = new Date().toISOString();
+  const advanceTimestamp = params.intent.sourcePath.startsWith('builtin:');
   const sourcePostimage = validatedPostimage(
     params.validator,
     stampUpdatePostimage(source, {
       ...source,
       [operation.relation.field]: relation.value,
-    } as AnyEntity, updatedAt),
+    } as AnyEntity, { advanceTimestamp, updatedAt }),
   );
   const targetPostimage = validatedPostimage(
     params.validator,
     stampUpdatePostimage(target, {
       ...target,
       [operation.targetTransition.field]: transition.value,
-    } as AnyEntity, updatedAt),
+    } as AnyEntity, { advanceTimestamp, updatedAt }),
   );
 
   if (!relation.changed && !transition.changed) {

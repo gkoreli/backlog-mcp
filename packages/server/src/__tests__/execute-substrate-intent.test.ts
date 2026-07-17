@@ -432,6 +432,7 @@ describe('executeSubstrateIntent', () => {
   it('persists a compiler-owned null as a literal value', async () => {
     const decision = entity('decision-001-root', 'decision', {
       reviewed_by: 'goga',
+      updated_at: NOW,
     });
     const { service, store } = serviceHarness([decision]);
     const { context, entries } = contextHarness();
@@ -446,6 +447,7 @@ describe('executeSubstrateIntent', () => {
     });
 
     expect(store.get(decision.id)).toHaveProperty('reviewed_by', null);
+    expect(store.get(decision.id)?.updated_at).toBe(NOW);
     expect(entries).toEqual([
       expect.objectContaining({
         tool: 'backlog_clear_review_decision',

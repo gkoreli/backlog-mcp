@@ -46,7 +46,10 @@ function normalizeWriteError(error: unknown): never {
 export function stampUpdatePostimage(
   current: AnyEntity,
   postimage: AnyEntity,
-  updatedAt: string = new Date().toISOString(),
+  options: {
+    readonly advanceTimestamp?: boolean;
+    readonly updatedAt?: string;
+  } = {},
 ): AnyEntity {
   const stamped = {
     ...(postimage as unknown as Record<string, unknown>),
@@ -55,8 +58,12 @@ export function stampUpdatePostimage(
   stamped.type = current.type;
   if ('created_at' in current) stamped.created_at = current.created_at;
   else delete stamped.created_at;
-  if (isBuiltinSubstrateType(current.type) || 'updated_at' in current) {
-    stamped.updated_at = updatedAt;
+  const advanceTimestamp = options.advanceTimestamp
+    ?? isBuiltinSubstrateType(current.type);
+  if (advanceTimestamp) {
+    stamped.updated_at = options.updatedAt ?? new Date().toISOString();
+  } else if ('updated_at' in current) {
+    stamped.updated_at = current.updated_at;
   } else {
     delete stamped.updated_at;
   }
