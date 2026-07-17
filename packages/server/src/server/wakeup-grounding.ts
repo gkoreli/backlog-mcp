@@ -15,6 +15,8 @@ import type {
   WakeupOrientationDoc,
 } from '../core/types.js';
 import { isNorthStarFilename, markdownTitle } from '../core/orientation.js';
+import type { DocumentStorageAdapter } from '../storage/storage-adapter.js';
+import { buildGitRecencyMap } from '../storage/local/git-recency.js';
 
 export interface WakeupGroundingSources {
   home: Pick<BacklogHome, 'root' | 'documentsDir'>;
@@ -117,6 +119,33 @@ export function discoverWakeupGrounding(
   }
 
   return { orientation: docs, visionCandidates };
+}
+
+/**
+ * Observed recency for documents lacking a valid frontmatter `updated_at`
+ * (charter Slice B, staging-verified): the git last-commit date per source
+ * path, with the discovery-level mtime as the fallback for untracked
+ * files. Explicit frontmatter timestamps stay authoritative — they are
+ * simply absent from this map.
+ */
+export function createObservedRecencyReader(
+  storage: Pick<DocumentStorageAdapter, 'iterateDocuments'>,
+  documentsDir: string,
+): () => Record<string, string> {
+  return function readObservedRecency(): Record<string, string> {
+    const gitDates = buildGitRecencyMap(documentsDir);
+    const map: Record<string, string> = {};
+    for (const document of storage.iterateDocuments()) {
+      const updated = document.entity.updated_at;
+      if (typeof updated === 'string' && !Number.isNaN(Date.parse(updated))) {
+        continue;
+      }
+      const observed = gitDates[document.sourcePath]
+        ?? document.identity.observedDate;
+      if (observed !== undefined) map[document.entity.id] = observed;
+    }
+    return map;
+  };
 }
 
 /** Build the per-call grounding reader the wakeup fold consumes. */

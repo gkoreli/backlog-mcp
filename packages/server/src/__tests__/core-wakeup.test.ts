@@ -634,6 +634,59 @@ describe('core/wakeup', () => {
       expect(result.metadata.sections_omitted['decisions']).toBe(1);       // ADR 0001 cut, rejected never counted
     });
 
+    it('timestamp-less corpora order by injected observed recency; without it, stable id order (Slice B / B-2)', async () => {
+      // Real-shape Aime fixture: legacy ADRs carry no managed updated_at.
+      const corpus = [
+        adr('ADR 0001', { updated_at: undefined }),
+        adr('ADR 0004', { updated_at: undefined }),
+        adr('ADR 0006', { updated_at: undefined }),
+        adr('ADR 0025', { updated_at: undefined }),
+        adr('ADR 0027', { updated_at: undefined }),
+        adr('ADR 0028', { updated_at: undefined }),
+      ];
+
+      // Stage 1 — frontmatter only: everything ties, oldest IDs win (the bug).
+      const stale = await wakeup(withDisclosures(mockService(corpus)));
+      expect((stale.sections['decisions'] ?? []).map(d => d.id))
+        .toEqual(['ADR 0001', 'ADR 0004']);
+
+      // Stage 2 — injected observed recency: newest applicable decisions
+      // surface; the omitted count states the exact remainder.
+      const observedRecency = {
+        'ADR 0001': '2026-07-09T00:00:00.000Z',
+        'ADR 0004': '2026-07-09T12:00:00.000Z',
+        'ADR 0006': '2026-07-10T00:00:00.000Z',
+        'ADR 0025': '2026-07-15T00:00:00.000Z',
+        'ADR 0027': '2026-07-15T12:00:00.000Z',
+        'ADR 0028': '2026-07-15T18:00:00.000Z',
+      };
+      const current = await wakeup(withDisclosures(mockService(corpus)), {
+        readGrounding: () => ({ observedRecency }),
+      });
+      expect((current.sections['decisions'] ?? []).map(d => d.id))
+        .toEqual(['ADR 0028', 'ADR 0027']);
+      expect(current.metadata.sections_omitted['decisions']).toBe(4);
+    });
+
+    it('a valid frontmatter updated_at stays authoritative over the injected map (Slice B tier order)', async () => {
+      const svc = withDisclosures(mockService([
+        adr('ADR 0001', { updated_at: '2026-07-16T00:00:00.000Z' }),  // explicit, newest
+        adr('ADR 0002', { updated_at: 'not-a-date' }),                // invalid → falls through
+        adr('ADR 0003', { updated_at: undefined }),
+      ]));
+      const result = await wakeup(svc, {
+        readGrounding: () => ({
+          observedRecency: {
+            'ADR 0001': '2026-01-01T00:00:00.000Z',  // must be ignored — updated_at wins
+            'ADR 0002': '2026-07-15T00:00:00.000Z',
+            'ADR 0003': '2026-07-14T00:00:00.000Z',
+          },
+        }),
+      });
+      expect((result.sections['decisions'] ?? []).map(d => d.id))
+        .toEqual(['ADR 0001', 'ADR 0002']);
+    });
+
     it('freeform human statuses disclose by leading token; unlisted and missing stay excluded (repair #4)', async () => {
       // Real-corpus shapes from this very repo: 24 "Accepted", 18 "Proposed",
       // "Accepted (goga, 2026-07-16)", "Accepted, amended 2026-04-14".

@@ -343,10 +343,28 @@ export async function wakeup(
   // L1.6 Registry-declared disclosure sections (ADR 0113 C.2) — substrates
   // that declared `disclosure.wakeup` surface as projection-shaped stubs.
   // Same discipline as constraints: pure list fold, exhaustive read, stable
-  // total order (updated_at desc, id asc), per-section omitted counts, scope
-  // rule (parented follows scope; unparented is home-wide). The Requirement
-  // declaration ('constraints') is satisfied by the specialized fold above —
-  // its beryl-approved worst-first ordering is law, not a generic projection.
+  // total order, per-section omitted counts, scope rule (parented follows
+  // scope; unparented is home-wide). The Requirement declaration
+  // ('constraints') is satisfied by the specialized fold above — its
+  // beryl-approved worst-first ordering is law, not a generic projection.
+  //
+  // Ordering comparator (charter Slice B): (1) valid frontmatter updated_at;
+  // (2) injected observed recency when updated_at is absent; (3) stable id
+  // order. Without the injected map, timestamp-less legacy corpora tie and
+  // fall back to oldest IDs (EXP-1b B-2) — the map orders disclosed
+  // evidence, it never invents work or interprets repository history.
+  const observedRecency = grounding?.observedRecency;
+  const entityRecencyMs = (e: { id: string; updated_at?: unknown }): number => {
+    const updated = typeof e.updated_at === 'string'
+      ? Date.parse(e.updated_at)
+      : Number.NaN;
+    if (!Number.isNaN(updated)) return updated;
+    const observed = observedRecency?.[e.id];
+    const observedMs = observed === undefined
+      ? Number.NaN
+      : Date.parse(observed);
+    return Number.isNaN(observedMs) ? Number.NEGATIVE_INFINITY : observedMs;
+  };
   const sections: Record<string, WakeupSectionStub[]> = {};
   const sectionsOmitted: Record<string, number> = {};
   const declaredSections = service.listWakeupDisclosures?.() ?? [];
@@ -371,9 +389,9 @@ export async function wakeup(
           scopeFilter(parentId) || parentId === params.scope;
       })
       .sort((a, b) => {
-        const updated = (typeof b.updated_at === 'string' ? b.updated_at : '')
-          .localeCompare(typeof a.updated_at === 'string' ? a.updated_at : '');
-        return updated !== 0 ? updated : a.id.localeCompare(b.id);
+        const recencyDelta = entityRecencyMs(b) - entityRecencyMs(a);
+        if (recencyDelta !== 0 && !Number.isNaN(recencyDelta)) return recencyDelta;
+        return a.id.localeCompare(b.id);
       });
     const limit = declared.wakeup.limit;
     const stubs = included.slice(0, limit).map(e => {

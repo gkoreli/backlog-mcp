@@ -12,7 +12,10 @@ import { isPathWithin } from '../core/backlog-home.js';
 import { resolveContext } from '../core/config.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
 import type { AppRequestRuntime } from './app-request-runtime.types.js';
-import { createWakeupGroundingReader } from './wakeup-grounding.js';
+import {
+  createObservedRecencyReader,
+  createWakeupGroundingReader,
+} from './wakeup-grounding.js';
 
 function containedFile(
   root: string,
@@ -84,6 +87,10 @@ export function createLocalAppRequestRuntime(
       countIndexedDocuments: function countIndexedDocuments() {
         return runtime.resourceManager.list().length;
       },
+      observedRecency: createObservedRecencyReader(
+        runtime.storage,
+        runtime.home.documentsDir,
+      ),
     }),
     intentRegistrationMode: 'required',
     intentRegistry: runtime.substrateRegistry,
