@@ -1,6 +1,6 @@
 # Structural Truth Suite — Run Summary
 
-Corpus: 227 documents (165 entities, 62 resources, 0 quarantined) — sha256 `5d53673650ea…`, commit `6031f91e91a1`.
+Corpus: 227 documents (165 entities, 62 resources, 0 quarantined) — sha256 `ef5f7cd2456b…`, commit `3ddc9fc95481`.
 
 ## Declared limits
 
@@ -27,9 +27,9 @@ Corpus: 227 documents (165 entities, 62 resources, 0 quarantined) — sha256 `5d
 | navigation-id | 330 | 124 | 206 |
 | navigation-title | 227 | 226 | 1 |
 | supersedes-reference-resolves | 1 | 1 | 0 |
-| tail-reachability | 422 | 408 | 14 |
+| tail-reachability | 422 | 409 | 13 |
 
-### Failures (222)
+### Failures (221)
 
 - navigation-title: ADR 0096 (query: `Cron Entity Type — Scheduled Task Intake`) — not in window
 - membership-title: ADR 0096 (query: `Cron Entity Type — Scheduled Task Intake`) — not in window
@@ -243,7 +243,6 @@ Corpus: 227 documents (165 entities, 62 resources, 0 quarantined) — sha256 `5d
 - tail-reachability: ADR 0074 (query: `task-0040 formulation re-doing constellation`) — not in window
 - tail-reachability: ADR 0098 (query: `taskschema epicschema backlog- re-declaring`) — not in window
 - tail-reachability: REF-0002 (query: `score-free training tune explainable`) — not in window
-- tail-reachability: REF-0006 (query: `excessive handed unvetted pillar`) — rank 11
 - tail-reachability: REF-0007 (query: `layered spec's crud-with-a-type-discriminator crisp`) — not in window
 - tail-reachability: REF-0007 (query: `substrate-declared executor speak earn`) — not in window
 - tail-reachability: REF-0009 (query: `'protect allocator' server-resident llm-in-the-loop`) — not in window
@@ -265,9 +264,9 @@ Skipped probes: 1 (enumerated in the JSON report).
 | navigation-id | 330 | 107 | 223 |
 | navigation-title | 227 | 226 | 1 |
 | supersedes-reference-resolves | 1 | 1 | 0 |
-| tail-reachability | 422 | 409 | 13 |
+| tail-reachability | 422 | 411 | 11 |
 
-### Failures (238)
+### Failures (236)
 
 - navigation-title: ADR 0096 (query: `Cron Entity Type — Scheduled Task Intake`) — not in window
 - membership-title: ADR 0096 (query: `Cron Entity Type — Scheduled Task Intake`) — not in window
@@ -306,7 +305,7 @@ Skipped probes: 1 (enumerated in the JSON report).
 - navigation-id: ADR 0016 (query: `ADR-0016`) — not in window
 - navigation-id: ADR 0017 (query: `ADR 0017`) — rank 12
 - navigation-id: ADR 0017 (query: `ADR-0017`) — not in window
-- navigation-id: ADR 0026 (query: `ADR 0026`) — rank 13
+- navigation-id: ADR 0026 (query: `ADR 0026`) — rank 12
 - navigation-id: ADR 0026 (query: `ADR-0026`) — not in window
 - navigation-id: ADR 0027 (query: `ADR-0027`) — rank 11
 - navigation-id: ADR 0029 (query: `ADR-0029`) — rank 18
@@ -437,7 +436,7 @@ Skipped probes: 1 (enumerated in the JSON report).
 - navigation-id: ADR 0108 (query: `ADR-0108`) — not in window
 - navigation-id: ADR 0110 (query: `ADR 0110`) — rank 11
 - navigation-id: ADR 0110 (query: `ADR-0110`) — not in window
-- navigation-id: ADR 0111 (query: `ADR 0111`) — rank 13
+- navigation-id: ADR 0111 (query: `ADR 0111`) — rank 14
 - navigation-id: ADR 0111 (query: `ADR-0111`) — rank 16
 - navigation-id: ADR 0112 (query: `ADR 0112`) — not in window
 - navigation-id: ADR 0112 (query: `ADR-0112`) — not in window
@@ -497,10 +496,8 @@ Skipped probes: 1 (enumerated in the JSON report).
 - tail-reachability: ADR 0098 (query: `taskschema epicschema backlog- re-declaring`) — rank 12
 - tail-reachability: ADR 0108 (query: `jsdom lodash 20-line onend`) — rank 11
 - tail-reachability: REF-0002 (query: `score-free training tune explainable`) — not in window
-- tail-reachability: REF-0006 (query: `excessive handed unvetted pillar`) — rank 11
 - tail-reachability: REF-0007 (query: `layered spec's crud-with-a-type-discriminator crisp`) — not in window
 - tail-reachability: REF-0007 (query: `substrate-declared executor speak earn`) — not in window
-- tail-reachability: REF-0009 (query: `'protect allocator' server-resident llm-in-the-loop`) — rank 11
 - tail-reachability: REF-0010 (query: `vector-db not' 'write-time reconciliation'`) — not in window
 - tail-reachability: REF-0010 (query: `plugin's injecting voluntary intent-gated`) — not in window
 - tail-reachability: REF-0012 (query: `misfits mixed-type informs becoming`) — not in window
@@ -512,4 +509,4 @@ Skipped probes: 1 (enumerated in the JSON report).
 
 ## Totals
 
-Assertions: 2445, passed: 1985, failed: 460.
+Assertions: 2445, passed: 1988, failed: 457.

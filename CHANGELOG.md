@@ -35,6 +35,22 @@ begins at 0.57.0 — earlier history lives in git.
   0121 freeze): fusion, scoring, and the judged-fixture behavior are unchanged.
 
 ### Added
+- **The briefing teaches the memory protocol (ADR 0118.1-A + flywheel F1).**
+  Wakeup's final block is now a two-line rubric: when to recall (before
+  re-deriving, on unfamiliar identifiers, before contradicting a recorded
+  decision) and when to remember (a lesson proven by failure, a changed
+  decision, a fact that cost tokens — written at your own checkpoint, in your
+  own words, never summarizing another agent's work). A README recipe wires
+  Claude Code SessionStart and compaction hooks to deliver it; the briefing
+  itself is the delivery vehicle because harness end-of-session hooks cannot
+  reach the model.
+- **The briefing enforces a hard wire ceiling.** A deterministic yield ladder
+  (activity → completions → declared sections → knowledge → orientation →
+  epics → tasks) trims one item at a time when a payload would exceed 3,072
+  bytes, records exactly what yielded in a `truncated` ledger, and never trims
+  identity, focus, constraints, vision, quarantine, or the rubric. Transport
+  redundancy removed product-wide: `generated_at` dropped, zero-valued
+  omission counters now absent-means-complete.
 - **Agents are knowledge, and writes may carry their identity (ADR 0119
   Slice A).** The Agent substrate ships as a pure project declaration —
   `docs/substrates/agent.json`: id, title, content, role, harness, and a
