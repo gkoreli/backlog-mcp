@@ -17,22 +17,23 @@
   "determinism_contract": "This report contains no timestamps or timings; two runs over the same corpus and commit must be byte-identical.",
   "inputs": {
     "corpus": {
-      "project_root": "/Users/goga/Documents/goga/backlog-mcp/.claude/worktrees/agent-a32a9c04f1c590916",
-      "documents_dir": "/Users/goga/Documents/goga/backlog-mcp/.claude/worktrees/agent-a32a9c04f1c590916/docs",
-      "home_id": "/Users/goga/Documents/goga/backlog-mcp/.claude/worktrees/agent-a32a9c04f1c590916",
-      "sha256": "4b00540ce136f09a34c66903b508b8bb545127d858afed32f05df76981c41173",
-      "count": 222,
-      "entity_count": 162,
-      "resource_count": 60,
+      "project_root": "/Users/goga/Documents/goga/backlog-mcp",
+      "documents_dir": "/Users/goga/Documents/goga/backlog-mcp/docs",
+      "home_id": "/Users/goga/Documents/goga/backlog-mcp",
+      "sha256": "5d53673650ead856fa3d96f639e47125eab3e0ae7a618362e4262d9b5dad1a0e",
+      "count": 227,
+      "entity_count": 165,
+      "resource_count": 62,
       "quarantined_count": 0,
       "entity_types": {
         "adr": 143,
-        "prompt": 5,
+        "agent": 1,
+        "prompt": 7,
         "reference": 14
       },
       "excluded_paths": [
-        "/Users/goga/Documents/goga/backlog-mcp/.claude/worktrees/agent-a32a9c04f1c590916/docs/evaluation/reports/structural-suite-report.json",
-        "/Users/goga/Documents/goga/backlog-mcp/.claude/worktrees/agent-a32a9c04f1c590916/docs/evaluation/reports/structural-suite-summary.md"
+        "/Users/goga/Documents/goga/backlog-mcp/docs/evaluation/reports/structural-suite-report.json",
+        "/Users/goga/Documents/goga/backlog-mcp/docs/evaluation/reports/structural-suite-summary.md"
       ]
     }
   },
@@ -46,7 +47,7 @@
       "trained_window_tokens": 256,
       "runtime_window_tokens": 512
     },
-    "tail_documents_probed": 219,
+    "tail_documents_probed": 221,
     "filter_query_tokens": [
       "the",
       "and",
@@ -54,13 +55,14 @@
     ],
     "filter_types": [
       "adr",
+      "agent",
       "prompt",
       "reference",
       "resource"
     ]
   },
   "provenance": {
-    "git_commit": "2d32a2a74b498a5355077984f16e93ffeea47e00",
+    "git_commit": "6031f91e91a14650842e3e5d29019afcac810d24",
     "runner_sha256": "cd102fe8fff24376508d7356e2464df192c98ceca8c118b6eb82d8bba3e57470"
   },
   "composition": {
@@ -74,14 +76,14 @@
           "accepted",
           "living"
         ],
-        "eligible_count": 45,
-        "disclosed_count": 45,
+        "eligible_count": 34,
+        "disclosed_count": 34,
         "disclosed_stub_ids": [
           "ADR 0013.7",
           "ADR 0090",
           "ADR 0090.1"
         ],
-        "omitted_count": 42,
+        "omitted_count": 31,
         "pass": true
       }
     ],
@@ -98,23 +100,23 @@
       "hybrid_active": false,
       "assertion_counts": {
         "filter-compliance": {
-          "total": 12,
-          "passed": 12,
+          "total": 15,
+          "passed": 15,
           "failed": 0
         },
         "membership-title": {
-          "total": 222,
-          "passed": 221,
+          "total": 227,
+          "passed": 226,
           "failed": 1
         },
         "navigation-id": {
-          "total": 324,
-          "passed": 121,
-          "failed": 203
+          "total": 330,
+          "passed": 124,
+          "failed": 206
         },
         "navigation-title": {
-          "total": 222,
-          "passed": 221,
+          "total": 227,
+          "passed": 226,
           "failed": 1
         },
         "supersedes-reference-resolves": {
@@ -123,8 +125,8 @@
           "failed": 0
         },
         "tail-reachability": {
-          "total": 418,
-          "passed": 404,
+          "total": 422,
+          "passed": 408,
           "failed": 14
         }
       },
@@ -2426,6 +2428,22 @@
         },
         {
           "class": "navigation-title",
+          "document_id": "AGENT-0001",
+          "query": "granite",
+          "target_unique_title": true,
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "membership-title",
+          "document_id": "AGENT-0001",
+          "query": "granite",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "navigation-title",
           "document_id": "PROMPT 0001",
           "query": "PROMPT 0001. Tasks and Vision — memory uplift, substrates, docs-native backlog",
           "target_unique_title": true,
@@ -2501,6 +2519,38 @@
           "class": "membership-title",
           "document_id": "PROMPT 0005",
           "query": "PROMPT 0005 — Scale Human Judgment, Never Absorb It (verbatim core tenet)",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "navigation-title",
+          "document_id": "PROMPT 0006",
+          "query": "PROMPT 0006 — First-Person Memory Capture: Who Writes, When, On What Trigger (verbatim)",
+          "target_unique_title": true,
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "membership-title",
+          "document_id": "PROMPT 0006",
+          "query": "PROMPT 0006 — First-Person Memory Capture: Who Writes, When, On What Trigger (verbatim)",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "navigation-title",
+          "document_id": "PROMPT 0007",
+          "query": "PROMPT 0007 — Human-Attention-Driven Viewer UX (verbatim)",
+          "target_unique_title": true,
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "membership-title",
+          "document_id": "PROMPT 0007",
+          "query": "PROMPT 0007 — Human-Attention-Driven Viewer UX (verbatim)",
           "rank": 1,
           "pass": true
         },
@@ -3130,6 +3180,22 @@
         },
         {
           "class": "navigation-title",
+          "document_id": "mcp://backlog/docs/proposals/attention-viewer-2026-07.md",
+          "query": "The Desk — a wakeup for the human",
+          "target_unique_title": true,
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "membership-title",
+          "document_id": "mcp://backlog/docs/proposals/attention-viewer-2026-07.md",
+          "query": "The Desk — a wakeup for the human",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "navigation-title",
           "document_id": "mcp://backlog/docs/proposals/cold-open-ab-experiment-2026-07.md",
           "query": "EXP-2 — Cold-Open A/B (erent), quantified",
           "target_unique_title": true,
@@ -3589,6 +3655,22 @@
           "class": "membership-title",
           "document_id": "mcp://backlog/docs/reports/0008-rerun-erent-ab-2026-07.md",
           "query": "EXP-2 rerun — Erent cold-open A/B (acceptance item 3)",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "navigation-title",
+          "document_id": "mcp://backlog/docs/reports/0009-judgment-queue-probe-2026-07.md",
+          "query": "Judgment-Queue Inventory — 2026-07-17",
+          "target_unique_title": true,
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "membership-title",
+          "document_id": "mcp://backlog/docs/reports/0009-judgment-queue-probe-2026-07.md",
+          "query": "Judgment-Queue Inventory — 2026-07-17",
           "rank": 1,
           "pass": true
         },
@@ -3693,7 +3775,7 @@
           "document_id": "ADR 0001",
           "id_form": "space",
           "query": "ADR 0001",
-          "rank": 13,
+          "rank": 16,
           "success_at_1": false,
           "pass": false
         },
@@ -3711,7 +3793,7 @@
           "document_id": "ADR 0002",
           "id_form": "space",
           "query": "ADR 0002",
-          "rank": 15,
+          "rank": 17,
           "success_at_1": false,
           "pass": false
         },
@@ -3792,7 +3874,7 @@
           "document_id": "ADR 0006",
           "id_form": "hyphen",
           "query": "ADR-0006",
-          "rank": 6,
+          "rank": 7,
           "success_at_1": false,
           "pass": true
         },
@@ -3801,8 +3883,8 @@
           "document_id": "ADR 0007",
           "id_form": "space",
           "query": "ADR 0007",
-          "rank": 1,
-          "success_at_1": true,
+          "rank": 3,
+          "success_at_1": false,
           "pass": true
         },
         {
@@ -3810,7 +3892,7 @@
           "document_id": "ADR 0007",
           "id_form": "hyphen",
           "query": "ADR-0007",
-          "rank": 12,
+          "rank": 17,
           "success_at_1": false,
           "pass": false
         },
@@ -3909,7 +3991,7 @@
           "document_id": "ADR 0013.1",
           "id_form": "space",
           "query": "ADR 0013.1",
-          "rank": 18,
+          "rank": 17,
           "success_at_1": false,
           "pass": false
         },
@@ -3927,7 +4009,7 @@
           "document_id": "ADR 0013.2",
           "id_form": "space",
           "query": "ADR 0013.2",
-          "rank": 15,
+          "rank": 14,
           "success_at_1": false,
           "pass": false
         },
@@ -3963,7 +4045,7 @@
           "document_id": "ADR 0013.4",
           "id_form": "space",
           "query": "ADR 0013.4",
-          "rank": 9,
+          "rank": 10,
           "success_at_1": false,
           "pass": true
         },
@@ -4035,7 +4117,7 @@
           "document_id": "ADR 0016",
           "id_form": "space",
           "query": "ADR 0016",
-          "rank": 17,
+          "rank": 18,
           "success_at_1": false,
           "pass": false
         },
@@ -4053,9 +4135,9 @@
           "document_id": "ADR 0017",
           "id_form": "space",
           "query": "ADR 0017",
-          "rank": 10,
+          "rank": 11,
           "success_at_1": false,
-          "pass": true
+          "pass": false
         },
         {
           "class": "navigation-id",
@@ -4233,7 +4315,7 @@
           "document_id": "ADR 0032",
           "id_form": "space",
           "query": "ADR 0032",
-          "rank": 12,
+          "rank": 13,
           "success_at_1": false,
           "pass": false
         },
@@ -4287,7 +4369,7 @@
           "document_id": "ADR 0035",
           "id_form": "space",
           "query": "ADR 0035",
-          "rank": 15,
+          "rank": 16,
           "success_at_1": false,
           "pass": false
         },
@@ -4305,8 +4387,8 @@
           "document_id": "ADR 0036",
           "id_form": "space",
           "query": "ADR 0036",
-          "rank": 5,
-          "success_at_1": false,
+          "rank": 1,
+          "success_at_1": true,
           "pass": true
         },
         {
@@ -4413,7 +4495,7 @@
           "document_id": "ADR 0042",
           "id_form": "space",
           "query": "ADR 0042",
-          "rank": 20,
+          "rank": null,
           "success_at_1": false,
           "pass": false
         },
@@ -4485,7 +4567,7 @@
           "document_id": "ADR 0046",
           "id_form": "space",
           "query": "ADR 0046",
-          "rank": 17,
+          "rank": 18,
           "success_at_1": false,
           "pass": false
         },
@@ -4773,7 +4855,7 @@
           "document_id": "ADR 0062",
           "id_form": "space",
           "query": "ADR 0062",
-          "rank": 15,
+          "rank": 16,
           "success_at_1": false,
           "pass": false
         },
@@ -4809,7 +4891,7 @@
           "document_id": "ADR 0064",
           "id_form": "space",
           "query": "ADR 0064",
-          "rank": 14,
+          "rank": 13,
           "success_at_1": false,
           "pass": false
         },
@@ -4818,7 +4900,7 @@
           "document_id": "ADR 0064",
           "id_form": "hyphen",
           "query": "ADR-0064",
-          "rank": 19,
+          "rank": 18,
           "success_at_1": false,
           "pass": false
         },
@@ -4836,7 +4918,7 @@
           "document_id": "ADR 0065",
           "id_form": "hyphen",
           "query": "ADR-0065",
-          "rank": 19,
+          "rank": 18,
           "success_at_1": false,
           "pass": false
         },
@@ -4845,8 +4927,8 @@
           "document_id": "ADR 0066",
           "id_form": "space",
           "query": "ADR 0066",
-          "rank": 2,
-          "success_at_1": false,
+          "rank": 1,
+          "success_at_1": true,
           "pass": true
         },
         {
@@ -4854,7 +4936,7 @@
           "document_id": "ADR 0066",
           "id_form": "hyphen",
           "query": "ADR-0066",
-          "rank": 17,
+          "rank": 16,
           "success_at_1": false,
           "pass": false
         },
@@ -5205,7 +5287,7 @@
           "document_id": "ADR 0086",
           "id_form": "space",
           "query": "ADR 0086",
-          "rank": 14,
+          "rank": 15,
           "success_at_1": false,
           "pass": false
         },
@@ -5223,7 +5305,7 @@
           "document_id": "ADR 0087",
           "id_form": "space",
           "query": "ADR 0087",
-          "rank": 15,
+          "rank": 14,
           "success_at_1": false,
           "pass": false
         },
@@ -5367,7 +5449,7 @@
           "document_id": "ADR 0092.10",
           "id_form": "space",
           "query": "ADR 0092.10",
-          "rank": 16,
+          "rank": 19,
           "success_at_1": false,
           "pass": false
         },
@@ -5376,7 +5458,7 @@
           "document_id": "ADR 0092.10",
           "id_form": "hyphen",
           "query": "ADR-0092.10",
-          "rank": 18,
+          "rank": 20,
           "success_at_1": false,
           "pass": false
         },
@@ -5385,7 +5467,7 @@
           "document_id": "ADR 0092.11",
           "id_form": "space",
           "query": "ADR 0092.11",
-          "rank": 18,
+          "rank": 19,
           "success_at_1": false,
           "pass": false
         },
@@ -5394,7 +5476,7 @@
           "document_id": "ADR 0092.11",
           "id_form": "hyphen",
           "query": "ADR-0092.11",
-          "rank": 20,
+          "rank": null,
           "success_at_1": false,
           "pass": false
         },
@@ -5439,7 +5521,7 @@
           "document_id": "ADR 0092.14",
           "id_form": "space",
           "query": "ADR 0092.14",
-          "rank": 8,
+          "rank": 10,
           "success_at_1": false,
           "pass": true
         },
@@ -5448,7 +5530,7 @@
           "document_id": "ADR 0092.14",
           "id_form": "hyphen",
           "query": "ADR-0092.14",
-          "rank": 7,
+          "rank": 9,
           "success_at_1": false,
           "pass": true
         },
@@ -5475,25 +5557,25 @@
           "document_id": "ADR 0092.3",
           "id_form": "space",
           "query": "ADR 0092.3",
-          "rank": null,
+          "rank": 8,
           "success_at_1": false,
-          "pass": false
+          "pass": true
         },
         {
           "class": "navigation-id",
           "document_id": "ADR 0092.3",
           "id_form": "hyphen",
           "query": "ADR-0092.3",
-          "rank": null,
+          "rank": 7,
           "success_at_1": false,
-          "pass": false
+          "pass": true
         },
         {
           "class": "navigation-id",
           "document_id": "ADR 0092.4",
           "id_form": "space",
           "query": "ADR 0092.4",
-          "rank": 4,
+          "rank": 3,
           "success_at_1": false,
           "pass": true
         },
@@ -5511,16 +5593,16 @@
           "document_id": "ADR 0092.5",
           "id_form": "space",
           "query": "ADR 0092.5",
-          "rank": 10,
+          "rank": 11,
           "success_at_1": false,
-          "pass": true
+          "pass": false
         },
         {
           "class": "navigation-id",
           "document_id": "ADR 0092.5",
           "id_form": "hyphen",
           "query": "ADR-0092.5",
-          "rank": 9,
+          "rank": 10,
           "success_at_1": false,
           "pass": true
         },
@@ -5547,7 +5629,7 @@
           "document_id": "ADR 0092.7",
           "id_form": "space",
           "query": "ADR 0092.7",
-          "rank": 8,
+          "rank": 9,
           "success_at_1": false,
           "pass": true
         },
@@ -5556,7 +5638,7 @@
           "document_id": "ADR 0092.7",
           "id_form": "hyphen",
           "query": "ADR-0092.7",
-          "rank": 8,
+          "rank": 9,
           "success_at_1": false,
           "pass": true
         },
@@ -5583,7 +5665,7 @@
           "document_id": "ADR 0092.9",
           "id_form": "space",
           "query": "ADR 0092.9",
-          "rank": 14,
+          "rank": 15,
           "success_at_1": false,
           "pass": false
         },
@@ -5592,7 +5674,7 @@
           "document_id": "ADR 0092.9",
           "id_form": "hyphen",
           "query": "ADR-0092.9",
-          "rank": 11,
+          "rank": 12,
           "success_at_1": false,
           "pass": false
         },
@@ -5709,7 +5791,7 @@
           "document_id": "ADR 0098",
           "id_form": "space",
           "query": "ADR 0098",
-          "rank": 9,
+          "rank": 8,
           "success_at_1": false,
           "pass": true
         },
@@ -5790,7 +5872,7 @@
           "document_id": "ADR 0102",
           "id_form": "hyphen",
           "query": "ADR-0102",
-          "rank": 16,
+          "rank": 17,
           "success_at_1": false,
           "pass": false
         },
@@ -5835,7 +5917,7 @@
           "document_id": "ADR 0106",
           "id_form": "space",
           "query": "ADR 0106",
-          "rank": 19,
+          "rank": 16,
           "success_at_1": false,
           "pass": false
         },
@@ -5925,7 +6007,7 @@
           "document_id": "ADR 0108",
           "id_form": "space",
           "query": "ADR 0108",
-          "rank": 6,
+          "rank": 8,
           "success_at_1": false,
           "pass": true
         },
@@ -5943,7 +6025,7 @@
           "document_id": "ADR 0110",
           "id_form": "space",
           "query": "ADR 0110",
-          "rank": 10,
+          "rank": 9,
           "success_at_1": false,
           "pass": true
         },
@@ -5961,7 +6043,7 @@
           "document_id": "ADR 0111",
           "id_form": "space",
           "query": "ADR 0111",
-          "rank": 11,
+          "rank": 12,
           "success_at_1": false,
           "pass": false
         },
@@ -5970,7 +6052,7 @@
           "document_id": "ADR 0111",
           "id_form": "hyphen",
           "query": "ADR-0111",
-          "rank": 13,
+          "rank": 14,
           "success_at_1": false,
           "pass": false
         },
@@ -6015,7 +6097,7 @@
           "document_id": "ADR 0112.2",
           "id_form": "space",
           "query": "ADR 0112.2",
-          "rank": 14,
+          "rank": 15,
           "success_at_1": false,
           "pass": false
         },
@@ -6024,7 +6106,7 @@
           "document_id": "ADR 0112.2",
           "id_form": "hyphen",
           "query": "ADR-0112.2",
-          "rank": 13,
+          "rank": 14,
           "success_at_1": false,
           "pass": false
         },
@@ -6078,7 +6160,7 @@
           "document_id": "ADR 0113",
           "id_form": "hyphen",
           "query": "ADR-0113",
-          "rank": 20,
+          "rank": null,
           "success_at_1": false,
           "pass": false
         },
@@ -6096,7 +6178,7 @@
           "document_id": "ADR 0113.1",
           "id_form": "hyphen",
           "query": "ADR-0113.1",
-          "rank": 14,
+          "rank": 16,
           "success_at_1": false,
           "pass": false
         },
@@ -6105,7 +6187,7 @@
           "document_id": "ADR 0114",
           "id_form": "space",
           "query": "ADR 0114",
-          "rank": 6,
+          "rank": 7,
           "success_at_1": false,
           "pass": true
         },
@@ -6141,7 +6223,7 @@
           "document_id": "ADR 0116",
           "id_form": "space",
           "query": "ADR 0116",
-          "rank": 19,
+          "rank": 20,
           "success_at_1": false,
           "pass": false
         },
@@ -6159,9 +6241,9 @@
           "document_id": "ADR 0117",
           "id_form": "space",
           "query": "ADR 0117",
-          "rank": 9,
+          "rank": 11,
           "success_at_1": false,
-          "pass": true
+          "pass": false
         },
         {
           "class": "navigation-id",
@@ -6264,6 +6346,24 @@
         },
         {
           "class": "navigation-id",
+          "document_id": "AGENT-0001",
+          "id_form": "space",
+          "query": "AGENT 0001",
+          "rank": null,
+          "success_at_1": false,
+          "pass": false
+        },
+        {
+          "class": "navigation-id",
+          "document_id": "AGENT-0001",
+          "id_form": "hyphen",
+          "query": "AGENT-0001",
+          "rank": null,
+          "success_at_1": false,
+          "pass": false
+        },
+        {
+          "class": "navigation-id",
           "document_id": "PROMPT 0001",
           "id_form": "space",
           "query": "PROMPT 0001",
@@ -6348,6 +6448,42 @@
           "document_id": "PROMPT 0005",
           "id_form": "hyphen",
           "query": "PROMPT-0005",
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "navigation-id",
+          "document_id": "PROMPT 0006",
+          "id_form": "space",
+          "query": "PROMPT 0006",
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "navigation-id",
+          "document_id": "PROMPT 0006",
+          "id_form": "hyphen",
+          "query": "PROMPT-0006",
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "navigation-id",
+          "document_id": "PROMPT 0007",
+          "id_form": "space",
+          "query": "PROMPT 0007",
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "navigation-id",
+          "document_id": "PROMPT 0007",
+          "id_form": "hyphen",
+          "query": "PROMPT-0007",
           "rank": 1,
           "success_at_1": true,
           "pass": true
@@ -6627,23 +6763,44 @@
         },
         {
           "class": "filter-compliance",
+          "type": "agent",
+          "query": "the",
+          "result_count": 1,
+          "pass": true
+        },
+        {
+          "class": "filter-compliance",
+          "type": "agent",
+          "query": "and",
+          "result_count": 1,
+          "pass": true
+        },
+        {
+          "class": "filter-compliance",
+          "type": "agent",
+          "query": "with",
+          "result_count": 0,
+          "pass": true
+        },
+        {
+          "class": "filter-compliance",
           "type": "prompt",
           "query": "the",
-          "result_count": 5,
+          "result_count": 7,
           "pass": true
         },
         {
           "class": "filter-compliance",
           "type": "prompt",
           "query": "and",
-          "result_count": 5,
+          "result_count": 7,
           "pass": true
         },
         {
           "class": "filter-compliance",
           "type": "prompt",
           "query": "with",
-          "result_count": 3,
+          "result_count": 4,
           "pass": true
         },
         {
@@ -6947,7 +7104,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0013.4",
           "zone": "tokens-beyond-512",
-          "query": "onclose unsound suppress remind",
+          "query": "onclose 'missing unsound suppress",
           "rank": 1,
           "pass": true
         },
@@ -7243,7 +7400,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0036",
           "zone": "tokens-257-512",
-          "query": "buffett's circle someday distractions",
+          "query": "darlings buffett's circle someday",
           "rank": 1,
           "pass": true
         },
@@ -7251,7 +7408,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0036",
           "zone": "tokens-beyond-512",
-          "query": "over-commit cancel epic-0007 spaces",
+          "query": "costly fallacy invested auto-decay",
           "rank": 1,
           "pass": true
         },
@@ -8219,7 +8376,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0092.3",
           "zone": "tokens-257-512",
-          "query": "chair inward golden-query task-0676",
+          "query": "echo-signal chair inward golden-query",
           "rank": 1,
           "pass": true
         },
@@ -8420,7 +8577,7 @@
           "document_id": "ADR 0097.1",
           "zone": "tokens-beyond-512",
           "query": "2026-04-28t22 2026-04-28t19 671z 5-field",
-          "rank": 7,
+          "rank": 10,
           "pass": true
         },
         {
@@ -8475,7 +8632,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0101",
           "zone": "tokens-257-512",
-          "query": "pending-ops leading-character insertions trie",
+          "query": "pending-ops radix empirically levenshtein",
           "rank": 1,
           "pass": true
         },
@@ -8483,7 +8640,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0101",
           "zone": "tokens-beyond-512",
-          "query": "meilisearch 3-char tantivy edit-distance",
+          "query": "leading-character insertions trie task-0597",
           "rank": 1,
           "pass": true
         },
@@ -8539,7 +8696,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0106",
           "zone": "tokens-257-512",
-          "query": "discriminated-union semanticness database's climbed",
+          "query": "layer's semanticness database's climbed",
           "rank": 1,
           "pass": true
         },
@@ -8587,7 +8744,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0106.5",
           "zone": "tokens-257-512",
-          "query": "guessed project-supplied dual-registered instinct",
+          "query": "tool-name project-supplied dual-registered instinct",
           "rank": 1,
           "pass": true
         },
@@ -8595,7 +8752,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0106.5",
           "zone": "tokens-beyond-512",
-          "query": "loyalty founder's unloaded uncommon",
+          "query": "instinct loyalty founder's unloaded",
           "rank": 1,
           "pass": true
         },
@@ -8620,7 +8777,7 @@
           "document_id": "ADR 0108",
           "zone": "tokens-257-512",
           "query": "jsdom lodash 20-line onend",
-          "rank": 8,
+          "rank": 10,
           "pass": true
         },
         {
@@ -8763,7 +8920,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0113.1",
           "zone": "tokens-257-512",
-          "query": "violated recently-satisfied reqs pushed",
+          "query": "recently-satisfied reqs memory-only pushed",
           "rank": 1,
           "pass": true
         },
@@ -8779,7 +8936,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0114",
           "zone": "tokens-257-512",
-          "query": "query-oriented dialects 000-token pre-packed",
+          "query": "re-express query-oriented 000-token pre-packed",
           "rank": 1,
           "pass": true
         },
@@ -9019,7 +9176,7 @@
           "class": "tail-reachability",
           "document_id": "REF-0004",
           "zone": "tokens-257-512",
-          "query": "binaries parcel-docs-tree-watcher observer 'observed'",
+          "query": "binaries parceldocstreewatcher parcel-docs-tree-watcher 'observed'",
           "rank": 1,
           "pass": true
         },
@@ -9044,7 +9201,7 @@
           "document_id": "REF-0006",
           "zone": "tokens-beyond-512",
           "query": "excessive handed unvetted pillar",
-          "rank": 13,
+          "rank": 11,
           "pass": false
         },
         {
@@ -9067,8 +9224,8 @@
           "class": "tail-reachability",
           "document_id": "REF-0008",
           "zone": "tokens-257-512",
-          "query": "open-decisions 0107-as-written 'loro substrate'",
-          "rank": 7,
+          "query": "loro-dev 0107-as-written 'loro substrate'",
+          "rank": 2,
           "pass": true
         },
         {
@@ -9116,14 +9273,14 @@
           "document_id": "REF-0012",
           "zone": "tokens-257-512",
           "query": "reflects validated-epistemic-claim-typing-2026-07 'keep enum'",
-          "rank": 6,
+          "rank": 7,
           "pass": true
         },
         {
           "class": "tail-reachability",
           "document_id": "REF-0012",
           "zone": "tokens-beyond-512",
-          "query": "misfits mixed-type informs upward",
+          "query": "misfits mixed-type informs becoming",
           "rank": null,
           "pass": false
         },
@@ -9132,7 +9289,7 @@
           "document_id": "REF-0013",
           "zone": "tokens-257-512",
           "query": "iclr xiaowu0162 accuracy-latency validated-latency-quality-frontier-2026-07",
-          "rank": 6,
+          "rank": 9,
           "pass": true
         },
         {
@@ -9235,7 +9392,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/adr/0018-local-llm-optimization-layer.md",
           "zone": "tokens-257-512",
-          "query": "suboptimal preventable routellm lmsys",
+          "query": "over-hydrating suboptimal preventable routellm",
           "rank": 1,
           "pass": true
         },
@@ -9483,7 +9640,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/proposals/aime-bolt-on-trial-2026-07.md",
           "zone": "tokens-257-512",
-          "query": "expanding hypothesis froze inventory",
+          "query": "expanding hypothesis froze inspected",
           "rank": 1,
           "pass": true
         },
@@ -9491,7 +9648,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/proposals/aime-bolt-on-trial-2026-07.md",
           "zone": "tokens-beyond-512",
-          "query": "canon requirements' non-ratified foundations",
+          "query": "canon requirements' non-ratified disappeared",
           "rank": 1,
           "pass": true
         },
@@ -9524,6 +9681,22 @@
           "document_id": "mcp://backlog/docs/proposals/architecture-audit-2026-07.md",
           "zone": "tokens-beyond-512",
           "query": "non-test mib release-size hazards",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "tail-reachability",
+          "document_id": "mcp://backlog/docs/proposals/attention-viewer-2026-07.md",
+          "zone": "tokens-257-512",
+          "query": "laws automating desk copy-ready",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "tail-reachability",
+          "document_id": "mcp://backlog/docs/proposals/attention-viewer-2026-07.md",
+          "zone": "tokens-beyond-512",
+          "query": "memo-0004 frictionless open-decision textually",
           "rank": 1,
           "pass": true
         },
@@ -9587,7 +9760,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/proposals/memory-flywheel-2026-07.md",
           "zone": "tokens-beyond-512",
-          "query": "0120's re-primes -driven amnesia-in-anger",
+          "query": "summarizing else's irrecoverably doer",
           "rank": 1,
           "pass": true
         },
@@ -9819,7 +9992,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/proposals/wakeup-first-impression-2026-07.md",
           "zone": "tokens-257-512",
-          "query": "prepared graders differed experiment-authored",
+          "query": "cold-orientation blinded graders differed",
           "rank": 1,
           "pass": true
         },
@@ -9851,7 +10024,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/reports/0001-phase-one-vision-uplift.md",
           "zone": "tokens-257-512",
-          "query": "loopback-contained server-owned injection-proof pre-hydration",
+          "query": "loopback-contained registry-declared injection-proof pre-hydration",
           "rank": 1,
           "pass": true
         },
@@ -9971,7 +10144,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/reports/0007-rerun-aime-acceptance-2026-07.md",
           "zone": "tokens-beyond-512",
-          "query": "shortfall concentrates half-credits run-guidance",
+          "query": "concentrates half-credits run-guidance hinges",
           "rank": 1,
           "pass": true
         },
@@ -9988,6 +10161,22 @@
           "document_id": "mcp://backlog/docs/reports/0008-rerun-erent-ab-2026-07.md",
           "zone": "tokens-beyond-512",
           "query": "constrains byte-economy confounds burned",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "tail-reachability",
+          "document_id": "mcp://backlog/docs/reports/0009-judgment-queue-probe-2026-07.md",
+          "zone": "tokens-257-512",
+          "query": "status-drift 175d pre-uplift odd-states",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "tail-reachability",
+          "document_id": "mcp://backlog/docs/reports/0009-judgment-queue-probe-2026-07.md",
+          "zone": "tokens-beyond-512",
+          "query": "48h phase-one reviewed-marked irreducibly-human",
           "rank": 1,
           "pass": true
         },
@@ -10019,7 +10208,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/reports/exp1-nisli-bolton/BUG-0004-variadic-tags-consume-remember-content.md",
           "zone": "tokens-257-512",
-          "query": "attempt lands lowest-ceremony infer",
+          "query": "placing non-variadic representation lowest-ceremony",
           "rank": 1,
           "pass": true
         },
@@ -10027,7 +10216,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/reports/exp1-nisli-bolton/BUG-0005-read-only-wakeup-dirties-checkout.md",
           "zone": "tokens-257-512",
-          "query": "invasive multi-megabyte weakens files-belong-to-the-project",
+          "query": "acceleration multi-megabyte weakens files-belong-to-the-project",
           "rank": 1,
           "pass": true
         },
@@ -10045,23 +10234,23 @@
       "hybrid_active": true,
       "assertion_counts": {
         "filter-compliance": {
-          "total": 12,
-          "passed": 12,
+          "total": 15,
+          "passed": 15,
           "failed": 0
         },
         "membership-title": {
-          "total": 222,
-          "passed": 221,
+          "total": 227,
+          "passed": 226,
           "failed": 1
         },
         "navigation-id": {
-          "total": 324,
-          "passed": 106,
-          "failed": 218
+          "total": 330,
+          "passed": 107,
+          "failed": 223
         },
         "navigation-title": {
-          "total": 222,
-          "passed": 221,
+          "total": 227,
+          "passed": 226,
           "failed": 1
         },
         "supersedes-reference-resolves": {
@@ -10070,9 +10259,9 @@
           "failed": 0
         },
         "tail-reachability": {
-          "total": 418,
-          "passed": 407,
-          "failed": 11
+          "total": 422,
+          "passed": 409,
+          "failed": 13
         }
       },
       "skipped": [
@@ -12373,6 +12562,22 @@
         },
         {
           "class": "navigation-title",
+          "document_id": "AGENT-0001",
+          "query": "granite",
+          "target_unique_title": true,
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "membership-title",
+          "document_id": "AGENT-0001",
+          "query": "granite",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "navigation-title",
           "document_id": "PROMPT 0001",
           "query": "PROMPT 0001. Tasks and Vision — memory uplift, substrates, docs-native backlog",
           "target_unique_title": true,
@@ -12448,6 +12653,38 @@
           "class": "membership-title",
           "document_id": "PROMPT 0005",
           "query": "PROMPT 0005 — Scale Human Judgment, Never Absorb It (verbatim core tenet)",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "navigation-title",
+          "document_id": "PROMPT 0006",
+          "query": "PROMPT 0006 — First-Person Memory Capture: Who Writes, When, On What Trigger (verbatim)",
+          "target_unique_title": true,
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "membership-title",
+          "document_id": "PROMPT 0006",
+          "query": "PROMPT 0006 — First-Person Memory Capture: Who Writes, When, On What Trigger (verbatim)",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "navigation-title",
+          "document_id": "PROMPT 0007",
+          "query": "PROMPT 0007 — Human-Attention-Driven Viewer UX (verbatim)",
+          "target_unique_title": true,
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "membership-title",
+          "document_id": "PROMPT 0007",
+          "query": "PROMPT 0007 — Human-Attention-Driven Viewer UX (verbatim)",
           "rank": 1,
           "pass": true
         },
@@ -13077,6 +13314,22 @@
         },
         {
           "class": "navigation-title",
+          "document_id": "mcp://backlog/docs/proposals/attention-viewer-2026-07.md",
+          "query": "The Desk — a wakeup for the human",
+          "target_unique_title": true,
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "membership-title",
+          "document_id": "mcp://backlog/docs/proposals/attention-viewer-2026-07.md",
+          "query": "The Desk — a wakeup for the human",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "navigation-title",
           "document_id": "mcp://backlog/docs/proposals/cold-open-ab-experiment-2026-07.md",
           "query": "EXP-2 — Cold-Open A/B (erent), quantified",
           "target_unique_title": true,
@@ -13536,6 +13789,22 @@
           "class": "membership-title",
           "document_id": "mcp://backlog/docs/reports/0008-rerun-erent-ab-2026-07.md",
           "query": "EXP-2 rerun — Erent cold-open A/B (acceptance item 3)",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "navigation-title",
+          "document_id": "mcp://backlog/docs/reports/0009-judgment-queue-probe-2026-07.md",
+          "query": "Judgment-Queue Inventory — 2026-07-17",
+          "target_unique_title": true,
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "membership-title",
+          "document_id": "mcp://backlog/docs/reports/0009-judgment-queue-probe-2026-07.md",
+          "query": "Judgment-Queue Inventory — 2026-07-17",
           "rank": 1,
           "pass": true
         },
@@ -13640,7 +13909,7 @@
           "document_id": "ADR 0001",
           "id_form": "space",
           "query": "ADR 0001",
-          "rank": 14,
+          "rank": 17,
           "success_at_1": false,
           "pass": false
         },
@@ -13658,7 +13927,7 @@
           "document_id": "ADR 0002",
           "id_form": "space",
           "query": "ADR 0002",
-          "rank": 18,
+          "rank": 20,
           "success_at_1": false,
           "pass": false
         },
@@ -13712,7 +13981,7 @@
           "document_id": "ADR 0005",
           "id_form": "space",
           "query": "ADR 0005",
-          "rank": 14,
+          "rank": 15,
           "success_at_1": false,
           "pass": false
         },
@@ -13721,7 +13990,7 @@
           "document_id": "ADR 0005",
           "id_form": "hyphen",
           "query": "ADR-0005",
-          "rank": 18,
+          "rank": 19,
           "success_at_1": false,
           "pass": false
         },
@@ -13739,16 +14008,16 @@
           "document_id": "ADR 0006",
           "id_form": "hyphen",
           "query": "ADR-0006",
-          "rank": 8,
+          "rank": 11,
           "success_at_1": false,
-          "pass": true
+          "pass": false
         },
         {
           "class": "navigation-id",
           "document_id": "ADR 0007",
           "id_form": "space",
           "query": "ADR 0007",
-          "rank": 4,
+          "rank": 8,
           "success_at_1": false,
           "pass": true
         },
@@ -13757,7 +14026,7 @@
           "document_id": "ADR 0007",
           "id_form": "hyphen",
           "query": "ADR-0007",
-          "rank": 15,
+          "rank": 20,
           "success_at_1": false,
           "pass": false
         },
@@ -13883,7 +14152,7 @@
           "document_id": "ADR 0013.2",
           "id_form": "hyphen",
           "query": "ADR-0013.2",
-          "rank": 15,
+          "rank": 16,
           "success_at_1": false,
           "pass": false
         },
@@ -13892,7 +14161,7 @@
           "document_id": "ADR 0013.3",
           "id_form": "space",
           "query": "ADR 0013.3",
-          "rank": 20,
+          "rank": null,
           "success_at_1": false,
           "pass": false
         },
@@ -13910,7 +14179,7 @@
           "document_id": "ADR 0013.4",
           "id_form": "space",
           "query": "ADR 0013.4",
-          "rank": 14,
+          "rank": 15,
           "success_at_1": false,
           "pass": false
         },
@@ -13982,7 +14251,7 @@
           "document_id": "ADR 0016",
           "id_form": "space",
           "query": "ADR 0016",
-          "rank": 17,
+          "rank": 19,
           "success_at_1": false,
           "pass": false
         },
@@ -14072,7 +14341,7 @@
           "document_id": "ADR 0026",
           "id_form": "space",
           "query": "ADR 0026",
-          "rank": 12,
+          "rank": 13,
           "success_at_1": false,
           "pass": false
         },
@@ -14081,7 +14350,7 @@
           "document_id": "ADR 0026",
           "id_form": "hyphen",
           "query": "ADR-0026",
-          "rank": 20,
+          "rank": null,
           "success_at_1": false,
           "pass": false
         },
@@ -14099,9 +14368,9 @@
           "document_id": "ADR 0027",
           "id_form": "hyphen",
           "query": "ADR-0027",
-          "rank": 10,
+          "rank": 11,
           "success_at_1": false,
-          "pass": true
+          "pass": false
         },
         {
           "class": "navigation-id",
@@ -14117,9 +14386,9 @@
           "document_id": "ADR 0028",
           "id_form": "hyphen",
           "query": "ADR-0028",
-          "rank": 11,
+          "rank": 10,
           "success_at_1": false,
-          "pass": false
+          "pass": true
         },
         {
           "class": "navigation-id",
@@ -14180,7 +14449,7 @@
           "document_id": "ADR 0032",
           "id_form": "space",
           "query": "ADR 0032",
-          "rank": 13,
+          "rank": 14,
           "success_at_1": false,
           "pass": false
         },
@@ -14234,7 +14503,7 @@
           "document_id": "ADR 0035",
           "id_form": "space",
           "query": "ADR 0035",
-          "rank": 16,
+          "rank": 17,
           "success_at_1": false,
           "pass": false
         },
@@ -14252,7 +14521,7 @@
           "document_id": "ADR 0036",
           "id_form": "space",
           "query": "ADR 0036",
-          "rank": 9,
+          "rank": 3,
           "success_at_1": false,
           "pass": true
         },
@@ -14432,7 +14701,7 @@
           "document_id": "ADR 0046",
           "id_form": "space",
           "query": "ADR 0046",
-          "rank": 18,
+          "rank": 19,
           "success_at_1": false,
           "pass": false
         },
@@ -14684,7 +14953,7 @@
           "document_id": "ADR 0060",
           "id_form": "space",
           "query": "ADR 0060",
-          "rank": 7,
+          "rank": 6,
           "success_at_1": false,
           "pass": true
         },
@@ -14720,7 +14989,7 @@
           "document_id": "ADR 0062",
           "id_form": "space",
           "query": "ADR 0062",
-          "rank": 16,
+          "rank": 19,
           "success_at_1": false,
           "pass": false
         },
@@ -14756,7 +15025,7 @@
           "document_id": "ADR 0064",
           "id_form": "space",
           "query": "ADR 0064",
-          "rank": 15,
+          "rank": 14,
           "success_at_1": false,
           "pass": false
         },
@@ -14783,7 +15052,7 @@
           "document_id": "ADR 0065",
           "id_form": "hyphen",
           "query": "ADR-0065",
-          "rank": 20,
+          "rank": 19,
           "success_at_1": false,
           "pass": false
         },
@@ -14801,7 +15070,7 @@
           "document_id": "ADR 0066",
           "id_form": "hyphen",
           "query": "ADR-0066",
-          "rank": 17,
+          "rank": 16,
           "success_at_1": false,
           "pass": false
         },
@@ -15152,7 +15421,7 @@
           "document_id": "ADR 0086",
           "id_form": "space",
           "query": "ADR 0086",
-          "rank": 15,
+          "rank": 16,
           "success_at_1": false,
           "pass": false
         },
@@ -15170,7 +15439,7 @@
           "document_id": "ADR 0087",
           "id_form": "space",
           "query": "ADR 0087",
-          "rank": 15,
+          "rank": 14,
           "success_at_1": false,
           "pass": false
         },
@@ -15314,7 +15583,7 @@
           "document_id": "ADR 0092.10",
           "id_form": "space",
           "query": "ADR 0092.10",
-          "rank": 7,
+          "rank": 9,
           "success_at_1": false,
           "pass": true
         },
@@ -15323,16 +15592,16 @@
           "document_id": "ADR 0092.10",
           "id_form": "hyphen",
           "query": "ADR-0092.10",
-          "rank": 9,
+          "rank": 11,
           "success_at_1": false,
-          "pass": true
+          "pass": false
         },
         {
           "class": "navigation-id",
           "document_id": "ADR 0092.11",
           "id_form": "space",
           "query": "ADR 0092.11",
-          "rank": 19,
+          "rank": null,
           "success_at_1": false,
           "pass": false
         },
@@ -15341,7 +15610,7 @@
           "document_id": "ADR 0092.11",
           "id_form": "hyphen",
           "query": "ADR-0092.11",
-          "rank": 20,
+          "rank": null,
           "success_at_1": false,
           "pass": false
         },
@@ -15377,7 +15646,7 @@
           "document_id": "ADR 0092.13",
           "id_form": "hyphen",
           "query": "ADR-0092.13",
-          "rank": 18,
+          "rank": 20,
           "success_at_1": false,
           "pass": false
         },
@@ -15386,7 +15655,7 @@
           "document_id": "ADR 0092.14",
           "id_form": "space",
           "query": "ADR 0092.14",
-          "rank": 12,
+          "rank": 14,
           "success_at_1": false,
           "pass": false
         },
@@ -15395,16 +15664,16 @@
           "document_id": "ADR 0092.14",
           "id_form": "hyphen",
           "query": "ADR-0092.14",
-          "rank": 10,
+          "rank": 12,
           "success_at_1": false,
-          "pass": true
+          "pass": false
         },
         {
           "class": "navigation-id",
           "document_id": "ADR 0092.2",
           "id_form": "space",
           "query": "ADR 0092.2",
-          "rank": 17,
+          "rank": 19,
           "success_at_1": false,
           "pass": false
         },
@@ -15413,7 +15682,7 @@
           "document_id": "ADR 0092.2",
           "id_form": "hyphen",
           "query": "ADR-0092.2",
-          "rank": 19,
+          "rank": null,
           "success_at_1": false,
           "pass": false
         },
@@ -15422,25 +15691,25 @@
           "document_id": "ADR 0092.3",
           "id_form": "space",
           "query": "ADR 0092.3",
-          "rank": 18,
+          "rank": 7,
           "success_at_1": false,
-          "pass": false
+          "pass": true
         },
         {
           "class": "navigation-id",
           "document_id": "ADR 0092.3",
           "id_form": "hyphen",
           "query": "ADR-0092.3",
-          "rank": 19,
+          "rank": 5,
           "success_at_1": false,
-          "pass": false
+          "pass": true
         },
         {
           "class": "navigation-id",
           "document_id": "ADR 0092.4",
           "id_form": "space",
           "query": "ADR 0092.4",
-          "rank": 3,
+          "rank": 2,
           "success_at_1": false,
           "pass": true
         },
@@ -15458,7 +15727,7 @@
           "document_id": "ADR 0092.5",
           "id_form": "space",
           "query": "ADR 0092.5",
-          "rank": 13,
+          "rank": 15,
           "success_at_1": false,
           "pass": false
         },
@@ -15467,7 +15736,7 @@
           "document_id": "ADR 0092.5",
           "id_form": "hyphen",
           "query": "ADR-0092.5",
-          "rank": 14,
+          "rank": 16,
           "success_at_1": false,
           "pass": false
         },
@@ -15494,7 +15763,7 @@
           "document_id": "ADR 0092.7",
           "id_form": "space",
           "query": "ADR 0092.7",
-          "rank": 9,
+          "rank": 8,
           "success_at_1": false,
           "pass": true
         },
@@ -15503,9 +15772,9 @@
           "document_id": "ADR 0092.7",
           "id_form": "hyphen",
           "query": "ADR-0092.7",
-          "rank": 9,
+          "rank": 11,
           "success_at_1": false,
-          "pass": true
+          "pass": false
         },
         {
           "class": "navigation-id",
@@ -15530,7 +15799,7 @@
           "document_id": "ADR 0092.9",
           "id_form": "space",
           "query": "ADR 0092.9",
-          "rank": 18,
+          "rank": 19,
           "success_at_1": false,
           "pass": false
         },
@@ -15539,7 +15808,7 @@
           "document_id": "ADR 0092.9",
           "id_form": "hyphen",
           "query": "ADR-0092.9",
-          "rank": 15,
+          "rank": 16,
           "success_at_1": false,
           "pass": false
         },
@@ -15665,7 +15934,7 @@
           "document_id": "ADR 0098",
           "id_form": "hyphen",
           "query": "ADR-0098",
-          "rank": 20,
+          "rank": 18,
           "success_at_1": false,
           "pass": false
         },
@@ -15737,7 +16006,7 @@
           "document_id": "ADR 0102",
           "id_form": "hyphen",
           "query": "ADR-0102",
-          "rank": 17,
+          "rank": 19,
           "success_at_1": false,
           "pass": false
         },
@@ -15782,7 +16051,7 @@
           "document_id": "ADR 0106",
           "id_form": "space",
           "query": "ADR 0106",
-          "rank": null,
+          "rank": 19,
           "success_at_1": false,
           "pass": false
         },
@@ -15890,7 +16159,7 @@
           "document_id": "ADR 0110",
           "id_form": "space",
           "query": "ADR 0110",
-          "rank": 12,
+          "rank": 11,
           "success_at_1": false,
           "pass": false
         },
@@ -15908,7 +16177,7 @@
           "document_id": "ADR 0111",
           "id_form": "space",
           "query": "ADR 0111",
-          "rank": 12,
+          "rank": 13,
           "success_at_1": false,
           "pass": false
         },
@@ -15917,7 +16186,7 @@
           "document_id": "ADR 0111",
           "id_form": "hyphen",
           "query": "ADR-0111",
-          "rank": 15,
+          "rank": 16,
           "success_at_1": false,
           "pass": false
         },
@@ -15962,7 +16231,7 @@
           "document_id": "ADR 0112.2",
           "id_form": "space",
           "query": "ADR 0112.2",
-          "rank": 18,
+          "rank": 20,
           "success_at_1": false,
           "pass": false
         },
@@ -15971,7 +16240,7 @@
           "document_id": "ADR 0112.2",
           "id_form": "hyphen",
           "query": "ADR-0112.2",
-          "rank": 18,
+          "rank": 20,
           "success_at_1": false,
           "pass": false
         },
@@ -16016,7 +16285,7 @@
           "document_id": "ADR 0113",
           "id_form": "space",
           "query": "ADR 0113",
-          "rank": 6,
+          "rank": 7,
           "success_at_1": false,
           "pass": true
         },
@@ -16025,7 +16294,7 @@
           "document_id": "ADR 0113",
           "id_form": "hyphen",
           "query": "ADR-0113",
-          "rank": 19,
+          "rank": 20,
           "success_at_1": false,
           "pass": false
         },
@@ -16034,16 +16303,16 @@
           "document_id": "ADR 0113.1",
           "id_form": "space",
           "query": "ADR 0113.1",
-          "rank": 9,
+          "rank": 14,
           "success_at_1": false,
-          "pass": true
+          "pass": false
         },
         {
           "class": "navigation-id",
           "document_id": "ADR 0113.1",
           "id_form": "hyphen",
           "query": "ADR-0113.1",
-          "rank": 4,
+          "rank": 5,
           "success_at_1": false,
           "pass": true
         },
@@ -16052,7 +16321,7 @@
           "document_id": "ADR 0114",
           "id_form": "space",
           "query": "ADR 0114",
-          "rank": 11,
+          "rank": 12,
           "success_at_1": false,
           "pass": false
         },
@@ -16070,7 +16339,7 @@
           "document_id": "ADR 0115",
           "id_form": "space",
           "query": "ADR 0115",
-          "rank": 5,
+          "rank": 3,
           "success_at_1": false,
           "pass": true
         },
@@ -16088,7 +16357,7 @@
           "document_id": "ADR 0116",
           "id_form": "space",
           "query": "ADR 0116",
-          "rank": 20,
+          "rank": null,
           "success_at_1": false,
           "pass": false
         },
@@ -16124,7 +16393,7 @@
           "document_id": "ADR 0118",
           "id_form": "space",
           "query": "ADR 0118",
-          "rank": 12,
+          "rank": 11,
           "success_at_1": false,
           "pass": false
         },
@@ -16160,7 +16429,7 @@
           "document_id": "ADR 0119",
           "id_form": "space",
           "query": "ADR 0119",
-          "rank": 5,
+          "rank": 6,
           "success_at_1": false,
           "pass": true
         },
@@ -16178,7 +16447,7 @@
           "document_id": "ADR 0120",
           "id_form": "space",
           "query": "ADR 0120",
-          "rank": 3,
+          "rank": 2,
           "success_at_1": false,
           "pass": true
         },
@@ -16208,6 +16477,24 @@
           "rank": 1,
           "success_at_1": true,
           "pass": true
+        },
+        {
+          "class": "navigation-id",
+          "document_id": "AGENT-0001",
+          "id_form": "space",
+          "query": "AGENT 0001",
+          "rank": 19,
+          "success_at_1": false,
+          "pass": false
+        },
+        {
+          "class": "navigation-id",
+          "document_id": "AGENT-0001",
+          "id_form": "hyphen",
+          "query": "AGENT-0001",
+          "rank": 13,
+          "success_at_1": false,
+          "pass": false
         },
         {
           "class": "navigation-id",
@@ -16295,6 +16582,42 @@
           "document_id": "PROMPT 0005",
           "id_form": "hyphen",
           "query": "PROMPT-0005",
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "navigation-id",
+          "document_id": "PROMPT 0006",
+          "id_form": "space",
+          "query": "PROMPT 0006",
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "navigation-id",
+          "document_id": "PROMPT 0006",
+          "id_form": "hyphen",
+          "query": "PROMPT-0006",
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "navigation-id",
+          "document_id": "PROMPT 0007",
+          "id_form": "space",
+          "query": "PROMPT 0007",
+          "rank": 1,
+          "success_at_1": true,
+          "pass": true
+        },
+        {
+          "class": "navigation-id",
+          "document_id": "PROMPT 0007",
+          "id_form": "hyphen",
+          "query": "PROMPT-0007",
           "rank": 1,
           "success_at_1": true,
           "pass": true
@@ -16574,23 +16897,44 @@
         },
         {
           "class": "filter-compliance",
+          "type": "agent",
+          "query": "the",
+          "result_count": 1,
+          "pass": true
+        },
+        {
+          "class": "filter-compliance",
+          "type": "agent",
+          "query": "and",
+          "result_count": 1,
+          "pass": true
+        },
+        {
+          "class": "filter-compliance",
+          "type": "agent",
+          "query": "with",
+          "result_count": 0,
+          "pass": true
+        },
+        {
+          "class": "filter-compliance",
           "type": "prompt",
           "query": "the",
-          "result_count": 5,
+          "result_count": 7,
           "pass": true
         },
         {
           "class": "filter-compliance",
           "type": "prompt",
           "query": "and",
-          "result_count": 5,
+          "result_count": 7,
           "pass": true
         },
         {
           "class": "filter-compliance",
           "type": "prompt",
           "query": "with",
-          "result_count": 3,
+          "result_count": 4,
           "pass": true
         },
         {
@@ -16894,7 +17238,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0013.4",
           "zone": "tokens-beyond-512",
-          "query": "onclose unsound suppress remind",
+          "query": "onclose 'missing unsound suppress",
           "rank": 1,
           "pass": true
         },
@@ -17190,7 +17534,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0036",
           "zone": "tokens-257-512",
-          "query": "buffett's circle someday distractions",
+          "query": "darlings buffett's circle someday",
           "rank": 1,
           "pass": true
         },
@@ -17198,7 +17542,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0036",
           "zone": "tokens-beyond-512",
-          "query": "over-commit cancel epic-0007 spaces",
+          "query": "costly fallacy invested auto-decay",
           "rank": 1,
           "pass": true
         },
@@ -17767,7 +18111,7 @@
           "document_id": "ADR 0074",
           "zone": "tokens-beyond-512",
           "query": "task-0040 formulation re-doing constellation",
-          "rank": 9,
+          "rank": 10,
           "pass": true
         },
         {
@@ -18166,7 +18510,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0092.3",
           "zone": "tokens-257-512",
-          "query": "chair inward golden-query task-0676",
+          "query": "echo-signal chair inward golden-query",
           "rank": 1,
           "pass": true
         },
@@ -18367,7 +18711,7 @@
           "document_id": "ADR 0097.1",
           "zone": "tokens-beyond-512",
           "query": "2026-04-28t22 2026-04-28t19 671z 5-field",
-          "rank": 7,
+          "rank": 10,
           "pass": true
         },
         {
@@ -18422,7 +18766,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0101",
           "zone": "tokens-257-512",
-          "query": "pending-ops leading-character insertions trie",
+          "query": "pending-ops radix empirically levenshtein",
           "rank": 1,
           "pass": true
         },
@@ -18430,7 +18774,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0101",
           "zone": "tokens-beyond-512",
-          "query": "meilisearch 3-char tantivy edit-distance",
+          "query": "leading-character insertions trie task-0597",
           "rank": 1,
           "pass": true
         },
@@ -18486,7 +18830,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0106",
           "zone": "tokens-257-512",
-          "query": "discriminated-union semanticness database's climbed",
+          "query": "layer's semanticness database's climbed",
           "rank": 1,
           "pass": true
         },
@@ -18534,7 +18878,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0106.5",
           "zone": "tokens-257-512",
-          "query": "guessed project-supplied dual-registered instinct",
+          "query": "tool-name project-supplied dual-registered instinct",
           "rank": 1,
           "pass": true
         },
@@ -18542,7 +18886,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0106.5",
           "zone": "tokens-beyond-512",
-          "query": "loyalty founder's unloaded uncommon",
+          "query": "instinct loyalty founder's unloaded",
           "rank": 1,
           "pass": true
         },
@@ -18567,8 +18911,8 @@
           "document_id": "ADR 0108",
           "zone": "tokens-257-512",
           "query": "jsdom lodash 20-line onend",
-          "rank": 9,
-          "pass": true
+          "rank": 11,
+          "pass": false
         },
         {
           "class": "tail-reachability",
@@ -18710,7 +19054,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0113.1",
           "zone": "tokens-257-512",
-          "query": "violated recently-satisfied reqs pushed",
+          "query": "recently-satisfied reqs memory-only pushed",
           "rank": 1,
           "pass": true
         },
@@ -18726,7 +19070,7 @@
           "class": "tail-reachability",
           "document_id": "ADR 0114",
           "zone": "tokens-257-512",
-          "query": "query-oriented dialects 000-token pre-packed",
+          "query": "re-express query-oriented 000-token pre-packed",
           "rank": 1,
           "pass": true
         },
@@ -18966,7 +19310,7 @@
           "class": "tail-reachability",
           "document_id": "REF-0004",
           "zone": "tokens-257-512",
-          "query": "binaries parcel-docs-tree-watcher observer 'observed'",
+          "query": "binaries parceldocstreewatcher parcel-docs-tree-watcher 'observed'",
           "rank": 1,
           "pass": true
         },
@@ -18991,7 +19335,7 @@
           "document_id": "REF-0006",
           "zone": "tokens-beyond-512",
           "query": "excessive handed unvetted pillar",
-          "rank": 13,
+          "rank": 11,
           "pass": false
         },
         {
@@ -19014,8 +19358,8 @@
           "class": "tail-reachability",
           "document_id": "REF-0008",
           "zone": "tokens-257-512",
-          "query": "open-decisions 0107-as-written 'loro substrate'",
-          "rank": 2,
+          "query": "loro-dev 0107-as-written 'loro substrate'",
+          "rank": 1,
           "pass": true
         },
         {
@@ -19070,7 +19414,7 @@
           "class": "tail-reachability",
           "document_id": "REF-0012",
           "zone": "tokens-beyond-512",
-          "query": "misfits mixed-type informs upward",
+          "query": "misfits mixed-type informs becoming",
           "rank": null,
           "pass": false
         },
@@ -19079,7 +19423,7 @@
           "document_id": "REF-0013",
           "zone": "tokens-257-512",
           "query": "iclr xiaowu0162 accuracy-latency validated-latency-quality-frontier-2026-07",
-          "rank": 2,
+          "rank": 3,
           "pass": true
         },
         {
@@ -19087,7 +19431,7 @@
           "document_id": "REF-0013",
           "zone": "tokens-beyond-512",
           "query": "'steal lafs' search-relevance chase",
-          "rank": 16,
+          "rank": 15,
           "pass": false
         },
         {
@@ -19143,7 +19487,7 @@
           "document_id": "mcp://backlog/docs/NORTH-STAR.md",
           "zone": "tokens-beyond-512",
           "query": "0107-release-is-typecheck-test-tag-publish 0003-human-visibility-is-non-negotiable aimed owes",
-          "rank": 3,
+          "rank": 4,
           "pass": true
         },
         {
@@ -19182,7 +19526,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/adr/0018-local-llm-optimization-layer.md",
           "zone": "tokens-257-512",
-          "query": "suboptimal preventable routellm lmsys",
+          "query": "over-hydrating suboptimal preventable routellm",
           "rank": 1,
           "pass": true
         },
@@ -19271,8 +19615,8 @@
           "document_id": "mcp://backlog/docs/adr/0106.4-DELEGATION-BRIEF.md",
           "zone": "tokens-beyond-512",
           "query": "tonull input-schema re-list throwaways",
-          "rank": 10,
-          "pass": true
+          "rank": 12,
+          "pass": false
         },
         {
           "class": "tail-reachability",
@@ -19430,7 +19774,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/proposals/aime-bolt-on-trial-2026-07.md",
           "zone": "tokens-257-512",
-          "query": "expanding hypothesis froze inventory",
+          "query": "expanding hypothesis froze inspected",
           "rank": 1,
           "pass": true
         },
@@ -19438,7 +19782,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/proposals/aime-bolt-on-trial-2026-07.md",
           "zone": "tokens-beyond-512",
-          "query": "canon requirements' non-ratified foundations",
+          "query": "canon requirements' non-ratified disappeared",
           "rank": 1,
           "pass": true
         },
@@ -19471,6 +19815,22 @@
           "document_id": "mcp://backlog/docs/proposals/architecture-audit-2026-07.md",
           "zone": "tokens-beyond-512",
           "query": "non-test mib release-size hazards",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "tail-reachability",
+          "document_id": "mcp://backlog/docs/proposals/attention-viewer-2026-07.md",
+          "zone": "tokens-257-512",
+          "query": "laws automating desk copy-ready",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "tail-reachability",
+          "document_id": "mcp://backlog/docs/proposals/attention-viewer-2026-07.md",
+          "zone": "tokens-beyond-512",
+          "query": "memo-0004 frictionless open-decision textually",
           "rank": 1,
           "pass": true
         },
@@ -19534,7 +19894,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/proposals/memory-flywheel-2026-07.md",
           "zone": "tokens-beyond-512",
-          "query": "0120's re-primes -driven amnesia-in-anger",
+          "query": "summarizing else's irrecoverably doer",
           "rank": 1,
           "pass": true
         },
@@ -19743,7 +20103,7 @@
           "document_id": "mcp://backlog/docs/proposals/vision-gaps-audit-2026-07.md",
           "zone": "tokens-beyond-512",
           "query": "current-decisions doctrinal re-proven possessive",
-          "rank": 14,
+          "rank": 15,
           "pass": false
         },
         {
@@ -19766,7 +20126,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/proposals/wakeup-first-impression-2026-07.md",
           "zone": "tokens-257-512",
-          "query": "prepared graders differed experiment-authored",
+          "query": "cold-orientation blinded graders differed",
           "rank": 1,
           "pass": true
         },
@@ -19798,7 +20158,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/reports/0001-phase-one-vision-uplift.md",
           "zone": "tokens-257-512",
-          "query": "loopback-contained server-owned injection-proof pre-hydration",
+          "query": "loopback-contained registry-declared injection-proof pre-hydration",
           "rank": 1,
           "pass": true
         },
@@ -19918,7 +20278,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/reports/0007-rerun-aime-acceptance-2026-07.md",
           "zone": "tokens-beyond-512",
-          "query": "shortfall concentrates half-credits run-guidance",
+          "query": "concentrates half-credits run-guidance hinges",
           "rank": 1,
           "pass": true
         },
@@ -19935,6 +20295,22 @@
           "document_id": "mcp://backlog/docs/reports/0008-rerun-erent-ab-2026-07.md",
           "zone": "tokens-beyond-512",
           "query": "constrains byte-economy confounds burned",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "tail-reachability",
+          "document_id": "mcp://backlog/docs/reports/0009-judgment-queue-probe-2026-07.md",
+          "zone": "tokens-257-512",
+          "query": "status-drift 175d pre-uplift odd-states",
+          "rank": 1,
+          "pass": true
+        },
+        {
+          "class": "tail-reachability",
+          "document_id": "mcp://backlog/docs/reports/0009-judgment-queue-probe-2026-07.md",
+          "zone": "tokens-beyond-512",
+          "query": "48h phase-one reviewed-marked irreducibly-human",
           "rank": 1,
           "pass": true
         },
@@ -19966,7 +20342,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/reports/exp1-nisli-bolton/BUG-0004-variadic-tags-consume-remember-content.md",
           "zone": "tokens-257-512",
-          "query": "attempt lands lowest-ceremony infer",
+          "query": "placing non-variadic representation lowest-ceremony",
           "rank": 1,
           "pass": true
         },
@@ -19974,7 +20350,7 @@
           "class": "tail-reachability",
           "document_id": "mcp://backlog/docs/reports/exp1-nisli-bolton/BUG-0005-read-only-wakeup-dirties-checkout.md",
           "zone": "tokens-257-512",
-          "query": "invasive multi-megabyte weakens files-belong-to-the-project",
+          "query": "acceleration multi-megabyte weakens files-belong-to-the-project",
           "rank": 1,
           "pass": true
         },
@@ -19990,8 +20366,8 @@
     }
   },
   "totals": {
-    "assertions": 2399,
-    "passed": 1949,
-    "failed": 450
+    "assertions": 2445,
+    "passed": 1985,
+    "failed": 460
   }
 }
