@@ -66,7 +66,6 @@ begins at 0.57.0 — earlier history lives in git.
   substrate that declares wakeup disclosure; unknown or closed IDs error
   honestly with live candidates. The Amnesia CI gate now proves the argument
   itself (8 → 13 assertions).
-||||||| parent of 4febcef (docs(changelog): record ADR 0119 Slice A under Unreleased)
 - **Worktrees know their family (Lattice W1, PROMPT 0003).** A backlog home in a
   linked git worktree now resolves its *family* — the main checkout, its branch,
   and the default branch — and the briefing's meta section says so in one line:
