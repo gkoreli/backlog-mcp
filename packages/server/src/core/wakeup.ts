@@ -23,6 +23,7 @@ import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import { asBuiltinEntity } from './substrates/index.js';
 import { markdownTitle } from './orientation.js';
+import { matchesDeclaredStatus } from './status-token.js';
 import {
   REQUIREMENT_TYPE,
   compareConstraints,
@@ -357,10 +358,12 @@ export async function wakeup(
         if (declared.wakeup.includeStatuses.length === 0) return true;
         // Workflow states are JsonScalars (string | number | boolean) — read
         // the raw value; the RuntimeEntity type narrows status to string but
-        // frontmatter parsing does not.
+        // frontmatter parsing does not. Freeform human statuses compare by
+        // leading token ("Accepted (goga, 2026-07-16)" → accepted); missing
+        // status stays excluded (fail-closed).
         const status: unknown = (e as Record<string, unknown>)['status'];
-        return status !== undefined
-          && (declared.wakeup.includeStatuses as readonly unknown[]).includes(status);
+        return (declared.wakeup.includeStatuses as readonly unknown[])
+          .some(declaredStatus => matchesDeclaredStatus(status, declaredStatus));
       })
       .filter(e => {
         const parentId = typeof e.parent_id === 'string' ? e.parent_id : undefined;

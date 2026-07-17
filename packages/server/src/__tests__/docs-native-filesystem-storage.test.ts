@@ -216,6 +216,29 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     )).toContain('title: Being Aime (domain: aime)');
   });
 
+  it('list --status matches freeform human statuses by leading token (repair #4)', function matchesFreeformStatuses() {
+    const { home, storage } = createStorage('freeform-status');
+    writeRawDocument(home, 'adr/0001-exact.md',
+      '---\ntitle: Exact\nstatus: accepted\n---\nBody');
+    writeRawDocument(home, 'adr/0002-annotated.md',
+      '---\ntitle: Annotated\nstatus: "Accepted, amended 2026-04-14"\n---\nBody');
+    writeRawDocument(home, 'adr/0003-parenthesized.md',
+      '---\ntitle: Parenthesized\nstatus: "Accepted (goga, 2026-07-16)"\n---\nBody');
+    writeRawDocument(home, 'adr/0004-parked.md',
+      '---\ntitle: Parked\nstatus: "PARKED, ONLY EXPLORATION"\n---\nBody');
+    writeRawDocument(home, 'adr/0005-missing.md',
+      '---\ntitle: Missing\n---\nBody');
+
+    const accepted = storage.list({ status: ['accepted'], limit: 100 })
+      .map(function getTitle(entity) { return entity.title; }).sort();
+    expect(accepted).toEqual(['Annotated', 'Exact', 'Parenthesized']);
+    // Filter side normalizes too; unlisted tokens and missing status fail closed.
+    expect(storage.list({ status: ['Accepted'], limit: 100 })).toHaveLength(3);
+    expect(storage.list({ status: ['parked'], limit: 100 })
+      .map(function getTitle(entity) { return entity.title; })).toEqual(['Parked']);
+    expect(storage.list({ status: ['missing'], limit: 100 })).toHaveLength(0);
+  });
+
   it('claims bare declarative documents without trusting frontmatter type', function readsBareDeclarativeDocuments() {
     const { home, storage } = createStorage('bare-declarative');
     writeRawDocument(

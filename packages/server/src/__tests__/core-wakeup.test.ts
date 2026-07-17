@@ -634,6 +634,21 @@ describe('core/wakeup', () => {
       expect(result.metadata.sections_omitted['decisions']).toBe(1);       // ADR 0001 cut, rejected never counted
     });
 
+    it('freeform human statuses disclose by leading token; unlisted and missing stay excluded (repair #4)', async () => {
+      // Real-corpus shapes from this very repo: 24 "Accepted", 18 "Proposed",
+      // "Accepted (goga, 2026-07-16)", "Accepted, amended 2026-04-14".
+      const svc = withDisclosures(mockService([
+        adr('ADR 0001', { status: 'Accepted (goga, 2026-07-16)', updated_at: '2026-07-16T00:00:00.000Z' }),
+        adr('ADR 0002', { status: 'Accepted, amended 2026-04-14', updated_at: '2026-07-15T00:00:00.000Z' }),
+        adr('ADR 0003', { status: 'PARKED, ONLY EXPLORATION', updated_at: '2026-07-14T00:00:00.000Z' }),
+        adr('ADR 0004', { status: undefined, updated_at: '2026-07-13T00:00:00.000Z' }),
+      ]));
+      const result = await wakeup(svc);
+      const decisions = (result.sections['decisions'] ?? []).map(d => d.id);
+      expect(decisions).toEqual(['ADR 0001', 'ADR 0002']);   // tokens match 'accepted'
+      expect(result.metadata.sections_omitted['decisions']).toBe(0); // parked/missing never counted
+    });
+
     it('the requirement constraints declaration is satisfied by the specialized fold, never duplicated', async () => {
       const svc = withDisclosures(
         mockService([makeEntity({ id: 'REQ-0001', title: 'need', type: 'requirement', status: 'ruled' } as never)]),

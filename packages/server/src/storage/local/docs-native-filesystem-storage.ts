@@ -15,6 +15,7 @@ import {
 } from '@backlog-mcp/shared';
 import { isPathWithin } from '../../core/backlog-home.js';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
+import { matchesDeclaredStatus } from '../../core/status-token.js';
 import { discoverDocuments } from '../../core/document-discovery.js';
 import {
   normalizeDocumentSourcePath,
@@ -399,8 +400,13 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
 
     if (status !== undefined) {
       documents = documents.filter(function hasSelectedStatus(document) {
+        // Token-normalized (status-token.ts): lenient external reads write
+        // freeform statuses; `--status accepted` must match "Accepted,
+        // amended 2026-04-14" without a synonym map.
         const entityStatus = document.entity.status;
-        return typeof entityStatus === 'string' && status.includes(entityStatus);
+        return status.some(function matchesFilter(filterStatus) {
+          return matchesDeclaredStatus(entityStatus, filterStatus);
+        });
       });
     }
     if (type !== undefined) {
