@@ -5,6 +5,7 @@ import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { Actor, IOperationLog } from '../operations/types.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
+import type { WakeupGrounding } from '../core/types.js';
 import type {
   IntentRegistryPort,
   IntentWriteValidatorPort,
@@ -57,6 +58,8 @@ export interface ToolDeps {
   identityPath?: string;
   /** Absolute path to NORTH-STAR.md. Docs-native only (ADR 0113 C.2). */
   visionPath?: string;
+  /** First-impression grounding reader (charter Slices A/B). Docs-native only. */
+  readGrounding?: () => WakeupGrounding | undefined;
   readUsageLines?: () => string[];
   homeReadCoordinator?: HomeReadCoordinator;
   intentRegistration?: IntentToolRegistration;
@@ -106,6 +109,7 @@ export function registerTools(
     ...(deps?.readLocalFile ? { readLocalFile: deps.readLocalFile } : {}),
     ...(deps?.identityPath ? { identityPath: deps.identityPath } : {}),
     ...(deps?.visionPath ? { visionPath: deps.visionPath } : {}),
+    ...(deps?.readGrounding ? { readGrounding: deps.readGrounding } : {}),
     ...(deps?.mintMemoryEntry
       ? { mintMemoryEntry: deps.mintMemoryEntry }
       : {}),

@@ -7,7 +7,7 @@ import type {
   BacklogHome,
   BacklogHomeSelector,
 } from '../core/backlog-home.types.js';
-import type { WriteContext } from '../core/types.js';
+import type { WakeupGrounding, WriteContext } from '../core/types.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import type { OperationLogger } from '../operations/logger.js';
 import type { Actor } from '../operations/types.js';
@@ -31,6 +31,8 @@ export interface CliRuntime {
   readIdentity: () => string | undefined;
   /** Vision-doc loader (NORTH-STAR.md) — undefined off docs-native homes. */
   readVision?: () => string | undefined;
+  /** First-impression grounding reader (charter Slices A/B). */
+  readGrounding?: () => WakeupGrounding | undefined;
   getSourcePath?: (id: string) => string | undefined;
   resolveSourcePath: (sourcePath: string) => string;
   close: () => Promise<void>;

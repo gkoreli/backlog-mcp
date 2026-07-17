@@ -15,6 +15,7 @@ import type {
   IntentRegistryPort,
   IntentWriteValidatorPort,
 } from '../core/substrates/index.js';
+import type { WakeupGrounding } from '../core/types.js';
 
 /** Runtime-owned services selected for one transport request. */
 export interface AppRequestRuntime {
@@ -36,6 +37,8 @@ export interface AppRequestRuntime {
   identityPath?: string;
   /** Absolute path to the vision doc (NORTH-STAR.md) — docs-native only. */
   visionPath?: string;
+  /** First-impression grounding reader (charter Slices A/B) — docs-native only. */
+  readGrounding?: () => WakeupGrounding | undefined;
   intentRegistrationMode: 'required' | 'unavailable';
   intentRegistry?: IntentRegistryPort;
   intentWriteValidator?: IntentWriteValidatorPort;

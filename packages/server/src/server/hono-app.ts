@@ -185,6 +185,7 @@ function createRequestToolDeps(
     readUsageLines: runtime.readUsageLines,
     identityPath: runtime.identityPath,
     visionPath: runtime.visionPath,
+    readGrounding: runtime.readGrounding,
     homeReadCoordinator,
     intentRegistration: createIntentRegistration(),
   };
@@ -239,6 +240,9 @@ function toHomeReadRuntime(runtime: AppRequestRuntime): HomeReadRuntime {
           },
         }),
     readVision,
+    ...(runtime.readGrounding === undefined
+      ? {}
+      : { readGrounding: runtime.readGrounding }),
     readOperations,
     mintMemoryEntry: runtime.mintMemoryEntry,
   };

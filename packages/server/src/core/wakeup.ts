@@ -22,6 +22,7 @@ import { EntityType, getSubstrate, isValidEntityId, parseEntityId } from '@backl
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import { asBuiltinEntity } from './substrates/index.js';
+import { markdownTitle } from './orientation.js';
 import {
   REQUIREMENT_TYPE,
   compareConstraints,
@@ -32,6 +33,7 @@ import {
 import {
   ValidationError,
   type WakeupSectionStub,
+  type WakeupOrientationDoc,
   type WakeupParams,
   type WakeupResult,
   type WakeupEntitySummary,
@@ -39,6 +41,28 @@ import {
   type WakeupActivity,
   type WakeupKnowledgeItem,
 } from './types.js';
+
+/**
+ * Pointer budget for the orientation map (charter Slice A): the line stays
+ * a bounded set of stubs — readme, agents, then index documents in stable
+ * path order fill the remainder. Titles are char-bounded like knowledge.
+ */
+const MAX_ORIENTATION_DOCS = 6;
+const MAX_ORIENTATION_TITLE_CHARS = 80;
+const ORIENTATION_ROLE_ORDER: Record<WakeupOrientationDoc['role'], number> = {
+  readme: 0,
+  agents: 1,
+  vision: 2,
+  index: 3,
+};
+
+function compareOrientationDocs(
+  a: WakeupOrientationDoc,
+  b: WakeupOrientationDoc,
+): number {
+  const roleDelta = ORIENTATION_ROLE_ORDER[a.role] - ORIENTATION_ROLE_ORDER[b.role];
+  return roleDelta !== 0 ? roleDelta : a.path.localeCompare(b.path);
+}
 
 function toSummary(e: Entity): WakeupEntitySummary {
   const s: WakeupEntitySummary = {
@@ -161,19 +185,9 @@ async function descendantSet(
   return set;
 }
 
-/**
- * First markdown heading of the vision doc, stripped of `#` marks.
- * Column-0 ATX headings only; a leading frontmatter block is skipped so a
- * YAML comment never becomes the title.
- */
+/** First markdown heading of the legacy-injected vision doc. */
 function visionTitle(text: string): string {
-  let lines = text.split('\n');
-  if (lines[0]?.trim() === '---') {
-    const close = lines.findIndex((line, i) => i > 0 && line.trim() === '---');
-    if (close > 0) lines = lines.slice(close + 1);
-  }
-  const heading = lines.find(line => /^#{1,6}\s+\S/.test(line));
-  return heading?.replace(/^#+\s*/, '').trim() || 'NORTH-STAR';
+  return markdownTitle(text, 'NORTH-STAR');
 }
 
 export async function wakeup(
@@ -185,6 +199,9 @@ export async function wakeup(
   const snippetChars = params.evidenceSnippetChars ?? 160;
 
   const identity = params.readIdentity?.();
+  // First-impression grounding (charter Slices A/B): composition-discovered
+  // plain data — orientation pointers, vision candidates, observed recency.
+  const grounding = params.readGrounding?.();
 
   // Home-wide by necessity: an unattached entity has no subtree ancestry by
   // which to assign it to a narrower wakeup scope.
@@ -380,13 +397,48 @@ export async function wakeup(
   }));
 
   // Vision pointer (ADR 0113 C.2; Cold-Open's fifth orientation): path +
-  // first-heading title only — the briefing points at the vision, the agent
-  // hydrates it when it matters. Never inlined (budget discipline).
-  const visionText = params.readVision?.();
-  const vision = visionText === undefined ? undefined : {
-    path: 'NORTH-STAR.md',
-    title: visionTitle(visionText),
-  };
+  // title only — the briefing points at the vision, the agent hydrates it
+  // when it matters. Never inlined (budget discipline). Grounding-based
+  // discovery wins when supplied; multiple north-star candidates surface as
+  // a diagnostic instead of a silently chosen authority (charter Slice A).
+  const visionCandidates = grounding?.visionCandidates ?? [];
+  let vision: { path: string; title: string } | undefined;
+  let ambiguousVision: string[] | undefined;
+  if (grounding !== undefined) {
+    if (visionCandidates.length > 1) {
+      ambiguousVision = [...visionCandidates].sort();
+    } else {
+      const visionDoc = (grounding.orientation ?? [])
+        .find(doc => doc.role === 'vision');
+      if (visionDoc !== undefined) {
+        vision = { path: visionDoc.path, title: visionDoc.title };
+      }
+    }
+  } else {
+    const visionText = params.readVision?.();
+    if (visionText !== undefined) {
+      vision = { path: 'NORTH-STAR.md', title: visionTitle(visionText) };
+    }
+  }
+
+  // The orientation map (charter Slice A): a bounded line of openable
+  // pointer stubs — path + role + short title, never bodies. The vision
+  // doc rides the dedicated pointer above, so it never repeats here.
+  let orientation: WakeupResult['orientation'];
+  if (grounding !== undefined) {
+    const docs = [...(grounding.orientation ?? [])]
+      .filter(doc => doc.role !== 'vision')
+      .sort(compareOrientationDocs)
+      .slice(0, MAX_ORIENTATION_DOCS)
+      .map(doc => ({
+        path: doc.path,
+        role: doc.role,
+        title: doc.title.length > MAX_ORIENTATION_TITLE_CHARS
+          ? doc.title.slice(0, MAX_ORIENTATION_TITLE_CHARS - 1) + '…'
+          : doc.title,
+      }));
+    orientation = { docs, indexed_documents: grounding.indexedDocuments ?? 0 };
+  }
 
   // L2 Recent — last N done tasks by updated_at, + last N ops from the log.
   const done = await service.list({ status: ['done'] });
@@ -424,6 +476,29 @@ export async function wakeup(
     return a;
   });
 
+  // A rich corpus must never render as an authoritative empty project
+  // (charter Slice A / EXP-1 BUG-0002): when the typed briefing has no
+  // project grounding but documents were indexed, the briefing says so and
+  // names the first places to open. Deterministic emptiness check — not a
+  // classifier; the pointer line itself remains regardless.
+  if (orientation !== undefined && orientation.indexed_documents > 0) {
+    const grounded = activeTasks.length > 0
+      || currentEpics.length > 0
+      || knowledge.length > 0
+      || constraints.length > 0
+      || completions.length > 0
+      || Object.values(sections).some(stubs => stubs.length > 0);
+    if (!grounded) {
+      const firstPaths = [
+        ...orientation.docs.map(doc => doc.path),
+        ...(vision === undefined ? [] : [vision.path]),
+      ].slice(0, 3);
+      orientation.note =
+        `No tasks, memories, or constraints are recorded yet, but ${orientation.indexed_documents} existing documents are indexed and searchable.`
+        + (firstPaths.length > 0 ? ` Open first: ${firstPaths.join(', ')}.` : '');
+    }
+  }
+
   return {
     ...(identity ? { identity } : {}),
     ...(params.scope ? { scope: params.scope } : {}),
@@ -435,6 +510,7 @@ export async function wakeup(
     constraints,
     sections,
     ...(vision === undefined ? {} : { vision }),
+    ...(orientation === undefined ? {} : { orientation }),
     recent: {
       completions,
       activity,
@@ -448,6 +524,7 @@ export async function wakeup(
       constraints_omitted: constraintsOmitted,
       sections_omitted: sectionsOmitted,
       ...(quarantined.length === 0 ? {} : { quarantined }),
+      ...(ambiguousVision === undefined ? {} : { vision_candidates: ambiguousVision }),
       completion_count: completions.length,
       activity_count: activity.length,
       unfiled_count: unfiledCount,

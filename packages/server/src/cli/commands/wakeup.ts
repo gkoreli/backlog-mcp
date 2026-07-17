@@ -66,7 +66,16 @@ function format(result: WakeupResult): string {
       )),
     ...section('vision', result.vision
       ? [`  ${result.vision.title} — ${result.vision.path} (hydrate on demand)`]
-      : []),
+      : (result.metadata.vision_candidates ?? []).length > 0
+        ? [`  ambiguous — multiple vision candidates: ${(result.metadata.vision_candidates ?? []).join(', ')}`]
+        : []),
+    ...section('orientation (paths open with get)', [
+      ...(result.orientation?.docs ?? []).map(d =>
+        `  ${d.role.padEnd(7)} ${d.path} — ${d.title}`),
+      ...(result.orientation?.note !== undefined
+        ? [`  ${result.orientation.note}`]
+        : []),
+    ]),
     ...section('recent completions', result.recent.completions.map(c =>
       c.evidence_snippet
         ? `  ${c.id.padEnd(12)} ${c.title}\n      ↪ ${c.evidence_snippet}`
@@ -151,6 +160,7 @@ export function registerWakeup(program: Command): void {
                 return runtime.writeContext.substrateRegistry?.acceptsParent(type) === true;
               },
               ...(runtime.readVision === undefined ? {} : { readVision: runtime.readVision }),
+              ...(runtime.readGrounding === undefined ? {} : { readGrounding: runtime.readGrounding }),
               readOperations: (options) => runtime.operationLogger.read(options),
               ...(runtime.mintMemoryEntry === undefined
                 ? {}

@@ -42,6 +42,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import { createBacklogHome, type BacklogHome } from '../core/backlog-home.js';
 import { createLocalRuntime, type LocalRuntime } from '../storage/local/local-runtime.js';
+import { createWakeupGroundingReader } from '../server/wakeup-grounding.js';
 import { registerBacklogWakeupTool } from '../tools/backlog-wakeup.js';
 import { registerBacklogGetTool } from '../tools/backlog-get.js';
 
@@ -202,12 +203,11 @@ describe('Amnesia Test (continuity acceptance — Cold-Open twin)', () => {
         halfLifeDays: 30,
       }),
     });
-    const readLocalFile = (path: string): string | null => {
-      try { return readFileSync(path, 'utf-8'); } catch { return null; }
-    };
     wakeupTool = captureHandler(s => registerBacklogWakeupTool(s, runtime.service, {
-      readLocalFile,
-      visionPath: join(home.documentsDir, 'NORTH-STAR.md'),
+      readGrounding: createWakeupGroundingReader({
+        home,
+        countIndexedDocuments: () => runtime.resourceManager.list().length,
+      }),
     }));
     getTool = captureHandler(s => registerBacklogGetTool(s, runtime.service));
 
@@ -243,7 +243,7 @@ describe('Amnesia Test (continuity acceptance — Cold-Open twin)', () => {
 
   it('the active work and the vision are in the same single call', () => {
     expect(briefing.now.active_tasks.map((t: { id: string }) => t.id)).toContain('TASK-0001');
-    expect(briefing.vision?.path).toBe('NORTH-STAR.md');
+    expect(briefing.vision?.path).toBe('docs/NORTH-STAR.md');
   });
 
   it('closed operations never resurface in a live briefing', () => {

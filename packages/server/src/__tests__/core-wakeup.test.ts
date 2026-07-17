@@ -497,6 +497,88 @@ describe('core/wakeup', () => {
     });
   });
 
+  describe('orientation map + vision discovery (first-impression Slice A)', () => {
+    const doc = (path: string, role: 'readme' | 'agents' | 'vision' | 'index', title = path) =>
+      ({ path, role, title });
+
+    it('budgets pointers in role order and truncates titles — paths and titles only, never bodies', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => ({
+          orientation: [
+            doc('docs/z/README.md', 'index'),
+            doc('docs/a/README.md', 'index'),
+            doc('docs/b/README.md', 'index'),
+            doc('docs/c/README.md', 'index'),
+            doc('docs/d/README.md', 'index'),
+            doc('AGENTS.md', 'agents'),
+            doc('README.md', 'readme', 'T'.repeat(120)),
+          ],
+          visionCandidates: [],
+          indexedDocuments: 7,
+        }),
+      });
+      const docs = result.orientation?.docs ?? [];
+      expect(docs.map(d => d.path)).toEqual([
+        'README.md', 'AGENTS.md',
+        'docs/a/README.md', 'docs/b/README.md', 'docs/c/README.md', 'docs/d/README.md',
+      ]);                                                     // 6-pointer budget, stable order
+      expect(docs[0]?.title).toHaveLength(80);                // char-bounded like knowledge
+      expect(result.orientation?.indexed_documents).toBe(7);
+    });
+
+    it('a single vision candidate becomes the vision pointer and never repeats in the pointer line', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => ({
+          orientation: [doc('NORTH_STAR.md', 'vision', 'The Vision')],
+          visionCandidates: ['NORTH_STAR.md'],
+          indexedDocuments: 0,
+        }),
+      });
+      expect(result.vision).toEqual({ path: 'NORTH_STAR.md', title: 'The Vision' });
+      expect(result.orientation?.docs).toEqual([]);
+      expect(result.metadata.vision_candidates).toBeUndefined();
+    });
+
+    it('multiple vision candidates surface as a diagnostic — never a silent choice', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => ({
+          orientation: [],
+          visionCandidates: ['docs/NORTH-STAR.md', 'NORTH_STAR.md'],
+          indexedDocuments: 0,
+        }),
+      });
+      expect(result.vision).toBeUndefined();
+      expect(result.metadata.vision_candidates).toEqual(['NORTH_STAR.md', 'docs/NORTH-STAR.md']);
+    });
+
+    it('an ungrounded briefing over an indexed corpus says so and names the first places to open', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => ({
+          orientation: [doc('README.md', 'readme'), doc('docs/issues/README.md', 'index')],
+          visionCandidates: [],
+          indexedDocuments: 59,
+        }),
+      });
+      expect(result.orientation?.note).toContain('59 existing documents are indexed and searchable');
+      expect(result.orientation?.note).toContain('README.md');
+    });
+
+    it('project grounding suppresses the note, but the pointer line remains — no self-state classifier', async () => {
+      const result = await wakeup(
+        mockService([makeEntity({ id: 'TASK-0001', title: 'live', status: 'in_progress' })]),
+        {
+          readGrounding: () => ({
+            orientation: [doc('README.md', 'readme')],
+            visionCandidates: [],
+            indexedDocuments: 59,
+          }),
+        },
+      );
+      expect(result.orientation?.note).toBeUndefined();
+      expect(result.orientation?.docs.map(d => d.path)).toEqual(['README.md']);
+    });
+  });
+
   describe('visible quarantine (EXP-1 B-3)', () => {
     it('names claimed-but-uncompilable documents so no section implies completeness', async () => {
       const svc = mockService([]);

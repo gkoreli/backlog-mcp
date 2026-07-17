@@ -31,3 +31,18 @@ export function isOrientationRootFilename(filename: string): boolean {
     || filename === 'AGENTS.md'
     || isNorthStarFilename(filename);
 }
+
+/**
+ * First markdown heading of a document, stripped of `#` marks. Column-0 ATX
+ * headings only; a leading frontmatter block is skipped so a YAML comment
+ * never becomes the title. Falls back to the supplied name.
+ */
+export function markdownTitle(text: string, fallback: string): string {
+  let lines = text.split('\n');
+  if (lines[0]?.trim() === '---') {
+    const close = lines.findIndex((line, i) => i > 0 && line.trim() === '---');
+    if (close > 0) lines = lines.slice(close + 1);
+  }
+  const heading = lines.find(line => /^#{1,6}\s+\S/.test(line));
+  return heading?.replace(/^#+\s*/, '').trim() || fallback;
+}

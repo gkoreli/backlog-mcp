@@ -12,6 +12,7 @@ import { isPathWithin } from '../core/backlog-home.js';
 import { resolveContext } from '../core/config.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
 import type { AppRequestRuntime } from './app-request-runtime.types.js';
+import { createWakeupGroundingReader } from './wakeup-grounding.js';
 
 function containedFile(
   root: string,
@@ -78,6 +79,12 @@ export function createLocalAppRequestRuntime(
     readUsageLines: runtime.readUsageLines,
     identityPath: join(runtime.home.documentsDir, 'identity.md'),
     visionPath: join(runtime.home.documentsDir, 'NORTH-STAR.md'),
+    readGrounding: createWakeupGroundingReader({
+      home: runtime.home,
+      countIndexedDocuments: function countIndexedDocuments() {
+        return runtime.resourceManager.list().length;
+      },
+    }),
     intentRegistrationMode: 'required',
     intentRegistry: runtime.substrateRegistry,
     intentWriteValidator: runtime.substrateRegistry,

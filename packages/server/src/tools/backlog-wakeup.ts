@@ -4,7 +4,7 @@ import type { Memory } from '@backlog-mcp/shared';
 import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { wakeup } from '../core/wakeup.js';
-import { ValidationError } from '../core/types.js';
+import { ValidationError, type WakeupGrounding } from '../core/types.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
 import type { ProjectSubstrateRegistry } from '../core/substrates/project-substrate-registry.js';
 import {
@@ -25,6 +25,8 @@ export interface BacklogWakeupDeps {
   readLocalFile?: (filePath: string) => string | null;
   identityPath?: string;
   visionPath?: string;
+  /** First-impression grounding reader (charter Slices A/B). */
+  readGrounding?: () => WakeupGrounding | undefined;
   mintMemoryEntry?: (memory: Memory) => MemoryEntry;
   substrateRegistry?: Pick<ProjectSubstrateRegistry, 'acceptsParent'>;
   homeReadCoordinator?: HomeReadCoordinator;
@@ -124,6 +126,9 @@ export function registerBacklogWakeupTool(
         const result = await wakeup(service, {
           ...wakeupParams,
           readIdentity,
+          ...(deps?.readGrounding === undefined
+            ? {}
+            : { readGrounding: deps.readGrounding }),
           ...(deps?.substrateRegistry === undefined
             ? {}
             : {

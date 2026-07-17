@@ -44,6 +44,7 @@ export interface HomeReadRuntime {
   readIdentity?: () => string | undefined;
   acceptsParent?: WakeupParams['acceptsParent'];
   readVision?: () => string | undefined;
+  readGrounding?: WakeupParams['readGrounding'];
   readOperations?: WakeupParams['readOperations'];
   mintMemoryEntry?: (memory: Memory) => MemoryEntry;
 }
@@ -120,7 +121,7 @@ export interface CrossHomeRecallResult {
 /** Cross-home wakeup parameters; runtime-owned readers are not caller inputs. */
 export type CrossHomeWakeupParams = Omit<
   WakeupParams,
-  'readIdentity' | 'readVision' | 'acceptsParent' | 'readOperations' | 'mintMemoryEntry'
+  'readIdentity' | 'readVision' | 'readGrounding' | 'acceptsParent' | 'readOperations' | 'mintMemoryEntry'
 >;
 
 /** One unmerged wakeup briefing grouped under its owning home. */

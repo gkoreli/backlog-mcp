@@ -41,6 +41,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import { createBacklogHome, type BacklogHome } from '../core/backlog-home.js';
 import { createLocalRuntime, type LocalRuntime } from '../storage/local/local-runtime.js';
+import { createWakeupGroundingReader } from '../server/wakeup-grounding.js';
 import { registerBacklogWakeupTool } from '../tools/backlog-wakeup.js';
 import { registerBacklogGetTool } from '../tools/backlog-get.js';
 
@@ -166,12 +167,11 @@ describe('Cold-Open Test (NORTH-STAR acceptance)', () => {
       }),
     });
 
-    const readLocalFile = (path: string): string | null => {
-      try { return readFileSync(path, 'utf-8'); } catch { return null; }
-    };
     wakeupTool = captureHandler(s => registerBacklogWakeupTool(s, runtime.service, {
-      readLocalFile,
-      visionPath: join(home.documentsDir, 'NORTH-STAR.md'),
+      readGrounding: createWakeupGroundingReader({
+        home,
+        countIndexedDocuments: () => runtime.resourceManager.list().length,
+      }),
     }));
     getTool = captureHandler(s => registerBacklogGetTool(s, runtime.service));
 
@@ -250,8 +250,21 @@ describe('Cold-Open Test (NORTH-STAR acceptance)', () => {
   });
 
   it('orients on the vision: the briefing points at NORTH-STAR.md without inlining it', () => {
-    expect(briefing.vision).toEqual({ path: 'NORTH-STAR.md', title: 'North Star — Fixture Product' });
+    expect(briefing.vision).toEqual({ path: 'docs/NORTH-STAR.md', title: 'North Star — Fixture Product' });
     // Pointer, not payload — the body stays hydrate-on-demand.
     expect(JSON.stringify(briefing)).not.toContain('prove cold-open orientation');
+  });
+
+  // ── First-impression charter (Slice A): the orientation map.
+  it('the vision pointer hydrates by its own path through the resource catalog', async () => {
+    const res = await getTool({ id: 'mcp://backlog/docs/NORTH-STAR.md' });
+    expect(res.content[0]?.text ?? '').toContain('prove cold-open orientation');
+  });
+
+  it('the orientation map stays present alongside a populated briefing, pointers only', () => {
+    expect(briefing.orientation).toBeDefined();
+    expect(briefing.orientation.indexed_documents).toBeGreaterThan(0);
+    // A populated project needs no bootstrap note — but the line remains.
+    expect(briefing.orientation.note).toBeUndefined();
   });
 });

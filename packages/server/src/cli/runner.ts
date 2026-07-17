@@ -132,6 +132,9 @@ async function createDocsNativeCliRuntime(
         ? undefined
         : readIdentityFile(visionPath);
     },
+    ...(appRuntime.readGrounding === undefined
+      ? {}
+      : { readGrounding: appRuntime.readGrounding }),
     getSourcePath: appRuntime.getSourcePath,
     resolveSourcePath: sourceResolver,
     close: async function closeDocsNativeRuntime(): Promise<void> {
@@ -201,6 +204,7 @@ function toHomeReadRuntime(runtime: CliRuntime): HomeReadRuntime {
       return runtime.writeContext.substrateRegistry?.acceptsParent(type) === true;
     },
     ...(runtime.readVision === undefined ? {} : { readVision: runtime.readVision }),
+    ...(runtime.readGrounding === undefined ? {} : { readGrounding: runtime.readGrounding }),
     readOperations: function readOperations(options) {
       return runtime.operationLogger.read(options);
     },

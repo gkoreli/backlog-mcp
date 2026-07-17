@@ -305,8 +305,17 @@ export interface WakeupParams {
    * Synchronous vision-doc loader (NORTH-STAR.md at the docs root) — same
    * injection discipline as readIdentity. Core surfaces a pointer stub only
    * (path + title), never the body; hydrate via resources (ADR 0113 C.2).
+   * Legacy seam for compositions without grounding discovery; when
+   * ``readGrounding`` supplies vision candidates, they win.
    */
   readVision?: () => string | undefined;
+  /**
+   * First-impression grounding loader (charter Slices A/B) — orientation
+   * pointers, vision candidates, indexed-document count, observed recency.
+   * Same injection discipline as readIdentity: the composition does the
+   * discovery, core folds plain data.
+   */
+  readGrounding?: () => WakeupGrounding | undefined;
   /** Evidence snippet max chars on completion summaries. Default: 160. */
   evidenceSnippetChars?: number;
   /**
@@ -338,6 +347,42 @@ export interface WakeupParams {
    * a frontmatter-backed store over the supplied service.
    */
   mintMemoryEntry?: (memory: Memory) => MemoryEntry;
+}
+
+/**
+ * One openable orientation pointer (first-impression charter, Slice A):
+ * path + role + short title — never a file body. The path is home-root
+ * relative and hydrates as `mcp://backlog/<path>` through the same
+ * resource catalog entry the briefing was built from.
+ */
+export interface WakeupOrientationDoc {
+  path: string;
+  role: 'readme' | 'agents' | 'vision' | 'index';
+  title: string;
+}
+
+/**
+ * Composition-discovered first-impression input. The Node composition
+ * walks only the repo/docs roots (never core); the fold budgets, orders,
+ * and shapes what it is handed.
+ */
+export interface WakeupGrounding {
+  /** Root orientation documents, unbudgeted; the fold applies the bound. */
+  orientation?: WakeupOrientationDoc[];
+  /**
+   * Every Markdown filename whose case-folded stem (minus `-`/`_`) is
+   * `northstar`, home-root relative. Exactly one match becomes the vision
+   * pointer; multiple matches surface as candidates — never a silent pick.
+   */
+  visionCandidates?: string[];
+  /** Generic documents in the home's indexed catalog. */
+  indexedDocuments?: number;
+  /**
+   * Already-computed observed recency (entity id → ISO timestamp) for
+   * documents lacking a valid frontmatter `updated_at` (charter Slice B).
+   * Built outside core (git history / mtime); core only compares values.
+   */
+  observedRecency?: Readonly<Record<string, string>>;
 }
 
 export interface WakeupEntitySummary {
@@ -411,9 +456,21 @@ export interface WakeupResult {
   /**
    * Pointer to the project vision doc (NORTH-STAR.md) when present — path +
    * title only, never the body (ADR 0113 C.2; the Cold-Open Test's fifth
-   * orientation). Hydrate via resources.
+   * orientation). Hydrate via resources. Absent when vision discovery found
+   * multiple candidates — see metadata.vision_candidates.
    */
   vision?: { path: string; title: string };
+  /**
+   * The bounded orientation map (charter Slice A): openable pointer stubs
+   * to the repo's own first documents. `note` appears only when the typed
+   * briefing has no project grounding while indexed documents exist — a
+   * rich corpus must never render as an authoritative empty project.
+   */
+  orientation?: {
+    docs: WakeupOrientationDoc[];
+    indexed_documents: number;
+    note?: string;
+  };
   recent: {
     completions: WakeupCompletion[];
     activity: WakeupActivity[];
@@ -434,6 +491,12 @@ export interface WakeupResult {
      * may be read as complete; the path hydrates as a lossless resource.
      */
     quarantined?: Array<{ type: string; path: string }>;
+    /**
+     * Present only when vision discovery matched multiple north-star
+     * filenames: the candidates, surfaced as a diagnostic instead of a
+     * silently chosen authority (charter Slice A).
+     */
+    vision_candidates?: string[];
     completion_count: number;
     activity_count: number;
     /** Home-wide parentless work count; memories and containers are exempt. */
