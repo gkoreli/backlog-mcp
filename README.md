@@ -303,6 +303,69 @@ npx backlog-mcp --home project --project-root /path/to/repo \
 Both commands are idempotent and fail closed when old and new control layouts
 are both present.
 
+## Claude Code session hooks (the memory protocol)
+
+Every wakeup briefing ends with a two-line **memory protocol**: a *recall*
+rubric (when to reach for prior knowledge instead of re-deriving it) and its
+session-end twin, a *remember* rubric (the three conditions worth writing
+down, in your own words, before the session ends). The rubric is policy, not
+retrieved data — the briefing stays bounded by a hard 3,072-byte ceiling with
+the rubric as non-droppable content
+([ADR 0118.1](docs/adr/0118.1-intent-gated-recall-lifecycle-hooks.md)).
+
+The client owns the hooks; the server never automates recall or memory writes
+([ADR 0117](docs/adr/0117-the-write-boundary.md), 0118.1 R1). To mount the
+briefing in Claude Code, add a `SessionStart` command hook to
+`.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx backlog-mcp --home project --project-root \"$CLAUDE_PROJECT_DIR\" wakeup --max-knowledge 0 --max-constraints 3 --max-completions 3 --max-activity 3 | jq -Rs '{hookSpecificOutput:{hookEventName:\"SessionStart\",additionalContext:.}}'",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Notes on the recipe:
+
+- **`--max-knowledge 0` is load-bearing.** Session start injects policy, not
+  retrieved memories; the agent recalls when its intent warrants it
+  (0118.1 R2). Everything else stays at recipe defaults.
+- **The `jq` wrapper is the current hook contract**: Claude Code injects
+  `hookSpecificOutput.additionalContext`, not raw stdout.
+- **Fail-open**: if the command fails, the session starts with no briefing
+  and no error stops the agent. Never wire this hook to block.
+- A command hook (not an MCP-tool hook) is intentional — `SessionStart`
+  often fires before MCP servers connect.
+
+**The remember half needs no second hook.** Claude Code's `SessionEnd` and
+`PreCompact` events cannot deliver text to the model (they are cleanup and
+receipt boundaries), so the remember prompt is delivered by the briefing
+itself and re-delivered at every compaction boundary through the `compact`
+matcher above: the re-primed session reads the protocol again while its
+context is fresh. This is by design, not limitation — the capture law
+([PROMPT 0006](docs/prompts/0006-first-person-memory-capture-law.md)) wants
+the *doer* writing at its *own* checkpoint, in its own words, not an external
+event squeezing a summary out of a dying session. Clients that own continuity
+(e.g. an orchestrator harness) may attach their own `PreCompact`/`SessionEnd`
+receipt hooks; those record lifecycle facts, never memory payloads
+(0118.1 R3).
+
+If you want a mechanical end-of-turn nudge anyway, a `Stop` hook can inject
+`additionalContext` — but it fires on every turn and pays permanent context
+tax, which is exactly what the protocol design avoids. Prefer the rubric.
+
 ## Configuration
 
 ```bash
