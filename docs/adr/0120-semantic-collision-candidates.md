@@ -16,6 +16,8 @@ relates_to:
 **Status**: Proposed — Goga authorized implementation on 2026-07-16; this
 checkpoint fixes the boundary before code.
 
+**Phase state**: Phase A committed 15a8257, slices pending Phase Two.
+
 ## Decision in one sentence
 
 Use each home's existing hybrid search only to generate nearby live memories,
