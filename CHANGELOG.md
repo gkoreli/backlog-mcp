@@ -12,6 +12,23 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+### Added
+- **Set your agent identity once — every write and every briefing picks it up
+  implicitly.** `git config backlog.agent <identity>` is the whole interface
+  (no new verbs, no new files), declared at the scope the identity belongs to:
+  a delegation worktree (`git config --worktree`, requires
+  `extensions.worktreeConfig`), the harness session (`BACKLOG_AGENT`), a
+  single-agent checkout (`--local`), or the machine (`--global`). First
+  present rung wins — explicit `--as`/MCP `as` stays the per-call override,
+  and the worktree stamp deliberately beats the inherited environment: a
+  spawned agent carries its parent's env through no choice of its own, while
+  the stamp was placed for it at delegation time. The wakeup meta line
+  discloses the winning rung — `identity: granite (worktree config)` — so
+  misattribution is debuggable at a glance; nothing configured stays exactly
+  `identity: absent`. Resolution is one cached git spawn per process,
+  fail-open on non-git homes and old gits: byte-identical output to before.
+  (ADR 0119.1)
+
 ### Fixed
 - **Docs-native migration carries imperfect legacy corpora forward.** Known
   `epic_id` aliases and YAML date scalars are canonicalized during the move;

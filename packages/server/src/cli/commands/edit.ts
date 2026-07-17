@@ -37,7 +37,7 @@ function editAction(
 }
 
 const AS_AGENT_DESCRIPTION =
-  'Attribute this write to an agent identity — an AGENT- doc id or declared principal (e.g. aime:granite). Optional; also via BACKLOG_AGENT env (ADR 0119)';
+  'Attribute this write to an agent identity — an AGENT- doc id or declared principal (e.g. aime:granite). Optional per-call override; usually implicit via git config backlog.agent or BACKLOG_AGENT (ADR 0119.1)';
 
 export function registerEdit(program: Command): void {
   const edit = program

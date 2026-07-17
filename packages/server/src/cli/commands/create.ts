@@ -28,7 +28,7 @@ export function registerCreate(program: Command): void {
     .option('--type <type>', 'Substrate type')
     .option('--parent <id>', 'Parent ID')
     .option('--fields <json-object>', 'Low-level substrate-specific fields as a JSON object')
-    .option('--as <agent>', 'Attribute this write to an agent identity — an AGENT- doc id or declared principal (e.g. aime:granite). Optional; also via BACKLOG_AGENT env (ADR 0119)')
+    .option('--as <agent>', 'Attribute this write to an agent identity — an AGENT- doc id or declared principal (e.g. aime:granite). Optional per-call override; usually implicit via git config backlog.agent or BACKLOG_AGENT (ADR 0119.1)')
     .action((title, opts) => run(
       (runtime) => {
         const content = opts.source

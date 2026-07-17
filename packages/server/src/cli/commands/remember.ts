@@ -39,7 +39,7 @@ export function registerRemember(program: Command): void {
     .option('--valid-until <iso>', 'Expiry (ISO date)')
     .option('--supersedes <id>', 'MEMO- id this memory replaces')
     .option('--derived', 'Mark as inference (consolidator output) — requires --refs')
-    .option('--as <agent>', 'Attribute this memory to an agent identity — an AGENT- doc id or declared principal (e.g. aime:granite). Optional; also via BACKLOG_AGENT env (ADR 0119)')
+    .option('--as <agent>', 'Attribute this memory to an agent identity — an AGENT- doc id or declared principal (e.g. aime:granite). Optional per-call override; usually implicit via git config backlog.agent or BACKLOG_AGENT (ADR 0119.1)')
     .action((contentParts: string[], opts) => run(
       async (runtime) => {
         // ADR 0105: explicit --context wins; else per-repo config / env default.
