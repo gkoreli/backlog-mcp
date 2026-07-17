@@ -1,7 +1,7 @@
 # 0036. Ruthless Pruning System
 
 **Date**: 2026-01-28
-**Status**: Proposed
+**Status**: Superseded — the pruning system is superseded by the 0092.x memory architecture (the decay idea reborn as usage-aware ripeness, ADR 0092.12) and the docs-native pivot (ADR 0112); per report 0003 D10. Status reconciled 2026-07-17.
 **Backlog Item**: TASK-0129
 
 ## Context

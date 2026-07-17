@@ -1,7 +1,7 @@
 # 0101. Search: Reconciliation + ID Lookup + Architectural Findings
 
 **Date**: 2026-05-24
-**Status**: Accepted (Phase 1–3 shipped), Phase 4 proposed
+**Status**: Accepted (Phases 1–4 shipped — the Phase 4 query-intent parser shipped via ADR 0092.4, which records ID-shaped queries short-circuiting through it; report 0003 appendix). Status reconciled 2026-07-17.
 **Triggered by**: User unable to find TASK-0596 ("Research: Fredrika Unified Diff Viewer") via `backlog_search("diff viewer")` or `backlog_search("task 596")`.
 
 ## Problems Found
