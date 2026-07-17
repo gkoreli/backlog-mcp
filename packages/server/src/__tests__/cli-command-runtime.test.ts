@@ -1,7 +1,15 @@
 import { MemoryComposer } from '@backlog-mcp/memory';
+import { EntityType } from '@backlog-mcp/shared';
 import { Command } from 'commander';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import matter from 'gray-matter';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createBacklogHome } from '../core/backlog-home.js';
 import { createOperationLogger } from '../operations/logger.js';
+import { buildEntity } from '../storage/entity-factory.js';
+import { createLocalRuntime } from '../storage/local/local-runtime.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { CliRuntime } from '../cli/runner.types.js';
 
@@ -41,6 +49,7 @@ import { registerRecall } from '../cli/commands/recall.js';
 import { registerSearch } from '../cli/commands/search.js';
 import { registerWakeup } from '../cli/commands/wakeup.js';
 import { registerContradictions } from '../cli/commands/contradictions.js';
+import { registerUpdate } from '../cli/commands/update.js';
 
 function createRuntime(): CliRuntime {
   const service = {
@@ -298,5 +307,71 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
     await program.parseAsync(['node', 'backlog-mcp', 'contradictions', '--candidates']);
 
     expect(formatted).toEqual(['No collision candidates (0 live memories scanned).']);
+  });
+
+  it('round-trips distinct_from through the local update escape hatch', async function roundTripsDistinctFrom() {
+    const root = join(tmpdir(), 'cli-command-runtime', 'distinct-from');
+    mkdirSync(join(root, 'docs'), { recursive: true });
+    const home = createBacklogHome({ kind: 'project', root });
+    const localRuntime = createLocalRuntime(home);
+    localRuntime.storage.add(buildEntity({
+      id: 'MEMO-0001',
+      title: 'Cloudflare deployment note',
+      type: EntityType.Memory,
+      content: 'Production deploys to Cloudflare Workers.',
+      layer: 'semantic',
+    }));
+    localRuntime.storage.add(buildEntity({
+      id: 'MEMO-0002',
+      title: 'Local VPS deployment note',
+      type: EntityType.Memory,
+      content: 'Production deploys to a local VPS.',
+      layer: 'semantic',
+    }));
+    const runtime: CliRuntime = {
+      home,
+      service: localRuntime.service,
+      writeContext: {
+        actor: { type: 'agent', name: 'command-agent' },
+        operationLog: localRuntime.operationLogger,
+        memoryComposer: localRuntime.memoryComposer,
+      },
+      memoryComposer: localRuntime.memoryComposer,
+      operationLogger: localRuntime.operationLogger,
+      readIdentity: function readIdentity() {
+        return undefined;
+      },
+      resolveSourcePath: function resolveSourcePath(sourcePath) {
+        return sourcePath;
+      },
+      close: async function close(): Promise<void> {
+        await localRuntime.stop();
+      },
+    };
+    mocks.run.mockImplementation(async function runSelected(
+      handler: (selected: CliRuntime) => Promise<unknown>,
+    ) {
+      await handler(runtime);
+    });
+    const program = new Command().option('--json');
+    registerUpdate(program);
+
+    await program.parseAsync([
+      'node',
+      'backlog-mcp',
+      'update',
+      'MEMO-0001',
+      '--fields',
+      '{"distinct_from":["MEMO-0002"]}',
+    ]);
+
+    const markdown = readFileSync(
+      join(home.documentsDir, 'memories', 'MEMO-0001.md'),
+      'utf8',
+    );
+    expect(matter(markdown).data.distinct_from).toEqual(['MEMO-0002']);
+    expect(await localRuntime.service.get('MEMO-0001')).toMatchObject({
+      distinct_from: ['MEMO-0002'],
+    });
   });
 });
