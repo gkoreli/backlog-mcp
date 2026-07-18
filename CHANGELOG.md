@@ -31,6 +31,21 @@ begins at 0.57.0 — earlier history lives in git.
   focus — never-yield class — and the Amnesia gate now proves it: the
   amnesiac learns its goal, its constraints, and what it may legally do
   next from the same single ≤ 3,072-byte payload.
+- **Substrate schemas can now evolve: `definitionVersion` is unpinned, and a
+  version bump without frozen history is loud (ADR 0122 Slice A).** The
+  substrate-definition meta-schema accepts any positive-integer
+  `definitionVersion` (previously pinned to `1`; the meta-schema URN is
+  unchanged). A declaration at version N > 1 must freeze every outgoing
+  definition at `docs/substrates/history/<type>@<version>.json`; each missing
+  link surfaces as a `missing-version-history` registry diagnostic — never a
+  load failure: the substrate loads and functions while its lineage is
+  incomplete. Discovery classifies `substrates/history/**` as lineage, never
+  live declarations, so a frozen file cannot collide with the active type.
+  The structural suite gains a `schema-evolution` class proving the
+  discipline on the real corpus plus synthetic bump fixtures, and workflow
+  transitions accept an optional `permitted` field — reserved by
+  compiled-process R-B, validated but entirely unenforced. Every existing
+  declaration is v1 and behaves byte-identically.
 
 ## [0.68.0] — 2026-07-18
 
