@@ -20,7 +20,6 @@ Local-first *is* the architecture; remoteness is meant to be reached by **syncin
 
 ![backlog-mcp web viewer](https://raw.githubusercontent.com/gkoreli/backlog-mcp/main/backlog-viewer-ui.png)
 
-
 ## Engineering record
 
 [117 Pull Requests Later, It Wasn’t a Task Manager Anymore](https://gkoreli.com/one-hundred-pull-requests)
