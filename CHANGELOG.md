@@ -10,7 +10,18 @@ each version says why it mattered on the road to the north star
 (`docs/NORTH-STAR.md` — *your backlog is your agent's memory*). This changelog
 begins at 0.57.0 — earlier history lives in git.
 
-## [Unreleased]
+## [0.68.0] — 2026-07-18
+
+*The release the product built while reviewing itself. An independent
+sol-tier reviewer (review 0001) read the 48-hour trunk cold and found what
+its builders missed; every finding is fixed here — the identity ladder now
+resolves each requested home's own stamp, the telemetry instrument can no
+longer log a false miss, and the Desk does bounded, host-identical work.
+Worktrees brief from the family's law with honest divergence stubs (Lattice
+W2), and the CLI finally hydrates neighborhoods like the MCP surface always
+could. Five agents shipped this: two Claude builders, a codex sol fixer, an
+engineer, and granite — every write attributed by worktree stamp, every
+retrieval in the telemetry ledger.*
 
 ### Added
 - **Brief from the family's law, not your branch's memory of it — in a
