@@ -47,6 +47,22 @@ begins at 0.57.0 — earlier history lives in git.
   gets and resource-path gets — reads, not expansions — no longer emit
   Tier-1 `expand` at all. The ADR 0092.9 R-14 strong-usage signal (overlay
   line + counter bump on MEMO- body fetches) is untouched; ranking unchanged.
+- **Trust what the retrieval instrument tells you — Tier-1 telemetry no
+  longer fabricates recall misses, correlates strangers, or grows without
+  bound (review 0001, the three telemetry MEDIUMs).** (1) Per-home recall
+  ids now derive from that home's actual retrieval result, never the
+  fused, token-packed response: a home whose hit was dropped by cross-home
+  packing no longer records `ids: []`, keeping the ADR 0121 R6 mining
+  trigger and the promotion lane's recall-miss evidence honest. (2) The
+  stateless HTTP/MCP transport mints one telemetry session per request
+  (precedence: `BACKLOG_SESSION` env > per-request UUID > per-process
+  UUID; CLI invocations unchanged), so two independent HTTP clients can
+  never again share the detached server's lifetime session and be falsely
+  correlated. (3) The sink is bounded: past 8 MiB it rotates once to
+  `retrieval-telemetry.jsonl.1` (replacing any previous rotation) before
+  appending — deterministic, no timers, no GC daemon, worst case ~16 MiB
+  per home. Event line schema unchanged, ranking untouched (0121 R5),
+  fail-open total.
 
 ## [0.67.0] — 2026-07-17
 
