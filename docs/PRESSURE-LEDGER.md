@@ -19,6 +19,7 @@ Build-now changes require the evidence column to cite something real.
 | Peer sync | not yet proven | stable ids, causality, operation provenance | No |
 | CRDT merge | not yet required (0107 parked) | authoritative/derived separation (D2) | No |
 | Actor mailboxes | belongs to aime | clean external intent port; store is not an actor | No |
+| Resilient daemon (engine layer) | detached server exists but restarts are manual; a builder's probe took over Goga's live server via port collision (2026-07-18) | Invariant 9: engine absorbs freely, truth stays legible; daemon supervises its OWN derived layers, never agents | **Charter on Goga's GO** — named ambition (PROMPT 0015: "resilient daemon like aime has") |
 | Actor-transition authorization (grants) | zero wrong-actor incidents in 2 days of 5-agent fleet | optional `permitted` on workflow transitions (additive under 0122) | No — seam reserved (PROMPT 0013, compiled-process R-B) |
 | Process as data → declarative agent-system compiler | our own merge/review/release law is prose scattered across ADRs+memories; zero wrong-actor incidents yet | descriptive + validating only — never a run-loop; bounded non-Turing guard language; identity≠role≠capability | **PARKED UNTIL PAIN** (goga, PROMPT 0014) — five unpark tripwires in compiled-process Part Two; E-PROC is the designated first move on unpark |
 

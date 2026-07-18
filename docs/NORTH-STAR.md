@@ -133,8 +133,13 @@ product's retrieval story.** Context engineering does not disappear — it survi
 - **A store, not an actor.** Agents mutate, the viewer observes, humans steer the agents
   (ARTF-0189, ADR 0097). All state changes flow through MCP tools; the viewer is
   read-only.
-- **Markdown on disk you can read without the tool.** Every artifact is frontmatter
-  markdown. The tool is a convenience over the files, never a gate in front of them.
+- **An engine over legible truth.** Every artifact is frontmatter markdown you can read
+  without the tool — and above that truth layer runs a real engine: a long-lived daemon,
+  hybrid BM25+vector retrieval with local embeddings, a compiled substrate registry,
+  SHA-pinned canonical git reads, an append-only telemetry ledger. The truth is never
+  gated behind the engine; the engine is never mistaken for "a convenience over the
+  files." The product is both, deliberately: the engine grows ambitious *because* the
+  truth stays self-sufficient (Invariant 9; PROMPT 0015).
 - **Local-first, forever** (ADR 0104). Filesystem storage, Orama hybrid BM25+vector search
   with local embeddings, agentic memory, live viewer over SSE. This is where the product
   grows.
@@ -262,6 +267,16 @@ product's retrieval story.** Context engineering does not disappear — it survi
    authors; a human's prose is source it may read, never its own to normalize. Where
    enforcing a schema would mean editing a human's file, that may simply be a problem we
    choose not to solve (PROMPT 0002 #1, #7; ADR 0117 open).
+9. **The engine absorbs freely; the truth stays legible — and the destruction test is the
+   license to swallow.** Anything may join the engine — SQLite, message buses, caches,
+   rerankers, sync engines, CRDTs, a resilient always-on daemon — as a **derived** or
+   **evidence** layer (ADR 0123 taxonomy), because Invariant 1 plus the destruction test
+   (delete every derived artifact; meaning survives from the authoritative documents)
+   guarantee every absorbed technology remains an organ, never the skeleton. Restricting
+   the truth layer is what *licenses* ambition in the engine layer: we can swallow entire
+   systems precisely because we can always cut any of them out. Under-reading this product
+   as "plain .md file storage" is as much a violation of this document as a binary-only
+   store would be (PROMPT 0015, verbatim source; PROMPT 0004 absorption thesis).
 
 ## The Four Pillars
 
