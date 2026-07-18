@@ -439,3 +439,123 @@ describe('Wakeup hard total ceiling — unbounded active work (ADR 0118.1 Slice 
     expect(briefing.knowledge).toEqual([]);
   });
 });
+
+/**
+ * CANONICAL-LAW DIVERGENCE UNDER CEILING PRESSURE (LATTICE W2 acceptance):
+ * the same all-sections pressure repo, now briefed from a linked worktree
+ * whose law diverged from canonical. The two divergence stubs and the
+ * canonical vision title are FLOOR content (they ride the never-yield
+ * class of the sections they annotate), so W2 must absorb its bytes by
+ * pushing the existing trim ladder harder — never by widening the
+ * 3,072-byte ceiling and never by dropping a stub.
+ */
+describe('Wakeup wire budget — canonical-law divergence pressure (LATTICE W2)', () => {
+  let briefing: Record<string, any>;
+  let payload: string;
+  const homeRoot = join(tmpdir(), 'wakeup-wire-budget', 'pressure-worktree');
+  const CANONICAL_SHA = 'ab12cd3' + 'f'.repeat(33);
+
+  beforeAll(async () => {
+    const home = createBacklogHome(
+      { kind: 'project', root: homeRoot },
+      {
+        resolveFamily: () => ({
+          root: join(tmpdir(), 'wakeup-wire-budget', 'pressure-family'),
+          name: 'pressure-family',
+          branch: 'feat/pressure',
+          defaultBranch: 'main',
+        }),
+      },
+    );
+    mkdirSync(home.documentsDir, { recursive: true });
+    commitPressureRepo(home);
+    const runtime: LocalRuntime = createLocalRuntime(home, {
+      createSearch: () => new OramaSearchService({
+        cachePath: join(home.controlDir, 'cache', 'search-index.json'),
+        hybridSearch: false,
+        halfLifeDays: 30,
+      }),
+    });
+    const wakeupTool = captureHandler(s => registerBacklogWakeupTool(s, runtime.service, {
+      readLocalFile: (path: string) => {
+        try { return readFileSync(path, 'utf-8'); } catch { return null; }
+      },
+      identityPath: join(home.documentsDir, 'identity.md'),
+      operationLogger: {
+        read: () => [
+          { ts: T(16, 21), tool: 'backlog_remember', params: {}, resourceId: 'MEMO-0002', actor: { type: 'agent', name: 'onyx' } },
+        ],
+      },
+      readGrounding: createWakeupGroundingReader({
+        home,
+        countIndexedDocuments: () => runtime.resourceManager.list().length,
+        observedRecency: () => Object.fromEntries(
+          Array.from({ length: 40 }, (_, i) => {
+            const id = String(i + 1).padStart(4, '0');
+            const date = new Date(Date.UTC(2026, 4, 1) + i * 86_400_000);
+            return [`ADR ${id}`, date.toISOString()];
+          }),
+        ),
+        countCommitsBehind: () => 5,
+        // Law probe injected as plain facts — this gate is about BYTES at
+        // the boundary, not git; the real probe is proven in
+        // git-law-freshness.test.ts against a real repository.
+        probeCanonicalLaw: () => ({
+          commit: CANONICAL_SHA,
+          vision: {
+            state: 'diverged',
+            path: 'docs/NORTH-STAR.md',
+            content: '# North Star — Canonical Pressure Law\n\nThe law as main now states it.\n',
+          },
+          constraintsDiverged: true,
+        }),
+      }),
+    }));
+    const res = await wakeupTool({});
+    payload = res.content[0]?.text ?? '{}';
+    briefing = JSON.parse(payload);
+  });
+
+  it('serves the CANONICAL vision title with the exact divergence stub — never the stale local title', () => {
+    expect(briefing.vision).toEqual({
+      path: 'docs/NORTH-STAR.md',
+      title: 'North Star — Canonical Pressure Law',
+      divergence: 'diverges from main @ ab12cd3 — worktree copy is 5 commits behind',
+    });
+  });
+
+  it('the constraints stub rides beside the section and the constraints NEVER yield around it', () => {
+    expect(briefing.constraints_divergence)
+      .toBe('diverge from main @ ab12cd3 — worktree copy is 5 commits behind');
+    expect(briefing.constraints).toHaveLength(3);
+    expect(briefing.constraints[0]).toMatchObject({ id: 'REQ-0001', compliance: 'violated' });
+    expect(briefing.metadata.constraints_omitted).toBe(4);
+    expect(briefing.metadata.worktree).toBe('pressure-family @ feat/pressure, 5 behind main');
+  });
+
+  it('W2 absorbed its bytes down the EXISTING ladder: more optional detail yielded than the plain pressure briefing, ledger exact', () => {
+    // The plain pressure fixture trims {activity:1, completions:1,
+    // decisions:2}; the two stubs + canonical title push two further
+    // rungs of declared-section yield (largest section first) — and the
+    // ladder still never reaches knowledge or the floor.
+    expect(briefing.metadata.truncated).toEqual({
+      activity: 1,
+      completions: 1,
+      decisions: 3,
+      operations: 1,
+    });
+    expect(briefing.recent.activity).toEqual([]);
+    expect(briefing.recent.completions).toEqual([]);
+  });
+
+  it('the diverged-law payload stays ≤ 3,072 exact pretty UTF-8 bytes at the MCP boundary — no ceiling expansion', () => {
+    const bytes = Buffer.byteLength(payload, 'utf8');
+    console.info(`[lattice-w2 budget] exact pretty bytes: ${bytes}; ~tokens: ${Math.ceil(payload.length / 4)}`);
+    expect(bytes).toBeLessThanOrEqual(3072);
+    // The stubs survived every trim — floor content is never the ladder's.
+    expect(payload).toContain('diverges from main @ ab12cd3');
+    expect(payload).toContain('"constraints_divergence"');
+    expect(briefing.memory_protocol).toEqual(MEMORY_PROTOCOL);
+    expect(Object.keys(briefing).at(-1)).toBe('memory_protocol');
+  });
+});

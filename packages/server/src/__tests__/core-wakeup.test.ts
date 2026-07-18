@@ -9,7 +9,7 @@ import { describe, it, expect, vi } from 'vitest';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { Entity } from '@backlog-mcp/shared';
 import { wakeup } from '../core/wakeup.js';
-import { ValidationError } from '../core/types.js';
+import { ValidationError, type WakeupGrounding } from '../core/types.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 
 function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): Entity {
@@ -607,6 +607,173 @@ describe('core/wakeup', () => {
       });
       expect(result.metadata.worktree).toBeUndefined();
       expect(JSON.stringify(result.metadata)).not.toContain('worktree');
+    });
+  });
+
+  describe('canonical-law disclosure (LATTICE W2)', () => {
+    // Exact-text law: these strings are the divergence stubs agents read.
+    // The fold only formats plain facts the composition probed; every
+    // branch of the drift wording is pinned here.
+    const visionDoc = { path: 'docs/NORTH-STAR.md', role: 'vision' as const, title: 'Local Title' };
+    const worktreeFacts = (
+      behind: number,
+      law: NonNullable<NonNullable<WakeupGrounding['worktree']>['law']> | undefined,
+    ): WakeupGrounding['worktree'] => ({
+      family: 'fam',
+      branch: 'feat/x',
+      defaultBranch: 'main',
+      behind,
+      ...(law === undefined ? {} : { law }),
+    });
+    const grounded = (
+      worktree: WakeupGrounding['worktree'],
+      orientation: WakeupGrounding['orientation'] = [visionDoc],
+      visionCandidates: string[] = ['docs/NORTH-STAR.md'],
+    ): WakeupGrounding => ({
+      orientation,
+      visionCandidates,
+      indexedDocuments: 0,
+      ...(worktree === undefined ? {} : { worktree }),
+    });
+
+    it('a diverged vision serves the CANONICAL title and the exact one-line stub', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => grounded(worktreeFacts(3, {
+          commit: 'ab12cd3',
+          vision: { state: 'diverged', path: 'docs/NORTH-STAR.md', title: 'Canonical Title' },
+        })),
+      });
+      expect(result.vision).toEqual({
+        path: 'docs/NORTH-STAR.md',
+        title: 'Canonical Title',
+        divergence: 'diverges from main @ ab12cd3 — worktree copy is 3 commits behind',
+      });
+      // The W1 meta line is untouched by W2.
+      expect(result.metadata.worktree).toBe('fam @ feat/x, 3 behind main');
+      expect(result.constraints_divergence).toBeUndefined();
+    });
+
+    it('drift wording: 1 commit is singular', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => grounded(worktreeFacts(1, {
+          commit: 'ab12cd3',
+          vision: { state: 'diverged', path: 'docs/NORTH-STAR.md', title: 'Canonical Title' },
+        })),
+      });
+      expect(result.vision?.divergence)
+        .toBe('diverges from main @ ab12cd3 — worktree copy is 1 commit behind');
+    });
+
+    it('drift wording: 0 behind with a probed ahead count names the ahead drift', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => grounded(worktreeFacts(0, {
+          commit: 'ab12cd3',
+          ahead: 2,
+          vision: { state: 'diverged', path: 'docs/NORTH-STAR.md', title: 'Canonical Title' },
+        })),
+      });
+      expect(result.vision?.divergence)
+        .toBe('diverges from main @ ab12cd3 — worktree copy is 2 commits ahead');
+    });
+
+    it('drift wording: 0 behind, no ahead — the copy is locally modified', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => grounded(worktreeFacts(0, {
+          commit: 'ab12cd3',
+          vision: { state: 'diverged', path: 'docs/NORTH-STAR.md', title: 'Canonical Title' },
+        })),
+      });
+      expect(result.vision?.divergence)
+        .toBe('diverges from main @ ab12cd3 — worktree copy is locally modified');
+    });
+
+    it('a worktree with NO vision doc serves the canonical pointer with the absence stub', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => grounded(
+          worktreeFacts(2, {
+            commit: 'ab12cd3',
+            vision: { state: 'worktree_missing', path: 'docs/NORTH-STAR.md', title: 'Canonical Title' },
+          }),
+          [],
+          [],
+        ),
+      });
+      expect(result.vision).toEqual({
+        path: 'docs/NORTH-STAR.md',
+        title: 'Canonical Title',
+        divergence: 'absent in worktree — served from main @ ab12cd3',
+      });
+    });
+
+    it('worktree-only vision (canonical has none) keeps the local pointer and says so', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => grounded(worktreeFacts(2, {
+          commit: 'ab12cd3',
+          vision: { state: 'canonical_missing', path: 'docs/NORTH-STAR.md' },
+        })),
+      });
+      expect(result.vision).toEqual({
+        path: 'docs/NORTH-STAR.md',
+        title: 'Local Title',
+        divergence: 'not on main @ ab12cd3 — worktree-only copy',
+      });
+    });
+
+    it('diverged constraints carry the exact section stub; a fresh vision stays stub-free', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => grounded(worktreeFacts(5, {
+          commit: 'ab12cd3',
+          constraintsDiverged: true,
+        })),
+      });
+      expect(result.constraints_divergence)
+        .toBe('diverge from main @ ab12cd3 — worktree copy is 5 commits behind');
+      // Vision was canonical-fresh: the pointer is untouched, no stub.
+      expect(result.vision).toEqual({ path: 'docs/NORTH-STAR.md', title: 'Local Title' });
+    });
+
+    it('a failed canonical title read still stubs the divergence over the LOCAL title (fail-open)', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => grounded(worktreeFacts(2, {
+          commit: 'ab12cd3',
+          vision: { state: 'diverged', path: 'docs/NORTH-STAR.md' },
+        })),
+      });
+      expect(result.vision).toEqual({
+        path: 'docs/NORTH-STAR.md',
+        title: 'Local Title',
+        divergence: 'diverges from main @ ab12cd3 — worktree copy is 2 commits behind',
+      });
+    });
+
+    it('the ambiguity diagnostic outranks canonical vision facts — never a silent pick', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => grounded(
+          worktreeFacts(2, {
+            commit: 'ab12cd3',
+            vision: { state: 'diverged', path: 'docs/NORTH-STAR.md', title: 'Canonical Title' },
+            constraintsDiverged: true,
+          }),
+          [],
+          ['docs/NORTH-STAR.md', 'NORTH_STAR.md'],
+        ),
+      });
+      expect(result.vision).toBeUndefined();
+      expect(result.metadata.vision_candidates).toEqual(['NORTH_STAR.md', 'docs/NORTH-STAR.md']);
+      // The constraints stub is independent of the vision ambiguity.
+      expect(result.constraints_divergence)
+        .toBe('diverge from main @ ab12cd3 — worktree copy is 2 commits behind');
+    });
+
+    it('no law facts — a fresh worktree briefing carries not one W2 byte', async () => {
+      const result = await wakeup(mockService([]), {
+        readGrounding: () => grounded(worktreeFacts(3, undefined)),
+      });
+      const payload = JSON.stringify(result);
+      expect(payload).not.toContain('divergence');
+      expect(payload).not.toContain('"law"');
+      expect(result.vision).toEqual({ path: 'docs/NORTH-STAR.md', title: 'Local Title' });
+      expect(result.metadata.worktree).toBe('fam @ feat/x, 3 behind main');
     });
   });
 
