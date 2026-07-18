@@ -47,6 +47,20 @@ begins at 0.57.0 — earlier history lives in git.
   compiled-process R-B, validated but entirely unenforced. Every existing
   declaration is v1 and behaves byte-identically.
 
+### Fixed
+- **`recall --home all` no longer comes back empty from inside a project —
+  cross-home reads now fuse the ambient project's hits with global's
+  (TASK-0006).** Two compounding causes: with no `--project-root` the project
+  home was discovered from `cwd` but left out of the fan-out, and the caller
+  repo's configured context scope was stamped onto every consulted home,
+  filtering the global home's retrieval to zero. The net effect was "No
+  memories found" even though each home queried alone returned hits.
+  Cross-home context resolution now stops at the explicit/env layer — no
+  single repo's ambient scope may speak for every home — and the fan-out
+  includes the project discovered from `cwd` (behavior change: an unflagged
+  `--home all` from within a project now consults that project, not global
+  alone). Ranking and single-home reads are untouched.
+
 ## [0.68.0] — 2026-07-18
 
 *The release the product built while reviewing itself. An independent

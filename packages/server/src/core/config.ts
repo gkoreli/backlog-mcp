@@ -135,6 +135,13 @@ export interface ResolveContextParams {
   deps?: ConfigFsDeps;
   /** Resolved home when its config file should be read directly. */
   home?: BacklogHome;
+  /**
+   * Ambient config fallback (home/repo config). Cross-home reads pass
+   * false: with several homes in one read there is no single ambient
+   * scope, and stamping the caller repo's scope onto every home filters
+   * foreign homes to zero (TASK-0006). Defaults to true.
+   */
+  ambient?: boolean;
 }
 
 /**
@@ -143,6 +150,9 @@ export interface ResolveContextParams {
  *
  * A blank/whitespace-only value at any layer is treated as absent so an empty
  * env export or `"context": ""` doesn't shadow a lower layer.
+ *
+ * `ambient: false` stops after the env layer — used by cross-home reads,
+ * where no single home's or repo's ambient scope may speak for all homes.
  */
 export function resolveContext(
   params: ResolveContextParams = {},
@@ -158,6 +168,8 @@ export function resolveContext(
   const env = params.env ?? process.env;
   const fromEnv = clean(env[CONTEXT_ENV_VAR]);
   if (fromEnv) return fromEnv;
+
+  if (params.ambient === false) return undefined;
 
   if (params.home !== undefined) {
     return clean(loadHomeConfig(params.home, params.deps).context);

@@ -85,7 +85,14 @@ export function registerRecall(program: Command): void {
         ...(opts.budget !== undefined ? { token_budget: opts.budget } : {}),
       };
       if (deps.home === 'all') {
-        const context = resolveContext({ explicit: opts.context });
+        // No ambient config fallback (TASK-0006): the repo's configured
+        // scope belongs to the project home alone; resolving it here would
+        // stamp it onto every consulted home and filter the global home's
+        // retrieval to zero. Explicit flag and BACKLOG_CONTEXT still apply.
+        const context = resolveContext({
+          explicit: opts.context,
+          ambient: false,
+        });
         return runAcrossHomes(
             (coordinator, selection) => coordinator.recall(
               {

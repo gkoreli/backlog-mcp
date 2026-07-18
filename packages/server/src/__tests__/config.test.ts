@@ -201,4 +201,28 @@ describe('resolveContext precedence', () => {
       cwd: '/config/scope',
     })).toBe('FLDR-CONFIG');
   });
+
+  it('stops at the env layer when ambient is false — no repo scope stamped (TASK-0006)', () => {
+    // A cross-home read passes ambient:false: with several homes in one read
+    // there is no single ambient scope, and stamping the caller repo's scope
+    // (FLDR-CONFIG) onto every home filters foreign homes to zero. Without the
+    // flag this same call resolves to FLDR-CONFIG (see the test above).
+    expect(resolveContext({
+      ambient: false,
+      cwd: '/config/scope',
+    })).toBeUndefined();
+  });
+
+  it('still honors explicit and env context when ambient is false', () => {
+    expect(resolveContext({
+      ambient: false,
+      explicit: 'FLDR-EXPLICIT',
+      cwd: '/config/scope',
+    })).toBe('FLDR-EXPLICIT');
+    expect(resolveContext({
+      ambient: false,
+      env: { BACKLOG_CONTEXT: 'FLDR-ENV' },
+      cwd: '/config/scope',
+    })).toBe('FLDR-ENV');
+  });
 });

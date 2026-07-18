@@ -259,6 +259,29 @@ function throwRunError(error: unknown): never {
 }
 
 /**
+ * Discover the project home an unflagged single-home run from `cwd` would
+ * select (TASK-0006): cross-home reads fan out to global plus this ambient
+ * project when no explicit root is supplied. Best-effort by the coordinator
+ * contract — a selection that cannot resolve must not prevent the global
+ * home from serving, so resolution failures yield no project rather than
+ * failing the whole read.
+ */
+function ambientProjectRoot(
+  cwd: string | undefined,
+  env: Readonly<Record<string, string | undefined>>,
+): string | undefined {
+  try {
+    const home = resolveBacklogHome({
+      cwd: cwd ?? process.cwd(),
+      env,
+    });
+    return home.kind === 'project' ? home.root : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Run one bounded global-plus-project read and close every acquired runtime.
  *
  * Missing projects are reported by the coordinator rather than preventing the
@@ -296,9 +319,11 @@ export async function runAcrossHomes<R>(
     return toHomeReadRuntime(runtime);
   }
   const coordinator = createHomeReadCoordinator({ resolveRuntime });
-  const selection = projectRoot === undefined
+  const activeProjectRoot = projectRoot
+    ?? ambientProjectRoot(deps.cwd, env);
+  const selection = activeProjectRoot === undefined
     ? undefined
-    : { projectRoot };
+    : { projectRoot: activeProjectRoot };
 
   let outcome:
     | { ok: true; value: R }

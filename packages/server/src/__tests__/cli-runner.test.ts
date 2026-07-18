@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { MemoryComposer } from '@backlog-mcp/memory';
 import { Command } from 'commander';
 import { describe, expect, it, vi } from 'vitest';
@@ -264,6 +264,56 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
     })).toEqual(['global']);
     expect(created[0]?.graph.stop).toHaveBeenCalledOnce();
     expect(log).toHaveBeenCalledWith('1 homes');
+    log.mockRestore();
+  });
+
+  it('runs home:all against global plus the ambient project discovered from cwd (TASK-0006)', async function runsAmbientProjectAll() {
+    // A bare `recall --home all` from inside a project must fuse that project's
+    // hits, not just global. With no --project-root the ambient project is
+    // discovered from cwd; without this the project home was excluded from the
+    // fan-out and the fused result came back empty (TASK-0006).
+    mkdirSync('/workspace/ambient/.git', { recursive: true });
+    mkdirSync('/workspace/ambient/.backlog', { recursive: true });
+    writeFileSync(
+      '/workspace/ambient/.backlog/config.json',
+      '{"home":"project"}',
+    );
+    const created: Array<{
+      kind: string;
+      graph: FakeLocalGraph;
+    }> = [];
+    const log = vi.spyOn(console, 'log').mockImplementation(
+      function ignoreLog(): void {},
+    );
+
+    await runAcrossHomes(
+      (coordinator, selection) => coordinator.search(
+        { query: 'both homes' },
+        selection,
+      ),
+      function format(result) {
+        return `${result.homes.length} homes`;
+      },
+      false,
+      {
+        env: {},
+        home: 'all',
+        cwd: '/workspace/ambient',
+        createLocalRuntime: function createLocal(home) {
+          const graph = createFakeLocalGraph(home.kind);
+          created.push({ kind: home.kind, graph });
+          return graph.runtime;
+        },
+        adaptLocalRuntime: adaptFakeLocalRuntime,
+      },
+    );
+
+    expect(created.map(function kind(item) {
+      return item.kind;
+    })).toEqual(['global', 'project']);
+    for (const item of created) {
+      expect(item.graph.stop).toHaveBeenCalledOnce();
+    }
     log.mockRestore();
   });
 
