@@ -4,7 +4,15 @@
  * the shared session across recall/search/expand, fail-open sinks, and
  * the per-home-type state-area location.
  */
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import * as fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,6 +26,8 @@ import {
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import {
   RetrievalTelemetry,
+  TELEMETRY_SINK_MAX_BYTES,
+  appendTelemetryLine,
   resetTelemetrySessionIdForTests,
   telemetrySessionId,
   withRequestTelemetrySession,
@@ -310,6 +320,55 @@ describe('MemoryUsageTracker + Tier-1 telemetry (the grafted seam)', () => {
   });
 });
 
+describe('telemetry sink retention (review 0001: rotate once past the bound)', () => {
+  const dir = join(tmpdir(), 'telemetry-retention');
+
+  afterEach(function cleanupRetention() {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('bounds the sink at 8 MiB by default', () => {
+    expect(TELEMETRY_SINK_MAX_BYTES).toBe(8 * 1024 * 1024);
+  });
+
+  it('rotates an oversized sink to <name>.1 before appending, starting fresh', () => {
+    const path = join(dir, 'sink', 'retrieval-telemetry.jsonl');
+    appendTelemetryLine(path, 'A', 64);
+    appendTelemetryLine(path, 'B'.repeat(80), 64);
+    // The sink now exceeds the bound — the NEXT append rotates first.
+    appendTelemetryLine(path, 'C', 64);
+    expect(readFileSync(path, 'utf-8')).toBe('C\n');
+    expect(readFileSync(`${path}.1`, 'utf-8')).toBe(`A\n${'B'.repeat(80)}\n`);
+  });
+
+  it('a second rotation replaces the previous .1 — never a .2, no timers, no daemon', () => {
+    const path = join(dir, 'sink', 'retrieval-telemetry.jsonl');
+    appendTelemetryLine(path, 'A'.repeat(80), 64);
+    appendTelemetryLine(path, 'B', 64);
+    appendTelemetryLine(path, 'C'.repeat(80), 64);
+    appendTelemetryLine(path, 'D', 64);
+    expect(readFileSync(path, 'utf-8')).toBe('D\n');
+    expect(readFileSync(`${path}.1`, 'utf-8')).toBe(`B\n${'C'.repeat(80)}\n`);
+    expect(existsSync(`${path}.2`)).toBe(false);
+  });
+
+  it('fail-open: a failed rotation is swallowed and the append still lands', () => {
+    const path = join(dir, 'blocked', 'retrieval-telemetry.jsonl');
+    appendTelemetryLine(path, 'A'.repeat(80), 64);
+    const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation(() => {
+      throw new Error('EACCES: rotation denied');
+    });
+    try {
+      expect(() => appendTelemetryLine(path, 'B', 64)).not.toThrow();
+    } finally {
+      renameSpy.mockRestore();
+    }
+    // The oversized sink keeps growing rather than losing the event.
+    expect(readFileSync(path, 'utf-8')).toBe(`${'A'.repeat(80)}\nB\n`);
+    expect(existsSync(`${path}.1`)).toBe(false);
+  });
+});
+
 describe('state-area location per home type (design ruling 1)', () => {
   let roots: string[] = [];
 
@@ -369,6 +428,24 @@ describe('state-area location per home type (design ruling 1)', () => {
       event: 'search',
       ids: [],
       home: 'global',
+    });
+    await runtime.stop();
+  });
+
+  it('the runtime sink rotates once past the 8 MiB bound before appending (review 0001)', async () => {
+    const home = createBacklogHome({ kind: 'project', root: makeRoot('telemetry-rotation-') });
+    const telemetryPath = join(home.controlDir, 'state', 'retrieval-telemetry.jsonl');
+    mkdirSync(join(home.controlDir, 'state'), { recursive: true });
+    writeFileSync(telemetryPath, 'x'.repeat(TELEMETRY_SINK_MAX_BYTES + 1));
+
+    const runtime = createLocalRuntime(home);
+    runtime.usageTracker.recordSearch(['TASK-0001']);
+
+    expect(statSync(`${telemetryPath}.1`).size).toBe(TELEMETRY_SINK_MAX_BYTES + 1);
+    expect(JSON.parse(readFileSync(telemetryPath, 'utf-8').trim())).toMatchObject({
+      event: 'search',
+      ids: ['TASK-0001'],
+      home: home.id,
     });
     await runtime.stop();
   });

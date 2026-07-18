@@ -30,12 +30,21 @@
  * docs, and never in the mutation journal (operations.jsonl records
  * mutations only).
  *
+ * Retention (review 0001): the sink is bounded, never append-forever.
+ * Before an append, a sink exceeding 8 MiB (TELEMETRY_SINK_MAX_BYTES)
+ * rotates once to `<name>.1`, replacing any previous `.1` — worst case
+ * on disk is ~16 MiB plus one event line per home. Deterministic: no
+ * timers, no GC daemon; a failed rotation is swallowed and the append
+ * still runs.
+ *
  * Fail-open everywhere: a telemetry failure is swallowed, never surfaced,
  * and retrieval behavior stays byte-identical — this is observation only.
  */
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
+import { appendFileSync, mkdirSync, renameSync, statSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 export type RetrievalTelemetryEventName = 'recall' | 'search' | 'expand';
 
@@ -100,6 +109,34 @@ export function telemetrySessionId(
 /** Drop the minted session id so the next call re-mints (tests only). */
 export function resetTelemetrySessionIdForTests(): void {
   mintedSessionId = undefined;
+}
+
+/** Retention boundary for the telemetry sink (review 0001): 8 MiB. */
+export const TELEMETRY_SINK_MAX_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Append one event line to the telemetry sink file, enforcing the
+ * retention bound. A sink already exceeding `maxBytes` first rotates to
+ * `<path>.1` (replacing any previous rotation), so the line starts a
+ * fresh file. Fail-open at every step (ADR 0121 R7): a failed size probe
+ * or rotation still attempts the append; a failed append is swallowed.
+ */
+export function appendTelemetryLine(
+  path: string,
+  line: string,
+  maxBytes: number = TELEMETRY_SINK_MAX_BYTES,
+): void {
+  try {
+    try {
+      if (statSync(path).size > maxBytes) renameSync(path, `${path}.1`);
+    } catch {
+      // Absent sink or failed rotation — still append below.
+    }
+    mkdirSync(dirname(path), { recursive: true });
+    appendFileSync(path, `${line}\n`);
+  } catch {
+    // Fail-open: telemetry never breaks a retrieval.
+  }
 }
 
 export interface RetrievalTelemetryDeps {

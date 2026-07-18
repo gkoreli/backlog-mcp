@@ -20,7 +20,10 @@ import { BacklogMemoryStore } from '../../memory/backlog-memory-store.js';
 import { createComposerForStore } from '../../memory/bootstrap.js';
 import { MemoryUsageOverlay } from '../../memory/memory-usage-overlay.js';
 import { MemoryUsageTracker } from '../../memory/usage-tracker.js';
-import { RetrievalTelemetry } from '../../memory/retrieval-telemetry.js';
+import {
+  RetrievalTelemetry,
+  appendTelemetryLine,
+} from '../../memory/retrieval-telemetry.js';
 import { ambientAgentIdentity } from './agent-identity.js';
 import {
   createOperationLogger,
@@ -104,7 +107,9 @@ function usageLogPath(home: BacklogHome): string {
  * Tier-1 retrieval telemetry sink (ADR 0121 R7): same uncommitted state
  * area as the usage overlay — `state/` is gitignored in project homes via
  * DERIVED_CONTROL_RULES, and the global home's state lives under
- * `~/.backlog`, outside any repo. Never a committed doc.
+ * `~/.backlog`, outside any repo. Never a committed doc. Appends run
+ * through appendTelemetryLine, which bounds the sink by one rotation to
+ * `<name>.1` past TELEMETRY_SINK_MAX_BYTES (review 0001).
  */
 function retrievalTelemetryPath(home: BacklogHome): string {
   return join(home.controlDir, 'state', RETRIEVAL_TELEMETRY_LOG);
@@ -327,8 +332,8 @@ export function createLocalRuntime(
   const runtimeTelemetryPath = retrievalTelemetryPath(home);
   const retrievalTelemetry = new RetrievalTelemetry({
     home: home.id,
-    appendLine: function appendTelemetryLine(line) {
-      appendUsageLine(runtimeTelemetryPath, line);
+    appendLine: function appendBoundedTelemetryLine(line) {
+      appendTelemetryLine(runtimeTelemetryPath, line);
     },
     // ADR 0119.1 attribution ladder, reused — never re-implemented.
     resolveActor: function telemetryActor() {
