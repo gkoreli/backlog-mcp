@@ -193,11 +193,11 @@ describe('MemoryUsageTracker + Tier-1 telemetry (the grafted seam)', () => {
     });
   });
 
-  it('search and expand events share the recall session id', async () => {
+  it('search and expand events share the recall session id', () => {
     const { tracker, telemetryLines } = setup();
     tracker.recordRecall('q', []);
     tracker.recordSearch(['TASK-0001']);
-    await tracker.recordExpand('MEMO-0001');
+    tracker.recordContextExpand(['TASK-0001']);
     const events = telemetryLines.map(
       (line) => JSON.parse(line) as { session: string; event: string },
     );
@@ -216,9 +216,36 @@ describe('MemoryUsageTracker + Tier-1 telemetry (the grafted seam)', () => {
     });
   });
 
-  it('recordExpand keeps its MEMO- guard for telemetry too', async () => {
+  it('recordExpand is overlay+bump only — Tier-1 expand moved to the context path (report 0010 F3)', async () => {
+    const { tracker, overlayLines, telemetryLines } = setup();
+    await tracker.recordExpand('MEMO-0001');
+    // Reading a body is not expansion — no Tier-1 event.
+    expect(telemetryLines).toHaveLength(0);
+    // The R-14 strong-usage signal (overlay line + bump) stays untouched.
+    expect(overlayLines).toHaveLength(1);
+    expect(JSON.parse(overlayLines[0] ?? '{}')).toMatchObject({
+      type: 'expand',
+      id: 'MEMO-0001',
+    });
+  });
+
+  it('recordContextExpand emits the Tier-1 expand event for focal entity ids (report 0010 F3)', () => {
+    const { tracker, saves, overlayLines, telemetryLines } = setup();
+    tracker.recordContextExpand(['TASK-0001', 'MEMO-0001']);
+    expect(telemetryLines).toHaveLength(1);
+    expect(JSON.parse(telemetryLines[0] ?? '{}')).toMatchObject({
+      event: 'expand',
+      ids: ['TASK-0001', 'MEMO-0001'],
+      home: 'global',
+    });
+    // Telemetry-only: no overlay line, no counter bump — ranking untouched.
+    expect(overlayLines).toHaveLength(0);
+    expect(saves).toHaveLength(0);
+  });
+
+  it('recordContextExpand with no expanded entity ids emits nothing', () => {
     const { tracker, telemetryLines } = setup();
-    await tracker.recordExpand('TASK-0001');
+    tracker.recordContextExpand([]);
     expect(telemetryLines).toHaveLength(0);
   });
 
@@ -230,6 +257,7 @@ describe('MemoryUsageTracker + Tier-1 telemetry (the grafted seam)', () => {
     });
     expect(() => tracker.recordRecall('q', ['MEMO-0001'])).not.toThrow();
     expect(overlayLines).toHaveLength(1);
+    expect(() => tracker.recordContextExpand(['MEMO-0001'])).not.toThrow();
     await tracker.recordExpand('MEMO-0001');
     expect(saves).toHaveLength(1);
   });

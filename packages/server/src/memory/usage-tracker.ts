@@ -72,12 +72,28 @@ export class MemoryUsageTracker {
     this.deps.telemetry?.record('search', returnedIds);
   }
 
-  /** Strong signal: the agent expanded a recalled stub via backlog_get. */
+  /**
+   * Strong signal: the agent expanded a recalled stub via backlog_get.
+   * Overlay + counter bump only — the Tier-1 `expand` telemetry event
+   * moved to recordContextExpand (report 0010 F3): expansion is the
+   * neighborhood act, not reading a body.
+   */
   async recordExpand(id: string): Promise<void> {
     if (!id.startsWith('MEMO-')) return;
-    this.deps.telemetry?.record('expand', [id]);
     this.append({ type: 'expand', id });
     await this.bump(id);
+  }
+
+  /**
+   * Tier-1 `expand` telemetry (ADR 0121 R7): fired for the ADR 0114
+   * neighborhood act — an entity-id get with context:true, from either
+   * surface (CLI or MCP). Plain gets and resource-path gets are reads,
+   * not expansions, and never land here (report 0010 F3 ruling).
+   * Telemetry-only: no overlay line, no counter bump — ranking untouched.
+   */
+  recordContextExpand(ids: string[]): void {
+    if (ids.length === 0) return;
+    this.deps.telemetry?.record('expand', ids);
   }
 
   /** Strong signal: MEMO- ids cited in newly written content/refs. */
