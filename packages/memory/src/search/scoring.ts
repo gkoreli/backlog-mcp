@@ -186,34 +186,30 @@ export function applyTemporalDecay(
  * @param getTitle - Function to retrieve title for a document ID
  * @returns Re-scored results, sorted by adjusted score
  */
-/**
- * Closed-class function words carry no topic, so counting them as coordination
- * matches rewards incidental overlap ("what", "before", "a") the same as real
- * topic words — inflating irrelevant docs into the top ranks (R8 qrels: grade-0
- * MEMO-0012 tied a grade-3 on "merge law before landing a branch" purely on
- * "what"/"before"). Discounted from coordination only; BM25/vector are untouched.
- */
-const COORDINATION_STOPWORDS = new Set([
-  'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am',
-  'do', 'does', 'did', 'doing', 'have', 'has', 'had', 'my', 'your', 'our',
-  'their', 'its', 'his', 'her', 'i', 'we', 'you', 'they', 'it', 'he', 'she',
-  'of', 'to', 'in', 'on', 'at', 'for', 'with', 'by', 'from', 'as', 'into',
-  'onto', 'how', 'what', 'when', 'where', 'who', 'whom', 'which', 'why',
-  'and', 'or', 'but', 'not', 'no', 'if', 'then', 'than', 'so', 'that', 'this',
-  'these', 'those', 'before', 'after', 'about', 'up', 'down', 'out', 'me',
-]);
-
 export function applyCoordinationBonus(
   hits: ScoredHit[],
   query: string,
   getText: (id: string) => string,
   getTitle?: (id: string) => string,
 ): ScoredHit[] {
-  const rawWords = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
-  if (rawWords.length <= 1) return hits;
-  // Coordinate on content words only; if a query is all function words, there
-  // is no topical signal to coordinate on, so leave the ranking untouched.
-  const queryWords = rawWords.filter(w => !COORDINATION_STOPWORDS.has(w));
+  // A raw word-boundary count decides whether there is more than one query
+  // concept to coordinate on. Checked BEFORE tokenization: compound expansion
+  // (e.g. "FeatureStore" → whole word + "feature" + "store") would otherwise
+  // make a single compound-word query look multi-term.
+  const rawWordCount = query.toLowerCase().trim().split(/\s+/).filter(Boolean).length;
+  if (rawWordCount <= 1) return hits;
+
+  // Tokenize the query with the SAME composed tokenizer used for documents
+  // (REF-0016: real stop-word removal + English stemming), so query and
+  // document tokens are apples-to-apples — stop-word-free AND stemmed, which
+  // is what lets "release" coordinate with "releases". This supersedes the
+  // former hand-rolled COORDINATION_STOPWORDS discount list: closed-class
+  // function words ("what", "before", "a", ...) never survive tokenization,
+  // so they can no longer earn incidental coordination credit (R8 qrels: a
+  // grade-0 memory tied a grade-3 on "merge law before landing a branch"
+  // purely on "what"/"before" overlap). A query with no surviving content
+  // tokens (all stop-words) has no topical signal to coordinate on.
+  const queryWords = compoundWordTokenizer.tokenize(query);
   if (queryWords.length === 0) return hits;
 
   return hits

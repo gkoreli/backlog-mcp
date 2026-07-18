@@ -28,6 +28,7 @@
   "dependencies": {
     "@backlog-mcp/shared": "workspace:*",
     "@orama/orama": "^3.1.18",
+    "@orama/stopwords": "^3.1.18",
     "@huggingface/transformers": "^3.8.1"
   }
 }
