@@ -114,15 +114,23 @@ Recall options are strict:
   layers?: ("episodic" | "semantic" | "procedural")[],
   context?: string,
   tags?: string[],
-  limit?: positive integer
+  limit?: positive integer,
+  home?: "global" | "project"
 }
 ```
+
+`home` (ADR 0121 R8) names the production home the query targets, resolved
+the same way `backlog recall --home <home>` resolves it. It switches the
+runner into per-home recall mode — see "Per-home recall" below — instead of
+the single-`--project-root` search/hybrid benchmark this README describes
+above.
 
 Example:
 
 ```json
 {"id":"search-01","class":"aboutness","surface":"search","query":"embedding startup retry","assessor":"llm:alice-initial; human:bob 2026-07-16","rationale":"Daily query for the retry task.","provenance":["TASK-0001"]}
 {"id":"recall-01","class":"memory-recall","surface":"recall","query":"what governs fusion changes","options":{"layers":["semantic"],"limit":20},"assessor":"llm:alice-initial; human:bob 2026-07-16","rationale":"Exercises the real recall path and usage multiplier.","provenance":["MEMO-0001"]}
+{"id":"recall-02","class":"recall","surface":"recall","query":"how do we cut a release","options":{"home":"project","limit":10},"assessor":"human:goga 2026-07-18","rationale":"Per-home recall: scores the real project home instead of the single benchmark corpus.","provenance":["granite dogfood session 01 2026-07-18"]}
 ```
 
 Query IDs must be unique.
@@ -241,6 +249,50 @@ product's exact-ID and title-boost special cases — a tripwire, never
 improvement evidence — and aboutness is out of scope by design. The
 report contains no timestamps or timings; two runs over the same corpus
 and commit are byte-identical, which is the suite's determinism check.
+
+## Per-home recall (ADR 0121 R8)
+
+Recall qrels judged through a single `--project-root` corpus can't grade a
+query set that spans the user's real global memory home and a project home
+in the same run. When every query in the file is a `"recall"` query whose
+`options.home` is set, `scripts/search-eval.mjs` switches into per-home
+recall mode instead of the search/hybrid benchmark described above:
+
+```bash
+pnpm build
+pnpm search:eval -- \
+  --project-root /absolute/path/to/project \
+  --queries docs/evaluation/recall-queries-v2.jsonl \
+  --qrels docs/evaluation/recall-qrels-v2.jsonl \
+  --output docs/evaluation/reports/recall-baseline-v2.json \
+  --summary docs/evaluation/reports/recall-baseline-v2-summary.md \
+  --baseline-version 2
+```
+
+For each query, the runner resolves its `home` — `"global"` is always the
+real `~/.backlog` home; `"project"` is `--project-root` — through
+`createCliRuntime` (`packages/server/src/cli/runner.ts`), the exact
+construction `backlog recall --home <home>` uses, then calls the core
+`recall()` over that runtime's `memoryComposer`. One runtime is built per
+distinct home named by the query set (not per query) and closed when every
+query has run. This is deliberately NOT the synthetic single-corpus reindex
+`loadProductCorpus` builds for the benchmark above: scores reflect the live
+production configuration — 30-day half-life decay, real usage-multiplier
+reordering, real home content — including a divergence from full CLI
+parity (it never calls `MemoryUsageTracker.recordRecall`, so scoring runs
+do not pollute `memory-usage.jsonl` or `retrieval-telemetry.jsonl`).
+
+Each query is scored at `k = options.limit` (default 10) with
+`packages/memory/src/search/evaluation.ts`'s `ndcgAt`, `precisionAt`, and
+`recallAt` — a qrel document absent from the ranked results scores as a
+miss, never a validation error (`docs/evaluation/R8-JUDGING-2026-07-18.md`
+Q4 records exactly this case). The report mirrors the structural suite's
+shape (`declared_limits`, `inputs`, `provenance`) rather than the
+timing-heavy benchmark report, but — unlike the structural suite — it is
+NOT byte-stable: it queries live homes, so elapsed time and any change to a
+home's memory corpus or usage history can change both rankings and scores
+between runs. The frozen artifact is
+[`reports/recall-baseline-v2.json`](reports/recall-baseline-v2.json).
 
 ## Tier-1 retrieval telemetry (ADR 0121 R7)
 

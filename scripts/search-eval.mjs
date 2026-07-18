@@ -25,17 +25,25 @@ const HELP = `Usage:
     --queries <queries.jsonl> \\
     --qrels <qrels.jsonl> \\
     --output <report.json> \\
+    [--summary <summary.md>] \\
     [--baseline-version N] \\
     [--warmups N] \\
     [--repetitions N]
 
 Required:
-  --project-root Docs-native project whose production search corpus is measured
+  --project-root Docs-native project whose production search corpus is measured;
+                 also the PROJECT home for recall queries whose options.home
+                 is "project" (their options.home "global" home is always the
+                 user's real global home, resolved the same way the CLI does)
   --queries      One judged search/recall query per line
   --qrels        One graded relevance judgment per line
   --output       Durable JSON report destination
 
 Optional:
+  --summary      Human-readable Markdown summary destination. Required when
+                 every query is a "recall" query carrying options.home — that
+                 run scores the per-home recall path instead of the
+                 search/hybrid benchmark below and emits this summary too.
   --baseline-version Evidence version (default: 1; v1 is search-only)
   --warmups      Full-query-set warmup passes (default: 1)
   --repetitions  Measured full-query-set passes (default: 3)
@@ -47,6 +55,7 @@ Run "pnpm build" before executing a benchmark.
 const REQUIRED_ARGUMENTS = ['project-root', 'queries', 'qrels', 'output'];
 const VALUE_ARGUMENTS = new Set([
   ...REQUIRED_ARGUMENTS,
+  'summary',
   'baseline-version',
   'warmups',
   'repetitions',
@@ -227,6 +236,7 @@ function parseArguments(argv) {
     queries: resolve(values.queries),
     qrels: resolve(values.qrels),
     output: resolve(values.output),
+    summary: values.summary === undefined ? undefined : resolve(values.summary),
     baselineVersion: requirePositiveInteger(
       values['baseline-version'],
       'baseline-version',
@@ -284,6 +294,15 @@ function validateSearchOptions(value, location) {
   return validated;
 }
 
+/**
+ * Recall-surface homes (ADR 0121 R8): a query targets exactly one production
+ * home, resolved the same way `backlog recall --home <home>` resolves it
+ * (packages/server/src/core/backlog-home.ts). Unlike search's single
+ * `--project-root` corpus, recall queries carry their own home so one query
+ * set can span both the global memory corpus and a project's.
+ */
+const RECALL_HOMES = new Set(['global', 'project']);
+
 function validateRecallOptions(value, location) {
   const options = requireRecord(value, location);
   const validated = {};
@@ -301,7 +320,14 @@ function validateRecallOptions(value, location) {
   }
   if (options.tags !== undefined) validated.tags = requireStringArray(options.tags, `${location}.tags`);
   if (options.limit !== undefined) validated.limit = validateLimit(options.limit, `${location}.limit`);
-  const allowed = new Set(['layers', 'context', 'tags', 'limit']);
+  if (options.home !== undefined) {
+    const home = requireString(options.home, `${location}.home`);
+    if (!RECALL_HOMES.has(home)) {
+      fail(`${location}.home must be "global" or "project"`);
+    }
+    validated.home = home;
+  }
+  const allowed = new Set(['layers', 'context', 'tags', 'limit', 'home']);
   for (const key of Object.keys(options)) {
     if (!allowed.has(key)) fail(`${location} contains unsupported field "${key}"`);
   }
@@ -343,7 +369,17 @@ function validateQueries(records) {
   return queries;
 }
 
-function validateQrels(records, queryIds, documentIds) {
+/**
+ * Validate qrel records against a caller-supplied document universe.
+ *
+ * `isKnownDocument(documentId, queryId)` abstracts over where that universe
+ * comes from: a single flat corpus (existing search/recall runs, one
+ * `--project-root`) or a per-home lookup (per-home recall, ADR 0121 R8) —
+ * two homes can mint the same MEMO- id independently, so membership must be
+ * checked against the specific home the qrel's query targets, never a
+ * union of every home's ids.
+ */
+function validateQrels(records, queryIds, isKnownDocument) {
   const qrels = [];
   const pairs = new Set();
   records.forEach((raw, index) => {
@@ -352,7 +388,7 @@ function validateQrels(records, queryIds, documentIds) {
     const queryId = requireString(qrel.query_id, `${location}.query_id`);
     const documentId = requireString(qrel.document_id, `${location}.document_id`);
     if (!queryIds.has(queryId)) fail(`${location} references unknown query "${queryId}"`);
-    if (!documentIds.has(documentId)) fail(`${location} references unknown document "${documentId}"`);
+    if (!isKnownDocument(documentId, queryId)) fail(`${location} references unknown document "${documentId}"`);
     const pair = `${queryId}\0${documentId}`;
     if (pairs.has(pair)) fail(`Duplicate qrel pair: ${queryId} / ${documentId}`);
     pairs.add(pair);
@@ -805,6 +841,13 @@ async function loadRuntime(repoRoot) {
     storage: join(repoRoot, 'packages/server/dist/storage/local/docs-native-filesystem-storage.mjs'),
     searchDocument: join(repoRoot, 'packages/server/dist/core/substrates/create-search-entity-document.mjs'),
     resourceManager: join(repoRoot, 'packages/server/dist/resources/manager.mjs'),
+    // Per-home recall (ADR 0121 R8) reuses the exact CLI runtime/coordinator
+    // path — packages/server/src/cli/commands/recall.ts calls createCliRuntime
+    // (cli/runner.ts) then the core recall() — instead of the synthetic
+    // single-corpus reindex loadProductCorpus builds for search benchmarking.
+    cliRunner: join(repoRoot, 'packages/server/dist/cli/runner.mjs'),
+    coreRecall: join(repoRoot, 'packages/server/dist/core/recall.mjs'),
+    coreConfig: join(repoRoot, 'packages/server/dist/core/config.mjs'),
     metrics: join(repoRoot, 'packages/memory/src/search/evaluation.ts'),
     transformers: requireFromServer.resolve('@huggingface/transformers'),
   };
@@ -822,6 +865,9 @@ async function loadRuntime(repoRoot) {
     storageModule,
     searchDocumentModule,
     resourceManagerModule,
+    cliRunnerModule,
+    coreRecallModule,
+    coreConfigModule,
     metrics,
     transformersModule,
   ] = await Promise.all([
@@ -833,6 +879,9 @@ async function loadRuntime(repoRoot) {
     import(pathToFileURL(paths.storage).href),
     import(pathToFileURL(paths.searchDocument).href),
     import(pathToFileURL(paths.resourceManager).href),
+    import(pathToFileURL(paths.cliRunner).href),
+    import(pathToFileURL(paths.coreRecall).href),
+    import(pathToFileURL(paths.coreConfig).href),
     import(pathToFileURL(paths.metrics).href),
     import(pathToFileURL(paths.transformers).href),
   ]);
@@ -845,6 +894,9 @@ async function loadRuntime(repoRoot) {
     DocsNativeFilesystemStorage: storageModule.DocsNativeFilesystemStorage,
     createSearchEntityDocument: searchDocumentModule.createSearchEntityDocument,
     ResourceManager: resourceManagerModule.ResourceManager,
+    createCliRuntime: cliRunnerModule.createCliRuntime,
+    recallCore: coreRecallModule.recall,
+    resolveContext: coreConfigModule.resolveContext,
     metrics,
     transformersCacheDir:
       transformersModule.env?.cacheDir
@@ -897,6 +949,320 @@ function loadProductCorpus(args, runtime) {
   return { home, registry: definitions.registry, entityDocuments, resources, ids };
 }
 
+function writeTextAtomically(outputPath, content) {
+  mkdirSync(dirname(outputPath), { recursive: true });
+  const temporaryPath = join(
+    dirname(outputPath),
+    `.${basename(outputPath)}.${process.pid}.${Date.now()}.tmp`,
+  );
+  try {
+    writeFileSync(temporaryPath, content, { flag: 'wx' });
+    renameSync(temporaryPath, outputPath);
+  } catch (error) {
+    rmSync(temporaryPath, { force: true });
+    throw error;
+  }
+}
+
+/** Every memory-substrate id currently live in one resolved home. */
+async function homeMemoryIds(cliRuntime) {
+  const memories = await cliRuntime.service.list({ type: 'memory' });
+  return new Set(memories.map(function memoryId(memory) {
+    return memory.id;
+  }));
+}
+
+/**
+ * Run one recall query through the exact CLI path — core recall() over the
+ * resolved home's memoryComposer — mirroring
+ * packages/server/src/cli/commands/recall.ts's single-home branch down to
+ * resolving the same optional context scope, short of its CLI-only concerns
+ * (formatting, agent-provenance annotation, usage-demand logging; see
+ * RECALL_PER_HOME_DECLARED_LIMITS).
+ */
+async function retrievePerHomeRecall(query, cliRuntime, runtime) {
+  const context = runtime.resolveContext({
+    explicit: query.options?.context,
+    home: cliRuntime.home,
+  });
+  const params = {
+    query: query.query,
+    limit: query.options?.limit ?? 10,
+    ...(query.options?.layers === undefined ? {} : { layers: query.options.layers }),
+    ...(query.options?.tags === undefined ? {} : { tags: query.options.tags }),
+    ...(context === undefined ? {} : { context }),
+  };
+  const result = await runtime.recallCore(params, { memoryComposer: cliRuntime.memoryComposer });
+  return result.items.map(function itemId(item) {
+    return item.id;
+  });
+}
+
+/** Score one query's ranked ids at k = its own requested limit (default 10). */
+function scoreHomeRecallQuery(query, rankedIds, judgmentsByQuery, metrics) {
+  const k = query.options?.limit ?? 10;
+  const judgments = judgmentsByQuery.get(query.id) ?? [];
+  return {
+    query_id: query.id,
+    class: query.class,
+    home: query.options.home,
+    query: query.query,
+    k,
+    ranked_ids: rankedIds,
+    metrics: {
+      ndcg_at_k: metrics.ndcgAt(rankedIds, judgments, k),
+      precision_at_k: metrics.precisionAt(rankedIds, judgments, k),
+      recall_at_k: metrics.recallAt(rankedIds, judgments, k),
+      unjudged_at_k: metrics.unjudgedRateAt(rankedIds, judgments, k),
+    },
+  };
+}
+
+function averageMetric(entries, key) {
+  if (entries.length === 0) return 0;
+  return entries.reduce((sum, entry) => sum + entry.metrics[key], 0) / entries.length;
+}
+
+/** Macro-average per-home recall scores so every query carries equal weight. */
+function summarizeHomeRecall(entries) {
+  return {
+    query_count: entries.length,
+    ndcg_at_k: averageMetric(entries, 'ndcg_at_k'),
+    precision_at_k: averageMetric(entries, 'precision_at_k'),
+    recall_at_k: averageMetric(entries, 'recall_at_k'),
+    unjudged_at_k: averageMetric(entries, 'unjudged_at_k'),
+  };
+}
+
+function formatScore(value) {
+  return value.toFixed(4);
+}
+
+function renderRecallSummary(report) {
+  const lines = [];
+  lines.push('# Per-Home Recall Baseline — Run Summary');
+  lines.push('');
+  const homeCounts = Object.entries(report.by_home)
+    .map(([home, summary]) => `${home}: ${summary.query_count}`)
+    .join(', ');
+  lines.push(`Queries: ${report.overall.query_count} (${homeCounts}) — `
+    + `qrels: ${report.inputs.qrels.count} — commit \`${report.provenance.git_commit.slice(0, 12)}\`.`);
+  lines.push('');
+  lines.push('## Declared limits');
+  lines.push('');
+  for (const limit of report.declared_limits) {
+    lines.push(`- ${limit}`);
+  }
+  lines.push('');
+  lines.push('## Homes');
+  lines.push('');
+  lines.push('| home | memory_count | hybrid_active | root |');
+  lines.push('|---|---|---|---|');
+  for (const [home, info] of Object.entries(report.inputs.homes)) {
+    lines.push(`| ${home} | ${info.memory_count} | ${info.hybrid_active} | ${info.root} |`);
+  }
+  lines.push('');
+  lines.push('## Per-query scores');
+  lines.push('');
+  lines.push('| query_id | home | k | nDCG@k | precision@k | recall@k | unjudged@k |');
+  lines.push('|---|---|---|---|---|---|---|');
+  for (const result of report.queries) {
+    lines.push(`| ${result.query_id} | ${result.home} | ${result.k} `
+      + `| ${formatScore(result.metrics.ndcg_at_k)} `
+      + `| ${formatScore(result.metrics.precision_at_k)} `
+      + `| ${formatScore(result.metrics.recall_at_k)} `
+      + `| ${formatScore(result.metrics.unjudged_at_k)} |`);
+  }
+  lines.push('');
+  lines.push('## By home');
+  lines.push('');
+  lines.push('| home | queries | nDCG@k | precision@k | recall@k | unjudged@k |');
+  lines.push('|---|---|---|---|---|---|');
+  for (const [home, summary] of Object.entries(report.by_home)) {
+    lines.push(`| ${home} | ${summary.query_count} `
+      + `| ${formatScore(summary.ndcg_at_k)} `
+      + `| ${formatScore(summary.precision_at_k)} `
+      + `| ${formatScore(summary.recall_at_k)} `
+      + `| ${formatScore(summary.unjudged_at_k)} |`);
+  }
+  lines.push('');
+  lines.push('## Overall');
+  lines.push('');
+  lines.push(`queries: ${report.overall.query_count}, `
+    + `nDCG@k ${formatScore(report.overall.ndcg_at_k)}, `
+    + `precision@k ${formatScore(report.overall.precision_at_k)}, `
+    + `recall@k ${formatScore(report.overall.recall_at_k)}, `
+    + `unjudged@k ${formatScore(report.overall.unjudged_at_k)}.`);
+  lines.push('');
+  lines.push(report.provenance.gate_eligibility.eligible
+    ? 'Gate eligibility: eligible — every judgment carries at least a human assessor of record.'
+    : `Gate eligibility: NOT eligible — ${report.provenance.gate_eligibility.reason ?? ''}`);
+  lines.push('');
+  return lines.join('\n');
+}
+
+/**
+ * Declared limitations (ADR 0121 R8), always embedded in the recall-per-home
+ * report so a reader never mistakes it for scripts/structural-suite.mjs's
+ * byte-stable, judge-free artifact.
+ */
+const RECALL_PER_HOME_DECLARED_LIMITS = [
+  'This mode reuses the real CLI recall runtime — createCliRuntime '
+    + '(packages/server/src/cli/runner.ts) -> createLocalRuntime -> the core '
+    + 'recall() — the same path packages/server/src/cli/commands/recall.ts uses '
+    + 'for `backlog recall --home <home>`, not the synthetic single-project '
+    + 'reindex the search/hybrid benchmark in this same script builds. Scores '
+    + 'measure the live production configuration (30-day half-life decay, real '
+    + 'usage-multiplier reordering, real home content), not a frozen '
+    + 'deterministic fixture.',
+  'Because it queries live homes, two runs are not guaranteed byte-identical: '
+    + 'elapsed days change temporal decay, and any change to a home\'s memory '
+    + 'corpus or usage history changes ranking. This report is a dated baseline '
+    + 'snapshot (see provenance.git_commit), not a byte-stable regenerable '
+    + 'artifact like scripts/structural-suite.mjs.',
+  'The runner never calls MemoryUsageTracker.recordRecall for scored queries, '
+    + 'so it does not append to memory-usage.jsonl or retrieval-telemetry.jsonl '
+    + '— repeated benchmark runs must not pollute the production usage/demand '
+    + 'signals that drive consolidation and the usage multiplier. A real '
+    + '`backlog recall` invocation does append them; this is the one '
+    + 'deliberate divergence from full CLI parity.',
+  'nDCG@k, precision@k, and recall@k all use k = the query\'s own '
+    + 'options.limit (default 10), the same limit the recall call actually '
+    + 'used — not a fixed benchmark cutoff.',
+  'precision@k divides by the fixed cutoff k, not by the number of results '
+    + 'actually returned, so a home whose real corpus holds fewer than k '
+    + 'eligible memories is not artificially rewarded '
+    + '(packages/memory/src/search/evaluation.ts precisionAt).',
+  'A qrel document absent from the ranked results is scored as a miss (zero '
+    + 'contribution to nDCG and recall), never rejected — '
+    + 'docs/evaluation/R8-JUDGING-2026-07-18.md Q4 records exactly this case '
+    + '(MEMO-0006).',
+  'Assessor tiers follow docs/evaluation/JUDGING.md; '
+    + 'provenance.gate_eligibility reflects whether every judgment carries at '
+    + 'least a human assessor of record.',
+];
+
+/**
+ * Score recall-queries-v2-style fixtures: each query names its own home
+ * (ADR 0121 R8), so this builds one real CLI runtime per distinct home
+ * (createCliRuntime — the same construction
+ * packages/server/src/cli/commands/recall.ts uses), scores every query's
+ * ranked ids against its qrels with the shared metrics module, and writes a
+ * structural-suite-shaped report plus a Markdown summary.
+ */
+async function runPerHomeRecallReport(args, runtime, queries, queryInput, qrelInput, repoRoot) {
+  const neededHomes = [...new Set(queries.map(query => query.options.home))].sort();
+  // Declared and populated before the try so a failure partway through
+  // resolving homes (e.g. the second home's hybrid search fails to init)
+  // still closes whatever runtimes already opened — never a leaked watcher.
+  const homeRuntimes = new Map();
+  try {
+    for (const home of neededHomes) {
+      const cliRuntime = await runtime.createCliRuntime(
+        home === 'project'
+          ? { home: 'project', projectRoot: args.projectRoot }
+          : { home: 'global' },
+      );
+      homeRuntimes.set(home, cliRuntime);
+    }
+
+    const queryHome = new Map(queries.map(query => [query.id, query.options.home]));
+    const homeDocumentIds = new Map();
+    for (const [home, cliRuntime] of homeRuntimes) {
+      homeDocumentIds.set(home, await homeMemoryIds(cliRuntime));
+    }
+    for (const [home, ids] of homeDocumentIds) {
+      if (ids.size === 0) fail(`Baseline v2+ requires a real memory corpus; the "${home}" home has none`);
+    }
+
+    const qrels = validateQrels(
+      qrelInput.records,
+      new Set(queries.map(query => query.id)),
+      (documentId, queryId) => homeDocumentIds.get(queryHome.get(queryId))?.has(documentId) === true,
+    );
+    const judgmentsByQuery = groupJudgments(qrels);
+
+    const results = [];
+    for (const query of queries) {
+      const cliRuntime = homeRuntimes.get(query.options.home);
+      if (cliRuntime === undefined) fail(`No runtime resolved for home "${query.options.home}"`);
+      const rankedIds = await retrievePerHomeRecall(query, cliRuntime, runtime);
+      results.push(scoreHomeRecallQuery(query, rankedIds, judgmentsByQuery, runtime.metrics));
+    }
+
+    // isHybridSearchActive() only flips true once a real search has actually
+    // run the embedding pipeline at least once — a warm on-disk cache
+    // defers that to the first query instead of index-build time (unlike
+    // the fresh-cache benchmark below). Checking only after every query
+    // ran still refuses to record a silent BM25 fallback as recall
+    // evidence, just without the benchmark's premature false positive.
+    for (const [home, cliRuntime] of homeRuntimes) {
+      if (cliRuntime.service.isHybridSearchActive?.() === false) {
+        fail(`MiniLM hybrid initialization failed for the "${home}" home; refusing to record a BM25 fallback as recall evidence`);
+      }
+    }
+
+    const byHome = {};
+    for (const home of [...homeRuntimes.keys()].sort()) {
+      byHome[home] = summarizeHomeRecall(results.filter(result => result.home === home));
+    }
+
+    const report = {
+      schema_version: 1,
+      runner: 'scripts/search-eval.mjs',
+      mode: 'recall-per-home',
+      baseline_version: args.baselineVersion,
+      ruling: 'ADR 0121 R8 human recall judging session (Goga, assessor of record); JUDGING.md "memory-recall" class scores the real per-home recall path (docs/evaluation/R8-JUDGING-2026-07-18.md).',
+      declared_limits: RECALL_PER_HOME_DECLARED_LIMITS,
+      inputs: {
+        queries: { path: args.queries, sha256: sha256(queryInput.raw), count: queries.length },
+        qrels: { path: args.qrels, sha256: sha256(qrelInput.raw), count: qrels.length },
+        homes: Object.fromEntries([...homeRuntimes.entries()].sort(
+          function compareHomeEntries(left, right) {
+            return left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0;
+          },
+        ).map(function homeInput([home, cliRuntime]) {
+          return [home, {
+            home_id: cliRuntime.home.id,
+            root: cliRuntime.home.root,
+            documents_dir: cliRuntime.home.documentsDir,
+            memory_count: homeDocumentIds.get(home).size,
+            hybrid_active: cliRuntime.service.isHybridSearchActive?.() ?? false,
+          }];
+        })),
+      },
+      provenance: {
+        git_commit: gitCommit(repoRoot),
+        runner_sha256: sha256(readFileSync(fileURLToPath(import.meta.url))),
+        query_assessors: [...new Set(queries.map(query => query.assessor))].sort(),
+        qrel_assessors: [...new Set(qrels.map(qrel => qrel.assessor))].sort(),
+        judgment_tiers: { queries: countTiers(queries), qrels: countTiers(qrels) },
+        gate_eligibility: gateEligibility(queries, qrels),
+        query_sources: Object.fromEntries(queries.map(function querySource(query) {
+          return [query.id, query.provenance];
+        })),
+      },
+      queries: results,
+      by_home: byHome,
+      overall: summarizeHomeRecall(results),
+    };
+
+    writeReportAtomically(args.output, report);
+    writeTextAtomically(args.summary, renderRecallSummary(report));
+    process.stdout.write(`Recorded per-home recall baseline: ${args.output}\n`);
+    process.stdout.write(`Summary: ${args.summary}\n`);
+  } finally {
+    const closeResults = await Promise.allSettled(
+      [...homeRuntimes.values()].map(cliRuntime => cliRuntime.close()),
+    );
+    for (const result of closeResults) {
+      if (result.status === 'rejected') {
+        process.stderr.write(`search:eval: runtime close failed: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}\n`);
+      }
+    }
+  }
+}
+
 async function main() {
   const args = parseArguments(process.argv.slice(2));
   if (args.help) {
@@ -907,15 +1273,34 @@ async function main() {
   const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
   const runtime = await loadRuntime(repoRoot);
   assertModelMetadata(repoRoot);
+  const queryInput = readJsonLines(args.queries, 'queries');
+  const qrelInput = readJsonLines(args.qrels, 'qrels');
+  const queries = validateQueries(queryInput.records);
+  const recallQueries = queries.filter(query => query.surface === 'recall');
+  const homeRecallQueries = recallQueries.filter(query => query.options?.home !== undefined);
+
+  if (homeRecallQueries.length > 0) {
+    if (homeRecallQueries.length !== queries.length) {
+      fail('Per-home recall runs require every query to be a "recall" query with options.home set; mixed search/home-recall runs are not supported in one invocation');
+    }
+    if (args.baselineVersion < 2) {
+      fail('Per-home recall evidence requires --baseline-version 2 or later');
+    }
+    if (recallQueries.length < 4) {
+      fail('Baseline v2+ requires at least four reviewed memory-recall queries');
+    }
+    if (args.summary === undefined) {
+      fail('Missing required option: --summary (per-home recall reports emit a human-readable summary)');
+    }
+    await runPerHomeRecallReport(args, runtime, queries, queryInput, qrelInput, repoRoot);
+    return;
+  }
+
   if (typeof runtime.transformersCacheDir !== 'string') {
     fail('Cannot resolve the active Transformers.js filesystem cache');
   }
-  const queryInput = readJsonLines(args.queries, 'queries');
-  const qrelInput = readJsonLines(args.qrels, 'qrels');
   const corpus = loadProductCorpus(args, runtime);
   const corpusInput = corpusSnapshot(corpus.entityDocuments, corpus.resources);
-  const queries = validateQueries(queryInput.records);
-  const recallQueries = queries.filter(query => query.surface === 'recall');
   if (args.baselineVersion === 1 && recallQueries.length > 0) {
     fail('Baseline v1 is search-only; real-memory recall evidence begins in v2');
   }
@@ -930,7 +1315,7 @@ async function main() {
   const qrels = validateQrels(
     qrelInput.records,
     new Set(queries.map(query => query.id)),
-    corpus.ids,
+    documentId => corpus.ids.has(documentId),
   );
 
   const benchmarkDirectory = join(

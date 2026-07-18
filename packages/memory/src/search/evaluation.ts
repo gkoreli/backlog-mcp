@@ -103,6 +103,28 @@ export function recallAt(
 }
 
 /**
+ * Compute precision at a cutoff: the fraction of the top-`cutoff` ranked
+ * results (deduplicated) graded 2 or higher.
+ *
+ * The denominator is always `cutoff`, never the number of results actually
+ * returned — a query that retrieves fewer than `cutoff` documents does not
+ * get an inflated score for its unfilled slots (textbook P@k, e.g. Manning
+ * et al., *Introduction to Information Retrieval* §8.4), matching how a
+ * short result window is treated elsewhere in this fixture's grading.
+ */
+export function precisionAt(
+  rankedIds: readonly string[],
+  judgments: readonly RelevanceJudgment[],
+  cutoff: number,
+): number {
+  const byId = judgmentMap(judgments);
+  const relevantRetrieved = uniqueRankedIds(rankedIds, cutoff)
+    .filter(id => (byId.get(id) ?? 0) >= RELEVANT_GRADE)
+    .length;
+  return relevantRetrieved / cutoff;
+}
+
+/**
  * Report what fraction of a result window has no human judgment.
  *
  * Explicit grade 0 remains judged and is therefore distinct from an unknown

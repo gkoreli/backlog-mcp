@@ -1,0 +1,206 @@
+{
+  "schema_version": 1,
+  "runner": "scripts/search-eval.mjs",
+  "mode": "recall-per-home",
+  "baseline_version": 2,
+  "ruling": "ADR 0121 R8 human recall judging session (Goga, assessor of record); JUDGING.md \"memory-recall\" class scores the real per-home recall path (docs/evaluation/R8-JUDGING-2026-07-18.md).",
+  "declared_limits": [
+    "This mode reuses the real CLI recall runtime — createCliRuntime (packages/server/src/cli/runner.ts) -> createLocalRuntime -> the core recall() — the same path packages/server/src/cli/commands/recall.ts uses for `backlog recall --home <home>`, not the synthetic single-project reindex the search/hybrid benchmark in this same script builds. Scores measure the live production configuration (30-day half-life decay, real usage-multiplier reordering, real home content), not a frozen deterministic fixture.",
+    "Because it queries live homes, two runs are not guaranteed byte-identical: elapsed days change temporal decay, and any change to a home's memory corpus or usage history changes ranking. This report is a dated baseline snapshot (see provenance.git_commit), not a byte-stable regenerable artifact like scripts/structural-suite.mjs.",
+    "The runner never calls MemoryUsageTracker.recordRecall for scored queries, so it does not append to memory-usage.jsonl or retrieval-telemetry.jsonl — repeated benchmark runs must not pollute the production usage/demand signals that drive consolidation and the usage multiplier. A real `backlog recall` invocation does append them; this is the one deliberate divergence from full CLI parity.",
+    "nDCG@k, precision@k, and recall@k all use k = the query's own options.limit (default 10), the same limit the recall call actually used — not a fixed benchmark cutoff.",
+    "precision@k divides by the fixed cutoff k, not by the number of results actually returned, so a home whose real corpus holds fewer than k eligible memories is not artificially rewarded (packages/memory/src/search/evaluation.ts precisionAt).",
+    "A qrel document absent from the ranked results is scored as a miss (zero contribution to nDCG and recall), never rejected — docs/evaluation/R8-JUDGING-2026-07-18.md Q4 records exactly this case (MEMO-0006).",
+    "Assessor tiers follow docs/evaluation/JUDGING.md; provenance.gate_eligibility reflects whether every judgment carries at least a human assessor of record."
+  ],
+  "inputs": {
+    "queries": {
+      "path": "/Users/goga/Documents/goga/backlog-mcp/.claude/worktrees/agent-a4e0169f6fbe2ddd1/docs/evaluation/recall-queries-v2.jsonl",
+      "sha256": "ba5fb9f503a2a29b9e22c4198c598cb3a6cc6f3444d58ad08b0631eb10b73dfc",
+      "count": 4
+    },
+    "qrels": {
+      "path": "/Users/goga/Documents/goga/backlog-mcp/.claude/worktrees/agent-a4e0169f6fbe2ddd1/docs/evaluation/recall-qrels-v2.jsonl",
+      "sha256": "3951bc573a86e140cc391f9750a6b741299af969c70048052388a1ea92971d1c",
+      "count": 12
+    },
+    "homes": {
+      "global": {
+        "home_id": "global",
+        "root": "/Users/goga/.backlog",
+        "documents_dir": "/Users/goga/.backlog/docs",
+        "memory_count": 14,
+        "hybrid_active": true
+      },
+      "project": {
+        "home_id": "/Users/goga/Documents/goga/backlog-mcp",
+        "root": "/Users/goga/Documents/goga/backlog-mcp",
+        "documents_dir": "/Users/goga/Documents/goga/backlog-mcp/docs",
+        "memory_count": 10,
+        "hybrid_active": true
+      }
+    }
+  },
+  "provenance": {
+    "git_commit": "1706e1d106bc8665a87b55791e07d1c071727447",
+    "runner_sha256": "a887523813564fa1c7afdd0e4e374792a3bbb658e5d7f6aafb8ccb4023492f55",
+    "query_assessors": [
+      "human:goga 2026-07-18"
+    ],
+    "qrel_assessors": [
+      "human:goga 2026-07-18"
+    ],
+    "judgment_tiers": {
+      "queries": {
+        "constructive": 0,
+        "human": 4,
+        "llm": 0
+      },
+      "qrels": {
+        "constructive": 0,
+        "human": 12,
+        "llm": 0
+      }
+    },
+    "gate_eligibility": {
+      "eligible": true,
+      "rule": "JUDGING.md assessor tiers: constructively-true assertions gate by construction; human-tier judgments gate; llm-tier judgments never gate alone."
+    },
+    "query_sources": {
+      "recall-01": [
+        "granite dogfood session 01 2026-07-18"
+      ],
+      "recall-02": [
+        "granite dogfood session 01 2026-07-18"
+      ],
+      "recall-03": [
+        "granite re-prime recalls 2026-07-18"
+      ],
+      "recall-04": [
+        "desk-hardening builder reuse 2026-07-18"
+      ]
+    }
+  },
+  "queries": [
+    {
+      "query_id": "recall-01",
+      "class": "recall",
+      "home": "global",
+      "query": "conflict markers rebase resolution",
+      "k": 10,
+      "ranked_ids": [
+        "MEMO-0011",
+        "MEMO-0008",
+        "MEMO-0014",
+        "MEMO-0010",
+        "MEMO-0009",
+        "MEMO-0001",
+        "MEMO-0003",
+        "MEMO-0005"
+      ],
+      "metrics": {
+        "ndcg_at_k": 0.992619504174702,
+        "precision_at_k": 0.2,
+        "recall_at_k": 1,
+        "unjudged_at_k": 0.625
+      }
+    },
+    {
+      "query_id": "recall-02",
+      "class": "recall",
+      "home": "project",
+      "query": "how do we cut a release",
+      "k": 10,
+      "ranked_ids": [
+        "MEMO-0002",
+        "MEMO-0001",
+        "MEMO-0006",
+        "MEMO-0005",
+        "MEMO-0003",
+        "MEMO-0010",
+        "MEMO-0007",
+        "MEMO-0004",
+        "MEMO-0008",
+        "MEMO-0009"
+      ],
+      "metrics": {
+        "ndcg_at_k": 1,
+        "precision_at_k": 0.1,
+        "recall_at_k": 1,
+        "unjudged_at_k": 0.8
+      }
+    },
+    {
+      "query_id": "recall-03",
+      "class": "recall",
+      "home": "global",
+      "query": "what is my merge law before landing a branch",
+      "k": 10,
+      "ranked_ids": [
+        "MEMO-0014",
+        "MEMO-0008",
+        "MEMO-0012",
+        "MEMO-0009",
+        "MEMO-0010",
+        "MEMO-0011",
+        "MEMO-0005",
+        "MEMO-0007",
+        "MEMO-0004",
+        "MEMO-0013"
+      ],
+      "metrics": {
+        "ndcg_at_k": 0.6309297535714575,
+        "precision_at_k": 0.1,
+        "recall_at_k": 1,
+        "unjudged_at_k": 0.7
+      }
+    },
+    {
+      "query_id": "recall-04",
+      "class": "recall",
+      "home": "project",
+      "query": "how to test wakeup grounding against real repo state",
+      "k": 10,
+      "ranked_ids": [
+        "MEMO-0005",
+        "MEMO-0010",
+        "MEMO-0007",
+        "MEMO-0001",
+        "MEMO-0006",
+        "MEMO-0003",
+        "MEMO-0002",
+        "MEMO-0008",
+        "MEMO-0009"
+      ],
+      "metrics": {
+        "ndcg_at_k": 0.8742620182214496,
+        "precision_at_k": 0.2,
+        "recall_at_k": 1,
+        "unjudged_at_k": 0.5555555555555556
+      }
+    }
+  ],
+  "by_home": {
+    "global": {
+      "query_count": 2,
+      "ndcg_at_k": 0.8117746288730798,
+      "precision_at_k": 0.15000000000000002,
+      "recall_at_k": 1,
+      "unjudged_at_k": 0.6625
+    },
+    "project": {
+      "query_count": 2,
+      "ndcg_at_k": 0.9371310091107248,
+      "precision_at_k": 0.15000000000000002,
+      "recall_at_k": 1,
+      "unjudged_at_k": 0.6777777777777778
+    }
+  },
+  "overall": {
+    "query_count": 4,
+    "ndcg_at_k": 0.8744528189919022,
+    "precision_at_k": 0.15000000000000002,
+    "recall_at_k": 1,
+    "unjudged_at_k": 0.6701388888888888
+  }
+}

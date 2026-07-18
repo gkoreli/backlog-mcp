@@ -3,6 +3,7 @@ import {
   evaluateQuery,
   isWithinRegressionBudget,
   ndcgAt,
+  precisionAt,
   recallAt,
   reciprocalRank,
   successAt1,
@@ -44,6 +45,20 @@ describe('ranked retrieval evaluation', () => {
   it('deduplicates retrieved ids when computing recall', () => {
     expect(recallAt(['A', 'A', 'B'], JUDGMENTS, 20)).toBe(1);
     expect(recallAt(['A', 'A', 'B'], JUDGMENTS, 2)).toBe(1);
+  });
+
+  it('scores precision against the fixed cutoff, not the returned count', () => {
+    expect(precisionAt(['A', 'B', 'C', 'D'], JUDGMENTS, 4)).toBe(0.5);
+    // Only one result came back, but a cutoff of 4 still divides by 4 —
+    // a short result window is never rewarded for its unfilled slots.
+    expect(precisionAt(['A'], JUDGMENTS, 4)).toBe(0.25);
+    expect(precisionAt([], JUDGMENTS, 10)).toBe(0);
+  });
+
+  it('deduplicates ranked ids when computing precision', () => {
+    // Without dedup, ['A', 'A'] would fill both cutoff slots with the same
+    // relevant document and misreport precision as 1 instead of 0.5.
+    expect(precisionAt(['A', 'A', 'C'], JUDGMENTS, 2)).toBe(0.5);
   });
 
   it('deduplicates ranked ids before computing nDCG', () => {
