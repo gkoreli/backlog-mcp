@@ -294,3 +294,58 @@ describe('Invariant: searchResources native filtering (ADR-0079)', () => {
     }
   });
 });
+
+// ── Invariant 8: cold-process embeddings parity ─────────────────────
+//
+// The write-path lifecycle bug: `embeddingsReady` is a per-process flag,
+// only ever warmed by `ensureEmbeddings()`. A long-lived server warms it the
+// first time it builds or loads an index. But `loadFromDisk()`'s cached-
+// embeddings fast path — `hasEmbeddingsInIndex` already true from the
+// persisted cache — never calls `ensureEmbeddings()` before returning, so a
+// brand-new process that only ever loads an already-embedded cache from disk
+// (the common CLI shape: one short-lived process per invocation) reaches its
+// first write with `hasEmbeddingsInIndex: true` but `embeddingsReady: false`.
+// The write-site guards used to trust that stale flag and silently skip the
+// vector. The fix mirrors `_executeVectorSearch`: gate on
+// `hasEmbeddingsInIndex && (await ensureEmbeddings())`, which lazily
+// initializes the embedder on the write path too — the core must behave
+// identically for a cold CLI process and a warm server.
+
+describe('Invariant: cold-process embeddings parity (write-path lifecycle bug)', () => {
+  it('a doc written after loading an already-embedded cache is still vector-searchable', async () => {
+    const cachePath = freshCachePath();
+
+    // Simulate the long-lived server: build + persist an index WITH
+    // embeddings, so the cache on disk carries `hasEmbeddings: true`.
+    const warmService = new OramaSearchService({ cachePath, hybridSearch: true });
+    await warmService.index(searchDocuments([
+      makeEntity({ id: 'TASK-0001', title: 'Unrelated seed task' }),
+    ]));
+    warmService.flush();
+
+    // Simulate a fresh CLI process: a brand-new instance whose only contact
+    // with embeddings is loading that already-embedded cache from disk —
+    // `hasEmbeddingsInIndex` becomes true without `ensureEmbeddings()` ever
+    // running, exactly the state that produced silently-unembedded writes.
+    const coldService = new OramaSearchService({ cachePath, hybridSearch: true });
+    await coldService.index([]);
+
+    // Cold-write a brand-new document through this fresh instance.
+    await coldService.addDocument(searchDocument(
+      makeEntity({
+        id: 'TASK-0002',
+        title: 'Add disaster-recovery runbook for datacenter outages',
+        content: 'A severe hurricane made landfall causing widespread flooding and property damage',
+      }),
+    ));
+
+    // The query shares no literal token (or stem) with TASK-0002's title/
+    // content — findable only through its vector embedding, and picked for a
+    // comfortable margin above Orama's vector-search similarity floor
+    // (measured ~0.41 raw cosine vs. the 0.2 floor) so the assertion isn't a
+    // coin flip on borderline model similarity. If the cold write had
+    // silently skipped the embedding (the bug), this returns empty.
+    const results = await coldService.search('tropical storm destruction');
+    expect(results.some(r => r.id === 'TASK-0002')).toBe(true);
+  }, 60000);
+});

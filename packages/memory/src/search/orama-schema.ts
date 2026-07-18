@@ -49,7 +49,7 @@ export type OramaInstance = import('@orama/orama').Orama<typeof schema>;
 export type OramaInstanceWithEmbeddings = import('@orama/orama').Orama<typeof schemaWithEmbeddings>;
 
 /** Bump when tokenizer or schema changes to force index rebuild. */
-export const INDEX_VERSION = 8;  // BUG-0003: token-normalized status + resource status
+export const INDEX_VERSION = 9;  // REF-0016: compose-don't-replace tokenizer (stemming + stop-words) + cold-write embeddings backfill
 
 // ── Search constants ────────────────────────────────────────────────
 

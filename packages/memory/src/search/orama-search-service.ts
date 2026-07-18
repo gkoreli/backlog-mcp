@@ -959,7 +959,7 @@ export class OramaSearchService implements SearchService {
     this.entityFieldCache.set(entity.id, document.fields);
 
     try {
-      if (this.hasEmbeddingsInIndex && this.embeddingsReady) {
+      if (this.hasEmbeddingsInIndex && (await this.ensureEmbeddings())) {
         const doc = await this.taskToDocWithEmbeddings(document);
         await insert(this.db as OramaInstanceWithEmbeddings, doc);
       } else {
@@ -1015,7 +1015,7 @@ export class OramaSearchService implements SearchService {
     this.entityFieldCache.set(entity.id, document.fields);
 
     try {
-      if (this.hasEmbeddingsInIndex && this.embeddingsReady) {
+      if (this.hasEmbeddingsInIndex && (await this.ensureEmbeddings())) {
         const doc = await this.taskToDocWithEmbeddings(document);
         await insert(this.db as OramaInstanceWithEmbeddings, doc);
       } else {
@@ -1052,7 +1052,7 @@ export class OramaSearchService implements SearchService {
       this.resourceCache.set(resource.id, resource);
     }
 
-    if (this.hasEmbeddingsInIndex && this.embeddingsReady) {
+    if (this.hasEmbeddingsInIndex && (await this.ensureEmbeddings())) {
       // Sequential: each doc needs async embedding call
       for (const resource of resources) {
         try {
@@ -1091,7 +1091,7 @@ export class OramaSearchService implements SearchService {
     this.resourceCache.set(resource.id, resource);
 
     try {
-      if (this.hasEmbeddingsInIndex && this.embeddingsReady) {
+      if (this.hasEmbeddingsInIndex && (await this.ensureEmbeddings())) {
         const doc = await this.resourceToDocWithEmbeddings(resource);
         await insert(this.db as OramaInstanceWithEmbeddings, doc);
       } else {
@@ -1127,7 +1127,7 @@ export class OramaSearchService implements SearchService {
     this.resourceCache.set(resource.id, resource);
 
     try {
-      if (this.hasEmbeddingsInIndex && this.embeddingsReady) {
+      if (this.hasEmbeddingsInIndex && (await this.ensureEmbeddings())) {
         const doc = await this.resourceToDocWithEmbeddings(resource);
         await insert(this.db as OramaInstanceWithEmbeddings, doc);
       } else {
