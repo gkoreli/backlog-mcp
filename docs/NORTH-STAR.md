@@ -277,6 +277,20 @@ product's retrieval story.** Context engineering does not disappear — it survi
    systems precisely because we can always cut any of them out. Under-reading this product
    as "plain .md file storage" is as much a violation of this document as a binary-only
    store would be (PROMPT 0015, verbatim source; PROMPT 0004 absorption thesis).
+10. **The core is consumer-agnostic; compose dependencies, never reinvent them.** Every
+    consumer — MCP server, CLI, viewer, eval harness — flows through the one core and gets
+    identical behavior. No correctness may depend on process lifetime, warm-vs-cold state, or
+    which surface called: a fresh CLI process and the long-lived server must produce the same
+    result from the same core code. (The 2026-07-18 cold-write embeddings bug violated this —
+    identical code silently skipped vector embeddings in a fresh CLI process because a lazy-init
+    flag was only ever warmed by a prior *search*, so CLI-written memories were invisibly
+    BM25-only.) And where the core builds on a dependency — search engine, tokenizer, stemmer —
+    it *composes that library's real pipeline* rather than hand-rolling a parallel one in app
+    code; reinventing a dependency's language analysis (the bypassed-Orama tokenizer that
+    silently dropped stop-words and stemming for every index we ever built) is the same
+    violation aimed at a library instead of a consumer. An optimization must never harden into
+    a silent precondition — the guard is a cold-start contract test (ADR 0125; PROMPT 0002 #5
+    one-core-many-consumers; ADRs 0097/0106 hexagonal core).
 
 ## The Four Pillars
 

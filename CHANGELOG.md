@@ -60,16 +60,29 @@ begins at 0.57.0 — earlier history lives in git.
   includes the project discovered from `cwd` (behavior change: an unflagged
   `--home all` from within a project now consults that project, not global
   alone). Ranking and single-home reads are untouched.
-- **Recall stops rewarding incidental stopword overlap — irrelevant memories
-  no longer ride generic words like "what", "before", or "a" into the top
-  ranks (surfaced by the R8 human recall qrels).** The multi-term
-  coordination bonus now discounts closed-class function words before counting
-  query-term overlap, so a memory that merely shares "what"/"before" with the
-  query earns no coordination credit while one matching the real topic does.
-  Measured against the human qrels (`recall-qrels-v2`): recall-04 nDCG
-  0.874 → 0.913, overall 0.8745 → 0.8842, zero regressions. BM25 and vector
-  scoring are untouched — this only stops the coordination re-ranker from
-  counting topic-free words.
+- **Recall now uses Orama's real language pipeline — stop-word removal and
+  English stemming, neither of which had ever been active — so irrelevant
+  memories stop riding generic words ("what", "before", "a") into the top ranks
+  and queries match word variants ("release" ↔ "releases") (surfaced by the R8
+  human qrels; REF-0016).** Our custom compound-word tokenizer exposed a
+  `.tokenize` method, which made Orama use it verbatim and silently bypass its
+  entire default pipeline (`createTokenizer()` was never called). It now
+  *composes* over the real default tokenizer (English Porter stemmer + the
+  official `@orama/stopwords` list), wrapping only compound-word expansion, so
+  indexing, querying, and the coordination re-ranker all normalize identically.
+  (Supersedes the interim hand-rolled coordination stop-word list.) Measured
+  against the human qrels (`recall-qrels-v2`): recall-04 nDCG 0.874 → 0.938,
+  overall 0.8745 → 0.8905, zero regressions. Requires a one-time index rebuild
+  (`INDEX_VERSION` bump) to re-tokenize.
+- **Memories written from the CLI now get their vector embeddings — hybrid
+  search had been silently BM25-only for them.** A per-process "embeddings
+  ready" flag only flipped true after the first vector *search*, so a fresh CLI
+  process that wrote a memory before searching stored it with no vector (the
+  long-lived MCP server warmed the flag and was unaffected — identical core
+  code, different behavior by process lifetime). The write path now ensures the
+  embedder is initialized before writing, so behavior is identical whether the
+  caller is a cold CLI process or the warm server; a cold-process contract test
+  guards it, and the same index rebuild backfills the skipped vectors.
 
 ## [0.68.0] — 2026-07-18
 
