@@ -131,3 +131,103 @@ has earned its ADR.
 
 New pressure-ledger rows added: actor-transition authorization (seam, no
 build) and process-as-data (E-PROC chartered).
+
+---
+
+# Part Two — The Declarative Agent-System Compiler (PROMPT 0014)
+
+**Status: PARKED UNTIL PAIN (goga, 2026-07-18).** Captured as design record;
+explicitly no build, no engine change, no meta-schema change beyond what
+Part One's R-B already reserved. This section records the belonging
+assessment Goga asked for and the tripwires that unpark it.
+
+The external text refines PROMPT 0013 into its mature form: not a meta
+state machine but a **declarative agent-system compiler** — declarations
+(substrates, identities, roles, capabilities, workflows, policies,
+relations, disclosure, memory, operations, events) compiled into validated
+surfaces (validators, identity-specific tools, transition contracts,
+context plans, projections, event contracts), with the store owning truth
+and legality and runtimes owning execution. Its "should NOT mean" list is
+Part One's line, independently restated: never runs agents, schedules,
+retries, supervises, executes guard code, or owns distributed durability.
+
+## Belonging assessment — the three anchors
+
+**1. Substrates-based architecture: BELONGS, mechanically.** Every noun in
+the declaration list is a declaration — 0113's registry extended, additive
+under 0122 versioning. Three refinements are adopted into the design record
+now (no code):
+- **Identity ≠ role ≠ capability** — they change at different rates. Half
+  is already ours: the agent substrate has separate `principal` (identity)
+  and `role` fields, with 0119's own comment "roles move while identity
+  stays." Capability is the genuinely new third axis; policies bind
+  role→transition, never identity→transition, so workflows are never
+  duplicated per agent.
+- **The bounded guard language as LAW**: field comparisons, relation
+  existence, caller identity/role checks, required evidence, fixed field
+  assignments, small boolean composition — and nothing else, ever.
+  Danger 1 (accidentally inventing a programming language) is the
+  abstraction's death mode; anything requiring computation lives in an
+  external actor that returns evidence.
+- **Static analysis is the compiler's strongest yield** — unreachable
+  states, stuck operations, self-granting capabilities, transitions whose
+  required context disclosure hides, diffs between workflow definition
+  versions (0122's frozen history makes this computable). "An executable
+  constitution" — pure functions over declarations, zero runtime cost,
+  and honestly the part most aligned with our deterministic-truth
+  instincts (structural suite lineage).
+
+**2. Local git-first markdown storage: BELONGS, with one seam noted.**
+Declarations are JSON files; live process state is markdown operations
+(shipped); events map to the journal — which D2's taxonomy already classes
+as append-only evidence; locally "observe events" is the watcher/SSE we
+have. The one genuinely new demand: identity-specific tool listing requires
+the server to know the caller at interface-compilation time — the 0119.1
+ladder provides exactly this ambient identity. Cross-machine event
+observation is sync territory: parked with sync, seams already preserved
+(§9 of the pressure map).
+
+**3. Tenets and vision: BELONGS, and twice strengthens them.**
+Context-requirements-per-transition makes progressive disclosure *compiled
+rather than remembered* — "an agent should not receive a universal mutation
+tool and a paragraph asking it to behave" is our intent-port tenet stated
+better than we state it. And the loop (role-specific context → legal
+actions → validated transition → memory capture → changed context) is
+Tenet 11's earned-absorption cycle with infrastructure. The four dangers
+map onto refusals we already hold: danger 2 = workflow-stays-optional
+(shipped: knowledge substrates carry no workflow); danger 3 = the
+identity/role/capability/skill/policy/harness separation (adopted above —
+"descriptive metadata must never quietly become a security boundary");
+danger 4 = prove one loop first, which is Goga's park ruling itself.
+
+## The two experiments, ordered
+
+- **E-PROC (Part One R-C)** remains the paper-first step: zero engine code,
+  declaration + suite-vs-history. Parked with everything else, but it is
+  the designated first move on unpark.
+- **The live-loop experiment (PROMPT 0014's)** — one operation workflow,
+  three roles, compiled role tools, the destroy-and-resume acceptance test
+  ending in "a human can understand the entire process from Markdown
+  alone." Second move on unpark, only after E-PROC's declaration proved
+  descriptively honest.
+
+## Unpark tripwires (any one suffices; adjudicated on the Desk)
+
+1. First wrong-actor-wrong-transition incident in real fleet operation
+   (the grants evidence column stops being empty).
+2. First time a briefing must include a paragraph of behavioral pleading
+   that a compiled role interface would have made structural.
+3. First duplicated workflow-definition-per-agent (the role-axis pain).
+4. E-PROC-style drift observed: our prose process law contradicted by
+   journal history and nobody noticed for a week.
+5. aime (or any orchestrator) requests a legal-next-actions disclosure or
+   event contract from the store — external demand for the compiled
+   surface.
+
+## Naming, for the NAME thread's file
+
+Internal: *a declarative agent-system compiler backed by durable,
+human-readable state.* External: *a project can teach any agent who it is,
+what matters, what it may do, and where work currently stands — in one
+wakeup.* And the sentence that subsumes both registers so far: **the
+repository becomes a self-describing operating environment for agents.**
