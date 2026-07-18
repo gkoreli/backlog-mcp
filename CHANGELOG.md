@@ -10,6 +10,21 @@ each version says why it mattered on the road to the north star
 (`docs/NORTH-STAR.md` — *your backlog is your agent's memory*). This changelog
 begins at 0.57.0 — earlier history lives in git.
 
+## [Unreleased]
+
+### Fixed
+- **`get --context` reaches the CLI — the same ADR 0114 neighborhood the MCP
+  surface always had.** `backlog get TASK-0001 --context` now renders the
+  focal entity plus its relational stubs (parent/children/siblings/references/
+  referenced_by/related, and typed frontmatter relations), each hydratable
+  with another `get`; before, the CLI `get` took no options at all (dogfood
+  report 0010, F3). Tier-1 `expand` telemetry now records the neighborhood
+  act itself: an entity-id get with context emits one session- and
+  actor-stamped `expand` event from either surface (CLI or MCP), while plain
+  gets and resource-path gets — reads, not expansions — no longer emit
+  Tier-1 `expand` at all. The ADR 0092.9 R-14 strong-usage signal (overlay
+  line + counter bump on MEMO- body fetches) is untouched; ranking unchanged.
+
 ## [0.67.0] — 2026-07-17
 
 *The instrument release. The program's next phase is a week of real use
