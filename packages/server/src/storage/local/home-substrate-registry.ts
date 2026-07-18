@@ -19,5 +19,6 @@ export function loadHomeSubstrateRegistry(
     discovery.declarations,
     createBuiltinSubstrateRegistrations(catalog),
     reservedToolNames,
+    discovery.substrateHistory,
   );
 }

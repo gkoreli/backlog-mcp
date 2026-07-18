@@ -11,12 +11,14 @@ import type {
 import type {
   DiscoveredDocument,
   DiscoveredSubstrateDeclaration,
+  DiscoveredSubstrateHistoryFile,
 } from '../document-discovery.types.js';
 import type { SubstrateStorageClaim } from '../../storage/substrate-storage-catalog.contract.js';
 import type { ProjectSubstrateRegistry } from './project-substrate-registry.js';
 
 export type SubstrateDefinitionIssueCode =
   | 'compile'
+  | 'history'
   | 'limit'
   | 'shape'
   | 'unsafe'
@@ -28,8 +30,13 @@ export interface SubstrateDefinitionIssue {
   message: string;
 }
 
+/**
+ * `invalid-substrate-definition` quarantines the declaration;
+ * `missing-version-history` is loud but non-fatal (ADR 0122 R2): the
+ * substrate loads and functions while its frozen chain is incomplete.
+ */
 export interface SubstrateDefinitionDiagnostic {
-  code: 'invalid-substrate-definition';
+  code: 'invalid-substrate-definition' | 'missing-version-history';
   sourcePath: string;
   type?: string;
   issues: readonly SubstrateDefinitionIssue[];
@@ -118,6 +125,8 @@ export interface LoadSubstrateDefinitionsParams {
   builtins?: readonly CompiledBuiltinSubstrate[];
   packagedDefinitions: readonly CompileSubstrateDefinitionParams[];
   declarations: readonly DiscoveredSubstrateDeclaration[];
+  /** Frozen prior definitions found at `substrates/history/**` (ADR 0122 R2). */
+  substrateHistory?: readonly DiscoveredSubstrateHistoryFile[];
   reservedToolNames?: readonly string[];
   /** Wakeup section names composed by the consumer itself — unclaimable. */
   reservedWakeupSections?: readonly string[];

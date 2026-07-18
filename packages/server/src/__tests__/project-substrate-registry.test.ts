@@ -565,6 +565,124 @@ describe('ProjectSubstrateRegistry', function describeRegistry() {
   });
 });
 
+describe('substrate schema evolution (ADR 0122 Slice A)', function describeEvolution() {
+  function versionedDeclaration(version: number) {
+    const params = definition({
+      sourcePath: 'substrates/decision.json',
+      type: 'decision',
+      folder: 'decisions',
+    });
+    return {
+      sourcePath: params.sourcePath,
+      absolutePath: '/project/docs/substrates/decision.json',
+      value: { ...(params.value as Record<string, unknown>), definitionVersion: version },
+    };
+  }
+
+  function historyFile(type: string, version: number) {
+    return {
+      sourcePath: `substrates/history/${type}@${version}.json`,
+      absolutePath: `/project/docs/substrates/history/${type}@${version}.json`,
+    };
+  }
+
+  it('accepts any positive-integer definitionVersion (R1 unpin)', () => {
+    const bumped = compileSubstrateDefinition(versionedDeclaration(7));
+    expect(bumped.ok).toBe(true);
+
+    for (const invalid of [0, -1, 1.5]) {
+      const result = compileSubstrateDefinition(versionedDeclaration(invalid));
+      expect(result.ok).toBe(false);
+    }
+  });
+
+  it('reports every missing frozen-history link loudly without failing the load (R2)', () => {
+    const result = loadSubstrateDefinitions({
+      packagedDefinitions: [],
+      declarations: [versionedDeclaration(3)],
+      substrateHistory: [historyFile('decision', 1)],
+    });
+
+    expect(result.diagnostics).toEqual([{
+      code: 'missing-version-history',
+      sourcePath: 'substrates/decision.json',
+      type: 'decision',
+      issues: [{
+        code: 'history',
+        path: '/definitionVersion',
+        message: 'definitionVersion 3 requires frozen history substrates/history/decision@2.json; the substrate stays active, but its version lineage is unaddressable until the missing definition is frozen (ADR 0122 R2)',
+      }],
+    }]);
+
+    const substrate = result.registry.getSubstrate('decision');
+    expect(substrate).toBeDefined();
+    expect(result.registry.validateWrite({
+      id: 'DEC-0001',
+      type: 'decision',
+      title: 'Still functions with an incomplete chain',
+    }).ok).toBe(true);
+  });
+
+  it('accepts a bumped declaration whose frozen chain is complete (R2)', () => {
+    const result = loadSubstrateDefinitions({
+      packagedDefinitions: [],
+      declarations: [versionedDeclaration(3)],
+      substrateHistory: [historyFile('decision', 1), historyFile('decision', 2)],
+    });
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.registry.getSubstrate('decision')).toBeDefined();
+  });
+
+  it('validates the reserved permitted transition field without any behavior (compiled-process R-B seam)', () => {
+    const params = definition({
+      sourcePath: 'substrates/decision.json',
+      type: 'decision',
+      folder: 'decisions',
+    });
+    const value = params.value as Record<string, unknown>;
+    const schema = canonicalSchema('decision');
+    (schema.properties as Record<string, unknown>).status = { type: 'string' };
+    const withPermitted = compileSubstrateDefinition({
+      ...params,
+      value: {
+        ...value,
+        schema,
+        workflow: {
+          field: 'status',
+          initial: ['draft'],
+          transitions: [{
+            name: 'approve',
+            from: ['draft'],
+            to: 'approved',
+            permitted: ['reviewer'],
+          }],
+        },
+      },
+    });
+    expect(withPermitted.ok).toBe(true);
+
+    const withInvalidPermitted = compileSubstrateDefinition({
+      ...params,
+      value: {
+        ...value,
+        schema,
+        workflow: {
+          field: 'status',
+          initial: ['draft'],
+          transitions: [{
+            name: 'approve',
+            from: ['draft'],
+            to: 'approved',
+            permitted: [42],
+          }],
+        },
+      },
+    });
+    expect(withInvalidPermitted.ok).toBe(false);
+  });
+});
+
 describe('claimSubstrateDocuments', function describeClaims() {
   const substrates = PACKAGED_SUBSTRATES;
 

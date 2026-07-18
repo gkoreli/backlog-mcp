@@ -53,6 +53,16 @@ export interface DiscoveredSubstrateDeclaration {
   value?: unknown;
 }
 
+/**
+ * A frozen prior definition discovered at `substrates/history/<type>@<version>.json`
+ * (ADR 0122 R2). History files are lineage, never live declarations; Slice A
+ * records their presence so the registry can verify each bump's frozen chain.
+ */
+export interface DiscoveredSubstrateHistoryFile {
+  sourcePath: string;
+  absolutePath: string;
+}
+
 /** Stable diagnostic codes emitted without aborting the rest of discovery. */
 export type DocumentDiscoveryDiagnosticCode =
   | 'documents-dir-unreadable'
@@ -74,5 +84,6 @@ export interface DocumentDiscoveryDiagnostic {
 export interface DocumentDiscoveryResult {
   documents: DiscoveredDocument[];
   declarations: DiscoveredSubstrateDeclaration[];
+  substrateHistory: DiscoveredSubstrateHistoryFile[];
   diagnostics: DocumentDiscoveryDiagnostic[];
 }

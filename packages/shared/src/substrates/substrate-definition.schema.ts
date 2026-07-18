@@ -57,6 +57,12 @@ export const SubstrateWorkflowTransitionDefinitionSchema = z.object({
   from: z.array(WorkflowStateSchema).min(1).max(64),
   to: WorkflowStateSchema,
   requiresRelation: FieldNameSchema.optional(),
+  /**
+   * Reserved by compiled-process R-B: declares which actors may take this
+   * transition. Validated here so declarations can carry it, but ENTIRELY
+   * unused by the engine — no enforcement, no behavior. Enforcement parked.
+   */
+  permitted: z.array(z.string()).optional(),
 }).strict();
 
 export const SubstrateWorkflowDefinitionSchema = z.object({
@@ -168,7 +174,13 @@ export const SubstrateDisclosureDefinitionSchema = z.object({
 /** Strict version-one envelope for project-authored substrate definitions. */
 export const RuntimeSubstrateDefinitionSchema = z.object({
   $schema: z.literal(SUBSTRATE_DEFINITION_SCHEMA_URI).optional(),
-  definitionVersion: z.literal(1),
+  /**
+   * Monotonic version of THIS substrate's schema (ADR 0122 R1). Breaking
+   * changes bump it; every prior version must be frozen at
+   * `substrates/history/<type>@<version>.json` (ADR 0122 R2). Distinct from
+   * the meta-schema URN above, which versions the shape of definitions.
+   */
+  definitionVersion: z.number().int().min(1),
   type: z.string().min(1).max(64).regex(SUBSTRATE_TYPE_PATTERN),
   label: z.object({
     singular: z.string().trim().min(1).max(80),

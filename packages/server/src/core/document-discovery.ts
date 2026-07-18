@@ -12,6 +12,7 @@ import type {
   DiscoverDocumentsParams,
   DiscoveredDocument,
   DiscoveredSubstrateDeclaration,
+  DiscoveredSubstrateHistoryFile,
   DiscoveryChronology,
   DocumentDiscoveryDependencies,
   DocumentDiscoveryDiagnostic,
@@ -61,7 +62,7 @@ export function discoverDocuments(params: DiscoverDocumentsParams): DocumentDisc
   );
 
   if (canonicalDocumentsDir === undefined) {
-    return { documents: [], declarations: [], diagnostics };
+    return { documents: [], declarations: [], substrateHistory: [], diagnostics };
   }
 
   const discoveredPaths = collectDiscoveredPaths(
@@ -72,10 +73,19 @@ export function discoverDocuments(params: DiscoverDocumentsParams): DocumentDisc
   );
   const documents: DiscoveredDocument[] = [];
   const declarations: DiscoveredSubstrateDeclaration[] = [];
+  const substrateHistory: DiscoveredSubstrateHistoryFile[] = [];
 
   for (const discoveredPath of discoveredPaths) {
     const format = getDocumentFormat(discoveredPath.sourcePath);
     if (format === undefined) {
+      continue;
+    }
+
+    if (isSubstrateHistoryFile(discoveredPath.sourcePath, format)) {
+      substrateHistory.push({
+        sourcePath: discoveredPath.sourcePath,
+        absolutePath: discoveredPath.absolutePath,
+      });
       continue;
     }
 
@@ -90,7 +100,7 @@ export function discoverDocuments(params: DiscoverDocumentsParams): DocumentDisc
   diagnostics.push(...findDuplicatePathKeys(documents));
   diagnostics.sort(compareDiagnostics);
 
-  return { documents, declarations, diagnostics };
+  return { documents, declarations, substrateHistory, diagnostics };
 }
 
 function readCanonicalDocumentsDir(
@@ -438,6 +448,19 @@ function getDocumentFormat(sourcePath: string): DocumentFormat | undefined {
 
 function isSubstrateDeclaration(sourcePath: string, format: DocumentFormat): boolean {
   return format === 'json' && sourcePath.split('/')[0] === 'substrates';
+}
+
+/**
+ * Frozen prior definitions live at `substrates/history/**` (ADR 0122 R2).
+ * They are addressable lineage, never live declarations — classifying them
+ * here keeps a frozen `<type>@<version>.json` from colliding with the
+ * active declaration of the same type.
+ */
+function isSubstrateHistoryFile(sourcePath: string, format: DocumentFormat): boolean {
+  const segments = sourcePath.split('/');
+  return format === 'json'
+    && segments[0] === 'substrates'
+    && segments[1] === 'history';
 }
 
 function normalizeSourcePath(documentsDir: string, absolutePath: string): string {

@@ -53,6 +53,7 @@ describe('discoverDocuments', () => {
     writeDocument('substrates/nested/a-first.json', '{"type":"a"}');
     writeDocument('substrates/broken.json', '{"type":');
     writeDocument('substrates/notes.yaml', 'type: notes');
+    writeDocument('substrates/history/z@1.json', '{"type":"z"}');
     writeDocument('adr/0042-alpha.md', '# Alpha');
     writeDocument('adr/0042-beta.md', '# Beta');
     writeDocument('notes/broken.md', '---\nid: [\n---\n# Broken');
@@ -119,6 +120,11 @@ describe('discoverDocuments', () => {
       'substrates/z-last.json',
     ]);
     expect(result.declarations[1]?.value).toEqual({ type: 'a' });
+    // Frozen history (ADR 0122 R2) is lineage, not a live declaration.
+    expect(result.substrateHistory).toEqual([{
+      sourcePath: 'substrates/history/z@1.json',
+      absolutePath: join(DOCUMENTS_DIR, 'substrates', 'history', 'z@1.json'),
+    }]);
     expect(result.documents.some(function isEscaped(document) {
       return document.sourcePath === 'escape.md';
     })).toBe(false);
