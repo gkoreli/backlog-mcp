@@ -300,7 +300,12 @@ describe('Wakeup wire budget — all-sections pressure fixture (Slice C)', () =>
         next_action: 'Fix the checkpoint serializer',
         updated_at: T(16, 21),
       },
+      // Legal next actions from the DECLARED workflow (compiled-process
+      // 2026-07 slice): rides the focus — never-yield class — so it must
+      // survive full ceiling pressure in the same ≤ 3,072-byte payload.
+      next: 'close',
     });
+    expect(focalPayload).toContain('"next": "close"');
     expect(focalBriefing.sections.operations).toEqual([]);   // moved, not duplicated
   });
 

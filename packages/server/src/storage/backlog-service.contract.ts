@@ -12,6 +12,7 @@ import type {
   CompiledDisclosureRelation,
   CompiledSubstrateWakeupDisclosure,
   SubstrateType,
+  SubstrateWorkflowDefinition,
 } from '@backlog-mcp/shared';
 import type { UnifiedSearchResult, SearchableType } from '@backlog-mcp/memory/search';
 import type { ResourceContent } from '../resources/manager.js';
@@ -46,8 +47,17 @@ export interface IBacklogService {
   getSync?(id: string): AnyEntity | undefined;
   /** Registry-declared relation edges (0113 R6/R7) — docs-native only. */
   listDisclosureRelations?(): readonly CompiledDisclosureRelation[];
-  /** Registry-declared wakeup sections (0113 C.2) — docs-native only. */
-  listWakeupDisclosures?(): ReadonlyArray<{ type: string; wakeup: CompiledSubstrateWakeupDisclosure }>;
+  /**
+   * Registry-declared wakeup sections (0113 C.2) — docs-native only.
+   * `workflow` is the substrate's own declared workflow, when it has one
+   * (compiled-process 2026-07 slice): it powers the focal legal-next-actions
+   * line and is never a new declaration kind.
+   */
+  listWakeupDisclosures?(): ReadonlyArray<{
+    type: string;
+    wakeup: CompiledSubstrateWakeupDisclosure;
+    workflow?: SubstrateWorkflowDefinition;
+  }>;
   /** Claimed-but-uncompilable documents (EXP-1 B-3) — docs-native only. */
   listClaimQuarantines?(): ClaimQuarantine[];
   getResource?(uri: string): ResourceContent | undefined;

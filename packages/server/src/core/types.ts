@@ -550,6 +550,17 @@ export interface WakeupResult {
     section: string;
     /** Declared-projection hydration of the focal document. */
     doc: WakeupSectionStub;
+    /**
+     * Legal next actions (compiled-process 2026-07, the 5% slice): the
+     * declared transitions available from the focal doc's current workflow
+     * state — transition names only, declaration order, ` · `-joined
+     * (`"block · request_review · complete"`). Derived ENTIRELY from the
+     * substrate's declared workflow: no roles, no permissions, no filtering
+     * by identity. Absent (never empty) when the substrate declares no
+     * workflow, the state is terminal, or no transition departs from it.
+     * Rides the focus — same never-yield class (wakeup-wire.ts).
+     */
+    next?: string;
   };
   now: {
     active_tasks: WakeupEntitySummary[];

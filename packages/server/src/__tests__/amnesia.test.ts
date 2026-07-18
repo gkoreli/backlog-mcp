@@ -289,6 +289,7 @@ describe('Amnesia Test (continuity acceptance — Cold-Open twin)', () => {
         next_action: 'Fix the checkpoint serializer, then rerun the golden import',
         updated_at: '2026-07-16T21:40:00.000Z',   // staleness authority rides the focus
       },
+      next: 'close',   // legal next actions from the DECLARED workflow
     });
     // CONSTRAINTS never yield to the focus — the amnesiac must state them
     // from the SAME payload.
@@ -297,6 +298,20 @@ describe('Amnesia Test (continuity acceptance — Cold-Open twin)', () => {
     expect(constraints[0]?.compliance).toBe('at_risk');
     // The vision pointer survives focus: goal above, direction beneath it.
     expect(focalBriefing.vision?.path).toBe('docs/NORTH-STAR.md');
+  });
+
+  it('ARGUMENT: the focal briefing names the LEGAL NEXT ACTIONS — every declared transition from the current state', () => {
+    // Derived ENTIRELY from the substrate's declared workflow
+    // (compiled-process 2026-07, the 5% slice): OP-0001 is 'live', and the
+    // declaration allows exactly one transition from live. No roles, no
+    // permissions, no identity filtering — the declaration is the whole
+    // law, and the amnesiac learns what it may legally do next from the
+    // same single payload that told it its goal and constraints.
+    expect(focalBriefing.focus.next).toBe('close');
+    // The non-focal briefing carries no such line: legal actions ride the
+    // focus (never-yield class), nowhere else.
+    expect(briefing.focus).toBeUndefined();
+    expect(payload).not.toContain('"next":');
   });
 
   it('ARGUMENT: the focal doc is the centerpiece, not a duplicate — it leaves its section stubs', () => {

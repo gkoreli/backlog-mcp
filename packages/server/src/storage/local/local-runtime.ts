@@ -304,12 +304,21 @@ export function createLocalRuntime(
       substrateRegistry.listDisclosureRelations.bind(substrateRegistry),
     listWakeupDisclosures: function listWakeupDisclosures() {
       // Deterministic: listSubstrates is sourcePath-sorted; only substrates
-      // declaring a wakeup disclosure appear.
+      // declaring a wakeup disclosure appear. The substrate's own declared
+      // workflow rides along (compiled-process 2026-07 slice) so the focal
+      // briefing can name the legal next transitions — no new declaration
+      // kind, just the declaration the substrate already made.
       return substrateRegistry.listSubstrates().flatMap(function toSection(substrate) {
         const wakeup = substrateRegistry.getDisclosure(substrate.storageClaim.type)?.wakeup;
-        return wakeup === undefined
-          ? []
-          : [{ type: substrate.storageClaim.type, wakeup }];
+        if (wakeup === undefined) return [];
+        const workflow = substrate.kind === 'declarative'
+          ? substrate.definition.workflow
+          : undefined;
+        return [{
+          type: substrate.storageClaim.type,
+          wakeup,
+          ...(workflow === undefined ? {} : { workflow }),
+        }];
       });
     },
   });

@@ -974,6 +974,70 @@ describe('core/wakeup', () => {
       expect(result.metadata.sections_omitted?.['operations']).toBeUndefined();
     });
 
+    it('legal next actions: the focus lists every declared transition from the current state, in declaration order', async () => {
+      // Derived ENTIRELY from the declared workflow (compiled-process
+      // 2026-07, the 5% slice): no roles, no permissions, no filtering by
+      // identity — every transition whose `from` covers the current state,
+      // named in declaration order.
+      const WORKFLOW_OPS = {
+        ...OPERATIONS,
+        workflow: {
+          field: 'status',
+          initial: ['live'],
+          terminal: ['closed'],
+          transitions: [
+            { name: 'block', from: ['live'], to: 'blocked' },
+            { name: 'request_review', from: ['live', 'blocked'], to: 'review' },
+            { name: 'complete', from: ['review'], to: 'closed' },
+          ],
+        },
+      };
+      const result = await wakeup(
+        withOps([op('OP-0001')], [WORKFLOW_OPS]),
+        { operation: 'OP-0001' },
+      );
+      expect(result.focus?.next).toBe('block · request_review');
+
+      // Freeform human states find their transitions by the same
+      // leading-token rule as every declared-status seam (repair #4).
+      const freeform = await wakeup(
+        withOps([op('OP-0002', { status: 'Live (goga, 2026-07-16)' })], [WORKFLOW_OPS]),
+        { operation: 'OP-0002' },
+      );
+      expect(freeform.focus?.next).toBe('block · request_review');
+    });
+
+    it('legal next actions: absent — never empty — without a workflow, in a terminal state, or with no departing transition', async () => {
+      // No declared workflow → no line.
+      const plain = await wakeup(withOps([op('OP-0001')]), { operation: 'OP-0001' });
+      expect(plain.focus).toBeDefined();
+      expect('next' in (plain.focus ?? {})).toBe(false);
+
+      const WORKFLOW_OPS = {
+        ...OPERATIONS,
+        wakeup: { ...OPERATIONS.wakeup, includeStatuses: ['live', 'closed', 'review'] },
+        workflow: {
+          field: 'status',
+          initial: ['live'],
+          terminal: ['closed'],
+          transitions: [{ name: 'close', from: ['live'], to: 'closed' }],
+        },
+      };
+      // Terminal state → no line, even when the declaration lets it focus.
+      const terminal = await wakeup(
+        withOps([op('OP-0001', { status: 'closed' })], [WORKFLOW_OPS]),
+        { operation: 'OP-0001' },
+      );
+      expect('next' in (terminal.focus ?? {})).toBe(false);
+
+      // Non-terminal state with no declared departing transition → no line.
+      const stranded = await wakeup(
+        withOps([op('OP-0001', { status: 'review' })], [WORKFLOW_OPS]),
+        { operation: 'OP-0001' },
+      );
+      expect('next' in (stranded.focus ?? {})).toBe(false);
+    });
+
     it('is declaration-generic — any substrate with disclosure.wakeup can be focused, no "operation" hardcoding', async () => {
       const DECISIONS = {
         type: 'adr',

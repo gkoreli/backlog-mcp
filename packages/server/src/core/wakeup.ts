@@ -22,7 +22,7 @@
  * ``WakeupParams``. Transports wrap the real IO; tests pass stubs.
  */
 
-import type { Entity, Memory, RuntimeEntity } from '@backlog-mcp/shared';
+import type { Entity, Memory, RuntimeEntity, SubstrateWorkflowDefinition } from '@backlog-mcp/shared';
 import type { MemoryEntry } from '@backlog-mcp/memory';
 import { EntityType, getSubstrate, isValidEntityId, parseEntityId } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
@@ -270,6 +270,34 @@ function projectSectionStub(
     if (value !== undefined && value !== null) stub[field] = value;
   }
   return stub;
+}
+
+/**
+ * Legal next actions (compiled-process 2026-07, the 5% slice): one line
+ * derived ENTIRELY from the substrate's declared workflow — from the focal
+ * doc's current state, every declared transition whose `from` covers it,
+ * as transition names in declaration order. No roles, no permissions, no
+ * identity filtering; the declaration is the whole law. Status comparison
+ * is the one leading-token rule every declared-status seam uses
+ * (matchesDeclaredStatus) — a freeform "live (onyx)" state still finds its
+ * transitions. Returns undefined — absent, never empty — when the
+ * substrate declares no workflow, the state is terminal, or no declared
+ * transition departs from it.
+ */
+function legalNextActions(
+  entity: { id: string },
+  workflow: SubstrateWorkflowDefinition | undefined,
+): string | undefined {
+  if (workflow === undefined) return undefined;
+  const current = (entity as Record<string, unknown>)[workflow.field];
+  const isTerminal = (workflow.terminal ?? [])
+    .some(state => matchesDeclaredStatus(current, state));
+  if (isTerminal) return undefined;
+  const names = workflow.transitions
+    .filter(transition => transition.from
+      .some(state => matchesDeclaredStatus(current, state)))
+    .map(transition => transition.name);
+  return names.length === 0 ? undefined : names.join(' · ');
 }
 
 /**
@@ -534,9 +562,13 @@ export async function wakeup(
       // not even as a focus (it errors honestly below instead).
       const focalEntity = statusIncluded.find(e => e.id === focalId);
       if (focalEntity !== undefined) {
+        // The legal-actions line (compiled-process 2026-07): what the
+        // declared workflow allows from here, riding the centerpiece.
+        const next = legalNextActions(focalEntity, declared.workflow);
         focus = {
           section: declared.wakeup.section,
           doc: projectSectionStub(focalEntity, declared.wakeup.projection),
+          ...(next === undefined ? {} : { next }),
         };
       } else {
         const shelved = entities.find(e => e.id === focalId);

@@ -44,6 +44,8 @@ export function formatWakeupBriefing(
   // The focal operation leads (north-star Amnesia contract): an amnesiac
   // reads its own operation before anything else. Fields beyond id/title
   // are whatever the substrate's declaration projected — printed as-is.
+  // The legal-actions line closes the block: what the declared workflow
+  // allows from here (compiled-process 2026-07 slice).
   if (result.focus) {
     lines.push(
       '',
@@ -53,6 +55,9 @@ export function formatWakeupBriefing(
         .filter(([key]) => key !== 'id' && key !== 'title')
         .map(([key, value]) =>
           `  ${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`),
+      ...(result.focus.next !== undefined
+        ? [`  next: ${result.focus.next}`]
+        : []),
     );
   }
 
