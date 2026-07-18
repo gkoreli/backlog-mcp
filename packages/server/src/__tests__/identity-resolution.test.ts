@@ -13,11 +13,13 @@
  * at a disposable file and GIT_CONFIG_NOSYSTEM blanks the machine
  * scope, so the developer's own `backlog.agent` can never leak in.
  */
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { execSync } from 'node:child_process';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { execFileSync, execSync } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Entity } from '@backlog-mcp/shared';
+import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import {
   probeAgentIdentityGitRungs,
@@ -33,13 +35,27 @@ import { envActor } from '../operations/logger.js';
 import { wakeup } from '../core/wakeup.js';
 import { serializeBriefing } from '../core/wakeup-wire.js';
 import { formatWakeupBriefing } from '../cli/commands/wakeup.js';
+import {
+  BACKLOG_HOME_HEADER,
+  BACKLOG_PROJECT_ROOT_HEADER,
+} from '../core/backlog-home.js';
+import { createLocalNodeApp } from '../server/local-node-app.js';
+import type {
+  DocsTreeReconcileCallback,
+  DocsTreeWatcher,
+  DocsTreeWatcherErrorCallback,
+  DocsTreeWatcherSubscription,
+} from '../storage/local/docs-tree-watcher.contract.js';
+import { createLocalRuntime } from '../storage/local/local-runtime.js';
+import { LocalRuntimeRegistry } from '../storage/local/local-runtime-registry.js';
 
 // git reports canonical absolute paths; on macOS tmpdir() is itself a
 // symlink (/var → /private/var), so anchor the fixture at the REAL path.
-const BASE = join(
-  execSync(`cd '${tmpdir()}' && pwd -P`, { encoding: 'utf8' }).trim(),
-  'identity-ladder-fixture',
-);
+const realFs = await vi.importActual<typeof import('node:fs')>('node:fs');
+const BASE = realFs.mkdtempSync(join(
+  realFs.realpathSync(tmpdir()),
+  'identity-ladder-fixture-',
+));
 const REPO = join(BASE, 'repo');
 const WORKTREE = join(BASE, 'wt');
 const NON_REPO = join(BASE, 'plain-directory');
@@ -47,6 +63,18 @@ const GLOBAL_CONFIG = join(BASE, 'global.gitconfig');
 const WORKTREE_CONFIG_FILE = join(REPO, '.git', 'worktrees', 'wt', 'config.worktree');
 
 const savedEnv: Record<string, string | undefined> = {};
+
+class FakeDocsTreeWatcher implements DocsTreeWatcher {
+  async subscribe(
+    _documentsDir: string,
+    _onReconcile: DocsTreeReconcileCallback,
+    _onError?: DocsTreeWatcherErrorCallback,
+  ): Promise<DocsTreeWatcherSubscription> {
+    return {
+      unsubscribe: async function unsubscribe(): Promise<void> {},
+    };
+  }
+}
 
 function git(command: string, cwd = REPO): string {
   return execSync(`git ${command}`, {
@@ -81,10 +109,10 @@ function configureRungs(state: {
   worktreeStamp?: string;
   extension?: boolean;
 } = {}): void {
-  execSync(`printf '' > '${GLOBAL_CONFIG}'`, { stdio: 'pipe' });
+  realFs.writeFileSync(GLOBAL_CONFIG, '');
   gitQuiet('config --unset-all backlog.agent');
   gitQuiet('config --unset extensions.worktreeConfig');
-  execSync(`rm -f '${WORKTREE_CONFIG_FILE}'`, { stdio: 'pipe' });
+  realFs.rmSync(WORKTREE_CONFIG_FILE, { force: true });
   if (state.user !== undefined) git(`config --global backlog.agent '${state.user}'`);
   if (state.checkout !== undefined) git(`config --local backlog.agent '${state.checkout}'`);
   if (state.extension === true) git('config extensions.worktreeConfig true');
@@ -92,10 +120,13 @@ function configureRungs(state: {
     // Written to the file directly so the extension-absent case can
     // exist at all: `git config --worktree` refuses without the
     // extension, but a stale/ungated file must STILL not become rung 2.
-    execSync(
-      `printf '[backlog]\\n\\tagent = ${state.worktreeStamp}\\n' > '${WORKTREE_CONFIG_FILE}'`,
-      { stdio: 'pipe' },
-    );
+    execFileSync('git', [
+      'config',
+      '--file',
+      WORKTREE_CONFIG_FILE,
+      'backlog.agent',
+      state.worktreeStamp,
+    ]);
   }
 }
 
@@ -103,11 +134,12 @@ beforeAll(() => {
   for (const key of ['GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM', 'BACKLOG_AGENT']) {
     savedEnv[key] = process.env[key];
   }
-  execSync(`rm -rf '${BASE}' && mkdir -p '${REPO}' '${NON_REPO}'`, { stdio: 'pipe' });
+  realFs.mkdirSync(REPO, { recursive: true });
+  realFs.mkdirSync(NON_REPO, { recursive: true });
   process.env.GIT_CONFIG_GLOBAL = GLOBAL_CONFIG;
   process.env.GIT_CONFIG_NOSYSTEM = '1';
   delete process.env.BACKLOG_AGENT;
-  execSync(`printf '' > '${GLOBAL_CONFIG}'`, { stdio: 'pipe' });
+  realFs.writeFileSync(GLOBAL_CONFIG, '');
   git('init -q -b main');
   git('commit -q --allow-empty -m init');
   git(`worktree add -q '${WORKTREE}' -b feat/wt`);
@@ -120,7 +152,7 @@ afterAll(() => {
     else process.env[key] = value;
   }
   resetAmbientAgentIdentityCacheForTests();
-  execSync(`rm -rf '${BASE}'`, { stdio: 'pipe' });
+  realFs.rmSync(BASE, { recursive: true, force: true });
 });
 
 describe('the precedence matrix (real git fixture)', () => {
@@ -219,15 +251,19 @@ describe('the precedence matrix (real git fixture)', () => {
     })).toBeUndefined();
   });
 
-  it('empty values are absent rungs, and a blank explicit/env never wins', () => {
+  it('empty values are absent rungs, and whitespace explicit/env never wins', () => {
     configureRungs({});
     git("config --local backlog.agent ''");
     expect(probeAgentIdentityGitRungs(REPO, runGitCommand)).toEqual({});
+    configureRungs({ checkout: 'checkout-agent' });
     expect(resolveAgentIdentity({
       explicit: '   ',
       gitRungs: probeAgentIdentityGitRungs(REPO, runGitCommand),
-      env: { BACKLOG_AGENT: '' },
-    })).toBeUndefined();
+      env: { BACKLOG_AGENT: '   ' },
+    })).toEqual({
+      value: 'checkout-agent',
+      source: 'checkout config',
+    });
     gitQuiet('config --unset-all backlog.agent');
   });
 
@@ -262,7 +298,7 @@ describe('the precedence matrix (real git fixture)', () => {
 });
 
 describe('the ambient binding and envActor (one resolution site)', () => {
-  it('git rungs are probed once per process and cached; env is read live', () => {
+  it('git rungs are probed once per directory and cached; env is read live', () => {
     configureRungs({ checkout: 'checkout-agent' });
     resetAmbientAgentIdentityCacheForTests();
     let spawns = 0;
@@ -277,8 +313,38 @@ describe('the ambient binding and envActor (one resolution site)', () => {
     expect(spawns).toBe(1);
     // Env stays live against the cached git rungs — but never outranks
     // rung 2 (that is the whole point of R1).
-    expect(ambientAgentIdentity({ env: { BACKLOG_AGENT: 'env-agent' } }))
+    expect(ambientAgentIdentity({
+      cwd: REPO,
+      runGit: counting,
+      env: { BACKLOG_AGENT: 'env-agent' },
+    }))
       .toEqual({ value: 'env-agent', source: 'env' });
+    expect(spawns).toBe(1);
+    resetAmbientAgentIdentityCacheForTests();
+  });
+
+  it('probes once per distinct canonical directory', () => {
+    configureRungs({
+      checkout: 'checkout-agent',
+      extension: true,
+      worktreeStamp: 'wt-agent',
+    });
+    resetAmbientAgentIdentityCacheForTests();
+    let spawns = 0;
+    const counting: GitRunner = (cwd, args) => {
+      spawns += 1;
+      return runGitCommand(cwd, args);
+    };
+
+    expect(ambientAgentIdentity({ cwd: REPO, runGit: counting, env: {} }))
+      .toEqual({ value: 'checkout-agent', source: 'checkout config' });
+    expect(ambientAgentIdentity({ cwd: WORKTREE, runGit: counting, env: {} }))
+      .toEqual({ value: 'wt-agent', source: 'worktree config' });
+    expect(ambientAgentIdentity({ cwd: REPO, runGit: counting, env: {} }))
+      .toEqual({ value: 'checkout-agent', source: 'checkout config' });
+    expect(ambientAgentIdentity({ cwd: WORKTREE, runGit: counting, env: {} }))
+      .toEqual({ value: 'wt-agent', source: 'worktree config' });
+    expect(spawns).toBe(2);
     resetAmbientAgentIdentityCacheForTests();
   });
 
@@ -299,10 +365,7 @@ describe('the ambient binding and envActor (one resolution site)', () => {
 
       configureRungs({ extension: true, worktreeStamp: 'wt-agent' });
       resetAmbientAgentIdentityCacheForTests();
-      // Prime the process cache from the stamped worktree (vitest workers
-      // cannot chdir); envActor then resolves against the cached rungs.
-      ambientAgentIdentity({ cwd: WORKTREE });
-      expect(envActor()).toEqual({
+      expect(envActor({ cwd: WORKTREE })).toEqual({
         type: 'agent',
         name: 'wt-agent',
         delegatedBy: undefined,
@@ -312,8 +375,7 @@ describe('the ambient binding and envActor (one resolution site)', () => {
       // Without the stamp the same env lands on rung 3, unchanged.
       configureRungs({});
       resetAmbientAgentIdentityCacheForTests();
-      ambientAgentIdentity({ cwd: WORKTREE });
-      expect(envActor()).toEqual({
+      expect(envActor({ cwd: WORKTREE })).toEqual({
         type: 'agent',
         name: 'env-agent',
         delegatedBy: undefined,
@@ -322,7 +384,7 @@ describe('the ambient binding and envActor (one resolution site)', () => {
 
       // Every rung absent: byte-identical to the pre-0119 actor.
       delete process.env.BACKLOG_AGENT;
-      expect(envActor()).toEqual({
+      expect(envActor({ cwd: WORKTREE })).toEqual({
         type: 'user',
         name: 'goga',
         delegatedBy: undefined,
@@ -333,6 +395,104 @@ describe('the ambient binding and envActor (one resolution site)', () => {
         if (value === undefined) delete process.env[key];
         else process.env[key] = value;
       }
+      resetAmbientAgentIdentityCacheForTests();
+    }
+  });
+});
+
+describe('request-selected runtime identity', () => {
+  it('resolves the selected worktree stamp instead of the detached boot identity', async () => {
+    const originalAgent = process.env.BACKLOG_AGENT;
+    configureRungs({ extension: true, worktreeStamp: 'wt-agent' });
+    process.env.BACKLOG_AGENT = 'detached-agent';
+    resetAmbientAgentIdentityCacheForTests();
+    mkdirSync(join(WORKTREE, 'docs'), { recursive: true });
+    const registry = new LocalRuntimeRegistry(function createRuntime(home) {
+      return createLocalRuntime(home, {
+        watcher: new FakeDocsTreeWatcher(),
+        createSearch: function createSearch(selectedHome) {
+          return new OramaSearchService({
+            cachePath: join(
+              selectedHome.controlDir,
+              'cache',
+              'search-index.json',
+            ),
+            hybridSearch: false,
+          });
+        },
+      });
+    });
+
+    try {
+      const composition = await createLocalNodeApp({
+        globalRoot: join(BASE, 'global-home'),
+        registry,
+      });
+      const response = await composition.app.request('/mcp', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json, text/event-stream',
+          'content-type': 'application/json',
+          [BACKLOG_HOME_HEADER]: 'project',
+          [BACKLOG_PROJECT_ROOT_HEADER]: WORKTREE,
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: {
+            name: 'backlog_wakeup',
+            arguments: { home: 'project', project_root: WORKTREE },
+          },
+        }),
+      });
+      const payload = await response.json() as {
+        result?: { content?: Array<{ text?: string }> };
+      };
+      const briefing = payload.result?.content?.[0]?.text;
+
+      expect(response.status).toBe(200);
+      expect(briefing).toContain('"identity": "wt-agent (worktree config)"');
+      expect(briefing).not.toContain('detached-agent');
+
+      const writeResponse = await composition.app.request('/mcp', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json, text/event-stream',
+          'content-type': 'application/json',
+          [BACKLOG_HOME_HEADER]: 'project',
+          [BACKLOG_PROJECT_ROOT_HEADER]: WORKTREE,
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'tools/call',
+          params: {
+            name: 'backlog_create_work',
+            arguments: {
+              title: 'Selected-home attribution probe',
+            },
+          },
+        }),
+      });
+      expect(writeResponse.status).toBe(200);
+      const operationsResponse = await composition.app.request('/operations', {
+        headers: {
+          [BACKLOG_HOME_HEADER]: 'project',
+          [BACKLOG_PROJECT_ROOT_HEADER]: WORKTREE,
+        },
+      });
+      const operations = await operationsResponse.json() as Array<{
+        actor?: { type?: string; name?: string };
+      }>;
+      expect(operations[0]?.actor).toEqual({
+        type: 'agent',
+        name: 'wt-agent',
+      });
+    } finally {
+      await registry.closeAll();
+      if (originalAgent === undefined) delete process.env.BACKLOG_AGENT;
+      else process.env.BACKLOG_AGENT = originalAgent;
       resetAmbientAgentIdentityCacheForTests();
     }
   });

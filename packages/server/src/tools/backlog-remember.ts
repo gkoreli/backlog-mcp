@@ -17,6 +17,10 @@ import { ValidationError } from '../core/types.js';
 import type { Actor, IOperationLog } from '../operations/types.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
+import {
+  AGENT_IDENTITY_INPUT_FIELDS,
+  withExplicitAgentIdentity,
+} from './agent-identity-input.js';
 
 export interface BacklogRememberDeps {
   memoryComposer?: MemoryComposer;
@@ -41,6 +45,7 @@ export function registerBacklogRememberTool(
         'Write a durable memory — a stable fact, a procedure, or a preference you should know next session. Use when you learn something worth keeping: "this repo deploys via wrangler", "Goga prefers terse evidence bullets". To CORRECT existing knowledge, pass supersedes (the old MEMO- id is expired, lineage kept) or state_key (previous holders of the same evolving fact are closed). The optional collision_candidates receipt is tri-state: [] means the advisory scan completed clean; a non-empty array means nearby facts deserve adjudication; absent means the advisory scan did not run or failed, not that the write failed. Do not use for task events — completions are captured automatically.',
       inputSchema: z.object({
         ...BACKLOG_HOME_INPUT_FIELDS,
+        ...AGENT_IDENTITY_INPUT_FIELDS,
         content: z.string().describe('The memory body (markdown) — the fact itself.'),
         title: z.string().describe('Memory title (required, like a task title) — a short human-readable label for the fact. Title and body are both first-class.'),
         layer: z.enum(['episodic', 'semantic', 'procedural']).optional().describe(
@@ -59,18 +64,16 @@ export function registerBacklogRememberTool(
         valid_until: z.string().optional().describe('Expiry — ISO date/datetime. After this the memory drops out of recall.'),
         supersedes: z.string().optional().describe('MEMO- id this memory replaces. The predecessor is soft-expired.'),
         derived: z.boolean().optional().describe('Mark as inference (consolidator output). Requires non-empty entity_refs citing the sources.'),
-        as: z.string().min(1).optional().describe(
-          'OPTIONAL agent identity to attribute this memory to — an AGENT- doc id or declared principal (e.g. "aime:granite"). First-person capture: pass your own identity, never another agent\'s. Absent: attribution is the ambient actor, unchanged.',
-        ),
       }),
     },
     async (params) => {
       const candidateService = deps?.service;
       // ADR 0119 Slice A: an explicit `as` identity overlays the ambient
       // actor for this one write; absent, the actor is exactly deps.actor.
-      const actor: Actor | undefined = params.as === undefined
-        ? deps?.actor
-        : { ...deps?.actor, type: 'agent', name: params.as };
+      const actor: Actor | undefined = withExplicitAgentIdentity(
+        deps?.actor,
+        params.as,
+      );
       try {
         const result = await remember(
           {

@@ -11,16 +11,24 @@
 
 import type { WriteContext } from '../core/types.js';
 import type { ToolDeps } from './index.js';
+import { withExplicitAgentIdentity } from './agent-identity-input.js';
 
-export function buildWriteContext(deps: ToolDeps | undefined): WriteContext {
+export function buildWriteContext(
+  deps: ToolDeps | undefined,
+  explicitAgentIdentity?: string,
+): WriteContext {
   if (!deps?.actor || !deps?.operationLog) {
     throw new Error(
       'buildWriteContext: tool deps missing actor or operationLog — ' +
       'check hono-app / node-server / worker-entry bootstrap wiring'
     );
   }
+  const actor = withExplicitAgentIdentity(
+    deps.actor,
+    explicitAgentIdentity,
+  ) ?? deps.actor;
   return {
-    actor: deps.actor,
+    actor,
     operationLog: deps.operationLog,
     ...(deps.substrateRegistry
       ? { substrateRegistry: deps.substrateRegistry }

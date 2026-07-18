@@ -7,7 +7,8 @@ import type { BacklogHome } from '../core/backlog-home.types.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import type { OperationLogger } from '../operations/logger.js';
-import type { IOperationLog } from '../operations/types.js';
+import type { Actor, IOperationLog } from '../operations/types.js';
+import type { ResolvedAgentIdentity } from '../core/identity-resolution.js';
 import type { ResourceManager } from '../resources/manager.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { ProjectSubstrateRegistry } from '../core/substrates/project-substrate-registry.js';
@@ -25,6 +26,10 @@ import type {
 export interface AppRequestRuntime {
   home?: BacklogHome;
   service: IBacklogService;
+  /** Runtime-home-resolved write actor for a request-selected local home. */
+  actor?: Actor;
+  /** Runtime-home-resolved identity and disclosure rung (ADR 0119.1 R2). */
+  agentIdentity?: ResolvedAgentIdentity;
   operationLog?: IOperationLog;
   operationLogger?: OperationLogger;
   substrateRegistry?: ProjectSubstrateRegistry;

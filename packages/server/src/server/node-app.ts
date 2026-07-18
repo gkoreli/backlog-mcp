@@ -22,14 +22,17 @@ import type { CreateNodeAppOptions } from './node-app.types.js';
  */
 export function createNodeApp(options: CreateNodeAppOptions): Hono {
   const runtime = options.runtime;
+  const runtimeOwnsIdentity = runtime.actor !== undefined;
   return createApp(runtime.service, {
     name: paths.packageJson.name,
     version: paths.getVersion(),
     dataDir: runtime.home?.documentsDir,
-    actor: envActor(),
-    // ADR 0119.1: the attribution ladder resolves once per server boot;
-    // the wakeup briefing discloses the value and its winning rung.
-    agentIdentity: ambientAgentIdentity(),
+    actor: runtime.actor ?? envActor(),
+    // ADR 0119.1: the boot runtime keeps boot-cwd resolution; explicitly
+    // selected runtimes carry their own home-resolved value and rung.
+    agentIdentity: runtimeOwnsIdentity
+      ? runtime.agentIdentity
+      : ambientAgentIdentity(),
     operationLog: runtime.operationLog,
     operationLogger: runtime.operationLogger,
     eventBus: runtime.eventBus,

@@ -5,6 +5,7 @@ import type { ToolDeps } from './index.js';
 import { deleteItem } from '../core/delete.js';
 import { buildWriteContext } from './build-write-context.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
+import { AGENT_IDENTITY_INPUT_FIELDS } from './agent-identity-input.js';
 
 const DELETE_ATTRIBUTION = {
   tool: 'backlog_delete',
@@ -18,14 +19,15 @@ export function registerBacklogDeleteTool(server: McpServer, service: IBacklogSe
       description: 'Delete an item permanently.',
       inputSchema: z.object({
         ...BACKLOG_HOME_INPUT_FIELDS,
+        ...AGENT_IDENTITY_INPUT_FIELDS,
         id: z.string().describe('Task ID to delete'),
       }),
     },
-    async ({ id }) => {
+    async ({ id, as: agentIdentity }) => {
       const result = await deleteItem(
         service,
         { id },
-        buildWriteContext(deps),
+        buildWriteContext(deps, agentIdentity),
         DELETE_ATTRIBUTION,
       );
       return { content: [{ type: 'text', text: `Deleted ${result.id}` }] };

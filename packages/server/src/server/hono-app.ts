@@ -173,8 +173,10 @@ function createRequestToolDeps(
     };
   }
   return {
-    actor: deps?.actor,
-    agentIdentity: deps?.agentIdentity,
+    actor: runtime.home === undefined ? deps?.actor : runtime.actor,
+    agentIdentity: runtime.home === undefined
+      ? deps?.agentIdentity
+      : runtime.agentIdentity,
     operationLog: runtime.operationLog,
     operationLogger: runtime.operationLogger,
     substrateRegistry: runtime.substrateRegistry,

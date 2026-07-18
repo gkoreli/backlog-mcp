@@ -3,7 +3,10 @@
  * Coordinates storage, resource ID extraction, and actor info.
  */
 
-import { ambientAgentIdentity } from '../storage/local/agent-identity.js';
+import {
+  ambientAgentIdentity,
+  type AmbientAgentIdentityOverrides,
+} from '../storage/local/agent-identity.js';
 import { OperationStorage } from './storage.js';
 import type { Actor, OperationEntry, OperationFilter, IOperationLog } from './types.js';
 
@@ -23,14 +26,18 @@ import type { Actor, OperationEntry, OperationFilter, IOperationLog } from './ty
  * is exactly what it was before ADR 0119. Identity stays OPTIONAL,
  * modular, never forced (PROMPT 0003).
  */
-export function envActor(): Actor {
+export function envActor(overrides?: AmbientAgentIdentityOverrides): Actor {
+  const env = overrides?.env ?? process.env;
   const base: Actor = {
-    type: (process.env.BACKLOG_ACTOR_TYPE as 'user' | 'agent') || 'user',
-    name: process.env.BACKLOG_ACTOR_NAME || process.env.USER || 'unknown',
-    delegatedBy: process.env.BACKLOG_DELEGATED_BY,
-    taskContext: process.env.BACKLOG_TASK_CONTEXT,
+    type: (env.BACKLOG_ACTOR_TYPE as 'user' | 'agent') || 'user',
+    name: env.BACKLOG_ACTOR_NAME || env.USER || 'unknown',
+    delegatedBy: env.BACKLOG_DELEGATED_BY,
+    taskContext: env.BACKLOG_TASK_CONTEXT,
   };
-  const agentIdentity = ambientAgentIdentity();
+  const agentIdentity = ambientAgentIdentity({
+    ...overrides,
+    env,
+  });
   return agentIdentity ? asAgentActor(agentIdentity.value, base) : base;
 }
 

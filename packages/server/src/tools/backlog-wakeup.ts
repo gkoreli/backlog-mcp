@@ -33,9 +33,9 @@ export interface BacklogWakeupDeps {
   substrateRegistry?: Pick<ProjectSubstrateRegistry, 'acceptsParent'>;
   homeReadCoordinator?: HomeReadCoordinator;
   /**
-   * The ladder-resolved ambient agent identity (ADR 0119.1), resolved
-   * once per server boot by the composition. Absent in constrained
-   * runtimes (e.g. the Worker) — the briefing simply omits disclosure.
+   * The ladder-resolved ambient agent identity (ADR 0119.1), resolved for
+   * the selected runtime by the composition. Absent in constrained runtimes
+   * (e.g. the Worker) — the briefing simply omits disclosure.
    */
   agentIdentity?: ResolvedAgentIdentity;
 }

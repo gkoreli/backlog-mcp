@@ -11,6 +11,7 @@ import type {
   RegisterSubstrateIntentsResult,
   SubstrateIntentQuarantineDiagnostic,
 } from './register-substrate-intents.types.js';
+import { AGENT_IDENTITY_INPUT_FIELDS } from './agent-identity-input.js';
 
 const QUARANTINE_REASON =
   'operation kind not yet executable — 0106.5 R5 initial-16 scope';
@@ -70,12 +71,19 @@ function createIntentHandler(
     isError?: boolean;
   }> {
     try {
+      const explicitAgentIdentity = typeof input.as === 'string'
+        ? input.as
+        : undefined;
+      const { as: _agentIdentity, ...intentInput } = input;
       const result = await executeSubstrateIntent({
         intent,
-        input,
+        input: intentInput,
         service,
         validator: options.validator,
-        context: buildWriteContext(options.toolDeps),
+        context: buildWriteContext(
+          options.toolDeps,
+          explicitAgentIdentity,
+        ),
       });
       return {
         content: [{
@@ -120,7 +128,9 @@ export function registerSubstrateIntents(
       intent.toolName,
       {
         description: intent.description,
-        inputSchema: intent.intentInputSchema,
+        inputSchema: intent.intentInputSchema.extend(
+          AGENT_IDENTITY_INPUT_FIELDS,
+        ),
       },
       createIntentHandler(intent, service, options),
     );

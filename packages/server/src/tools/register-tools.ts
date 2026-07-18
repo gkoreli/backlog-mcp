@@ -64,7 +64,7 @@ export interface ToolDeps {
   readUsageLines?: () => string[];
   homeReadCoordinator?: HomeReadCoordinator;
   intentRegistration?: IntentToolRegistration;
-  /** Ladder-resolved ambient agent identity (ADR 0119.1); boot-resolved. */
+  /** Ladder-resolved identity for the request-selected runtime (ADR 0119.1). */
   agentIdentity?: ResolvedAgentIdentity;
 }
 

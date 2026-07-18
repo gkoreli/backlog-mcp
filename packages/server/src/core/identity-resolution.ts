@@ -127,7 +127,7 @@ export function resolveAgentIdentity(
   if (rungs.worktree !== undefined) {
     return { value: rungs.worktree, source: 'worktree config' };
   }
-  const envIdentity = input.env?.['BACKLOG_AGENT'];
+  const envIdentity = input.env?.['BACKLOG_AGENT']?.trim();
   if (envIdentity !== undefined && envIdentity !== '') {
     return { value: envIdentity, source: 'env' };
   }

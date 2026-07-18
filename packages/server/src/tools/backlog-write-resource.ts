@@ -5,6 +5,7 @@ import type { ToolDeps } from './index.js';
 import { editItem, NotFoundError } from '../core/index.js';
 import { buildWriteContext } from './build-write-context.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
+import { AGENT_IDENTITY_INPUT_FIELDS } from './agent-identity-input.js';
 
 const EDIT_ATTRIBUTION = {
   tool: 'write_resource',
@@ -28,6 +29,7 @@ export function registerWriteResourceTool(server: McpServer, service: IBacklogSe
       },
       inputSchema: z.object({
         ...BACKLOG_HOME_INPUT_FIELDS,
+        ...AGENT_IDENTITY_INPUT_FIELDS,
         id: z.string().describe('Task or epic ID, e.g. TASK-0001 or EPIC-0002'),
         operation: z.object({
           type: z.enum(['str_replace', 'insert', 'append']).describe('Operation type'),
@@ -37,12 +39,12 @@ export function registerWriteResourceTool(server: McpServer, service: IBacklogSe
         }).describe('Operation to apply to the body'),
       }),
     },
-    async ({ id, operation }) => {
+    async ({ id, operation, as: agentIdentity }) => {
       try {
         const result = await editItem(
           service,
           { id, operation },
-          buildWriteContext(deps),
+          buildWriteContext(deps, agentIdentity),
           EDIT_ATTRIBUTION,
         );
         if (!result.success) {

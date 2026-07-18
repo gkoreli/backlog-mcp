@@ -2,6 +2,8 @@ import { resolveBacklogHome } from '../core/backlog-home.js';
 import { createLocalRuntime } from '../storage/local/local-runtime.js';
 import { LocalRuntimeRegistry } from '../storage/local/local-runtime-registry.js';
 import { resolveLegacyDataRoot } from '../utils/legacy-data-root.js';
+import { envActor } from '../operations/logger.js';
+import { ambientAgentIdentity } from '../storage/local/agent-identity.js';
 import { createLocalAppRequestRuntime } from './local-app-request-runtime.js';
 import { LocalRuntimeRequestResolver } from './local-runtime-request-resolver.js';
 import { createNodeApp } from './node-app.js';
@@ -36,6 +38,13 @@ export async function createLocalNodeApp(
     env: {},
   });
   const runtime = await registry.get(home);
+  const bootDirectory = process.cwd();
+  const bootIdentity = ambientAgentIdentity({ cwd: bootDirectory });
+  const bootAppRuntime = {
+    ...createLocalAppRequestRuntime(runtime),
+    actor: envActor({ cwd: bootDirectory }),
+    ...(bootIdentity === undefined ? {} : { agentIdentity: bootIdentity }),
+  };
   const requestResolver = new LocalRuntimeRequestResolver(registry, {
     globalRoot: home.root,
   });
@@ -43,14 +52,22 @@ export async function createLocalNodeApp(
     home?: string;
     projectRoot?: string;
   }) {
-    return createLocalAppRequestRuntime(
-      await requestResolver.resolve(selection),
-    );
+    if (selection.home === undefined && selection.projectRoot === undefined) {
+      return bootAppRuntime;
+    }
+    const selectedRuntime = await requestResolver.resolve(selection);
+    const identityDirectory = selectedRuntime.home.root;
+    const agentIdentity = ambientAgentIdentity({ cwd: identityDirectory });
+    return {
+      ...createLocalAppRequestRuntime(selectedRuntime),
+      actor: envActor({ cwd: identityDirectory }),
+      ...(agentIdentity === undefined ? {} : { agentIdentity }),
+    };
   }
 
   return {
     app: createNodeApp({
-      runtime: createLocalAppRequestRuntime(runtime),
+      runtime: bootAppRuntime,
       resolveRuntime,
       requestShutdown: options.requestShutdown,
     }),

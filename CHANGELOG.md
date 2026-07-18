@@ -57,6 +57,18 @@ begins at 0.57.0 — earlier history lives in git.
   "query_id":…[,"document_id":…]}` appended per adjudicated candidate), so
   a reviewed candidate file finally leaves the Desk instead of haunting it.
   Ranking untouched; the Desk stays read-only.
+- **Request-selected homes now attribute writes and wakeup disclosure from
+  their own worktree, and every attributed MCP write accepts the same
+  normalized `as` override.** A detached server now caches Git identity rungs
+  once per canonical runtime directory, so a project selected with
+  `project_root` uses that worktree's deliberate `backlog.agent` stamp instead
+  of inheriting the server boot checkout's identity. `backlog_delete`,
+  `write_resource`, and every dynamic create/transition/set-field intent now
+  expose rung-1 `as` alongside `backlog_remember`; values are trimmed and
+  whitespace-only explicit values or `BACKLOG_AGENT` values are absent rather
+  than actors. The real-Git ladder fixture also uses a unique per-run temp
+  directory with target-safe cleanup. (ADR 0119.1 R1/R2; review 0001 HIGH-1,
+  MEDIUM-1, LOW)
 - **`get --context` reaches the CLI — the same ADR 0114 neighborhood the MCP
   surface always had.** `backlog get TASK-0001 --context` now renders the
   focal entity plus its relational stubs (parent/children/siblings/references/

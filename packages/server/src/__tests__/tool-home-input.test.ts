@@ -109,6 +109,11 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
       'backlog_search',
       'backlog_wakeup',
     ]);
+    const attributedWriteTools = new Set([
+      'backlog_delete',
+      'backlog_remember',
+      'write_resource',
+    ]);
     for (const [name, meta] of metadata) {
       const shape = inputShape(meta);
       expect(shape.home?.safeParse('project').success).toBe(true);
@@ -116,6 +121,10 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
         crossHomeTools.has(name),
       );
       expect(shape.project_root?.safeParse('/workspace/project').success).toBe(true);
+      expect(shape.as !== undefined).toBe(attributedWriteTools.has(name));
+      if (shape.as !== undefined) {
+        expect(shape.as.safeParse('aime:granite').success).toBe(true);
+      }
     }
   });
 

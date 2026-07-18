@@ -281,103 +281,103 @@ describe('registerSubstrateIntents', function describeIntentRegistrar() {
     }
     expect(manifest.reduce(function schemaBytes(total, entry) {
       return total + entry.schemaBytes;
-    }, 0)).toBe(7180);
+    }, 0)).toBe(10444);
     expect(manifest).toEqual([
       {
         name: 'backlog_accept_adr',
         description: 'Use when ratifying an existing proposed ADR.',
-        schemaBytes: 189,
-        schemaSha256: 'ae9158a98860c11aef4fd430f8fe1a07c798ec2754db240423ad8c1a47674077',
+        schemaBytes: 393,
+        schemaSha256: '50ae18217851ea1b12c0d976782a6969bf537f94e1abafe321af282ee456ee4b',
       },
       {
         name: 'backlog_attach_artifact',
         description: 'Use when attaching an artifact to a project item. parent_id is required.',
-        schemaBytes: 476,
-        schemaSha256: 'b1d630613d54e20d6eab62df5fcbfb7ebde0569bb43e5fe1f8ab5d73f323c279',
+        schemaBytes: 680,
+        schemaSha256: '629be781a8921321edd8afc9adbf52354510646f3ce2cb3a18c63131526628da',
       },
       {
         name: 'backlog_block_task',
         description: 'Use when blocking a task with a reason.',
-        schemaBytes: 266,
-        schemaSha256: '0fdfac36ecc34ca0e30a9cf6f2f43f9b9883245662fc5840a8cdc972c2f912d8',
+        schemaBytes: 470,
+        schemaSha256: '2510efbb1c304b0520ed55f7ef8ec25a33159d454c49fe9ab81ae842b23b3899',
       },
       {
         name: 'backlog_capture_prompt',
         description: 'Use when preserving a verbatim human directive as a chronological project prompt.',
-        schemaBytes: 739,
-        schemaSha256: 'd56400bedf9a95d9fd004de64d66f8e4af636d1bf13200f53a494da9ecdb9029',
+        schemaBytes: 943,
+        schemaSha256: 'ac49f9e49f24ecfb6e9902f7da7ec0a67e9998262e465381e20222a5cddd016c',
       },
       {
         name: 'backlog_capture_requirement',
         description: 'Use when recording a human or system requirement in the current project.',
-        schemaBytes: 1770,
-        schemaSha256: '39a9721dfc5f91d7078b2e8028fcc0423a19b68bc2e0963c0e93938df475ad6c',
+        schemaBytes: 1974,
+        schemaSha256: 'e3681c4a088cd1fa9a24347e008e0322245392947877ebb9ecd3948bfb95a4f2',
       },
       {
         name: 'backlog_complete_task',
         description: 'Use when completing a task, optionally with evidence.',
-        schemaBytes: 243,
-        schemaSha256: 'f919cfe918a5540be54ccc78f8fec2d4ccf1c733752b975049a83b39df12f9f9',
+        schemaBytes: 447,
+        schemaSha256: 'ee4219e6c4913cde9f64c857e7040663c1d2d364ba9028131a21168f461bba00',
       },
       {
         name: 'backlog_create_work',
         description: 'Use when creating a project work item. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
-        schemaBytes: 406,
-        schemaSha256: '01c3c363a9fc12b41b0866cad562a6579a67c1136432e131b642277dd2771f83',
+        schemaBytes: 610,
+        schemaSha256: 'fb5ddee7e2d5ca7fb7d536398baafacbc96a5387954a56e6bec7b7d6a5cf674c',
       },
       {
         name: 'backlog_organize_folder',
         description: 'Use when creating a folder to organize project items. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
-        schemaBytes: 237,
-        schemaSha256: 'def7aedd445122642dbf14cdec89429415d838716df7c12bc6266cca5d493050',
+        schemaBytes: 441,
+        schemaSha256: '82448bb1c43a2323001442c08a89669fa0744c19cac625c20d1129196175b6d8',
       },
       {
         name: 'backlog_pause_cron',
         description: 'Use when pausing a scheduled intake.',
-        schemaBytes: 189,
-        schemaSha256: 'ae9158a98860c11aef4fd430f8fe1a07c798ec2754db240423ad8c1a47674077',
+        schemaBytes: 393,
+        schemaSha256: '50ae18217851ea1b12c0d976782a6969bf537f94e1abafe321af282ee456ee4b',
       },
       {
         name: 'backlog_plan_epic',
         description: 'Use when planning an epic that groups related work. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
-        schemaBytes: 406,
-        schemaSha256: '01c3c363a9fc12b41b0866cad562a6579a67c1136432e131b642277dd2771f83',
+        schemaBytes: 610,
+        schemaSha256: 'fb5ddee7e2d5ca7fb7d536398baafacbc96a5387954a56e6bec7b7d6a5cf674c',
       },
       {
         name: 'backlog_propose_adr',
         description: 'Use when recording a proposed architectural decision in the current project.',
-        schemaBytes: 770,
-        schemaSha256: '8da5493e466d14722752a6f92c2db3546632e2e72e7e520b0a325ec17c57c992',
+        schemaBytes: 974,
+        schemaSha256: '68e889fbf2b4d0170ef905098a1fe83244923d07c7580ffeefe69206b9cdd556',
       },
       {
         name: 'backlog_resume_cron',
         description: 'Use when resuming a scheduled intake.',
-        schemaBytes: 189,
-        schemaSha256: 'ae9158a98860c11aef4fd430f8fe1a07c798ec2754db240423ad8c1a47674077',
+        schemaBytes: 393,
+        schemaSha256: '50ae18217851ea1b12c0d976782a6969bf537f94e1abafe321af282ee456ee4b',
       },
       {
         name: 'backlog_schedule_cron',
         description: 'Use when scheduling recurring project intake. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
-        schemaBytes: 383,
-        schemaSha256: 'eb8e4fa305ff5d5c266575d6c399c36f6641b92b4a1f440418ced4a2e605aa89',
+        schemaBytes: 587,
+        schemaSha256: '6c2c763c02f9059041b0dd7ec05d2b6e9d3d6f99cd92066e08b520612581c9b5',
       },
       {
         name: 'backlog_start_task',
         description: 'Use when starting active work on a task.',
-        schemaBytes: 189,
-        schemaSha256: 'ae9158a98860c11aef4fd430f8fe1a07c798ec2754db240423ad8c1a47674077',
+        schemaBytes: 393,
+        schemaSha256: '50ae18217851ea1b12c0d976782a6969bf537f94e1abafe321af282ee456ee4b',
       },
       {
         name: 'backlog_supersede_adr',
         description: 'Use when a newer ADR replaces an accepted or living ADR while preserving lineage.',
-        schemaBytes: 293,
-        schemaSha256: '63ba7b9fa2266eea283d80962e58101b58989dc2c790fa4ce9182128553524f1',
+        schemaBytes: 497,
+        schemaSha256: '7efe552bf14a2256ca3194f361b4faa4dc6ec1120f4d2b146ec8ee804e5f552f',
       },
       {
         name: 'backlog_target_milestone',
         description: 'Use when creating a milestone for a project target. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.',
-        schemaBytes: 435,
-        schemaSha256: 'f100de1e41d33cde71382cce41260987276ecc3eec68ee2c55b6ac1be3590313',
+        schemaBytes: 639,
+        schemaSha256: '5e4daf8f633c80ee2d4cc855cc2277308b4ea8baa839191b63930896375a9fb1',
       },
     ]);
   });
@@ -399,7 +399,12 @@ describe('registerSubstrateIntents', function describeIntentRegistrar() {
     expect(result.registered).toEqual([intent]);
     expect(result.quarantined).toEqual([]);
     expect(registered.description).toBe(intent.description);
-    expect(registered.inputSchema).toBe(intent.intentInputSchema);
+    expect(registered.inputSchema).not.toBe(intent.intentInputSchema);
+    expect(registered.inputSchema.safeParse({
+      title: 'Local storage',
+      content: 'The core path stays local-first.',
+      as: 'aime:registrar',
+    }).success).toBe(true);
     expect(registered.inputSchema.safeParse({
       title: 'Local storage',
       content: 'The core path stays local-first.',
@@ -409,6 +414,7 @@ describe('registerSubstrateIntents', function describeIntentRegistrar() {
     const response = await registered.handler({
       title: 'Local storage',
       content: 'The core path stays local-first.',
+      as: '  aime:registrar  ',
     });
 
     expect(response).toEqual({
@@ -430,8 +436,19 @@ describe('registerSubstrateIntents', function describeIntentRegistrar() {
         tool: 'backlog_capture_requirement',
         mutation: 'create',
         resourceId: 'requirement-001-root',
+        actor: { type: 'agent', name: 'aime:registrar' },
       }),
     ]);
+
+    await registered.handler({
+      title: 'Ambient storage',
+      content: 'Whitespace identity is absent.',
+      as: '   ',
+    });
+    expect(entries.at(-1)?.actor).toEqual({
+      type: 'agent',
+      name: 'registrar-test',
+    });
   });
 
   it('visibly quarantines unsupported relation operations without exposing a failing tool', function quarantinesDeferredOperation() {

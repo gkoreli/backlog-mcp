@@ -331,7 +331,7 @@ describe('Agent substrate — ADR 0119 Slice A (nine-agent fixture, R8)', () => 
     const withAs = await rememberTool({
       content: 'Wakeup budget ledger act three is parked pending Goga.',
       title: 'Onyx parked decision',
-      as: 'aime:onyx',
+      as: '  aime:onyx  ',
     });
     expect(withAs.isError).not.toBe(true);
     expect(journalRows().at(-1)?.actor).toEqual({ type: 'agent', name: 'aime:onyx' });
@@ -339,6 +339,7 @@ describe('Agent substrate — ADR 0119 Slice A (nine-agent fixture, R8)', () => 
     const withoutAs = await rememberTool({
       content: 'Ambient writes keep their pre-0119 attribution byte for byte.',
       title: 'Ambient control',
+      as: '   ',
     });
     expect(withoutAs.isError).not.toBe(true);
     // Byte-identical ambient attribution: exactly the deps actor, no overlay.
