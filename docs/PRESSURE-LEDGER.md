@@ -19,6 +19,8 @@ Build-now changes require the evidence column to cite something real.
 | Peer sync | not yet proven | stable ids, causality, operation provenance | No |
 | CRDT merge | not yet required (0107 parked) | authoritative/derived separation (D2) | No |
 | Actor mailboxes | belongs to aime | clean external intent port; store is not an actor | No |
+| Actor-transition authorization (grants) | zero wrong-actor incidents in 2 days of 5-agent fleet | optional `permitted` on workflow transitions (additive under 0122) | No — seam reserved (PROMPT 0013, compiled-process R-B) |
+| Process as data (meta-state-machine) | our own merge/review/release law is prose scattered across ADRs+memories | descriptive + validating only — never a run-loop; named gates enable Tenet 11's earned absorption | **Experiment** — E-PROC: declare our own process, suite checks history against it (compiled-process R-C) |
 
 Provenance: seeded from PROMPT 0012's table, extended with this repo's
 evidence; assessed in docs/proposals/pressure-map-2026-07.md.

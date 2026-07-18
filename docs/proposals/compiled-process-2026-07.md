@@ -1,0 +1,133 @@
+---
+title: "Compiled Process — Cross-Validating the Meta-State-Machine Against Our Own Law"
+date: 2026-07-18
+status: Proposed (cross-validation; one line drawn, one seam designed, one experiment chartered)
+author: granite (architect)
+relates_to:
+  - ../prompts/0013-meta-state-machine-compiled-workflows.md
+  - ../prompts/0012-seven-pressures-assessment.md
+  - ../prompts/0005-judgment-uplift-tenet.md
+  - ../adr/0113-user-defined-substrates.md
+  - ../adr/0119-agent-substrate-and-derived-correlation.md
+  - ../PRESSURE-LEDGER.md
+---
+
+# Compiled Process
+
+Goga's idea (PROMPT 0013): substrates declare identities AND the state
+machines those identities may execute — "postgres for agent identities and
+workflows" — a meta-state-machine, so we compile not just agent interfaces
+but entire workflows, processes, eventually the system. Cross-validated
+against the vision, the tenets, and the document we absorbed three hours ago.
+
+**Verdict up front: the kernel is vision-true and four-fifths already built.
+The idea decomposes into five layers; three are shipped, one is the real new
+gold with a designed seam, and one is the umbrella temptation our own
+pressure-map warned against this morning. The line that keeps it all lawful:
+compile interfaces, constraints, and gates — never the run-loop. The store
+may know who may act, what is legal, and what is satisfied. It must never
+say "go."**
+
+## The five layers
+
+**L1 — Substrates declare state machines. SHIPPED.** The `workflow` field
+(initial/terminal/transitions) is exactly this, scoped exactly where
+PROMPT 0012's diagram places it.
+
+**L2 — Identities as substrate. SHIPPED.** ADR 0119 + the 0119.1 ladder:
+agents are documents, principals are attribution, identity is data.
+
+**L3 — Grants: which identities may execute which transitions. THE REAL NEW
+GOLD.** This is the postgres analogy landing precisely: roles and grants
+live in the catalog as data (`GRANT transition ON substrate TO role`), and
+checking "is this transition legal for this actor" is a *validation*
+question — the same class as schema validation, safely inside the store
+boundary. The compiler consequence is elegant: identity (resolved by the
+ladder) × intent registry = **per-agent compiled interfaces** — beryl's
+session compiles `accept_adr`; a builder's compiles only `propose`. Declared
+in the substrate's workflow block:
+
+```json
+"transitions": [
+  { "name": "accept", "from": ["proposed"], "to": "accepted",
+    "permitted": ["human:goga", "role:domain-architect"] }
+]
+```
+
+Absent `permitted` = everyone (today's behavior, byte-identical; optionality
+law). **Honest evidence check: the evidence column is empty.** In two days
+of five-agent fleet operation, every process failure was mechanical (id
+collisions, a died builder, a marker leak) — zero wrong-actor-wrong-
+transition incidents. So per our own pressure-ledger discipline: the seam is
+designed (above), the build waits for the first real violation. Seam cost:
+one optional field in the meta-schema, reserved now under ADR 0122's
+versioning so it lands as a non-breaking additive change whenever triggered.
+
+**L4 — Process as data: the meta-state-machine. RICH, WITH A HARD LINE.**
+Declaring cross-substrate process (charter → build → review → gate → land)
+as a substrate is powerful for a reason hiding in plain sight: **it is the
+mechanism by which Tenet 11's adaptivity clause becomes real.** The tenet
+says judgment placement "is adaptable based on how deterministic, resilient
+and trustworthy the process and layers get" — but you can only relocate a
+judgment point that is *named*. Today our process is prose law scattered
+across ADRs and memories; a declared process gives every gate an address,
+and an addressed gate can accumulate evidence, and evidence is how
+absorption is *earned* rather than assumed. Goga's idea is the missing
+infrastructure of his own tenet.
+
+The line, drawn hard because PROMPT 0012 drew it first ("the store does not
+need to become an actor"; "do not remodel the entire knowledge system as one
+enormous workflow graph"): the process substrate is **descriptive and
+validating, never driving**. The store records "gate G satisfied by evidence
+E, by actor A, at T" and answers "what gate is this work at?" It has no
+scheduler, no mailboxes, no dispatch, no run-loop. Execution belongs to
+actors — aime, harnesses, humans. A compiled agent receives its identity,
+its permitted intents, the process graph it stands in, the gate it faces,
+and its memory and context — **everything except the impulse.**
+
+**L5 — "Compile the entire system." THE UMBRELLA — REFUSED AS A GOAL,
+ACCEPTED AS AN ASYMPTOTE.** The same document that gave us "context
+compiler" warned against exactly this totalization, and the warning was
+right: search relevance, provenance, disclosure, and judgment are not state
+machines and must never be forced into one. The system asymptotically
+approaches fully-declared as each piece *earns* declaration; it is never
+remodeled wholesale.
+
+## The experiment — E-PROC (evidence before engine)
+
+Per 0121 discipline, no engine code until declaration proves its worth on
+paper: **declare OUR OWN operating process** — the merge law (worktree →
+stamp → build → rebase → full validation → ff-merge → push), the review
+gate (review 0001's shape), and the release lane (MEMO-0002) — as a
+`process` substrate fixture in this repo. Then two structural-suite
+assertions: (a) the declaration validates against the meta-schema; (b) the
+last N landings' journal entries are *consistent* with the declared graph
+(every landed branch shows validation-before-merge, stamp-before-write).
+That is process-as-data proving descriptive value on real history, zero
+engine changes, zero orchestration. If the declaration is honest enough to
+detect its own violations (e.g., a landing that skipped revalidation), L4
+has earned its ADR.
+
+## Cross-validation scorecard
+
+| Against | Verdict |
+|---|---|
+| Substrates-as-data (0113) | L3/L4 are pure declarations — mechanically consistent; meta-schema change is additive under 0122 versioning |
+| Store-is-not-an-actor (0119) | Preserved iff validate-never-drive; violated by any dispatch/run-loop |
+| Tenet 11 (PROMPT 0005) | STRENGTHENED — named gates are the precondition for earned absorption; this is the tenet's missing infrastructure |
+| PROMPT 0012 warnings | L5 totalization refused; state machines stay one input to the compiler, not its owner |
+| Pressure-ledger discipline | L3 evidence-empty → seam now, build on first violation; L4 → E-PROC experiment first |
+| Postgres prior art | Grants-in-catalog maps exactly; our differentiator stays git-native docs, not a server catalog |
+| aime boundary | Execution/mailboxes stay aime's; backlog-mcp compiles the world the executor acts in |
+
+## Rulings requested
+
+1. **R-A:** adopt the line as law — *compile interfaces, constraints, and
+   gates; never the run-loop* — recorded in the NORTH-STAR boundary section.
+2. **R-B:** reserve the `permitted` field in the workflow meta-schema (seam
+   only, additive, no enforcement) when 0122 Slice A lands.
+3. **R-C:** GO E-PROC — declare our own merge law as the first process
+   fixture and let the suite check history against it. Zero engine code.
+
+New pressure-ledger rows added: actor-transition authorization (seam, no
+build) and process-as-data (E-PROC chartered).
