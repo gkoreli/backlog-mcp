@@ -20,6 +20,15 @@ Local-first *is* the architecture; remoteness is meant to be reached by **syncin
 
 ![backlog-mcp web viewer](https://raw.githubusercontent.com/gkoreli/backlog-mcp/main/backlog-viewer-ui.png)
 
+
+## Engineering record
+
+[117 Pull Requests Later, It Wasn’t a Task Manager Anymore](https://gkoreli.com/one-hundred-pull-requests)
+traces how this repository grew from a small task backlog into local-first context
+and memory infrastructure for agents. It is the maintainer's transformation story
+— including what stopped working as the system approached 1,000 tasks and
+artifacts — not independent product validation.
+
 ## What's Inside
 
 This is a monorepo with 4 packages:
