@@ -87,6 +87,16 @@ export function registerBacklogGetTool(server: McpServer, service: IBacklogServi
             await deps.usageTracker.recordExpand(item.id);
           }
         }
+        // Tier-1 expand telemetry — the neighborhood act (report 0010 F3):
+        // entity-id gets with context:true only; resource-path and plain
+        // gets are reads, not expansions.
+        if (context === true) {
+          deps.usageTracker.recordContextExpand(
+            result.items
+              .filter(item => item.content !== null && item.resource === undefined)
+              .map(item => item.id),
+          );
+        }
       }
       const text = result.items.map(formatItem).join('\n\n---\n\n');
       return { content: [{ type: 'text', text }] };
