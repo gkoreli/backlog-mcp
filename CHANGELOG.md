@@ -10,6 +10,28 @@ each version says why it mattered on the road to the north star
 (`docs/NORTH-STAR.md` — *your backlog is your agent's memory*). This changelog
 begins at 0.57.0 — earlier history lives in git.
 
+## [Unreleased]
+
+### Added
+- **Wake up knowing what you may legally do next — the focal briefing
+  now names the declared transitions available from your operation's
+  current state.** `wakeup --operation OP-XXXX` (CLI) and the MCP
+  `operation=` argument gain a one-line legal-next-actions disclosure on
+  the focus: `next: block · request_review` — every transition the
+  substrate's own declared workflow allows from the focal document's
+  current status, transition names in declaration order (the
+  compiled-process proposal's 5% slice). Derived entirely from the
+  existing `workflow` declaration: zero new declaration kinds, no roles,
+  no permissions, no filtering by identity. Substrates without a
+  workflow, operations in terminal states, and states with no declared
+  departing transition carry no line at all — absent, never empty.
+  Status comparison rides the one leading-token rule every
+  declared-status seam already uses, so freeform human states
+  (`live (onyx)`) still find their transitions. The line rides the
+  focus — never-yield class — and the Amnesia gate now proves it: the
+  amnesiac learns its goal, its constraints, and what it may legally do
+  next from the same single ≤ 3,072-byte payload.
+
 ## [0.68.0] — 2026-07-18
 
 *The release the product built while reviewing itself. An independent
