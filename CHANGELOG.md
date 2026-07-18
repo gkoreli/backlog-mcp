@@ -12,6 +12,29 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+### Added
+- **Brief from the family's law, not your branch's memory of it — in a
+  linked worktree, the wakeup vision pointer now serves the CANONICAL
+  committed title, and law-shaped sections say when your local copy
+  drifted.** Lattice W2 (worktree-native charter, PROMPT 0003): when a
+  backlog home runs inside a linked git worktree, the briefing's
+  law-shaped disclosures — the vision pointer and the constraints
+  section — anchor to the family default branch's committed content
+  through W1's SHA-pinned canonical read. A diverged vision briefs its
+  canonical title plus a one-line stub (`diverges from main @ <shortsha>
+  — worktree copy is N commits behind`, with ahead / locally-modified
+  variants); diverged requirement sources add `constraints_divergence`
+  beside the constraints section; a worktree with no vision doc at all is
+  served the canonical pointer outright (`absent in worktree — served
+  from main @ <shortsha>`). Detection is blob-hash comparison (never a
+  textual diff), at most one canonical content read per briefing (cached
+  per process, pinned to the resolved commit), and the stubs ride the
+  never-yield class of the sections they annotate — their byte cost is
+  absorbed down the existing trim ladder inside the unchanged 3,072-byte
+  wire ceiling. Fail-open everywhere: non-git homes, main checkouts, and
+  canonical-fresh worktrees brief byte-identical to before.
+  (worktree-native-access-lattice proposal, W2; TASK-0001)
+
 ### Fixed
 - **`get --context` reaches the CLI — the same ADR 0114 neighborhood the MCP
   surface always had.** `backlog get TASK-0001 --context` now renders the
