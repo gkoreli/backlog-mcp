@@ -27,7 +27,12 @@ const EPISTEMIC_SHAPE_WEIGHT = 0.10;
 const DIGEST_LENGTH = 160;
 const UTF8_ENCODER = new TextEncoder();
 
-function compareBytewise(left: string, right: string): number {
+/**
+ * Deterministic UTF-8 bytewise string order — the codebase's tie-break
+ * comparator (also used by cross-home RRF and the home read coordinator).
+ * Never locale-sensitive: "ä" vs "z" orders identically on every host.
+ */
+export function compareBytewise(left: string, right: string): number {
   const leftBytes = UTF8_ENCODER.encode(left);
   const rightBytes = UTF8_ENCODER.encode(right);
   const length = Math.min(leftBytes.length, rightBytes.length);
@@ -313,14 +318,29 @@ function comparePairs(
   return compareBytewise(left.pair_id, right.pair_id);
 }
 
+/** Most recent first by created_at; bytewise id ascending as the tiebreak. */
+function compareMostRecentFirst(left: Memory, right: Memory): number {
+  const recency = compareBytewise(right.created_at, left.created_at);
+  if (recency !== 0) return recency;
+  return compareBytewise(left.id, right.id);
+}
+
 /**
  * Find canonical candidate pairs for all live memories, or for an explicit
  * focal subset (the consolidation sweep). Search remains same-home because
  * the supplied service belongs to exactly one runtime.
+ *
+ * `focalLimit` bounds the scan to the most recent N live focal memories
+ * (one search per focal — review 0001 HIGH-2); callers that pass it must
+ * disclose the cap when `total_live_memories` exceeds it.
  */
 export async function findCollisionCandidatePairs(
   service: IBacklogService,
-  options: { focalIds?: readonly string[]; now?: number } = {},
+  options: {
+    focalIds?: readonly string[];
+    focalLimit?: number;
+    now?: number;
+  } = {},
 ): Promise<CollisionCandidatesResult> {
   const now = options.now ?? Date.now();
   const corpus = memoryCorpus(await service.list({ type: EntityType.Memory }));
@@ -330,11 +350,16 @@ export async function findCollisionCandidatePairs(
   const requested = options.focalIds === undefined
     ? undefined
     : new Set(options.focalIds);
-  const focals = requested === undefined
+  let focals = requested === undefined
     ? live
     : live.filter(function isRequested(memory) {
       return requested.has(memory.id);
     });
+  if (options.focalLimit !== undefined && focals.length > options.focalLimit) {
+    focals = [...focals]
+      .sort(compareMostRecentFirst)
+      .slice(0, options.focalLimit);
+  }
   const byId = new Map(live.map(function indexMemory(memory) {
     return [memory.id, memory] as const;
   }));

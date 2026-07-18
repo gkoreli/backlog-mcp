@@ -39,8 +39,16 @@ export interface DeskDocument {
 export interface DeskEvaluationCandidateFile {
   /** Home-root-relative POSIX path of the .jsonl candidates file. */
   path: string;
-  /** Count of candidate_* records awaiting the human review tier. */
+  /**
+   * Count of candidate_* records with no matching candidate_disposition
+   * record — reviewed candidates leave the Desk (review 0001).
+   */
   candidateCount: number;
+  /**
+   * Honest omission: why the reader did not count this file (oversized,
+   * escapes the home). The fold discloses it; the file surfaces no item.
+   */
+  omission?: string;
 }
 
 /**

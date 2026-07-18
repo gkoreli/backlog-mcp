@@ -8,10 +8,13 @@ import type { AnyEntity } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import {
   DESK_BUDGET,
+  DESK_COLLISION_FOCAL_LIMIT,
   DESK_READ_WINDOW_DAYS,
+  DESK_REQUIREMENTS_LIMIT,
   desk,
   deskDocShape,
 } from '../core/desk.js';
+import { parseTimestampUtc } from '../core/utc-timestamp.js';
 import type { DeskDocument } from '../core/desk.types.js';
 
 const NOW = Date.parse('2026-07-17T12:00:00.000Z');
@@ -239,8 +242,9 @@ describe('REVIEW', () => {
     expect(result.items).toHaveLength(1);
     const item = result.items[0]!;
     expect(item.class).toBe('review');
-    expect(item.why_surfaced).toBe('4 mined qrel candidates carry no reviewed: assessor.');
+    expect(item.why_surfaced).toBe('4 mined candidates carry no candidate_disposition record.');
     expect(item.instruction).toContain('docs/evaluation/JUDGING.md');
+    expect(item.instruction).toContain('candidate_disposition');
   });
 
   it('degrades an unavailable collision scan to a named diagnostic, never a silent clean scan', async () => {
@@ -436,5 +440,154 @@ describe('budget and honest omission', () => {
     });
 
     expect(result.metadata.worktree).toBe('backlog-mcp @ feat/desk-v1, 2 behind main');
+  });
+});
+
+describe('determinism (review 0001)', () => {
+  const PROBE_NOW = Date.parse('2026-07-18T12:00:00.000Z');
+
+  it('parses offset-less datetimes as UTC at the shared parse point', () => {
+    expect(parseTimestampUtc('2026-07-10T12:30:00'))
+      .toBe(Date.parse('2026-07-10T12:30:00Z'));
+    expect(parseTimestampUtc('2026-07-10 12:30:00'))
+      .toBe(Date.parse('2026-07-10T12:30:00Z'));
+    expect(parseTimestampUtc('2026-07-10T12:30:00+09:00'))
+      .toBe(Date.parse('2026-07-10T12:30:00+09:00'));
+    expect(parseTimestampUtc('2026-07-10')).toBe(Date.parse('2026-07-10'));
+    expect(Number.isNaN(parseTimestampUtc('not a date'))).toBe(true);
+  });
+
+  it('gives an offset-less timestamp the same age under Asia/Tokyo and UTC (review probe)', async () => {
+    // 2026-07-10T12:30:00 at now 2026-07-18T12:00:00Z: age 7 under UTC —
+    // inside the seven-day READ window. Host-local parsing under
+    // Asia/Tokyo would make it age 8 and silently drop the item.
+    const params = {
+      now: PROBE_NOW,
+      readDocuments: () => [
+        doc({ path: 'docs/adr/0500-offsetless.md', updatedAt: '2026-07-10T12:30:00' }),
+      ],
+    };
+    const originalTz = process.env['TZ'];
+    try {
+      process.env['TZ'] = 'Asia/Tokyo';
+      const tokyo = await desk(stubService(), params);
+      process.env['TZ'] = 'UTC';
+      const utc = await desk(stubService(), params);
+
+      expect(tokyo.items.map((item) => item.id)).toEqual(['docs/adr/0500-offsetless.md']);
+      expect(tokyo.items[0]?.age_days).toBe(7);
+      expect(utc).toEqual(tokyo);
+    } finally {
+      if (originalTz === undefined) delete process.env['TZ'];
+      else process.env['TZ'] = originalTz;
+    }
+  });
+
+  it('tie-breaks in UTF-8 byte order, never host collation (ä/z review probe)', async () => {
+    // Equal priority (same shape, status, age) forces the path tiebreak.
+    // Bytewise UTF-8: "z" (0x7A) sorts before "ä" (0xC3 0xA4); English
+    // collation would invert this, Swedish would not — so any
+    // locale-sensitive comparator fails one host or the other.
+    const result = await desk(stubService(), {
+      now: NOW,
+      readDocuments: () => [
+        doc({ path: 'docs/adr/0100-ä.md', status: 'Proposed', updatedAt: daysAgo(3) }),
+        doc({ path: 'docs/adr/0100-z.md', status: 'Proposed', updatedAt: daysAgo(3) }),
+      ],
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual([
+      'docs/adr/0100-z.md',
+      'docs/adr/0100-ä.md',
+    ]);
+  });
+
+  it('clamps future timestamps to age 0 AND marks them future-dated in the why', async () => {
+    const result = await desk(stubService(), {
+      now: NOW,
+      readDocuments: () => [
+        doc({ path: 'docs/adr/2999-typo.md', status: 'Proposed', updatedAt: daysAgo(-400) }),
+        doc({ path: 'docs/prompts/2999-future.md', updatedAt: daysAgo(-2) }),
+      ],
+    });
+
+    const judge = result.items.find((item) => item.class === 'judge');
+    expect(judge?.age_days).toBe(0);
+    expect(judge?.why_surfaced).toContain('future-dated');
+    const read = result.items.find((item) => item.class === 'read');
+    expect(read?.age_days).toBe(0);
+    expect(read?.why_surfaced).toContain('future-dated');
+  });
+});
+
+describe('composition bounds (review 0001 HIGH-2)', () => {
+  it('caps the requirement scan at 500 and discloses a full page', async () => {
+    const requirements: AnyEntity[] = Array.from(
+      { length: DESK_REQUIREMENTS_LIMIT },
+      (_, index) => ({
+        id: `REQ-${String(index + 1).padStart(4, '0')}`,
+        type: 'requirement',
+        title: `Requirement ${index + 1}`,
+        status: 'adopted',
+        compliance: 'satisfied',
+        created_at: daysAgo(30),
+        updated_at: daysAgo(3),
+      }),
+    );
+    const service = stubService({ requirements });
+    const result = await desk(service, { now: NOW });
+
+    expect(service.list).toHaveBeenCalledWith({
+      type: 'requirement',
+      limit: DESK_REQUIREMENTS_LIMIT,
+    });
+    expect(result.metadata.diagnostics).toEqual([
+      'Health omission: requirement scan capped at 500; requirements beyond the cap were not assessed.',
+    ]);
+  });
+
+  it('caps the collision scan at the 200 most recent live memories and discloses', async () => {
+    const memories: AnyEntity[] = Array.from(
+      { length: DESK_COLLISION_FOCAL_LIMIT + 1 },
+      (_, index) => ({
+        id: `MEMO-${String(index + 1).padStart(4, '0')}`,
+        type: 'memory',
+        title: `Memory ${index + 1}`,
+        content: `Content ${index + 1}`,
+        // MEMO-0001 is newest; the last one is oldest and must not be scanned.
+        created_at: daysAgo(index + 1),
+        updated_at: daysAgo(index + 1),
+      }),
+    );
+    const service = stubService({ memories });
+    const result = await desk(service, { now: NOW });
+
+    expect(service.searchUnified).toHaveBeenCalledTimes(DESK_COLLISION_FOCAL_LIMIT);
+    const oldestQuery = `Memory ${DESK_COLLISION_FOCAL_LIMIT + 1}\nContent ${DESK_COLLISION_FOCAL_LIMIT + 1}`;
+    expect(service.searchUnified).not.toHaveBeenCalledWith(oldestQuery, expect.anything());
+    expect(result.metadata.diagnostics).toEqual([
+      'Review omission: collision scan capped at the 200 most recent of 201 live memories.',
+    ]);
+  });
+
+  it('discloses skipped candidate files through the omission line and keeps them off the fold', async () => {
+    const result = await desk(stubService(), {
+      now: NOW,
+      readEvaluationCandidates: () => [
+        {
+          path: 'docs/evaluation/candidates/huge.jsonl',
+          candidateCount: 0,
+          omission: '6.0 MiB exceeds the 4.0 MiB cap',
+        },
+        { path: 'docs/evaluation/candidates/small.jsonl', candidateCount: 2 },
+      ],
+    });
+
+    expect(result.metadata.diagnostics).toEqual([
+      'Review omission: candidate file docs/evaluation/candidates/huge.jsonl skipped — 6.0 MiB exceeds the 4.0 MiB cap.',
+    ]);
+    expect(result.items.map((item) => item.id)).toEqual([
+      'docs/evaluation/candidates/small.jsonl',
+    ]);
   });
 });

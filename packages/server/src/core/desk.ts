@@ -32,8 +32,10 @@ import type { RuntimeEntity } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import {
   COLLISION_PRIORITY_THRESHOLD,
+  compareBytewise,
   findCollisionCandidatePairs,
 } from './collision-candidates.js';
+import { parseTimestampUtc } from './utc-timestamp.js';
 import { isNorthStarFilename } from './orientation.js';
 import {
   REQUIREMENT_TYPE,
@@ -56,6 +58,16 @@ export const DESK_BUDGET = 7;
 
 /** READ window: a law-shaped change older than this has left the delta. */
 export const DESK_READ_WINDOW_DAYS = 7;
+
+/**
+ * Composition bounds (review 0001 HIGH-2): the seven-item output law never
+ * bounded composition WORK. These caps do — and every cap that bites is
+ * disclosed through the fold's named-omission diagnostics, never silent.
+ */
+/** Collision scan: at most this many most-recent live focal memories. */
+export const DESK_COLLISION_FOCAL_LIMIT = 200;
+/** Requirement scan: a sane page, not the 100k firehose. */
+export const DESK_REQUIREMENTS_LIMIT = 500;
 
 /**
  * Open-decision-shaped status tokens (leading-token rule, BUG-0003 seam).
@@ -104,15 +116,33 @@ const LAW_SHAPES: ReadonlySet<DocShape> = new Set([
   'adr',
 ]);
 
-function ageDays(iso: string | undefined, now: number): number | undefined {
+interface DocumentAge {
+  /** Whole days since the timestamp, clamped at 0. */
+  days: number;
+  /**
+   * The timestamp sits in the future (review 0001): age clamps to 0 but the
+   * item carries a `future-dated` marker — a typo must not sit fresh forever
+   * without saying so.
+   */
+  future: boolean;
+}
+
+function documentAge(iso: string | undefined, now: number): DocumentAge | undefined {
   if (iso === undefined) return undefined;
-  const ts = Date.parse(iso);
+  const ts = parseTimestampUtc(iso);
   if (Number.isNaN(ts)) return undefined;
-  return Math.max(0, Math.floor((now - ts) / MS_PER_DAY));
+  return {
+    days: Math.max(0, Math.floor((now - ts) / MS_PER_DAY)),
+    future: ts > now,
+  };
+}
+
+function futureMark(age: DocumentAge | undefined): string {
+  return age?.future === true ? ' (future-dated)' : '';
 }
 
 function comparePathAsc(a: { path?: string; id: string }, b: { path?: string; id: string }): number {
-  return (a.path ?? a.id).localeCompare(b.path ?? b.id);
+  return compareBytewise(a.path ?? a.id, b.path ?? b.id);
 }
 
 // ── JUDGE ────────────────────────────────────────────────────────────────
@@ -134,7 +164,7 @@ function isJudgeDocument(doc: DeskDocument): boolean {
 }
 
 function judgeCandidate(doc: DeskDocument, now: number): JudgeCandidate {
-  const age = ageDays(doc.updatedAt, now);
+  const age = documentAge(doc.updatedAt, now);
   const shape = deskDocShape(doc.path);
   const attention = doc.attention;
   const weight = attention !== undefined
@@ -145,28 +175,28 @@ function judgeCandidate(doc: DeskDocument, now: number): JudgeCandidate {
   let instruction: string;
   if (attention !== undefined) {
     why = attention === ''
-      ? 'Carries an attention: frontmatter marker.'
-      : `Marked for attention: ${attention}`;
+      ? `Carries an attention: frontmatter marker.${futureMark(age)}`
+      : `Marked for attention: ${attention}${futureMark(age)}`;
     instruction = `Resolve the attention marker on ${doc.path}`
       + `${attention === '' ? '' : ` (${attention})`},`
       + ' then remove the attention key from its frontmatter.';
   } else {
     why = age === undefined
       ? `Status "${doc.status ?? ''}" awaits a ruling.`
-      : `Status "${doc.status ?? ''}" has awaited a ruling for ${age} day${age === 1 ? '' : 's'}.`;
+      : `Status "${doc.status ?? ''}" has awaited a ruling for ${age.days} day${age.days === 1 ? '' : 's'}${futureMark(age)}.`;
     instruction = `Adjudicate ${doc.path} ("${doc.title}"):`
       + ' rule on it and update its status frontmatter with the ruling and a one-line rationale.';
   }
 
   return {
-    priority: weight * ((age ?? 0) + 1),
+    priority: weight * ((age?.days ?? 0) + 1),
     item: {
       id: doc.path,
       title: doc.title,
       class: 'judge',
       why_surfaced: why,
       instruction,
-      ...(age === undefined ? {} : { age_days: age }),
+      ...(age === undefined ? {} : { age_days: age.days }),
       path: doc.path,
       ...(doc.author === undefined ? {} : { agent: doc.author }),
     },
@@ -181,7 +211,7 @@ interface ReadCandidate {
   updatedAt: string;
 }
 
-function readCandidate(doc: DeskDocument, age: number): ReadCandidate {
+function readCandidate(doc: DeskDocument, age: DocumentAge): ReadCandidate {
   const shape = deskDocShape(doc.path);
   const byline = doc.author === undefined ? '' : ` by ${doc.author}`;
   return {
@@ -191,9 +221,9 @@ function readCandidate(doc: DeskDocument, age: number): ReadCandidate {
       id: doc.path,
       title: doc.title,
       class: 'read',
-      why_surfaced: `Law-shaped ${shape} changed ${age} day${age === 1 ? '' : 's'} ago${byline}.`,
+      why_surfaced: `Law-shaped ${shape} changed ${age.days} day${age.days === 1 ? '' : 's'} ago${byline}${futureMark(age)}.`,
       instruction: `Summarize what changed in ${doc.path} and any consequences for in-flight work.`,
-      age_days: age,
+      age_days: age.days,
       path: doc.path,
       ...(doc.author === undefined ? {} : { agent: doc.author }),
     },
@@ -270,10 +300,20 @@ export async function desk(
 
   // REVIEW / collisions — ADR 0120's fold reused, never reimplemented.
   // Search unavailability degrades to a named diagnostic, never a silent
-  // clean scan.
+  // clean scan. The scan is bounded to the most recent live focals
+  // (review 0001 HIGH-2); a cap that bites is disclosed the same way.
   let collisionItems: DeskItem[] = [];
   try {
-    const collisions = await findCollisionCandidatePairs(service, { now });
+    const collisions = await findCollisionCandidatePairs(service, {
+      now,
+      focalLimit: DESK_COLLISION_FOCAL_LIMIT,
+    });
+    if (collisions.total_live_memories > DESK_COLLISION_FOCAL_LIMIT) {
+      diagnostics.push(
+        `Review omission: collision scan capped at the ${DESK_COLLISION_FOCAL_LIMIT}`
+        + ` most recent of ${collisions.total_live_memories} live memories.`,
+      );
+    }
     collisionItems = collisions.pairs.map(function toCollisionItem(pair): DeskItem {
       const [left, right] = pair.members;
       return {
@@ -291,18 +331,28 @@ export async function desk(
   }
 
   // REVIEW / evaluation candidates — the miner's records restated; files
-  // with zero candidates stay off the Desk (empty is honest, not hidden).
-  const evaluationItems: DeskItem[] = (params.readEvaluationCandidates?.() ?? [])
+  // with zero undisposed candidates stay off the Desk (reviewed candidates
+  // leave — review 0001; empty is honest, not hidden). Files the reader
+  // could not honestly count are disclosed, never silently dropped.
+  const evaluationFiles = params.readEvaluationCandidates?.() ?? [];
+  for (const file of evaluationFiles) {
+    if (file.omission !== undefined) {
+      diagnostics.push(
+        `Review omission: candidate file ${file.path} skipped — ${file.omission}.`,
+      );
+    }
+  }
+  const evaluationItems: DeskItem[] = evaluationFiles
     .filter(function hasCandidates(file) {
-      return file.candidateCount > 0;
+      return file.omission === undefined && file.candidateCount > 0;
     })
     .map(function toEvaluationItem(file): DeskItem {
       return {
         id: file.path,
         title: file.path.split('/').at(-1) ?? file.path,
         class: 'review',
-        why_surfaced: `${file.candidateCount} mined qrel candidate${file.candidateCount === 1 ? '' : 's'} carry no reviewed: assessor.`,
-        instruction: `Review the ${file.candidateCount} candidate qrels in ${file.path} per docs/evaluation/JUDGING.md and record reviewed: assessor grades.`,
+        why_surfaced: `${file.candidateCount} mined candidate${file.candidateCount === 1 ? ' carries' : 's carry'} no candidate_disposition record.`,
+        instruction: `Review the ${file.candidateCount} candidate${file.candidateCount === 1 ? '' : 's'} in ${file.path} per docs/evaluation/JUDGING.md and append one candidate_disposition record per adjudicated candidate.`,
         path: file.path,
       };
     })
@@ -314,13 +364,13 @@ export async function desk(
     .flatMap(function toReadCandidate(doc): ReadCandidate[] {
       if (judgePaths.has(doc.path)) return [];
       if (!LAW_SHAPES.has(deskDocShape(doc.path))) return [];
-      const age = ageDays(doc.updatedAt, now);
-      if (age === undefined || age > DESK_READ_WINDOW_DAYS) return [];
+      const age = documentAge(doc.updatedAt, now);
+      if (age === undefined || age.days > DESK_READ_WINDOW_DAYS) return [];
       return [readCandidate(doc, age)];
     })
     .sort(function agentAuthoredFreshFirst(a, b) {
       if (a.agentAuthored !== b.agentAuthored) return a.agentAuthored ? -1 : 1;
-      const recency = b.updatedAt.localeCompare(a.updatedAt);
+      const recency = compareBytewise(b.updatedAt, a.updatedAt);
       if (recency !== 0) return recency;
       return comparePathAsc(a.item, b.item);
     })
@@ -330,7 +380,18 @@ export async function desk(
 
   // HEALTH — 0113.1's constraint ordering reused verbatim; only violated /
   // at_risk are standing violations (satisfied and unchecked are not news).
-  const requirements = await service.list({ type: REQUIREMENT_TYPE, limit: 100_000 });
+  // Bounded scan (review 0001 HIGH-2): a full page means the cap may have
+  // bitten, and the fold says so rather than pretending it read everything.
+  const requirements = await service.list({
+    type: REQUIREMENT_TYPE,
+    limit: DESK_REQUIREMENTS_LIMIT,
+  });
+  if (requirements.length >= DESK_REQUIREMENTS_LIMIT) {
+    diagnostics.push(
+      `Health omission: requirement scan capped at ${DESK_REQUIREMENTS_LIMIT};`
+      + ' requirements beyond the cap were not assessed.',
+    );
+  }
   const constraints = requirements
     .map(function toStub(entity) {
       return {

@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import type { Resource } from '@backlog-mcp/memory/search';
 import { vol } from './helpers/virtual-fs.js';
 import {
+  CANDIDATE_FILE_MAX_BYTES,
   createDeskDocumentsReader,
   createEvaluationCandidatesReader,
 } from '../server/desk-grounding.js';
@@ -115,5 +116,105 @@ describe('createEvaluationCandidatesReader', () => {
     });
 
     expect(read()).toEqual([]);
+  });
+
+  it('releases disposed candidates — reviewed candidates leave the Desk (review 0001)', () => {
+    const candidatesDir = '/disposed-repo/docs/evaluation/candidates';
+    vol.fromJSON({
+      [`${candidatesDir}/partly-reviewed.jsonl`]: [
+        JSON.stringify({ record: 'header', format: 'implicit-qrels-candidates' }),
+        JSON.stringify({ record: 'candidate_query', id: 'implicit-recall-aaa' }),
+        JSON.stringify({
+          record: 'candidate_qrel',
+          query_id: 'implicit-recall-aaa',
+          document_id: 'MEMO-0001',
+        }),
+        JSON.stringify({
+          record: 'candidate_qrel',
+          query_id: 'implicit-recall-aaa',
+          document_id: 'MEMO-0002',
+        }),
+        // The query and the first qrel are adjudicated; extra fields on a
+        // disposition are welcome and ignored.
+        JSON.stringify({ record: 'candidate_disposition', query_id: 'implicit-recall-aaa' }),
+        JSON.stringify({
+          record: 'candidate_disposition',
+          query_id: 'implicit-recall-aaa',
+          document_id: 'MEMO-0001',
+          assessor: 'human:goga',
+        }),
+      ].join('\n'),
+      [`${candidatesDir}/fully-reviewed.jsonl`]: [
+        JSON.stringify({ record: 'candidate_query', id: 'implicit-recall-bbb' }),
+        JSON.stringify({ record: 'candidate_disposition', query_id: 'implicit-recall-bbb' }),
+      ].join('\n'),
+    });
+
+    const read = createEvaluationCandidatesReader({
+      root: '/disposed-repo',
+      documentsDir: '/disposed-repo/docs',
+    });
+
+    // Disposition lines are completion records, never candidates
+    // themselves: a fully reviewed file counts zero and leaves the Desk.
+    expect(read()).toEqual([
+      { path: 'docs/evaluation/candidates/fully-reviewed.jsonl', candidateCount: 0 },
+      { path: 'docs/evaluation/candidates/partly-reviewed.jsonl', candidateCount: 1 },
+    ]);
+  });
+
+  it('skips files over the 4 MiB cap before reading, with an honest omission note', () => {
+    const candidatesDir = '/oversized-repo/docs/evaluation/candidates';
+    vol.fromJSON({
+      [`${candidatesDir}/huge.jsonl`]: 'x'.repeat(CANDIDATE_FILE_MAX_BYTES + 1024 * 1024),
+      [`${candidatesDir}/small.jsonl`]: JSON.stringify({ record: 'candidate_query', id: 'q' }),
+    });
+
+    const read = createEvaluationCandidatesReader({
+      root: '/oversized-repo',
+      documentsDir: '/oversized-repo/docs',
+    });
+
+    expect(read()).toEqual([
+      {
+        path: 'docs/evaluation/candidates/huge.jsonl',
+        candidateCount: 0,
+        omission: '5.0 MiB exceeds the 4.0 MiB cap',
+      },
+      { path: 'docs/evaluation/candidates/small.jsonl', candidateCount: 1 },
+    ]);
+  });
+
+  it('resolves symlinks and refuses candidates that escape the home', () => {
+    const candidatesDir = '/symlink-repo/docs/evaluation/candidates';
+    vol.fromJSON({
+      '/outside/secret.jsonl': JSON.stringify({ record: 'candidate_query', id: 'stolen' }),
+      [`${candidatesDir}/inside-target.jsonl`]: JSON.stringify({
+        record: 'candidate_query',
+        id: 'legit',
+      }),
+    });
+    vol.symlinkSync('/outside/secret.jsonl', `${candidatesDir}/escape.jsonl`);
+    vol.symlinkSync(
+      `${candidatesDir}/inside-target.jsonl`,
+      `${candidatesDir}/alias.jsonl`,
+    );
+
+    const read = createEvaluationCandidatesReader({
+      root: '/symlink-repo',
+      documentsDir: '/symlink-repo/docs',
+    });
+
+    // A symlink inside the home still counts; an escaping one is refused
+    // with a disclosed omission, never followed.
+    expect(read()).toEqual([
+      { path: 'docs/evaluation/candidates/alias.jsonl', candidateCount: 1 },
+      {
+        path: 'docs/evaluation/candidates/escape.jsonl',
+        candidateCount: 0,
+        omission: 'resolves outside the home',
+      },
+      { path: 'docs/evaluation/candidates/inside-target.jsonl', candidateCount: 1 },
+    ]);
   });
 });

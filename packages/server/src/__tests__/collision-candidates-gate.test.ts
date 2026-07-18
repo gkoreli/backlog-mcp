@@ -347,6 +347,33 @@ describe('collision candidate production boundary', () => {
     expect(pair?.signals.neighbor_rank).toBe(1);
   });
 
+  it('bounds the scan to the most recent focalLimit live memories (review 0001 HIGH-2)', async () => {
+    const focal = (id: string, createdAt: string, index: number): Memory => ({
+      ...deployPair.left,
+      id,
+      created_at: createdAt,
+      title: `Focal ${index}`,
+      content: `Focal content ${index}`,
+    });
+    const oldest = focal('MEMO-4001', '2026-07-01T00:00:00.000Z', 1);
+    const middle = focal('MEMO-4002', '2026-07-05T00:00:00.000Z', 2);
+    const newest = focal('MEMO-4003', '2026-07-10T00:00:00.000Z', 3);
+    const service = mockService([oldest, middle, newest], {});
+
+    const result = await findCollisionCandidatePairs(service, {
+      now: NOW,
+      focalLimit: 2,
+    });
+
+    expect(result.total_live_memories).toBe(3);
+    expect(result.focal_count).toBe(2);
+    expect(service.searchUnified).toHaveBeenCalledTimes(2);
+    expect(service.searchUnified).not.toHaveBeenCalledWith(
+      `${oldest.title}\n${oldest.content}`,
+      expect.anything(),
+    );
+  });
+
   it('uses UTF-8 byte order and unambiguous JSON pair identities', () => {
     expect(collisionPairKey('MEMO-é', 'MEMO-z')).toBe('["MEMO-z","MEMO-é"]');
     expect(collisionPairKey('a\0b', 'c')).not.toBe(collisionPairKey('a', 'b\0c'));

@@ -36,6 +36,27 @@ begins at 0.57.0 — earlier history lives in git.
   (worktree-native-access-lattice proposal, W2; TASK-0001)
 
 ### Fixed
+- **The Desk now does bounded work, gives every host the same answer, and
+  lets reviewed candidates leave.** Three findings from the independent
+  trunk review (docs/reviews/0001-sol-trunk-review-2026-07-18.md) fixed in
+  one hardening pass, seven-item output law untouched. *Bounds (HIGH-2)*:
+  candidate `.jsonl` files are stat'ed before reading — anything over
+  4 MiB is skipped, symlinks resolve and must stay inside the home; the
+  collision scan caps at the 200 most recent live memories; the
+  requirement scan caps at 500 (was 100,000) — and every cap that bites is
+  disclosed through the fold's named-omission diagnostics line, never
+  silent. *Determinism*: offset-less frontmatter datetimes now parse as
+  UTC at one shared parse point (a `2026-07-10T12:30:00` document no
+  longer changes READ-window membership between a UTC and an Asia/Tokyo
+  host), tie-breaks use the bytewise UTF-8 comparator instead of host
+  collation (`ä`/`z` order identically everywhere), and a future-dated
+  timestamp gets age 0 plus an explicit `future-dated` marker in
+  why_surfaced instead of sitting silently fresh forever. *Candidate
+  completion*: the Desk counts only candidates without a matching
+  `candidate_disposition` record (`{"record":"candidate_disposition",
+  "query_id":…[,"document_id":…]}` appended per adjudicated candidate), so
+  a reviewed candidate file finally leaves the Desk instead of haunting it.
+  Ranking untouched; the Desk stays read-only.
 - **`get --context` reaches the CLI — the same ADR 0114 neighborhood the MCP
   surface always had.** `backlog get TASK-0001 --context` now renders the
   focal entity plus its relational stubs (parent/children/siblings/references/
