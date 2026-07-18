@@ -1,0 +1,12 @@
+{"query_id":"recall-01","document_id":"MEMO-0011","grade":3,"assessor":"human:goga 2026-07-18","rationale":"The answer — diff3 conflict markers, useful for the question."}
+{"query_id":"recall-01","document_id":"MEMO-0008","grade":2,"assessor":"human:goga 2026-07-18","rationale":"Somewhat useful but less relevant to conflict resolution."}
+{"query_id":"recall-01","document_id":"MEMO-0010","grade":1,"assessor":"human:goga 2026-07-18","rationale":"Re-prime order not relevant to conflict resolution; costs tokens without value."}
+{"query_id":"recall-02","document_id":"MEMO-0002","grade":3,"assessor":"human:goga 2026-07-18","rationale":"Quite relevant for releasing the package; should score far above the #2 — their closeness is suspect."}
+{"query_id":"recall-02","document_id":"MEMO-0001","grade":0,"assessor":"human:goga 2026-07-18","rationale":"Quite irrelevant for the question."}
+{"query_id":"recall-03","document_id":"MEMO-0008","grade":3,"assessor":"human:goga 2026-07-18","rationale":"Relevant, though it carries extra context not needed for this ask."}
+{"query_id":"recall-03","document_id":"MEMO-0012","grade":0,"assessor":"human:goga 2026-07-18","rationale":"Quite irrelevant; wastes tokens, and its high rank makes the scoring logic suspect."}
+{"query_id":"recall-03","document_id":"MEMO-0009","grade":0,"assessor":"human:goga 2026-07-18","rationale":"Unclear why it exists or ranks high; serves no purpose for this ask."}
+{"query_id":"recall-04","document_id":"MEMO-0005","grade":2,"assessor":"human:goga 2026-07-18","rationale":"Useful but a bit unclear against the question."}
+{"query_id":"recall-04","document_id":"MEMO-0007","grade":1,"assessor":"human:goga 2026-07-18","rationale":"Relevance unclear."}
+{"query_id":"recall-04","document_id":"MEMO-0001","grade":1,"assessor":"human:goga 2026-07-18","rationale":"Relevance unclear."}
+{"query_id":"recall-04","document_id":"MEMO-0006","grade":2,"assessor":"human:goga 2026-07-18","rationale":"Recall MISS — did not surface but is more relevant than the returned MEMO-0007/MEMO-0001 per the assessor."}
