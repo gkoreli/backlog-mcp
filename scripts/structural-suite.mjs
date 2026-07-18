@@ -27,6 +27,12 @@
  *   tail-reachability     content at declared token offsets (257–512, >512)
  *                         is reachable by querying its rarest tokens,
  *                         extracted mechanically — never by judgment
+ *   schema-evolution      definitionVersion discipline (ADR 0122 Slice A):
+ *                         every active declaration carries a positive-integer
+ *                         version with a complete frozen chain at
+ *                         substrates/history/<type>@<v>.json, and a synthetic
+ *                         bumped fixture proves freeze-on-bump is a loud
+ *                         registry diagnostic — never a load failure
  *
  * The report is deterministic by design: no timestamps, no timings, stable
  * ordering everywhere. Two runs over the same corpus must be byte-identical.
@@ -357,6 +363,9 @@ function loadProductCorpus(args, runtime) {
     entityDocuments,
     resources,
     quarantines: storage.listClaimQuarantines(),
+    // Empty when reached (the fail above), kept so evolution assertions state
+    // their evidence instead of assuming it.
+    substrateDiagnostics: definitions.diagnostics,
     ids,
     excludedPaths: [...excludedPaths].sort(),
   };
@@ -809,6 +818,138 @@ async function runCompositionAssertions(corpus, runtime, searchService) {
   return assertions;
 }
 
+const EVOLUTION_FIXTURE_TYPE = 'evolution-fixture';
+const EVOLUTION_MISSING_HISTORY_MESSAGE =
+  'definitionVersion 2 requires frozen history '
+  + 'substrates/history/evolution-fixture@1.json; the substrate stays active, '
+  + 'but its version lineage is unaddressable until the missing definition is '
+  + 'frozen (ADR 0122 R2)';
+
+function evolutionFixtureDeclaration() {
+  return {
+    definitionVersion: 2,
+    type: EVOLUTION_FIXTURE_TYPE,
+    label: { singular: 'Evolution Fixture', plural: 'Evolution Fixtures' },
+    folder: 'evolution-fixtures',
+    identity: { strategy: 'numbered' },
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', minLength: 1, maxLength: 200 },
+        type: { const: EVOLUTION_FIXTURE_TYPE },
+        title: { type: 'string', minLength: 1, maxLength: 300 },
+      },
+      required: ['id', 'type', 'title'],
+      additionalProperties: false,
+    },
+  };
+}
+
+function loadEvolutionFixture(runtime, suiteDirectory, name, withHistory) {
+  const documentsDir = join(suiteDirectory, name, 'docs');
+  mkdirSync(join(documentsDir, 'substrates', 'history'), { recursive: true });
+  const declaration = evolutionFixtureDeclaration();
+  writeFileSync(
+    join(documentsDir, 'substrates', `${EVOLUTION_FIXTURE_TYPE}.json`),
+    `${JSON.stringify(declaration, null, 2)}\n`,
+  );
+  if (withHistory) {
+    // The frozen v1 chain link (ADR 0122 R2): the outgoing definition verbatim.
+    writeFileSync(
+      join(documentsDir, 'substrates', 'history', `${EVOLUTION_FIXTURE_TYPE}@1.json`),
+      `${JSON.stringify({ ...declaration, definitionVersion: 1 }, null, 2)}\n`,
+    );
+  }
+  // loadHomeSubstrateRegistry reads only home.documentsDir.
+  return runtime.loadHomeSubstrateRegistry({ documentsDir });
+}
+
+/**
+ * Schema-evolution assertions (ADR 0122 Slice A; R5's first suite class).
+ * Mode-independent: no search is involved. The two fixture probes run the
+ * real discovery + registry composition over a synthetic docs tree, so a
+ * regression in the freeze-on-bump seam is wrong by construction here.
+ */
+function runEvolutionAssertions(corpus, runtime, suiteDirectory) {
+  const assertions = [];
+
+  const missingHistoryTypes = new Set(
+    corpus.substrateDiagnostics
+      .filter(diagnostic => diagnostic.code === 'missing-version-history')
+      .map(diagnostic => diagnostic.type),
+  );
+  const declared = corpus.registry.listSubstrates()
+    .filter(substrate => substrate.kind === 'declarative')
+    .sort((left, right) => compareStrings(left.sourcePath, right.sourcePath));
+  for (const substrate of declared) {
+    const version = substrate.definition.definitionVersion;
+    assertions.push({
+      class: 'schema-evolution',
+      case: 'current-declaration',
+      source_path: substrate.sourcePath,
+      type: substrate.definition.type,
+      definition_version: version,
+      pass: Number.isInteger(version)
+        && version >= 1
+        && !missingHistoryTypes.has(substrate.definition.type),
+    });
+  }
+
+  const complete = loadEvolutionFixture(
+    runtime,
+    suiteDirectory,
+    'evolution-with-history',
+    true,
+  );
+  const completeLoaded =
+    complete.registry.getSubstrate(EVOLUTION_FIXTURE_TYPE) !== undefined;
+  assertions.push({
+    class: 'schema-evolution',
+    case: 'bump-with-history',
+    type: EVOLUTION_FIXTURE_TYPE,
+    definition_version: 2,
+    diagnostics: complete.diagnostics,
+    loaded: completeLoaded,
+    pass: complete.diagnostics.length === 0 && completeLoaded,
+  });
+
+  const broken = loadEvolutionFixture(
+    runtime,
+    suiteDirectory,
+    'evolution-without-history',
+    false,
+  );
+  const diagnostic = broken.diagnostics.find(
+    candidate => candidate.code === 'missing-version-history',
+  );
+  const stillFunctions =
+    broken.registry.getSubstrate(EVOLUTION_FIXTURE_TYPE) !== undefined
+    && broken.registry.validateWrite({
+      id: 'EVO-1',
+      type: EVOLUTION_FIXTURE_TYPE,
+      title: 'Loads and functions with an incomplete chain',
+    }).ok === true;
+  assertions.push({
+    class: 'schema-evolution',
+    case: 'bump-without-history',
+    type: EVOLUTION_FIXTURE_TYPE,
+    definition_version: 2,
+    diagnostic_count: broken.diagnostics.length,
+    diagnostic_message: diagnostic?.issues[0]?.message ?? null,
+    still_loads: stillFunctions,
+    pass: broken.diagnostics.length === 1
+      && diagnostic !== undefined
+      && diagnostic.sourcePath === `substrates/${EVOLUTION_FIXTURE_TYPE}.json`
+      && diagnostic.type === EVOLUTION_FIXTURE_TYPE
+      && diagnostic.issues.length === 1
+      && diagnostic.issues[0].code === 'history'
+      && diagnostic.issues[0].message === EVOLUTION_MISSING_HISTORY_MESSAGE
+      && stillFunctions,
+  });
+
+  return assertions;
+}
+
 function summarizeAssertions(assertions) {
   const byClass = {};
   for (const assertion of assertions) {
@@ -874,6 +1015,9 @@ function renderSummary(report) {
       lines.push(`- ${assertion.pass ? 'PASS' : 'FAIL'} wakeup-reconciliation `
         + `[${assertion.section}]: disclosed ${assertion.disclosed_count} `
         + `vs eligible ${assertion.eligible_count}`);
+    } else if (assertion.class === 'schema-evolution') {
+      lines.push(`- ${assertion.pass ? 'PASS' : 'FAIL'} schema-evolution `
+        + `[${assertion.case}]: ${assertion.source_path ?? assertion.type}`);
     } else {
       lines.push(`- ${assertion.pass ? 'PASS' : 'FAIL'} ${assertion.class}: `
         + `${assertion.source_path ?? ''}`);
@@ -972,6 +1116,7 @@ async function main() {
   );
   mkdirSync(suiteDirectory, { recursive: true });
   try {
+    const evolutionAssertions = runEvolutionAssertions(corpus, runtime, suiteDirectory);
     const modeReports = {};
     let compositionAssertions;
     for (const mode of args.modes) {
@@ -1012,8 +1157,12 @@ async function main() {
       };
     }
 
-    const allAssertions = [
+    const allCompositionAssertions = [
       ...(compositionAssertions ?? []),
+      ...evolutionAssertions,
+    ];
+    const allAssertions = [
+      ...allCompositionAssertions,
       ...Object.values(modeReports).flatMap(modeReport => modeReport.assertions),
     ];
     const report = {
@@ -1056,8 +1205,8 @@ async function main() {
         runner_sha256: sha256(readFileSync(fileURLToPath(import.meta.url))),
       },
       composition: {
-        assertions: compositionAssertions ?? [],
-        assertion_counts: summarizeAssertions(compositionAssertions ?? []),
+        assertions: allCompositionAssertions,
+        assertion_counts: summarizeAssertions(allCompositionAssertions),
       },
       modes: modeReports,
       totals: {
