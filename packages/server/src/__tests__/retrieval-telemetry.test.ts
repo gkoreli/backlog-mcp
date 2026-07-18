@@ -20,6 +20,7 @@ import {
   RetrievalTelemetry,
   resetTelemetrySessionIdForTests,
   telemetrySessionId,
+  withRequestTelemetrySession,
 } from '../memory/retrieval-telemetry.js';
 import { MemoryUsageTracker } from '../memory/usage-tracker.js';
 
@@ -30,7 +31,7 @@ beforeEach(function resetSession() {
   resetTelemetrySessionIdForTests();
 });
 
-describe('telemetrySessionId (R7: one session per process)', () => {
+describe('telemetrySessionId (R7 + review 0001: env > request scope > process)', () => {
   it('mints one UUID per process and returns it stably', () => {
     const first = telemetrySessionId({});
     const second = telemetrySessionId({});
@@ -47,6 +48,52 @@ describe('telemetrySessionId (R7: one session per process)', () => {
   it('ignores a blank BACKLOG_SESSION', () => {
     const minted = telemetrySessionId({});
     expect(telemetrySessionId({ BACKLOG_SESSION: '   ' })).toBe(minted);
+  });
+
+  it('two request scopes mint two distinct sessions, stable within each (review 0001)', () => {
+    const processMinted = telemetrySessionId({});
+    const first = withRequestTelemetrySession(() => {
+      const inner = telemetrySessionId({});
+      expect(telemetrySessionId({})).toBe(inner);
+      return inner;
+    });
+    const second = withRequestTelemetrySession(() => telemetrySessionId({}));
+    expect(first).toMatch(UUID_PATTERN);
+    expect(second).toMatch(UUID_PATTERN);
+    expect(second).not.toBe(first);
+    expect(first).not.toBe(processMinted);
+    // Leaving the scope restores the process-wide id (CLI unchanged).
+    expect(telemetrySessionId({})).toBe(processMinted);
+  });
+
+  it('BACKLOG_SESSION still wins inside a request scope', () => {
+    const inScope = withRequestTelemetrySession(
+      () => telemetrySessionId({ BACKLOG_SESSION: 'harness-42' }),
+    );
+    expect(inScope).toBe('harness-42');
+  });
+
+  it('one telemetry instance shared across request scopes stamps each scope\'s session', () => {
+    // The production shape: LocalRuntime (and its RetrievalTelemetry) is
+    // long-lived and shared across stateless HTTP requests.
+    const lines: string[] = [];
+    const telemetry = new RetrievalTelemetry({
+      home: 'global',
+      appendLine: (line) => {
+        lines.push(line);
+      },
+      now: () => NOW,
+      env: {},
+    });
+    withRequestTelemetrySession(() => telemetry.record('recall', []));
+    withRequestTelemetrySession(() => telemetry.record('search', ['TASK-0001']));
+    const sessions = lines.map(
+      (line) => (JSON.parse(line) as { session: string }).session,
+    );
+    expect(sessions).toHaveLength(2);
+    expect(sessions[0]).toMatch(UUID_PATTERN);
+    expect(sessions[1]).toMatch(UUID_PATTERN);
+    expect(sessions[0]).not.toBe(sessions[1]);
   });
 });
 

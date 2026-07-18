@@ -44,6 +44,7 @@ import type {
   HomeReadRuntimeSelection,
 } from '../core/home-read-coordinator.types.js';
 import { memoryUsageFieldsFromEntry } from '../memory/memory-entry-usage.js';
+import { withRequestTelemetrySession } from '../memory/retrieval-telemetry.js';
 import type { SubstrateIntentQuarantineDiagnostic } from '../tools/register-substrate-intents.types.js';
 // Note: paths.ts and operations/index.ts are NOT imported here — they pull in
 // Node.js modules (import.meta.url, fs, path) that break the Workers bundle.
@@ -397,8 +398,15 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       enableJsonResponse: true,
     });
     try {
-      await server.connect(transport);
-      return await transport.handleRequest(c.req.raw);
+      // Stateless transport = stateless telemetry session (review 0001):
+      // this endpoint builds a fresh server per request, so each request
+      // also handles inside its own minted telemetry session — two
+      // independent HTTP requests must never share one. BACKLOG_SESSION
+      // still overrides inside the scope; CLI processes are untouched.
+      return await withRequestTelemetrySession(async function handleInSession() {
+        await server.connect(transport);
+        return transport.handleRequest(c.req.raw);
+      });
     } catch (err) {
       // Without this, a throwing tool handler propagates out unlogged and
       // the bridge only sees a dropped socket ("mcp-remote lost connection").

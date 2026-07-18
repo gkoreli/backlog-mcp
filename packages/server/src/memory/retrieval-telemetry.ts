@@ -34,6 +34,7 @@
  * and retrieval behavior stays byte-identical — this is observation only.
  */
 
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 
 export type RetrievalTelemetryEventName = 'recall' | 'search' | 'expand';
@@ -54,19 +55,44 @@ export interface RetrievalTelemetryEvent {
 let mintedSessionId: string | undefined;
 
 /**
- * The shared telemetry session id for THIS process.
+ * Request-scoped session for the stateless HTTP/MCP transport, which
+ * constructs a fresh server per request (review 0001): two independent
+ * HTTP requests must never share a telemetry session, so the process-wide
+ * minted id below must not be their fallback.
+ */
+const requestSessionScope = new AsyncLocalStorage<string>();
+
+/**
+ * Run `fn` with a freshly minted request-scoped telemetry session.
  *
- * Minted once per process (server boot mints one per server lifetime; a
- * CLI invocation is its own process, so it mints one per invocation). A
- * `BACKLOG_SESSION` env var, when present, overrides the minted id — this
- * lets a harness thread one session across many CLI calls. No config
- * files, no verbs.
+ * The stateless HTTP/MCP transport wraps each request's handling in this
+ * scope; every telemetry event recorded inside — across both homes of a
+ * cross-home read — carries the same per-request UUID, and no id survives
+ * into the next request. `BACKLOG_SESSION` still overrides inside the
+ * scope. CLI processes never enter a scope and keep per-process minting.
+ */
+export function withRequestTelemetrySession<T>(fn: () => T): T {
+  return requestSessionScope.run(randomUUID(), fn);
+}
+
+/**
+ * The telemetry session id for the CURRENT context.
+ *
+ * Precedence (review 0001):
+ *  1. `BACKLOG_SESSION` env — lets a harness thread one session across
+ *     many CLI calls. No config files, no verbs.
+ *  2. The request scope opened by {@link withRequestTelemetrySession} —
+ *     one UUID per stateless HTTP/MCP request.
+ *  3. One UUID minted per process — a CLI invocation is its own process,
+ *     so it mints one per invocation.
  */
 export function telemetrySessionId(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): string {
   const override = env['BACKLOG_SESSION']?.trim();
   if (override !== undefined && override !== '') return override;
+  const requestScoped = requestSessionScope.getStore();
+  if (requestScoped !== undefined) return requestScoped;
   if (mintedSessionId === undefined) mintedSessionId = randomUUID();
   return mintedSessionId;
 }
