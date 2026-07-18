@@ -10,7 +10,16 @@ each version says why it mattered on the road to the north star
 (`docs/NORTH-STAR.md` — *your backlog is your agent's memory*). This changelog
 begins at 0.57.0 — earlier history lives in git.
 
-## [Unreleased]
+## [0.67.0] — 2026-07-17
+
+*The instrument release. The program's next phase is a week of real use
+measured honestly, and this build is what makes that week yield numbers
+instead of anecdotes: every retrieval leaves a session-stamped trace, and a
+recall that finds nothing is finally an event instead of silence. Fittingly,
+building it produced the project home's first memory — MEMO-0001, written
+first-person by the builder at its own checkpoint, attributed through its
+worktree stamp: the capture law, the identity ladder, and the delegation
+protocol exercised end-to-end in one artifact.*
 
 ### Added
 - **See what your retrieval actually does — every recall, search, and expand
