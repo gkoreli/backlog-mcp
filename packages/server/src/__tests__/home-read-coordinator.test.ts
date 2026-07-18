@@ -514,7 +514,7 @@ describe('home read coordinator', function describeHomeReadCoordinator() {
     })).toEqual(['A-project', 'global']);
   });
 
-  it('packs recall after fusion and records demand only for final visible items on owning runtimes', async function packsAndPartitionsRecall() {
+  it('packs recall after fusion but records demand from each home\'s own retrieval (review 0001)', async function packsAndPartitionsRecall() {
     const globalDemand = demandRecorder();
     const projectDemand = demandRecorder();
     const globalRuntime = createRuntime('global', 'global', {
@@ -582,15 +582,66 @@ describe('home read coordinator', function describeHomeReadCoordinator() {
     expect(result.query).toBe('memory');
     expect(result.total).toBe(2);
     expect(result.truncated).toBe(true);
+    // Demand derives from each home's ACTUAL retrieval (both retrieved
+    // two memories), never from the packed response above (review 0001).
     expect(globalDemand.recordRecall).toHaveBeenCalledOnce();
     expect(globalDemand.recordRecall).toHaveBeenCalledWith(
       'memory',
-      ['MEMO-G1'],
+      ['MEMO-G1', 'MEMO-G2'],
     );
     expect(projectDemand.recordRecall).toHaveBeenCalledOnce();
     expect(projectDemand.recordRecall).toHaveBeenCalledWith(
       'memory',
+      ['MEMO-P1', 'MEMO-P2'],
+    );
+  });
+
+  it('a hit removed entirely by token packing still records that home\'s ids — not a recall miss (review 0001)', async function keepsPackedAwayHitInTelemetry() {
+    const globalDemand = demandRecorder();
+    const projectDemand = demandRecorder();
+    const globalRuntime = createRuntime('global', 'global', {
+      composer: composer('global', [rankedMemory('MEMO-G1', 1)]),
+      usageTracker: globalDemand.tracker,
+    });
+    const projectRuntime = createRuntime('project', 'project', {
+      composer: composer('project', [rankedMemory('MEMO-P1', 500)]),
+      usageTracker: projectDemand.tracker,
+    });
+    const coordinator = createHomeReadCoordinator({
+      resolveRuntime: resolverFor(globalRuntime, projectRuntime),
+    });
+
+    const unbounded = await coordinator.recall(
+      { query: 'memory', limit: 4 },
+      { projectRoot: 'project' },
+    );
+    const first = unbounded.items[0];
+    if (first === undefined) {
+      throw new Error('Expected at least one fused recall item');
+    }
+    globalDemand.recordRecall.mockClear();
+    projectDemand.recordRecall.mockClear();
+
+    // A budget covering exactly the first fused item drops the other
+    // home's hit from the response entirely.
+    const result = await coordinator.recall(
+      { query: 'memory', limit: 4, token_budget: recallCost(first) },
+      { projectRoot: 'project' },
+    );
+
+    expect(resultIdentities(result.items)).toEqual(['global:MEMO-G1']);
+    expect(result.truncated).toBe(true);
+    // The packed-away home RETRIEVED its hit — recording ids: [] here
+    // would fabricate the exact recall-miss evidence the R6 mining
+    // trigger and promotion lane consume (review 0001 MEDIUM).
+    expect(projectDemand.recordRecall).toHaveBeenCalledOnce();
+    expect(projectDemand.recordRecall).toHaveBeenCalledWith(
+      'memory',
       ['MEMO-P1'],
+    );
+    expect(globalDemand.recordRecall).toHaveBeenCalledWith(
+      'memory',
+      ['MEMO-G1'],
     );
   });
 

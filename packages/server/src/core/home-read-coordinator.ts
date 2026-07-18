@@ -356,21 +356,21 @@ function packRecallItems(
 function recordRecallDemand(
   executions: readonly HomeExecution<RecallResult>[],
   query: string,
-  items: readonly CrossHomeRecallItem[],
 ): void {
   for (const execution of executions) {
     if (!execution.available) continue;
-    const ids = items
-      .filter(function ownedByRuntime(item) {
-        return item.home_id === execution.runtime.home.id;
-      })
-      .map(function localId(item) {
-        return item.id;
-      });
-    // A consulted home with zero returned ids still records: that is the
-    // per-home recall-miss event (ADR 0121 R7 Tier 1) and the promotion
-    // lane's cross-home demand signal. The overlay line is unaffected —
-    // the tracker has always skipped it for empty ids.
+    // Per-home ids come from THIS home's actual retrieval result — never
+    // from the fused, token-packed response (review 0001). A home whose
+    // hit was dropped by cross-home packing still retrieved it; deriving
+    // from the packed list would fabricate the recall-miss evidence the
+    // R6 mining trigger and the promotion lane consume. A consulted home
+    // with zero retrieved ids still records: that is the per-home
+    // recall-miss event (ADR 0121 R7 Tier 1) and the promotion lane's
+    // cross-home demand signal. The overlay line is unaffected — the
+    // tracker has always skipped it for empty ids.
+    const ids = execution.value.items.map(function localId(item) {
+      return item.id;
+    });
     try {
       execution.runtime.usageTracker?.recordRecall(query, ids);
     } catch {
@@ -481,7 +481,7 @@ export function createHomeReadCoordinator(
     ).map(toCrossHomeRecallItem);
     const packed = packRecallItems(merged, params.token_budget);
     const query = params.query.trim();
-    recordRecallDemand(executions, query, packed.items);
+    recordRecallDemand(executions, query);
 
     return {
       items: packed.items,
