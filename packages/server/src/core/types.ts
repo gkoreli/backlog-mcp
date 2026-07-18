@@ -438,7 +438,50 @@ export interface WakeupGrounding {
     defaultBranch: string;
     /** Commits on the default branch that HEAD lacks. */
     behind: number;
+    /**
+     * Canonical-law freshness facts (LATTICE W2) — present only when a
+     * law-shaped document is NOT canonical-fresh. A worktree whose law
+     * matches canonical omits this entirely, keeping the briefing
+     * byte-identical to W1.
+     */
+    law?: WakeupCanonicalLaw;
   };
+}
+
+/**
+ * Canonical-law freshness (LATTICE W2): plain facts probed by the
+ * composition — blob-hash comparison of the worktree's law-shaped
+ * documents (vision + requirement sources) against the family default
+ * branch's committed content, pinned to one commit SHA (never a textual
+ * diff). Core folds them into the vision pointer's canonical title and
+ * the one-line divergence stubs; it never touches git itself.
+ */
+export interface WakeupCanonicalLaw {
+  /** Short SHA of the pinned canonical commit the facts were read at. */
+  commit: string;
+  /**
+   * Commits HEAD carries beyond canonical — probed only when law
+   * diverged while `behind` is 0, so the stub can still name the drift.
+   */
+  ahead?: number;
+  /** The vision document's freshness, present only when NOT fresh. */
+  vision?: {
+    /**
+     * `diverged` — both copies exist, content differs; `worktree_missing`
+     * — only canonical has one (pointer served from canonical);
+     * `canonical_missing` — worktree-only law.
+     */
+    state: 'diverged' | 'worktree_missing' | 'canonical_missing';
+    /** Home-root-relative path of the vision document. */
+    path: string;
+    /**
+     * Title derived from the CANONICAL committed content (the W1
+     * SHA-pinned read) — absent for `canonical_missing` or a failed read.
+     */
+    title?: string;
+  };
+  /** True when any requirement source differs from canonical law. */
+  constraintsDiverged?: boolean;
 }
 
 export interface WakeupEntitySummary {
@@ -522,6 +565,17 @@ export interface WakeupResult {
    */
   constraints: ConstraintStub[];
   /**
+   * One-line canonical-law divergence stub for the constraints section
+   * (LATTICE W2): present only in a linked worktree whose requirement
+   * sources differ from the family default branch's committed law —
+   * `diverge from <defaultBranch> @ <shortsha> — worktree copy is …`.
+   * The agent's local law may be stale; hydrate against the named
+   * commit before relying on it. Same never-yield class as the
+   * constraints it annotates (the amnesiac must state its constraints,
+   * and must know when they might not be the family's).
+   */
+  constraints_divergence?: string;
+  /**
    * Registry-declared disclosure sections (ADR 0113 C.2), keyed by the
    * substrate's declared wakeup section name (e.g. `decisions` from the
    * packaged ADR definition). Projection-shaped stubs; hydrate with get.
@@ -534,8 +588,14 @@ export interface WakeupResult {
    * title only, never the body (ADR 0113 C.2; the Cold-Open Test's fifth
    * orientation). Hydrate via resources. Absent when vision discovery found
    * multiple candidates — see metadata.vision_candidates.
+   *
+   * In a linked worktree whose vision is not canonical-fresh (LATTICE
+   * W2), `title` serves the CANONICAL committed content (SHA-pinned via
+   * the family's default branch) and `divergence` carries the one-line
+   * stub naming the pinned commit and the drift — the local copy may be
+   * stale law. Absent divergence means the pointer is canonical-fresh.
    */
-  vision?: { path: string; title: string };
+  vision?: { path: string; title: string; divergence?: string };
   /**
    * The bounded orientation map (charter Slice A): openable pointer stubs
    * to the repo's own first documents. `note` appears only when the typed

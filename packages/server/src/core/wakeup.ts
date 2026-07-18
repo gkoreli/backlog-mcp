@@ -618,7 +618,7 @@ export async function wakeup(
   // discovery wins when supplied; multiple north-star candidates surface as
   // a diagnostic instead of a silently chosen authority (charter Slice A).
   const visionCandidates = grounding?.visionCandidates ?? [];
-  let vision: { path: string; title: string } | undefined;
+  let vision: { path: string; title: string; divergence?: string } | undefined;
   let ambiguousVision: string[] | undefined;
   if (grounding !== undefined) {
     if (visionCandidates.length > 1) {
@@ -634,6 +634,55 @@ export async function wakeup(
     const visionText = params.readVision?.();
     if (visionText !== undefined) {
       vision = { path: 'NORTH-STAR.md', title: visionTitle(visionText) };
+    }
+  }
+
+  // Canonical-law freshness (LATTICE W2): in a linked worktree, law-shaped
+  // disclosures anchor to the family default branch's committed content.
+  // The composition probed the facts (blob-hash detection, the SHA-pinned
+  // canonical read); the fold only serves the canonical vision title and
+  // formats the one-line divergence stubs. No law facts — a fresh
+  // worktree, a main checkout, a non-git home — folds byte-identically.
+  const worktree = grounding?.worktree;
+  const law = worktree?.law;
+  let constraintsDivergence: string | undefined;
+  if (worktree !== undefined && law !== undefined) {
+    const anchor = `${worktree.defaultBranch} @ ${law.commit}`;
+    const drift = worktree.behind > 0
+      ? `${worktree.behind} ${worktree.behind === 1 ? 'commit' : 'commits'} behind`
+      : law.ahead !== undefined && law.ahead > 0
+        ? `${law.ahead} ${law.ahead === 1 ? 'commit' : 'commits'} ahead`
+        : 'locally modified';
+    const lawVision = law.vision;
+    // The ambiguity diagnostic owns the vision line when candidates
+    // collide — canonical facts never override an honest "I cannot pick".
+    if (lawVision !== undefined && ambiguousVision === undefined) {
+      if (lawVision.state === 'diverged') {
+        const title = lawVision.title ?? vision?.title;
+        if (title !== undefined) {
+          vision = {
+            path: vision?.path ?? lawVision.path,
+            title,
+            divergence: `diverges from ${anchor} — worktree copy is ${drift}`,
+          };
+        }
+      } else if (lawVision.state === 'worktree_missing') {
+        if (lawVision.title !== undefined) {
+          vision = {
+            path: lawVision.path,
+            title: lawVision.title,
+            divergence: `absent in worktree — served from ${anchor}`,
+          };
+        }
+      } else if (vision !== undefined) {
+        vision = {
+          ...vision,
+          divergence: `not on ${anchor} — worktree-only copy`,
+        };
+      }
+    }
+    if (law.constraintsDiverged === true) {
+      constraintsDivergence = `diverge from ${anchor} — worktree copy is ${drift}`;
     }
   }
 
@@ -719,12 +768,6 @@ export async function wakeup(
     }
   }
 
-  // Worktree meta line (LATTICE W1): when (and only when) the resolved
-  // home is a linked worktree, the briefing names its family, branch, and
-  // divergence in one short line. Plain data injected by the composition
-  // (git plumbing stays outside core); the fold only formats it.
-  const worktree = grounding?.worktree;
-
   // Zero-valued omission counters are redundant transport metadata:
   // absence means complete (charter trim ruling).
   const nonZeroEntries = Object.entries(sectionsOmitted)
@@ -745,6 +788,11 @@ export async function wakeup(
     },
     knowledge,
     constraints,
+    // The law stub rides beside the section it annotates (LATTICE W2)
+    // and shares its never-yield class — see wakeup-wire.ts.
+    ...(constraintsDivergence === undefined
+      ? {}
+      : { constraints_divergence: constraintsDivergence }),
     sections,
     ...(vision === undefined ? {} : { vision }),
     ...(orientation === undefined ? {} : { orientation }),
@@ -764,6 +812,8 @@ export async function wakeup(
       ...(nonZeroSectionsOmitted === undefined ? {} : { sections_omitted: nonZeroSectionsOmitted }),
       ...(quarantined.length === 0 ? {} : { quarantined }),
       ...(ambiguousVision === undefined ? {} : { vision_candidates: ambiguousVision }),
+      // Worktree meta line (LATTICE W1): when (and only when) the home
+      // is a linked worktree — family, branch, divergence in one line.
       ...(worktree === undefined ? {} : {
         worktree: `${worktree.family} @ ${worktree.branch}, `
           + `${worktree.behind} behind ${worktree.defaultBranch}`,

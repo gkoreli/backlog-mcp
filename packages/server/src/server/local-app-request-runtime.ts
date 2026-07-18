@@ -10,6 +10,7 @@ import {
 } from 'node:path';
 import { isPathWithin } from '../core/backlog-home.js';
 import { resolveContext } from '../core/config.js';
+import { REQUIREMENT_TYPE } from '../core/requirements/constraint-stub.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
 import type { AppRequestRuntime } from './app-request-runtime.types.js';
 import {
@@ -95,6 +96,23 @@ export function createLocalAppRequestRuntime(
         runtime.storage,
         runtime.home.documentsDir,
       ),
+      // Law-shaped constraint sources (LATTICE W2): every requirement
+      // document's path — compiled AND quarantined (a broken local copy
+      // of the family's law is still the family's law diverging).
+      listConstraintSourcePaths: function listConstraintSourcePaths() {
+        const paths: string[] = [];
+        for (const document of runtime.storage.iterateDocuments()) {
+          if (document.entity.type === REQUIREMENT_TYPE) {
+            paths.push(document.sourcePath);
+          }
+        }
+        for (const quarantine of runtime.storage.listClaimQuarantines?.() ?? []) {
+          if (quarantine.type === REQUIREMENT_TYPE) {
+            paths.push(quarantine.sourcePath);
+          }
+        }
+        return paths;
+      },
     }),
     readDeskDocuments: createDeskDocumentsReader({
       home: runtime.home,

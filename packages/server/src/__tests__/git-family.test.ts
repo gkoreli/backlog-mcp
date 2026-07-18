@@ -10,6 +10,7 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { execSync } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createBacklogHome } from '../core/backlog-home.js';
@@ -66,6 +67,14 @@ beforeAll(() => {
   git(`worktree add -q --detach '${DETACHED}'`);
   commitDoc('docs/adr/0001-first.md', '# First');
   commitDoc('docs/adr/0002-second.md', '# Second');
+  // LATTICE W2: the grounding reader now also probes canonical-law
+  // freshness. Orientation discovery reads the mocked node:fs while git
+  // reads the real repo, so mirror the worktree's law document into memfs
+  // with its exact committed content — discovery and the hash probe then
+  // agree, and the end-to-end test below doubles as proof that a
+  // canonical-FRESH worktree briefs byte-identical W1 grounding.
+  mkdirSync(join(WORKTREE, 'docs'), { recursive: true });
+  writeFileSync(join(WORKTREE, 'docs', 'NORTH-STAR.md'), '# North Star');
 });
 
 describe('resolveGitFamily (real git fixture)', () => {

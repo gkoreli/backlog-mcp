@@ -119,3 +119,19 @@ export function countCommitsBehind(
   if (output === undefined || !/^\d+$/.test(output)) return undefined;
   return Number.parseInt(output, 10);
 }
+
+/**
+ * Commits HEAD carries that `ref` lacks — how far this checkout sits
+ * ahead of the family's canonical commit (`git rev-list --count
+ * <ref>..HEAD`; LATTICE W2 divergence-stub wording). Undefined when git
+ * is unavailable or the range cannot be resolved.
+ */
+export function countCommitsAhead(
+  cwd: string,
+  ref: string,
+  runGit: GitRunner = runGitCommand,
+): number | undefined {
+  const output = runGit(cwd, ['rev-list', '--count', `${ref}..HEAD`])?.trim();
+  if (output === undefined || !/^\d+$/.test(output)) return undefined;
+  return Number.parseInt(output, 10);
+}

@@ -68,7 +68,11 @@ function largestSection(r: WakeupResult): string | undefined {
  * NEVER trimmed: identity, focus, constraints, vision, quarantine,
  * omission truths, and the memory protocol — the rubric is
  * non-droppable content (ADR 0118.1 Slice A); constraints never yield
- * (NORTH-STAR Amnesia contract).
+ * (NORTH-STAR Amnesia contract). The canonical-law divergence stubs
+ * (LATTICE W2: `vision.divergence`, `constraints_divergence`) ride at
+ * the same priority as the sections they annotate — both floor classes
+ * — so W2 absorbs its bytes by pushing THIS ladder, never by widening
+ * the ceiling.
  */
 function trimOnce(r: WakeupResult): string | undefined {
   if (r.recent.activity.length > 0) {

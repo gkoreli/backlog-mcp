@@ -80,6 +80,11 @@ export function formatWakeupBriefing(
       ...((result.metadata.constraints_omitted ?? 0) > 0
         ? [`  … ${result.metadata.constraints_omitted} more live constraint(s) omitted — raise --max-constraints`]
         : []),
+      // Canonical-law stub (LATTICE W2): local requirement sources differ
+      // from the family default branch — this law may be stale.
+      ...(result.constraints_divergence !== undefined
+        ? [`  ⚠ ${result.constraints_divergence}`]
+        : []),
     ]),
     ...Object.entries(result.sections).flatMap(([name, stubs]) =>
       section(name, [
@@ -97,7 +102,14 @@ export function formatWakeupBriefing(
         `  ${q.type.padEnd(12)} ${q.path} — still readable via search/get`,
       )),
     ...section('vision', result.vision
-      ? [`  ${result.vision.title} — ${result.vision.path} (hydrate on demand)`]
+      ? [
+          `  ${result.vision.title} — ${result.vision.path} (hydrate on demand)`,
+          // Canonical-law stub (LATTICE W2): the title above is the
+          // CANONICAL committed law; the local copy drifted.
+          ...(result.vision.divergence !== undefined
+            ? [`  ⚠ ${result.vision.divergence}`]
+            : []),
+        ]
       : (result.metadata.vision_candidates ?? []).length > 0
         ? [`  ambiguous — multiple vision candidates: ${(result.metadata.vision_candidates ?? []).join(', ')}`]
         : []),
