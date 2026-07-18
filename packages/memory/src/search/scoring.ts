@@ -186,14 +186,35 @@ export function applyTemporalDecay(
  * @param getTitle - Function to retrieve title for a document ID
  * @returns Re-scored results, sorted by adjusted score
  */
+/**
+ * Closed-class function words carry no topic, so counting them as coordination
+ * matches rewards incidental overlap ("what", "before", "a") the same as real
+ * topic words — inflating irrelevant docs into the top ranks (R8 qrels: grade-0
+ * MEMO-0012 tied a grade-3 on "merge law before landing a branch" purely on
+ * "what"/"before"). Discounted from coordination only; BM25/vector are untouched.
+ */
+const COORDINATION_STOPWORDS = new Set([
+  'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am',
+  'do', 'does', 'did', 'doing', 'have', 'has', 'had', 'my', 'your', 'our',
+  'their', 'its', 'his', 'her', 'i', 'we', 'you', 'they', 'it', 'he', 'she',
+  'of', 'to', 'in', 'on', 'at', 'for', 'with', 'by', 'from', 'as', 'into',
+  'onto', 'how', 'what', 'when', 'where', 'who', 'whom', 'which', 'why',
+  'and', 'or', 'but', 'not', 'no', 'if', 'then', 'than', 'so', 'that', 'this',
+  'these', 'those', 'before', 'after', 'about', 'up', 'down', 'out', 'me',
+]);
+
 export function applyCoordinationBonus(
   hits: ScoredHit[],
   query: string,
   getText: (id: string) => string,
   getTitle?: (id: string) => string,
 ): ScoredHit[] {
-  const queryWords = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
-  if (queryWords.length <= 1) return hits;
+  const rawWords = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (rawWords.length <= 1) return hits;
+  // Coordinate on content words only; if a query is all function words, there
+  // is no topical signal to coordinate on, so leave the ranking untouched.
+  const queryWords = rawWords.filter(w => !COORDINATION_STOPWORDS.has(w));
+  if (queryWords.length === 0) return hits;
 
   return hits
     .map(h => {

@@ -60,6 +60,16 @@ begins at 0.57.0 — earlier history lives in git.
   includes the project discovered from `cwd` (behavior change: an unflagged
   `--home all` from within a project now consults that project, not global
   alone). Ranking and single-home reads are untouched.
+- **Recall stops rewarding incidental stopword overlap — irrelevant memories
+  no longer ride generic words like "what", "before", or "a" into the top
+  ranks (surfaced by the R8 human recall qrels).** The multi-term
+  coordination bonus now discounts closed-class function words before counting
+  query-term overlap, so a memory that merely shares "what"/"before" with the
+  query earns no coordination credit while one matching the real topic does.
+  Measured against the human qrels (`recall-qrels-v2`): recall-04 nDCG
+  0.874 → 0.913, overall 0.8745 → 0.8842, zero regressions. BM25 and vector
+  scoring are untouched — this only stops the coordination re-ranker from
+  counting topic-free words.
 
 ## [0.68.0] — 2026-07-18
 

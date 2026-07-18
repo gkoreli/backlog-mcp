@@ -198,6 +198,34 @@ describe('scoring module (ADR-0081)', () => {
     it('handles empty hits', () => {
       expect(applyCoordinationBonus([], 'feature store', () => '')).toEqual([]);
     });
+
+    it('discounts stopwords: incidental function-word overlap earns no bonus (R8 Q3)', () => {
+      // Reproduces the R8 Q3 defect: a grade-0 doc whose only overlap with
+      // "what is my merge law before landing" is the function words
+      // "what"/"before" must not be lifted over a doc matching the real topic.
+      const stopDocs: Record<string, string> = {
+        topical: 'merge law rebase landing discipline',   // matches merge/law/landing
+        generic: 'what to know before you begin anything', // matches only what/before
+      };
+      const hits: ScoredHit[] = [
+        { id: 'generic', score: 0.5 },
+        { id: 'topical', score: 0.5 },
+      ];
+      const result = applyCoordinationBonus(
+        hits,
+        'what is my merge law before landing',
+        (id) => stopDocs[id] || '',
+      );
+      expect(result[0].id).toBe('topical');            // real content bonus wins
+      const generic = result.find(h => h.id === 'generic')!;
+      expect(generic.score).toBe(0.5);                 // no stopword credit at all
+    });
+
+    it('leaves an all-stopword query untouched (no topical signal)', () => {
+      const hits: ScoredHit[] = [{ id: 'a', score: 0.8 }, { id: 'b', score: 0.3 }];
+      const result = applyCoordinationBonus(hits, 'what is the', getText);
+      expect(result).toEqual(hits);
+    });
   });
 
   describe('applyTemporalDecay (ADR-0092.1)', () => {
