@@ -1,7 +1,7 @@
 ---
 title: "0126 — Retrieval Substrate: Stay on Orama-Done-Right; sqlite-vec as the Designed Fallback"
 date: 2026-07-18
-status: "Proposed (granite recommends; awaiting goga's ruling — he set the condition 'either Orama works properly or we explore alternatives')"
+status: "Accepted (goga, 2026-07-18 — 'hold for now; we can replace that vector search any time'). Stay on Orama-done-right; sqlite-vec parked as the designed fallback with tripwires."
 author: granite (architect)
 relates_to:
   - ../NORTH-STAR.md

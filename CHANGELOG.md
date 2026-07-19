@@ -12,6 +12,18 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+## [0.69.0] — 2026-07-18
+
+*The release where recall started telling the truth. Human grading (R8) caught
+that memory retrieval had been quietly broken three ways — the search engine's
+English stemming and stop-word removal were never active (a custom tokenizer
+bypassed Orama's pipeline), CLI-written memories silently carried no vector
+embeddings (a cold-process lifecycle bug), and `recall --home all` came back
+empty from inside a project. All three are fixed and measured against human
+qrels (nDCG 0.8745 → 0.8905), behind a consumer-agnostic core that keeps the
+whole retrieval engine swappable (Invariant 10, ADR 0125/0126). Requires a
+one-time index rebuild on first use.*
+
 ### Added
 - **Wake up knowing what you may legally do next — the focal briefing
   now names the declared transitions available from your operation's
