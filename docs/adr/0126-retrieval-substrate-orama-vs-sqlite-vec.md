@@ -59,6 +59,19 @@ on-disk. But the move carries real, verified costs:
 (LanceDB is the runner-up — best persistence, native hybrid, adopter "Cognee" —
 but has a **confirmed missing Intel-Mac build**, a real ship-blocker.)
 
+**Under the hood (verified against v3.1.18 source, `trees/vector.ts`):** Orama's
+vector search is a plain `Map<id, [magnitude, Float32Array]>` and a brute-force
+cosine `for`-loop (`findSimilarVectors`) — **no ANN index (no HNSW/IVF)**, and
+`toJSON()` serializes every raw vector into one JSON array (the ~512 MB
+V8-string ceiling and the in-memory-rebuild root). This is fine at our scale
+(hundreds–thousands of 512-dim vectors = microseconds) and it *equalizes* the
+`sqlite-vec` comparison: `sqlite-vec` is **also** brute-force (pre-1.0, no ANN) —
+just in C and on-disk, a better-engineered *same* algorithm, not a smarter one.
+Real ANN lives only in LanceDB (IVF/columnar) and DuckDB (HNSW). So Orama's
+vector layer is ~30 lines we could own ourselves; its real value is the
+hybrid-fusion plumbing + BM25/radix full-text + API — which is where the
+substrate question actually lives.
+
 ## Decision (recommended)
 
 **Stay on Orama-done-right. Do not migrate now.** Rationale, straight from our
@@ -87,8 +100,11 @@ execution, not research, when a tripwire fires.
    serialize/restore or scale-ceiling incident).
 3. Orama's **maintenance lapses** (abandonment, or breaking churn we can't
    absorb) — the research flagged real churn and a smaller project.
-4. We adopt a capability Orama can't give **on the vector/lexical axis** and a
-   file-based engine can.
+4. **Scale / ANN pressure** — a home grows past ~tens of thousands of vectors
+   and the brute-force scan (Orama *and* `sqlite-vec` both do this) gets slow, or
+   we need approximate nearest-neighbor. The target then is a real ANN engine
+   (**LanceDB**, HNSW/IVF) — *not* `sqlite-vec` — a distinct, higher bar than the
+   persistence tripwires (1–3).
 
 ## Non-goals
 
