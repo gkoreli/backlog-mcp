@@ -102,6 +102,15 @@ function hasParentPathSegment(uri: string): boolean {
 export class ResourceManager {
   private readonly rootDir: string;
   private readonly scanDir: string;
+  /**
+   * Memoized catalog (ADR 0127). `list()` re-reads and gray-matter-parses the
+   * whole scan tree; on a large home that is seconds of CPU per call, and it
+   * is polled by `/api/desk`, `/api/status`, and reconcile. The cache serves
+   * warm reads from an already-parsed model; `invalidate()` (called on local
+   * writes and watcher-driven reconcile) rebuilds it from disk. Markdown stays
+   * authoritative — this is derived state, never a second source of truth.
+   */
+  private catalogCache: Resource[] | undefined;
 
   constructor(rootDir: string, scanDir: string = rootDir) {
     this.rootDir = resolve(rootDir);
@@ -114,11 +123,29 @@ export class ResourceManager {
   }
 
   /**
+   * Drop the memoized catalog so the next `list()` rebuilds from disk
+   * (ADR 0127 R3). Idempotent; cheap.
+   */
+  invalidate(): void {
+    this.catalogCache = undefined;
+  }
+
+  /**
    * List all supported documents beneath the configured scan directory,
    * plus repo-root orientation files when the scan is narrower than the
    * root. Returns Resource objects ready for search indexing.
+   *
+   * Memoized (ADR 0127): rebuilt only after `invalidate()`.
    */
   list(): Resource[] {
+    const cached = this.catalogCache;
+    if (cached !== undefined) return cached;
+    const catalog = this.buildCatalog();
+    this.catalogCache = catalog;
+    return catalog;
+  }
+
+  private buildCatalog(): Resource[] {
     const discovery = discoverDocuments({ documentsDir: this.scanDir });
     const resources: Resource[] = [];
     for (const document of discovery.documents) {

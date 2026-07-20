@@ -129,6 +129,52 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     expect(storage.getMarkdown('TASK-0001')).toContain('Native body');
   });
 
+  it('memoizes the read model: an external edit after a warming read is not seen until invalidate (ADR 0127)', function memoizesReadModel() {
+    const { home, storage } = createStorage('read-model-memo');
+    const task = buildEntity({
+      id: 'TASK-0001',
+      title: 'Before edit',
+      content: 'Original body',
+    });
+    storage.add(task);
+
+    // Warm the cache with a read (add() invalidated, so this rebuilds + memoizes).
+    expect(storage.get('TASK-0001')).toMatchObject({ title: 'Before edit' });
+
+    // External raw edit with NO write through the adapter and NO reconcile:
+    // the memoized snapshot must still serve the pre-edit value.
+    writeRawDocument(
+      home,
+      'tasks/TASK-0001.md',
+      entityMarkdown({ ...task, title: 'Edited natively' }, 'Native body'),
+    );
+    expect(storage.get('TASK-0001')).toMatchObject({ title: 'Before edit' });
+
+    // invalidate() is the watcher-driven refresh seam: the next read rebuilds.
+    storage.invalidate();
+    expect(storage.get('TASK-0001')).toMatchObject({
+      title: 'Edited natively',
+      content: 'Native body',
+    });
+  });
+
+  it('invalidates the read model on every write and delete (ADR 0127)', function invalidatesOnMutation() {
+    const { storage } = createStorage('read-model-mutation');
+    const task = buildEntity({ id: 'TASK-0001', title: 'First' });
+    storage.add(task);
+
+    // Warm the cache, then save through the adapter — the write must be seen.
+    expect(storage.get('TASK-0001')).toMatchObject({ title: 'First' });
+    storage.save({ ...task, title: 'Renamed' });
+    expect(storage.get('TASK-0001')).toMatchObject({ title: 'Renamed' });
+    expect(storage.counts().total_tasks).toBe(1);
+
+    // Delete through the adapter must also drop it from the warm read model.
+    storage.delete('TASK-0001');
+    expect(storage.get('TASK-0001')).toBeUndefined();
+    expect(storage.counts().total_tasks).toBe(0);
+  });
+
   it('keeps generic, out-of-claim, malformed, and invalid documents out of typed storage', function ignoresUntypedDocuments() {
     const { home, storage } = createStorage('ignored-documents');
     const validTask = buildEntity({ id: 'TASK-0001', title: 'Valid task' });

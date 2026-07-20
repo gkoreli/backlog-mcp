@@ -145,6 +145,14 @@ export class BacklogService implements IBacklogService {
   }
 
   private async reconcileSearchIndex(): Promise<BacklogReconciliationResult> {
+    // Watcher-driven refresh boundary: an external edit changed the markdown
+    // tree, so the storage read model must rebuild from disk before we index
+    // it (ADR 0127 R3). Local writes invalidate themselves; this covers the
+    // external-edit path the watcher funnels through here.
+    if (isDocumentStorageAdapter(this.storage)) {
+      this.storage.invalidate?.();
+    }
+    this.resourceManager.invalidate();
     const allEntities = Array.from(this.storage.iterateEntities()).flatMap(
       (entity) => {
         const document = createSearchEntityDocument(entity, this.getSearchFields);
@@ -282,6 +290,8 @@ export class BacklogService implements IBacklogService {
 
   async add(candidate: AnyEntity): Promise<AnyEntity> {
     const entity = this.storage.add(candidate);
+    // The new entity document is also a catalog resource (ADR 0127 R2).
+    this.resourceManager.invalidate();
     const document = createSearchEntityDocument(entity, this.getSearchFields);
     if (document !== undefined) {
       await this.enqueueSearchOperation(() => this.search.addDocument(document));
@@ -294,6 +304,8 @@ export class BacklogService implements IBacklogService {
     options?: StorageSaveOptions,
   ): Promise<AnyEntity> {
     const entity = this.storage.save(candidate, options);
+    // The saved document's catalog projection (title/status) may have changed.
+    this.resourceManager.invalidate();
     const document = createSearchEntityDocument(entity, this.getSearchFields);
     if (document !== undefined) {
       await this.enqueueSearchOperation(() => this.search.updateDocument(document));
@@ -304,6 +316,7 @@ export class BacklogService implements IBacklogService {
   async delete(id: string): Promise<boolean> {
     const deleted = this.storage.delete(id);
     if (deleted) {
+      this.resourceManager.invalidate();
       await this.enqueueSearchOperation(() => this.search.removeDocument(id));
     }
     return deleted;

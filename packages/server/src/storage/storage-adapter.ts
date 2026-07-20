@@ -77,6 +77,14 @@ export interface DocumentStorageAdapter extends StorageAdapter {
   createDocument(entity: AnyEntity, sourcePath: string): AnyEntity;
   /** Claimed-but-uncompilable documents, sourcePath-ordered. */
   listClaimQuarantines?(): ClaimQuarantine[];
+  /**
+   * Drop any derived in-memory read model so the next read rebuilds from the
+   * authoritative markdown on disk (ADR 0127 R3). Local writes invalidate
+   * themselves; this is the seam the watcher-driven reconcile uses to refresh
+   * the read model after an external edit. A no-op is a valid implementation
+   * for adapters that hold no cache.
+   */
+  invalidate?(): void;
 }
 
 /**

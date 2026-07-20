@@ -225,11 +225,46 @@ function sortableTime(document: StoredEntityDocument): number {
  * Declarative documents stay lenient on read; every managed write passes once
  * through the strict project registry and serializes its canonical result.
  */
+/**
+ * The parsed, claimed read model for one home, computed once per disk scan
+ * and reused across reads until a write or an external-edit reconcile
+ * invalidates it (ADR 0127). Markdown on disk stays authoritative; this is a
+ * derived snapshot rebuilt from `discoverDocuments()` on the next read after
+ * invalidation, never a second source of truth.
+ */
+interface StorageSnapshot {
+  documents: StoredEntityDocument[];
+  quarantines: ClaimQuarantine[];
+  claimDiagnostics: readonly ClaimCollisionDiagnostic[];
+  byId: Map<string, StoredEntityDocument>;
+  bySourcePath: Map<string, StoredEntityDocument>;
+}
+
+interface ClaimCollisionDiagnostic {
+  type: string;
+  sourcePaths: readonly string[];
+}
+
 export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
+  /**
+   * Memoized read model. `undefined` means "cold" — the next read rebuilds it
+   * from disk. Every mutation and every `invalidate()` resets it to
+   * `undefined` (ADR 0127 R1–R3).
+   */
+  private snapshotCache: StorageSnapshot | undefined;
+
   constructor(
     private readonly home: BacklogHome,
     private readonly registry: ProjectSubstrateRegistry,
   ) {}
+
+  /**
+   * Drop the derived read model (ADR 0127 R3). Idempotent and cheap; the next
+   * read rebuilds from the authoritative markdown tree.
+   */
+  invalidate(): void {
+    this.snapshotCache = undefined;
+  }
 
   private discoverClaims() {
     const discovery = discoverDocuments({
@@ -242,8 +277,47 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     });
   }
 
+  /**
+   * Build (or reuse) the parsed snapshot. The single disk-scan + parse choke
+   * point: every read funnels here, so memoizing it makes warm reads O(1)
+   * over an already-parsed model instead of re-reading all files (ADR 0127).
+   */
+  private snapshot(): StorageSnapshot {
+    const cached = this.snapshotCache;
+    if (cached !== undefined) return cached;
+
+    const documents: StoredEntityDocument[] = [];
+    const quarantines: ClaimQuarantine[] = [];
+    const { claimed, diagnostics } = this.discoverClaims();
+    for (const claim of claimed) {
+      const parsed = parseStoredDocument(claim, this.registry);
+      if (parsed.document !== undefined) documents.push(parsed.document);
+      if (parsed.quarantine !== undefined) quarantines.push(parsed.quarantine);
+    }
+
+    const byId = new Map<string, StoredEntityDocument>();
+    const bySourcePath = new Map<string, StoredEntityDocument>();
+    for (const document of documents) {
+      // First claim wins on a duplicate id, mirroring the previous linear
+      // scan's find-first semantics; genuine collisions are already reported
+      // as claimDiagnostics and blocked at the write boundary.
+      if (!byId.has(document.entity.id)) byId.set(document.entity.id, document);
+      bySourcePath.set(document.sourcePath, document);
+    }
+
+    const snapshot: StorageSnapshot = {
+      documents,
+      quarantines,
+      claimDiagnostics: diagnostics,
+      byId,
+      bySourcePath,
+    };
+    this.snapshotCache = snapshot;
+    return snapshot;
+  }
+
   private assertNoClaimCollisions(type: SubstrateType): void {
-    const collisions = this.discoverClaims().diagnostics.filter(
+    const collisions = this.snapshot().claimDiagnostics.filter(
       function matchesType(diagnostic) {
         return diagnostic.type === type;
       },
@@ -251,7 +325,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     if (collisions.length === 0) return;
 
     const sourcePaths = collisions.flatMap(function getSources(diagnostic) {
-      return diagnostic.sourcePaths;
+      return [...diagnostic.sourcePaths];
     }).sort();
     throw new SubstrateWriteError(type, [{
       code: 'shape',
@@ -261,21 +335,11 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   }
 
   private documents(): StoredEntityDocument[] {
-    const documents: StoredEntityDocument[] = [];
-    for (const claimed of this.discoverClaims().claimed) {
-      const parsed = parseStoredDocument(claimed, this.registry);
-      if (parsed.document !== undefined) documents.push(parsed.document);
-    }
-    return documents;
+    return this.snapshot().documents;
   }
 
   listClaimQuarantines(): ClaimQuarantine[] {
-    const quarantines: ClaimQuarantine[] = [];
-    for (const claimed of this.discoverClaims().claimed) {
-      const parsed = parseStoredDocument(claimed, this.registry);
-      if (parsed.quarantine !== undefined) quarantines.push(parsed.quarantine);
-    }
-    return quarantines;
+    return this.snapshot().quarantines;
   }
 
   private claimFor(entity: AnyEntity): Readonly<SubstrateStorageClaim> {
@@ -349,24 +413,20 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
       serializeEntity(entity),
       exclusive ? { flag: 'wx' } : undefined,
     );
+    // The disk changed; the derived read model is now stale (ADR 0127 R2).
+    this.invalidate();
     return entity;
   }
 
   getDocumentById(id: string): StoredEntityDocument | undefined {
-    for (const document of this.documents()) {
-      if (document.entity.id === id) return document;
-    }
-    return undefined;
+    return this.snapshot().byId.get(id);
   }
 
   getDocumentBySourcePath(
     sourcePath: string,
   ): StoredEntityDocument | undefined {
     const normalizedSourcePath = normalizeDocumentSourcePath(sourcePath);
-    for (const document of this.documents()) {
-      if (document.sourcePath === normalizedSourcePath) return document;
-    }
-    return undefined;
+    return this.snapshot().bySourcePath.get(normalizedSourcePath);
   }
 
   *iterateDocuments(): Generator<StoredEntityDocument> {
@@ -468,6 +528,8 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
       this.home.documentsDir,
       ...document.sourcePath.split('/'),
     ));
+    // The disk changed; the derived read model is now stale (ADR 0127 R2).
+    this.invalidate();
     return true;
   }
 

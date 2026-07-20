@@ -86,6 +86,26 @@ describe('ResourceManager', () => {
       })).toBe(false);
     });
 
+    it('memoizes the catalog and rebuilds only after invalidate (ADR 0127)', () => {
+      const memoRoot = join(tmpdir(), 'resource-manager-memo');
+      writeDocument(memoRoot, 'tasks/TASK-0001.md', '---\nid: TASK-0001\n---\n# One');
+      const manager = new ResourceManager(memoRoot);
+
+      // Warm the cache.
+      expect(manager.list().map((r) => r.path)).toEqual(['tasks/TASK-0001.md']);
+
+      // A new file on disk is NOT seen while the catalog is memoized.
+      writeDocument(memoRoot, 'tasks/TASK-0002.md', '---\nid: TASK-0002\n---\n# Two');
+      expect(manager.list().map((r) => r.path)).toEqual(['tasks/TASK-0001.md']);
+
+      // invalidate() is the refresh seam: the next list rebuilds from disk.
+      manager.invalidate();
+      expect(manager.list().map((r) => r.path)).toEqual([
+        'tasks/TASK-0001.md',
+        'tasks/TASK-0002.md',
+      ]);
+    });
+
     it('excludes substrate JSON declarations from search resources', () => {
       const resources = new ResourceManager(ROOT_DIR).list();
 
