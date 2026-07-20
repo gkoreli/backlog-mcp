@@ -19,6 +19,14 @@ export interface HomeRequestSelection {
 export interface HomeProvenance {
   home: 'global' | 'project';
   home_id: string;
+  /** Canonical home root from the server domain model (env-resolved). */
+  root: string;
+  /** Absolute documents directory. */
+  documents_dir: string;
+  /** Server-computed short label — rendered verbatim (no client path ops). */
+  label: string;
+  /** Server-computed home-collapsed path — rendered verbatim. */
+  display_path: string;
   source_path?: string;
 }
 
@@ -90,6 +98,50 @@ export function getProvenanceSelection(
     return { home: 'project', projectRoot: provenance.home_id };
   }
   return undefined;
+}
+
+/**
+ * One entry in the recent-homes switcher (ADR 0128). Every field is
+ * server-computed and rendered verbatim: `label` and `display_path` come from
+ * the server's home presenter — the client does NO path surgery. `root` is the
+ * canonical key used for selection.
+ */
+export type RecentHome =
+  | { home: 'global'; label: string; root?: string; display_path?: string }
+  | {
+      home: 'project';
+      root: string;
+      label: string;
+      display_path: string;
+      first_seen: string;
+      last_seen: string;
+    };
+
+/**
+ * Fetch the switcher's homes: `global` (always) + every project home worked
+ * against. Never scans disk — reads the server's use-declared manifest
+ * (ADR 0128). A legacy server without the endpoint degrades to just global.
+ */
+export async function fetchRecentHomes(): Promise<RecentHome[]> {
+  try {
+    const res = await fetch(buildApiUrl('/api/homes'));
+    if (!res.ok) return [{ home: 'global', label: 'global' }];
+    const body = await res.json() as { homes?: RecentHome[] };
+    return body.homes ?? [{ home: 'global', label: 'global' }];
+  } catch {
+    return [{ home: 'global', label: 'global' }];
+  }
+}
+
+/** Forget a recent project home (ADR 0128 R6). Best-effort; ignores failure. */
+export async function forgetRecentHome(root: string): Promise<void> {
+  try {
+    await fetch(buildApiUrl(`/api/homes/${encodeURIComponent(root)}`), {
+      method: 'DELETE',
+    });
+  } catch {
+    // Best-effort curation; a failed forget simply leaves the entry.
+  }
 }
 
 /** Build one viewer API URL, adding request-scoped home params when selected. */
