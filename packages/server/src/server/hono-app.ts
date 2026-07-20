@@ -35,7 +35,13 @@ import {
   withEntityHomeProvenance,
   withSearchHomeProvenance,
 } from './home-provenance.js';
+import { homedir } from 'node:os';
 import { selectMcpRequestRuntime } from './mcp-request-runtime.js';
+import type { RecentHomesStore } from '../storage/local/recent-homes-store.js';
+import {
+  presentGlobalHome,
+  presentProjectHome,
+} from '../core/home-presentation.js';
 import { asBuiltinEntity } from '../core/substrates/index.js';
 import { createHomeReadCoordinator } from '../core/home-read-coordinator.js';
 import type {
@@ -88,6 +94,8 @@ export interface AppDeps extends ToolDeps {
   db?: any;                // cloud: D1 database — used for mode detection only
   resolveRuntime?: AppRequestRuntimeResolver;
   requestShutdown?: () => void | Promise<void>;
+  // Recent-homes registry (ADR 0128); Node-only, absent in Worker.
+  recentHomes?: RecentHomesStore;
 }
 
 interface RequestSelectionSource {
@@ -605,6 +613,67 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       uptime: Math.floor((Date.now() - startTime) / 1000),
       ...getHomeProvenance(runtime),
     });
+  });
+
+  // ── Recent homes (ADR 0128) ──────────────────────────────────────────────────
+  // The switcher's source of truth: `global` (always) + every project home an
+  // agent has worked against. Populated by use at the runtime-resolution seam,
+  // never by scanning the filesystem (ADR 0112 R-9). Node-only; a Worker/legacy
+  // server without a store simply returns just the global entry.
+  const recentHomes = deps?.recentHomes;
+  app.get('/api/homes', async (c) => {
+    const userHomeDir = homedir();
+    // The global entry carries its real, env-resolved root/documentsDir from
+    // the domain model plus server-computed presentation (never a client-side
+    // `~/.backlog` guess). Resolve the global runtime and project its home.
+    const globalRuntime = await resolveSelectedRuntime({ home: 'global' });
+    const globalHome = globalRuntime.home;
+    const globalPresentation = presentGlobalHome(
+      globalHome?.root ?? '',
+      userHomeDir,
+    );
+    const projects = (recentHomes?.read() ?? []).map(function toItem(entry) {
+      // Label/display_path are computed server-side from the same presenter,
+      // so the UI renders identical strings for every home (ADR 0128).
+      const presentation = presentProjectHome(entry.root, userHomeDir);
+      return {
+        home: 'project' as const,
+        root: entry.root,
+        label: presentation.label,
+        display_path: presentation.display_path,
+        first_seen: entry.first_seen,
+        last_seen: entry.last_seen,
+      };
+    });
+    return c.json({
+      homes: [
+        {
+          home: 'global' as const,
+          label: globalPresentation.label,
+          ...(globalHome === undefined
+            ? {}
+            : {
+                root: globalHome.root,
+                documents_dir: globalHome.documentsDir,
+                display_path: globalPresentation.display_path,
+              }),
+        },
+        ...projects,
+      ],
+    });
+  });
+
+  // DELETE /api/homes/:root — forget one recent project (ADR 0128 R6). The
+  // root is URL-encoded; forgetting is idempotent and never touches the home.
+  app.delete('/api/homes/:root', (c) => {
+    if (recentHomes === undefined) return c.json({ removed: false }, 200);
+    let root: string;
+    try {
+      root = decodeURIComponent(c.req.param('root'));
+    } catch {
+      return c.json({ error: 'Invalid root encoding' }, 400);
+    }
+    return c.json({ removed: recentHomes.forget(root) });
   });
 
   // ── Operations ──────────────────────────────────────────────────────────────

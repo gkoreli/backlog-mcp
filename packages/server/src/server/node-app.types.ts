@@ -1,3 +1,4 @@
+import type { RecentHomesStore } from '../storage/local/recent-homes-store.js';
 import type {
   AppRequestRuntime,
   AppRequestRuntimeResolver,
@@ -9,4 +10,6 @@ export interface CreateNodeAppOptions {
   skipStatic?: boolean;
   resolveRuntime?: AppRequestRuntimeResolver;
   requestShutdown?: () => void | Promise<void>;
+  /** Recent-homes registry (ADR 0128), exposed via GET/DELETE /api/homes. */
+  recentHomes?: RecentHomesStore;
 }

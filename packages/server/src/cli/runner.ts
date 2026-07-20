@@ -23,6 +23,11 @@ import {
   type LocalRuntime,
 } from '../storage/local/local-runtime.js';
 import { resolveLegacyDataRoot } from '../utils/legacy-data-root.js';
+import {
+  RecentHomesStore,
+  defaultHomeLabel,
+  recentHomesManifestPath,
+} from '../storage/local/recent-homes-store.js';
 import { resolveContext } from '../core/config.js';
 import type {
   CliRunnerDependencies,
@@ -73,6 +78,17 @@ async function createDocsNativeCliRuntime(
     // knows its family; main checkouts and non-git roots are unchanged.
     deps: { resolveFamily: resolveGitFamily },
   });
+  // Recent-homes self-declaration (ADR 0128 R3): a CLI command run inside a
+  // project — `backlog wakeup` in a repo, `code .`-style — records that home
+  // so the viewer's switcher can offer it later. The manifest lives under the
+  // GLOBAL home's state dir (one registry for the whole singleton). Global is
+  // the implicit entry and is never recorded. Fail-open by the store's
+  // contract — recording never breaks the command.
+  if (home.kind === 'project') {
+    const globalHome = resolveBacklogHome({ home: 'global', env });
+    new RecentHomesStore(recentHomesManifestPath(globalHome.controlDir))
+      .recordProjectHome(home.root, defaultHomeLabel(home.root));
+  }
   const adaptLocalRuntime = deps.adaptLocalRuntime
     ?? createLocalAppRequestRuntime;
   const localRuntime: LocalRuntime = deps.createLocalRuntime?.(home)
