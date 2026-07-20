@@ -12,6 +12,44 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+## [0.70.0] — 2026-07-20
+
+*The release where the viewer remembers your projects and stops hanging. Two
+things landed: opening a project anywhere — a `backlog` command in a repo, an
+MCP call over the bridge, or the viewer's `?project_root` — now records it in a
+recent-homes registry, so the header switcher offers every project you've
+worked in (like `code .` fills VS Code's recents) without ever scanning your
+disk. And the docs-native store stopped re-reading and re-parsing the entire
+markdown corpus on every read, which on large homes had pinned the event loop
+and left the viewer spinning with no response.*
+
+### Added
+- **Switch between your backlog homes from the header.** The home selector now
+  lists `global` plus every project you've opened, most-recent-first, each with
+  its name and path; the active one is checked, and a hover ✕ forgets a project
+  you no longer want listed. Projects self-declare on use — run any `backlog`
+  command inside a repo, connect an MCP client from it, or open it with
+  `?project_root=…`, and it appears automatically. No directory scanning: the
+  list is a use-declared registry (`~/.backlog/state/homes.json`).
+- **`GET /api/homes`** returns global + recent project homes with
+  server-computed display fields; **`DELETE /api/homes/:root`** forgets one.
+
+### Changed
+- **Home identity is presented by the server.** `/api/status` provenance and
+  `/api/homes` now carry `root`, `documents_dir`, `label`, and `display_path`
+  straight from the domain model, so the viewer renders them verbatim instead
+  of guessing paths (no more assumed `~/.backlog`). The global root honors
+  `BACKLOG_GLOBAL_ROOT`.
+
+### Fixed
+- **The viewer no longer hangs on large homes.** The docs-native storage
+  adapter and the resource catalog now memoize their parsed read model and
+  rebuild only on write or on the watcher's reconcile, instead of re-reading
+  and re-parsing every markdown file on every read. On a 1,300+ document home
+  the `/operations` feed had multiplied that into tens of thousands of file
+  reads per poll, saturating the single-threaded server so pages never
+  responded; reads are now O(1) against a warm snapshot.
+
 ## [0.69.0] — 2026-07-18
 
 *The release where recall started telling the truth. Human grading (R8) caught
