@@ -1,5 +1,7 @@
 # backlog-mcp
 
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fgkoreli%2Fbacklog-mcp.svg)](https://mcptoplist.com/server/glama%2Fgkoreli%2Fbacklog-mcp)
+
 **Context & memory engineering for AI agents.** A markdown-backed storage engine your agents write to and humans read — **one core, many consumers:** any MCP client (Claude, Cursor, Codex, Kiro, …), the CLI, the web viewer, and external orchestrators all read and write the same store.
 
 **Your backlog is your agent's memory.** Agents orient at session start (`wakeup`), recall past decisions, remember what's durable, and expand any entity's neighborhood on demand — alongside the working backlog of tasks, epics, artifacts, and more. Every item is a plain markdown file with YAML frontmatter, so a human can read, edit, and diff everything with no tool installed.
