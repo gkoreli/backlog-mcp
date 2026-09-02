@@ -4,6 +4,8 @@ import { Command } from 'commander';
 import { paths } from '@server/utils/paths.js';
 import { resolveViewerPort } from '@server/utils/ports.js';
 import { isServerRunning, getServerVersion, shutdownServer } from './server-manager.js';
+import { reportCliFailure } from './cli-failure.js';
+import { requestExit } from '@server/utils/process-exit.js';
 import { registerList } from './commands/list.js';
 import { registerGet } from './commands/get.js';
 import { registerCreate } from './commands/create.js';
@@ -40,7 +42,7 @@ program
   .action(async () => {
     const port = resolveViewerPort(paths.environment);
     const running = await isServerRunning(port);
-    if (!running) { console.log('Server is not running'); process.exit(1); }
+    if (!running) { console.log('Server is not running'); requestExit(1); return; }
     try {
       const response = await fetch(`http://localhost:${port}/api/status`);
       const status = await response.json() as any;
@@ -58,7 +60,7 @@ program
       console.log(`Viewer: http://localhost:${port}/`);
       console.log(`MCP endpoint: http://localhost:${port}/mcp`);
     }
-    process.exit(0);
+    requestExit(0);
   });
 
 program
@@ -67,11 +69,11 @@ program
   .action(async () => {
     const port = resolveViewerPort(paths.environment);
     const running = await isServerRunning(port);
-    if (!running) { console.log('Server is not running'); process.exit(0); }
+    if (!running) { console.log('Server is not running'); return; }
     console.log(`Stopping server on port ${port}...`);
     await shutdownServer(port);
     console.log('Server stopped');
-    process.exit(0);
+    requestExit(0);
   });
 
 // --- Data commands (new) ---
@@ -107,4 +109,4 @@ program.action(async () => {
   await import('./bridge.js');
 });
 
-program.parse();
+program.parseAsync().catch(function onCliFailure(error: unknown) { reportCliFailure(error); });

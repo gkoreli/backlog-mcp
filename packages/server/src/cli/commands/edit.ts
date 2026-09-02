@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { editItem } from '../../core/edit.js';
+import { ValidationError } from '../../core/types.js';
 import type { EditOperation } from '@backlog-mcp/shared';
 import { cliRuntimeDependencies, run, withAgentIdentity } from '../runner.js';
 
@@ -10,8 +11,8 @@ const CLI_EDIT_ATTRIBUTION = {
 
 function formatResult(r: { success: boolean; message?: string; error?: string }) {
   if (!r.success) {
-    console.error(r.error ?? 'Edit failed');
-    process.exit(1);
+    // The CLI error boundary prints this and sets exit code 1 (ADR 0130 R5).
+    throw new ValidationError(r.error ?? 'Edit failed');
   }
   return r.message ?? 'Done';
 }

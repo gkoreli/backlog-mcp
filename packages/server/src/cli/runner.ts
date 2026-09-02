@@ -6,7 +6,6 @@ import {
   BacklogHomeResolutionError,
   resolveBacklogHome,
 } from '../core/backlog-home.js';
-import { NotFoundError, ValidationError } from '../core/types.js';
 import { createHomeReadCoordinator } from '../core/home-read-coordinator.js';
 import type {
   HomeReadCoordinator,
@@ -266,11 +265,11 @@ function printResult<R>(
   );
 }
 
+/**
+ * Surface a failed outcome to the CLI error boundary (`cli-failure.ts`),
+ * which prints and sets the exit code without hard-exiting (ADR 0130 R5).
+ */
 function throwRunError(error: unknown): never {
-  if (error instanceof NotFoundError || error instanceof ValidationError) {
-    console.error(error.message);
-    process.exit(1);
-  }
   throw error;
 }
 

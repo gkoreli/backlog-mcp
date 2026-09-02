@@ -12,6 +12,8 @@ import { paths } from '@server/utils/paths.js';
 import { resolveViewerPort } from '@server/utils/ports.js';
 import { logger } from '@server/utils/logger.js';
 
+// The bridge only spawns mcp-remote; it never loads the runtime or the ONNX
+// embedder, so its `process.exit` calls are sanctioned (ADR 0130 R6).
 async function runBridge(port: number): Promise<void> {
   await ensureServer(port);
 

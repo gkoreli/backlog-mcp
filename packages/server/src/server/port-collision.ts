@@ -10,6 +10,8 @@
  */
 
 import { execSync } from 'node:child_process';
+import { connect } from 'node:net';
+import { LOCAL_SERVER_HOSTNAME } from '../utils/ports.js';
 import { isOlderVersion } from '../utils/version.js';
 
 /**
@@ -92,6 +94,87 @@ export interface PortCollisionConfig {
   maxTakeoverAttempts?: number;
 }
 
+/** Human-facing + structured announcement shared by both resolvers' takeover branch. */
+function announceTakeover(
+  effects: Pick<PortCollisionEffects, 'log'>,
+  port: number,
+  incumbent: string | null,
+  ourVersion: string,
+): void {
+  // Only call the incumbent "older" when it genuinely is — in dev we reclaim
+  // an equal (or even newer) incumbent, so "older" would be misleading.
+  const descriptor = isOlderVersion(incumbent ?? '', ourVersion) ? `older v${incumbent}` : `v${incumbent}`;
+  effects.log(`Port ${port} held by ${descriptor} — shutting it down and taking over as v${ourVersion}...`);
+}
+
+/** Human-facing + structured announcement shared by both resolvers' defer branch. */
+function announceDefer(
+  effects: Pick<PortCollisionEffects, 'log' | 'errorLog' | 'fatalSync'>,
+  port: number,
+  incumbent: string | null,
+  ourVersion: string,
+): void {
+  if (incumbent) {
+    effects.log(`Port ${port} already served by v${incumbent} (>= v${ourVersion}) — deferring to the running server.`);
+    effects.fatalSync('Port owned by equal-or-newer instance — deferring', { port, incumbent, ours: ourVersion });
+  } else {
+    effects.errorLog(`Port ${port} is in use by an unidentified process. Change BACKLOG_VIEWER_PORT or stop it manually.`);
+    effects.fatalSync('Port held by unidentified process — deferring', { port, ours: ourVersion });
+  }
+}
+
+/** Side effects of the pre-bind probe (ADR 0130 R3) — a subset of the EADDRINUSE resolver's, plus the raw port probe. */
+export type PreBindEffects =
+  Omit<PortCollisionEffects, 'rebind' | 'exit'> & {
+    /** Is anything at all listening on the port? TCP-level, not an HTTP identity probe. */
+    isPortInUse(port: number): Promise<boolean>;
+  };
+
+/** What the daemon does after the pre-bind probe. */
+export type PreBindOutcome =
+  | { action: 'bind' }
+  | { action: 'exit'; code: number };
+
+/**
+ * Decide the port collision BEFORE the app is composed (ADR 0130 R3).
+ *
+ * Composing the app warms the embedding runtime; deciding first means a
+ * deferring instance exits having loaded nothing — one HTTP probe instead of
+ * a full runtime build followed by a hard exit through the ONNX abort. The
+ * EADDRINUSE resolver below remains the fallback for the bind race.
+ */
+export async function resolvePortBeforeBind(
+  config: PortCollisionConfig,
+  effects: PreBindEffects,
+): Promise<PreBindOutcome> {
+  const { port, ourVersion, isDevelopment } = config;
+  if (!(await effects.isPortInUse(port))) return { action: 'bind' };
+
+  const incumbent = await effects.getIncumbentVersion(port);
+  const action = decidePortCollision(incumbent, ourVersion, isDevelopment);
+
+  if (action === 'takeover') {
+    announceTakeover(effects, port, incumbent, ourVersion);
+    await effects.shutdownIncumbent(port);
+    await effects.sleep(1000);
+    return { action: 'bind' };
+  }
+
+  if (action === 'kill-holder') {
+    const killed = await effects.killPortHolder(port);
+    if (killed) {
+      effects.log(`⚠️  Killed stale process on port ${port} — retrying...`);
+      await effects.sleep(300);
+      return { action: 'bind' };
+    }
+    effects.errorLog(`Port ${port} in use and could not kill the holder. Change BACKLOG_VIEWER_PORT or kill it manually.`);
+    return { action: 'exit', code: 1 };
+  }
+
+  announceDefer(effects, port, incumbent, ourVersion);
+  return { action: 'exit', code: 0 };
+}
+
 /**
  * Build a stateful resolver for the `server.on('error')` EADDRINUSE path. The
  * returned function maps {@link decidePortCollision} to concrete effects and
@@ -133,10 +216,7 @@ export function createPortCollisionResolver(
       // (see the takeoverInProgress guard above) so we never abandon midway.
       takeoverInProgress = true;
       takeoverAttempts++; // count this first bind against the budget
-      // Only call the incumbent "older" when it genuinely is — in dev we reclaim
-      // an equal (or even newer) incumbent, so "older" would be misleading.
-      const descriptor = isOlderVersion(incumbent ?? '', ourVersion) ? `older v${incumbent}` : `v${incumbent}`;
-      effects.log(`Port ${port} held by ${descriptor} — shutting it down and taking over as v${ourVersion}...`);
+      announceTakeover(effects, port, incumbent, ourVersion);
       await effects.shutdownIncumbent(port);
       await effects.sleep(1000);
       effects.rebind();
@@ -157,19 +237,29 @@ export function createPortCollisionResolver(
     }
 
     // action === 'defer'
-    if (incumbent) {
-      effects.log(`Port ${port} already served by v${incumbent} (>= v${ourVersion}) — deferring to the running server.`);
-      effects.fatalSync('Port owned by equal-or-newer instance — deferring', { port, incumbent, ours: ourVersion });
-    } else {
-      effects.errorLog(`Port ${port} is in use by an unidentified process. Change BACKLOG_VIEWER_PORT or stop it manually.`);
-      effects.fatalSync('Port held by unidentified process — deferring', { port, ours: ourVersion });
-    }
+    announceDefer(effects, port, incumbent, ourVersion);
     effects.exit(0);
   };
 }
 
 /** Default {@link PortCollisionEffects.sleep}. */
 export const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
+
+const PORT_PROBE_TIMEOUT_MS = 500;
+
+/**
+ * Default {@link PreBindEffects.isPortInUse}: a TCP connect to the loopback
+ * port. Anything accepting the connection counts — including holders that are
+ * not backlog-mcp and would never answer `/version`.
+ */
+export function isPortInUse(targetPort: number): Promise<boolean> {
+  return new Promise(function probe(resolve) {
+    const socket = connect({ port: targetPort, host: LOCAL_SERVER_HOSTNAME });
+    socket.once('connect', function onConnect() { socket.destroy(); resolve(true); });
+    socket.once('error', function onError() { resolve(false); });
+    socket.setTimeout(PORT_PROBE_TIMEOUT_MS, function onTimeout() { socket.destroy(); resolve(false); });
+  });
+}
 
 /**
  * Default {@link PortCollisionEffects.killPortHolder}: find the PID listening

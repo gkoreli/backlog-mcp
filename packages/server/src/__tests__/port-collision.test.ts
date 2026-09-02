@@ -3,6 +3,8 @@ import {
   decidePortCollision,
   createPortCollisionResolver,
   type PortCollisionEffects,
+  type PreBindEffects,
+  resolvePortBeforeBind,
 } from '../server/port-collision.js';
 
 /**
@@ -168,5 +170,63 @@ describe('createPortCollisionResolver', () => {
     const defer = makeEffects({ getIncumbentVersion: vi.fn(async () => '0.54.0') });
     await createPortCollisionResolver(cfg(), defer)();
     expect((defer.log as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
+  });
+});
+
+describe('resolvePortBeforeBind (ADR 0130 R3 — decide before composing)', () => {
+  function preBindEffects(overrides: Partial<PreBindEffects> = {}): PreBindEffects {
+    return {
+      isPortInUse: vi.fn(async () => true),
+      getIncumbentVersion: vi.fn(async () => null),
+      shutdownIncumbent: vi.fn(async () => {}),
+      killPortHolder: vi.fn(async () => false),
+      log: vi.fn(),
+      errorLog: vi.fn(),
+      fatalSync: vi.fn(),
+      sleep: vi.fn(async () => {}),
+      ...overrides,
+    };
+  }
+  const prod = { port: 3030, ourVersion: '0.72.0', isDevelopment: false };
+
+  it('binds immediately on a free port without probing the incumbent', async () => {
+    const effects = preBindEffects({ isPortInUse: vi.fn(async () => false) });
+    await expect(resolvePortBeforeBind(prod, effects)).resolves.toEqual({ action: 'bind' });
+    expect(effects.getIncumbentVersion).not.toHaveBeenCalled();
+    expect(effects.shutdownIncumbent).not.toHaveBeenCalled();
+  });
+
+  it('takes over an older incumbent: shuts it down, waits, then binds', async () => {
+    const effects = preBindEffects({ getIncumbentVersion: vi.fn(async () => '0.71.0') });
+    await expect(resolvePortBeforeBind(prod, effects)).resolves.toEqual({ action: 'bind' });
+    expect(effects.shutdownIncumbent).toHaveBeenCalledWith(3030);
+    expect(effects.sleep).toHaveBeenCalledWith(1000);
+    expect(effects.log).toHaveBeenCalledWith(expect.stringContaining('older v0.71.0'));
+  });
+
+  it('defers to an equal-or-newer incumbent with exit 0, logged sync, nothing shut down', async () => {
+    const effects = preBindEffects({ getIncumbentVersion: vi.fn(async () => '0.72.0') });
+    await expect(resolvePortBeforeBind(prod, effects)).resolves.toEqual({ action: 'exit', code: 0 });
+    expect(effects.shutdownIncumbent).not.toHaveBeenCalled();
+    expect(effects.log).toHaveBeenCalledWith(expect.stringContaining('deferring to the running server'));
+    expect(effects.fatalSync).toHaveBeenCalledWith(
+      'Port owned by equal-or-newer instance — deferring',
+      { port: 3030, incumbent: '0.72.0', ours: '0.72.0' },
+    );
+  });
+
+  it('prod + unidentified holder: defers with exit 0 and never kills', async () => {
+    const effects = preBindEffects();
+    await expect(resolvePortBeforeBind(prod, effects)).resolves.toEqual({ action: 'exit', code: 0 });
+    expect(effects.killPortHolder).not.toHaveBeenCalled();
+    expect(effects.errorLog).toHaveBeenCalledWith(expect.stringContaining('unidentified process'));
+  });
+
+  it('dev + unidentified holder: kills it and binds; exits 1 when it cannot', async () => {
+    const dev = { ...prod, isDevelopment: true };
+    const killed = preBindEffects({ killPortHolder: vi.fn(async () => true) });
+    await expect(resolvePortBeforeBind(dev, killed)).resolves.toEqual({ action: 'bind' });
+    const stuck = preBindEffects();
+    await expect(resolvePortBeforeBind(dev, stuck)).resolves.toEqual({ action: 'exit', code: 1 });
   });
 });
