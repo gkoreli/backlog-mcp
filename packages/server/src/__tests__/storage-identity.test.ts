@@ -152,6 +152,20 @@ describe('storage identity formatting', function describeFormatting() {
       .toBe('requirements/REQ-0001.md');
   });
 
+  it('appends an optional slug after the path key for every strategy (ADR 0129 R2)', () => {
+    expect(storageDocumentSourcePath(adrClaim, 'ADR 0113.1', 'runtime-seam'))
+      .toBe('adr/0113.1-runtime-seam.md');
+    expect(storageDocumentSourcePath(requirementClaim, 'REQ-0001', 'identity-in-prompt'))
+      .toBe('requirements/REQ-0001-identity-in-prompt.md');
+    expect(storageDocumentSourcePath(requirementClaim, 'REQ-0001', undefined))
+      .toBe('requirements/REQ-0001.md');
+    expect(matchesStorageDocumentIdentity(
+      requirementClaim,
+      'REQ-0001',
+      { sourcePath: 'requirements/REQ-0001-identity-in-prompt.md', pathKey: 'REQ-0001', slug: 'identity-in-prompt' },
+    )).toBe(true);
+  });
+
   it('inverts non-derivable display templates without guessing from prefixes', () => {
     const claim = {
       type: 'decision',

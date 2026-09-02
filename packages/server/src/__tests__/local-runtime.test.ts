@@ -276,7 +276,7 @@ describe('LocalRuntime', function describeLocalRuntime() {
       'Claim-shaped task',
     );
     expect(existsSync(
-      join(home.documentsDir, 'tasks', 'TASK-0001.md'),
+      join(home.documentsDir, 'tasks', 'TASK-0001-claim-shaped-task.md'),
     )).toBe(true);
   });
 
@@ -395,9 +395,9 @@ describe('LocalRuntime', function describeLocalRuntime() {
       return result.item.id;
     })).toEqual([created.id]);
     expect(existsSync(
-      join(home.documentsDir, 'decisions', '001.md'),
+      join(home.documentsDir, 'decisions', '001-runtime-decision.md'),
     )).toBe(true);
-    const storedPath = join(home.documentsDir, 'decisions', '001.md');
+    const storedPath = join(home.documentsDir, 'decisions', '001-runtime-decision.md');
     const beforeRejectedUpdate = readFileSync(storedPath, 'utf8');
     await expect(updateEntityCore(
       runtime.service,

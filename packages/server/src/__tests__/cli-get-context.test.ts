@@ -169,7 +169,7 @@ describe('get --context parity (report 0010 F3)', () => {
 
   it('CLI: a resource-path get with --context reads, never expands (granite ruling)', async () => {
     const before = telemetryLines().length;
-    const out = await runGetCommand('docs/tasks/TASK-0100.md', '--context');
+    const out = await runGetCommand('docs/tasks/TASK-0100-focal-task.md', '--context');
     expect(out).toContain('Focal work item body.');
     expect(telemetryLines()).toHaveLength(before);
   });

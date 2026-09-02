@@ -99,16 +99,25 @@ export function formatStoragePathKey(
   return `${prefix}-${semanticKey}`;
 }
 
-/** Resolve the canonical docs-relative Markdown path for one display id. */
+/**
+ * Resolve the canonical docs-relative Markdown path for one display id.
+ *
+ * An optional slug is appended after the path key (`MEMO-0010-<slug>.md`,
+ * ADR 0129 R2). The slug is decorative: identity parsing strips it and the
+ * bare `<pathKey>.md` form stays valid forever (R1, R5).
+ */
 export function storageDocumentSourcePath(
   claim: Readonly<SubstrateStorageClaim>,
   id: string,
+  slug?: string,
 ): string {
   const semanticKey = parseStorageDisplayId(claim, id);
   if (!semanticKey) {
     throw new Error(`Document id does not match storage claim ${claim.type}: ${id}`);
   }
-  return posix.join(claim.folder, `${formatStoragePathKey(claim, semanticKey)}.md`);
+  const pathKey = formatStoragePathKey(claim, semanticKey);
+  const stem = slug === undefined ? pathKey : `${pathKey}-${slug}`;
+  return posix.join(claim.folder, `${stem}.md`);
 }
 
 /** Check display-id agreement with a substrate-neutral discovered identity. */

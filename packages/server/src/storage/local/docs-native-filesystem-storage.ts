@@ -17,6 +17,7 @@ import { isPathWithin } from '../../core/backlog-home.js';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
 import { matchesDeclaredStatus } from '../../core/status-token.js';
 import { discoverDocuments } from '../../core/document-discovery.js';
+import { slugifyDocumentTitle } from '../../core/document-slug.js';
 import {
   normalizeDocumentSourcePath,
   parseDocumentIdentity,
@@ -405,6 +406,12 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     const entity = validation.entity;
     const claim = this.claimFor(entity);
     this.assertNoClaimCollisions(entity.type);
+    // Slugged filenames (ADR 0129) mean two writers minting one id can land
+    // on two different paths, so the `wx` flag alone no longer guards the
+    // id. The read model is the id-level exclusive check (R9).
+    if (exclusive && this.snapshot().byId.has(entity.id)) {
+      throw new Error(`Document id already exists: ${entity.id}`);
+    }
     const target = this.resolveClaimedPath(sourcePath, claim);
     validateWriteIdentity(entity, target.sourcePath, claim);
     mkdirSync(dirname(target.absolutePath), { recursive: true });
@@ -495,12 +502,22 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     return this.write(entity, sourcePath, true);
   }
 
-  add(entity: AnyEntity): AnyEntity {
+  /**
+   * The docs-relative path a brand-new document is written to: the claim's
+   * folder, the id's path key, and a title-derived slug (ADR 0129 R2). The
+   * slug is fixed here and never revisited on later saves (R4).
+   */
+  private newDocumentSourcePath(entity: AnyEntity): string {
     const claim = this.claimFor(entity);
-    return this.createDocument(
-      entity,
-      storageDocumentSourcePath(claim, entity.id),
+    return storageDocumentSourcePath(
+      claim,
+      entity.id,
+      slugifyDocumentTitle(entity.title),
     );
+  }
+
+  add(entity: AnyEntity): AnyEntity {
+    return this.createDocument(entity, this.newDocumentSourcePath(entity));
   }
 
   save(entity: AnyEntity, options?: StorageSaveOptions): AnyEntity {
@@ -514,9 +531,8 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
         `Canonical adoption requires separate explicit consent: ${entity.id}`,
       );
     }
-    const claim = this.claimFor(entity);
     const sourcePath = existing?.sourcePath
-      ?? storageDocumentSourcePath(claim, entity.id);
+      ?? this.newDocumentSourcePath(entity);
     return this.write(entity, sourcePath, false);
   }
 

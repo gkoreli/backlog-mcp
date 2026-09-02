@@ -370,7 +370,7 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
     ]);
 
     const markdown = readFileSync(
-      join(home.documentsDir, 'memories', 'MEMO-0001.md'),
+      join(home.documentsDir, 'memories', 'MEMO-0001-cloudflare-deployment-note.md'),
       'utf8',
     );
     expect(matter(markdown).data.distinct_from).toEqual(['MEMO-0002']);

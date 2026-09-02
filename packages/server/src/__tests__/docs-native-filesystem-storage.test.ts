@@ -76,8 +76,8 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     storage.add(task);
     storage.add(memory);
 
-    expect(existsSync(join(home.documentsDir, 'tasks/TASK-0001.md'))).toBe(true);
-    expect(existsSync(join(home.documentsDir, 'memories/MEMO-0001.md'))).toBe(true);
+    expect(existsSync(join(home.documentsDir, 'tasks/TASK-0001-task.md'))).toBe(true);
+    expect(existsSync(join(home.documentsDir, 'memories/MEMO-0001-memory.md'))).toBe(true);
     expect(storage.get('TASK-0001')).toMatchObject({ type: 'task', title: 'Task' });
     expect(storage.get('MEMO-0001')).toMatchObject({
       type: 'memory',
@@ -118,7 +118,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
 
     writeRawDocument(
       home,
-      'tasks/TASK-0001.md',
+      'tasks/TASK-0001-before-edit.md',
       entityMarkdown({ ...task, title: 'Edited natively' }, 'Native body'),
     );
 
@@ -145,7 +145,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     // the memoized snapshot must still serve the pre-edit value.
     writeRawDocument(
       home,
-      'tasks/TASK-0001.md',
+      'tasks/TASK-0001-before-edit.md',
       entityMarkdown({ ...task, title: 'Edited natively' }, 'Native body'),
     );
     expect(storage.get('TASK-0001')).toMatchObject({ title: 'Before edit' });
@@ -480,8 +480,47 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
 
     expect(function collideWithExistingDocument() {
       storage.add(second);
-    }).toThrow(/EEXIST/);
+    }).toThrow(/already exists/);
     expect(storage.get('TASK-0001')?.title).toBe('First writer');
+  });
+
+  it('writes new documents as <pathKey>-<slug>.md and keeps the id as the only identity (ADR 0129)', function writesSemanticFilenames() {
+    const { home, storage } = createStorage('semantic-filenames');
+    const task = buildEntity({ id: 'TASK-0003', title: 'Ship the Release: Part II!' });
+    const symbolTitled = buildEntity({ id: 'TASK-0004', title: '???' });
+
+    storage.add(task);
+    storage.save(symbolTitled);
+
+    const slugged = 'tasks/TASK-0003-ship-the-release-part-ii.md';
+    expect(existsSync(join(home.documentsDir, slugged))).toBe(true);
+    expect(existsSync(join(home.documentsDir, 'tasks/TASK-0004.md'))).toBe(true);
+    expect(storage.getDocumentById('TASK-0003')).toMatchObject({
+      sourcePath: slugged,
+      identity: { pathKey: 'TASK-0003', slug: 'ship-the-release-part-ii' },
+      entity: { id: 'TASK-0003' },
+    });
+    expect(storage.getFilePath('TASK-0003')).toBe(join(home.documentsDir, ...slugged.split('/')));
+    expect(storage.getMaxId(EntityType.Task)).toBe(4);
+    expect(matter(readFileSync(join(home.documentsDir, slugged), 'utf8')).data.id).toBe('TASK-0003');
+
+    // R4: a title edit never renames the file.
+    storage.save({ ...task, title: 'Renamed after the fact' });
+    expect(storage.getDocumentById('TASK-0003')?.sourcePath).toBe(slugged);
+    expect(existsSync(join(home.documentsDir, 'tasks/TASK-0003-renamed-after-the-fact.md'))).toBe(false);
+  });
+
+  it('treats a bare and a slugged file for one key as a collision, not two documents (ADR 0129 R1)', function collidesAcrossSpellings() {
+    const { home, storage } = createStorage('bare-vs-slugged');
+    const task = buildEntity({ id: 'TASK-0005', title: 'Slugged original' });
+    storage.add(task);
+    writeRawDocument(home, 'tasks/TASK-0005.md', entityMarkdown({ ...task, title: 'Bare copy' }));
+    storage.invalidate();
+
+    expect(storage.get('TASK-0005')).toBeUndefined();
+    expect(function allocateWhileColliding() {
+      storage.getMaxId(EntityType.Task);
+    }).toThrow(/duplicate document identities: tasks\/TASK-0005-slugged-original\.md, tasks\/TASK-0005\.md/);
   });
 
   it('preserves an existing slugged source path when saving', function preservesNativePath() {
@@ -500,7 +539,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     });
     expect(existsSync(join(home.documentsDir, sourcePath))).toBe(true);
     expect(existsSync(join(home.documentsDir, 'tasks/TASK-0007.md'))).toBe(false);
-    expect(existsSync(join(home.documentsDir, 'tasks/TASK-0008.md'))).toBe(true);
+    expect(existsSync(join(home.documentsDir, 'tasks/TASK-0008-new-through-save.md'))).toBe(true);
   });
 
   it('supports recursive CRUD, filtering, counts, and type-local max ids', function supportsStorageOperations() {
