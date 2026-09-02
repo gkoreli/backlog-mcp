@@ -12,6 +12,23 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+## [0.71.0] — 2026-09-01
+
+*The release where the folder becomes readable. Bolting the backlog onto an
+existing `docs/` tree meant hand-written documents had names and engine-written
+ones had numbers; now every document the engine creates carries its title in
+the filename, while the ID remains the one and only identity.*
+
+### Changed
+- **Engine-written documents now carry a readable slug in their filename.** A
+  new memory, task, reference, or any other substrate document is written as
+  `<ID>-<slug>.md` (for example `MEMO-0011-request-identity-follows-the-runtime.md`)
+  with the slug derived from the title, so `ls docs/memories` reads as an index
+  instead of a column of numbers. The ID stays the only identity: the slug is
+  decorative, frozen at creation (editing a title never renames the file), and
+  existing bare-number files keep working untouched alongside the new ones. A
+  bare and a slugged file for the same ID are a collision, as before. ADR 0129.
+
 ## [0.70.0] — 2026-07-20
 
 *The release where the viewer remembers your projects and stops hanging. Two
