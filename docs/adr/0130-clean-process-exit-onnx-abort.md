@@ -1,7 +1,7 @@
 ---
 title: "0130 — Clean Process Exit: the ONNX abort, probe-before-compose, and exit discipline"
 date: 2026-09-01
-status: "Accepted (goga) — implemented 2026-09-01, shipped 0.72.0"
+status: "Accepted (goga) — implemented 2026-09-01, shipped 0.72.1"
 author: goga + claude
 relates_to:
   - 0124-resilient-daemon.md
@@ -118,7 +118,10 @@ immediately is still right. The bridge never loads the runtime. Both cite this
 ADR in a comment.
 
 **R7 — Bump is a minor.** A native-runtime major upgrade plus a user-visible
-behavior fix ships as 0.72.0, not a patch.
+behavior fix ships as a minor. It went out as 0.72.1: the 0.72.0 bump commit
+was pushed one commit ahead of its lockfile and the publish run failed on
+`--frozen-lockfile`; no tag or package was produced, so 0.72.1 is the first
+published build of this work.
 
 ## Engineering plan
 
@@ -134,7 +137,7 @@ behavior fix ships as 0.72.0, not a patch.
    use `requestExit`. `cli/runner.ts` `throwRunError` → rethrow only.
    `cli/commands/edit.ts` → `requestExit(1)`.
 7. `cli/bridge.ts` — comment only.
-8. CHANGELOG, ADR index, version bump 0.72.0 / viewer 0.64.0.
+8. CHANGELOG, ADR index, version bump 0.72.1 / viewer 0.64.0.
 
 ## Validation — findings (2026-09-01)
 

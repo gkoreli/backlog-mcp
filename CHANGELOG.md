@@ -12,7 +12,7 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
-## [0.72.0] — 2026-09-01
+## [0.72.1] — 2026-09-01
 
 *The release where the process stops aborting on the way out. `backlog serve`
 against a running daemon, a CLI command that hit a write error, and the daemon's
