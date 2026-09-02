@@ -12,6 +12,27 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+## [0.74.0] — 2026-09-01
+
+*The release where the daemon tells you it is behind. Releases and rebuilds
+land while the server keeps running, and the only signal used to be a number
+you compared by hand. System Information now compares the running process with
+the install on disk and restarts it through the same handover the auto-upgrade
+already uses. A foreign web page can no longer stop or restart your daemon.*
+
+### Added
+- **System Information shows a stale daemon and can restart it.** The modal
+  now lists the running version next to the version installed on disk and,
+  when a release or rebuild has landed while the daemon kept running, offers
+  **Restart to X** (or plain **Restart server**). The daemon drains, hands over
+  to a fresh process from the install on disk, and the page reloads once the
+  new one answers. `GET /api/release` and `POST /api/restart` back it. ADR 0131.
+
+### Fixed
+- **`/shutdown` and `/api/restart` accept only same-machine callers.** A
+  request carrying a non-loopback `Origin` header is refused, so a web page in
+  your browser can no longer stop or restart your daemon through CORS.
+
 ## [0.73.0] — 2026-09-01
 
 *The release where every link in the viewer opens the file it names. Project
