@@ -12,6 +12,14 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+## [0.73.0] — 2026-09-01
+
+*The release where every link in the viewer opens the file it names. Project
+homes keep documents wherever they like — sub-folders, slugs, human names —
+and the viewer had still been guessing `tasks/<id>.md` from the flat layout of
+two architectures ago. Now there is one address grammar, owned by core and used
+by the get tool, the CLI, the HTTP proxy, and the viewer alike.*
+
 ### Fixed
 - **Entity links in the viewer open the real document.** Clicking a
   referenced task or memory (`entity_refs`, collision candidates, links inside
