@@ -12,6 +12,32 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+## [0.72.0] — 2026-09-01
+
+*The release where the process stops aborting on the way out. `backlog serve`
+against a running daemon, a CLI command that hit a write error, and the daemon's
+own graceful shutdown all ended in a libc++ abort from the embedding runtime.
+The bug is upstream and fixed; we upgraded past it and also stopped walking into
+it, so a stale runtime on someone else's machine can never abort us again.*
+
+### Fixed
+- **No more `mutex lock failed` abort on exit.** onnxruntime-node 1.21 aborts
+  when a process that has run inference hard-exits. `@huggingface/transformers`
+  moves to 4.x, which carries a fixed runtime, and every normal exit path in the
+  daemon and CLI now drains the event loop instead of calling `process.exit`.
+  ADR 0130.
+- **`backlog serve` decides the port before building the runtime.** A deferring
+  instance now costs one probe and exits in about a second, instead of loading
+  the search index and embedding model first and then quitting.
+- **CLI errors print one line.** A not-found id, a validation failure, or a
+  document-identity collision prints its message and exits 1; stack traces are
+  reserved for unexpected errors.
+
+### Changed
+- `backlog stop` and a daemon receiving SIGTERM now close open connections and
+  stop every home runtime before exiting, with a logged forced exit after five
+  seconds if anything leaks.
+
 ## [0.71.0] — 2026-09-01
 
 *The release where the folder becomes readable. Bolting the backlog onto an
