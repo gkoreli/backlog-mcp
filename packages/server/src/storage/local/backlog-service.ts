@@ -187,6 +187,12 @@ export class BacklogService implements IBacklogService {
     return this.storage.getFilePath(id);
   }
 
+  /** Entity id → its document's resource URI, via storage's own lookup (ADR 0129.1). */
+  getResourceUri(id: string): string | null {
+    const filePath = this.storage.getFilePath(id);
+    return filePath === null ? null : this.resourceManager.toUri(filePath);
+  }
+
   /** Visible downgrade record (EXP-1 B-3) — empty for non-document storage. */
   listClaimQuarantines(): ClaimQuarantine[] {
     if (!isDocumentStorageAdapter(this.storage)) return [];

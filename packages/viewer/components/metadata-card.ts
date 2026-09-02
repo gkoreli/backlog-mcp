@@ -10,6 +10,7 @@
  */
 import { signal, computed, type ReadonlySignal, component, html, when, each, type TemplateResult, inject } from '@nisli/core';
 import { isValidEntityId } from '@backlog-mcp/shared';
+import { isDocumentAddress } from '../utils/document-address.js';
 import { SplitPaneState } from '../services/split-pane-state.js';
 import type {
   CollisionCandidate,
@@ -81,7 +82,7 @@ function renderValue(
           <ul class="meta-list collision-candidate-list">${each(items, (candidate) => candidate.id, (candidate) => {
             const item = candidate.value;
             return html`<li>
-              ${renderLink(`mcp://backlog/tasks/${item.id}.md`, item.title || item.id, splitState, selection)}
+              ${renderLink(item.id, item.title || item.id, splitState, selection)}
               <span class="collision-candidate-detail">priority ${item.pair_priority.toFixed(3)} · ${item.digest}</span>
               <span class="collision-candidate-signals">${formatCollisionSignals(item.signals)}</span>
             </li>`;
@@ -146,7 +147,7 @@ function renderScalar(
 ): TemplateResult {
   if (typeof value === 'string' && isValidEntityId(value)) {
     return renderLink(
-      `mcp://backlog/tasks/${value}.md`,
+      value,
       value,
       splitState,
       selection,
@@ -196,7 +197,7 @@ function renderLink(
   splitState: SplitPaneState,
   selection: HomeSelection | undefined,
 ): TemplateResult {
-  const isInternal = url.startsWith('file://') || url.startsWith('mcp://');
+  const isInternal = url.startsWith('file://') || isDocumentAddress(url);
   function onClick(e: Event) {
     if (!isInternal) return;
     e.preventDefault();

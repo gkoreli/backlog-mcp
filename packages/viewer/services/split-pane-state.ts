@@ -11,6 +11,7 @@
  * See ADR 0010 Gap 2, ADR 0011 for design rationale.
  */
 import { signal } from '@nisli/core';
+import { isDocumentAddress } from '../utils/document-address.js';
 import {
   getHomeId,
   type HomeSelection,
@@ -175,7 +176,7 @@ export class SplitPaneState {
       if (persisted.value.startsWith('activity:')) {
         const taskId = persisted.value.slice(9) || undefined;
         this.openActivity(taskId, persisted.selection);
-      } else if (persisted.value.startsWith('mcp://')) {
+      } else if (isDocumentAddress(persisted.value)) {
         this.openMcpResource(persisted.value, persisted.selection);
       } else if (persisted.value === 'collision-candidates:') {
         this.openCollisionCandidates(persisted.selection);

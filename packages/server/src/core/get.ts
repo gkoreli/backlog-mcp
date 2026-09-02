@@ -8,24 +8,7 @@ import {
   type TypedRelationDeps,
 } from './get-context/index.js';
 import { asBuiltinEntity } from './substrates/index.js';
-
-function isResourceUri(id: string): boolean {
-  return id.startsWith('mcp://backlog/');
-}
-
-/**
- * Alias a bare document path to its canonical resource URI (EXP-1 rerun
- * P2). Wakeup's orientation section advertises root-relative paths
- * ("paths open with get"), so `get README.md` and `get docs/adr/0001.md`
- * must resolve exactly like their `mcp://backlog/...` forms. Returns null
- * for ids that don't look like paths (entity IDs stay on the entity lane).
- */
-function pathAliasUri(id: string): string | null {
-  const normalized = id.replace(/^\.\//u, '').replace(/^\/+/u, '');
-  if (!normalized) return null;
-  const looksLikePath = normalized.includes('/') || /\.[A-Za-z0-9]+$/u.test(normalized);
-  return looksLikePath ? `mcp://backlog/${normalized}` : null;
-}
+import { parseDocumentAddress } from './document-address.js';
 
 interface GetContextDeps {
   /** Builtin-narrowed deps for the ADR 0114 relational expansion. */
@@ -69,25 +52,25 @@ function contextDeps(service: IBacklogService): GetContextDeps | null {
 }
 
 async function fetchItem(id: string, service: IBacklogService, deps: GetContextDeps | null, depth: number): Promise<GetItem> {
-  if (isResourceUri(id)) {
-    const resource = service.getResource?.(id);
+  // One address grammar for ids, root-relative paths, and resource URIs
+  // (ADR 0129.1): paths ride the same resource lane as their mcp:// form so
+  // wakeup's advertised paths open with a plain `get`.
+  const address = parseDocumentAddress(id);
+  if (address.kind === 'resource') {
+    const resource = service.getResource?.(address.uri);
     if (resource === undefined) {
       // Unknown paths fail loudly, never as a silent null (EXP-1 rerun P2).
-      return { id, content: null, error: `Not found: ${id}` };
+      return {
+        id,
+        content: null,
+        error: address.uri === id
+          ? `Not found: ${id}`
+          : `Not found: ${id} (no entity ID or document path matches; resolved as ${address.uri})`,
+      };
     }
     return { id, content: resource.content, resource };
   }
   const item: GetItem = { id, content: await service.getMarkdown(id) };
-  if (item.content === null) {
-    // Bare-path fallback: resolve through the same resource lane as the
-    // mcp:// form so wakeup's advertised paths open with a plain `get`.
-    const aliasUri = pathAliasUri(id);
-    if (aliasUri !== null) {
-      const resource = service.getResource?.(aliasUri);
-      if (resource !== undefined) return { id, content: resource.content, resource };
-      return { id, content: null, error: `Not found: ${id} (no entity ID or document path matches; resolved as ${aliasUri})` };
-    }
-  }
   if (deps && item.content !== null) {
     const raw = deps.typed.getEntity(id);
     if (raw) {

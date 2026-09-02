@@ -7,7 +7,7 @@ import {
   type ChangeCallback,
 } from '../services/event-source-client.js';
 import { SplitPaneState } from '../services/split-pane-state.js';
-import { collisionCandidateUri } from './collision-candidates.js';
+import { collisionCandidateAddress } from './collision-candidates.js';
 
 const queue = {
   pairs: [
@@ -64,7 +64,7 @@ describe('collision candidate queue', () => {
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toContain('project_root=%2Frepo');
 
     (element.querySelector('.collision-member-link') as HTMLAnchorElement).click();
-    expect(splitState.mcpUri.value).toBe('mcp://backlog/tasks/MEMO-0002.md');
+    expect(splitState.mcpUri.value).toBe('MEMO-0002');
     expect(splitState.homeSelection.value).toEqual({ home: 'project', projectRoot: '/repo' });
   });
 
@@ -83,8 +83,8 @@ describe('collision candidate queue', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('uses the existing MCP URL form for memory links', () => {
-    expect(collisionCandidateUri('MEMO-0001')).toBe('mcp://backlog/tasks/MEMO-0001.md');
+  it('addresses a memory by id, never by a synthesized path (ADR 0129.1)', () => {
+    expect(collisionCandidateAddress('MEMO-0001')).toBe('MEMO-0001');
   });
 
   it('reports empty and unavailable queues honestly', async () => {

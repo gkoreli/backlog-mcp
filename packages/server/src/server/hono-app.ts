@@ -49,6 +49,7 @@ import type {
   HomeReadRuntime,
   HomeReadRuntimeSelection,
 } from '../core/home-read-coordinator.types.js';
+import { parseDocumentAddress, resolveDocumentUri } from '../core/document-address.js';
 import { memoryUsageFieldsFromEntry } from '../memory/memory-entry-usage.js';
 import { withRequestTelemetrySession } from '../memory/retrieval-telemetry.js';
 import type { SubstrateIntentQuarantineDiagnostic } from '../tools/register-substrate-intents.types.js';
@@ -890,18 +891,31 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
       }
     });
 
-    // MCP resource proxy — resolves mcp://backlog/ URIs to filesystem content
+    // Document proxy — one address grammar (ADR 0129.1): an entity id, a
+    // root-relative path, or an mcp://backlog/ URI. Ids resolve through the
+    // service's own storage lookup to the document's real source path; the
+    // route never synthesizes `tasks/<id>.md`. `uri` stays as an alias of
+    // `address` for existing links.
     app.get('/mcp/resource', async (c) => {
-      const uri = c.req.query('uri');
+      const input = c.req.query('address') ?? c.req.query('uri');
 
-      if (!uri || !uri.startsWith('mcp://backlog/')) {
-        return c.json({ error: 'Invalid MCP URI' }, 400);
+      if (!input) {
+        return c.json({ error: 'Missing address parameter' }, 400);
       }
 
       const runtime = await resolveRequestRuntime(c.req);
       const resourceManager = runtime.resourceManager;
       if (resourceManager === undefined) {
         return c.json({ error: 'Resource access unavailable' }, 404);
+      }
+
+      const uri = resolveDocumentUri(runtime.service, parseDocumentAddress(input));
+      if (uri === null) {
+        return c.json({
+          error: 'Resource not found',
+          address: input,
+          message: `No document for ${input} in this home`,
+        }, 404);
       }
 
       try {

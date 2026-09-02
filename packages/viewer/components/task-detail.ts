@@ -150,10 +150,8 @@ export const TaskDetail = component('task-detail', () => {
     homeSelection: app.homeSelection,
     onNavigate: (id) => {
       if (getTypeConfig(getTypeFromId(id)).opensInPane) {
-        splitState.openMcpResource(
-          `mcp://backlog/tasks/${id}.md`,
-          app.homeSelection.value,
-        );
+        // Address by id; the server follows it to the real file (ADR 0129.1).
+        splitState.openMcpResource(id, app.homeSelection.value);
       } else {
         app.selectTask(id);
       }

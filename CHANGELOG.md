@@ -12,6 +12,21 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+### Fixed
+- **Entity links in the viewer open the real document.** Clicking a
+  referenced task or memory (`entity_refs`, collision candidates, links inside
+  a task body) used to request `tasks/<id>.md`, a path from the pre-docs-native
+  layout that no project home has, so the pane showed "Resource not found".
+  The viewer now addresses documents by id and the server resolves the id
+  through storage to wherever the file actually lives, including sub-folders
+  and slugged or human-named files. ADR 0129.1.
+
+### Changed
+- **One document address grammar everywhere.** `backlog_get`, the CLI, and
+  the HTTP resource proxy now share a single core resolver that accepts an
+  entity id, a root-relative path, or an `mcp://backlog/` URI. The proxy's
+  query parameter is `address`; `uri` still works as an alias.
+
 ## [0.72.1] — 2026-09-01
 
 *The release where the process stops aborting on the way out. `backlog serve`

@@ -25,9 +25,9 @@ import {
 } from '../utils/api.js';
 import { formatCollisionSignals } from './metadata-card.js';
 
-/** Construct the existing MCP deep link for one memory. */
-export function collisionCandidateUri(id: string): string {
-  return `mcp://backlog/tasks/${encodeURIComponent(id)}.md`;
+/** The split-pane address of one memory: its id, resolved server-side (ADR 0129.1). */
+export function collisionCandidateAddress(id: string): string {
+  return id;
 }
 
 export const CollisionCandidates = component('collision-candidates', () => {
@@ -63,14 +63,14 @@ export const CollisionCandidates = component('collision-candidates', () => {
   onCleanup(() => backlogEvents.offChange(changeHandler));
 
   function openMember(member: CollisionCandidateMember) {
-    splitState.openMcpResource(collisionCandidateUri(member.id), app.homeSelection.value);
+    splitState.openMcpResource(collisionCandidateAddress(member.id), app.homeSelection.value);
   }
 
   function renderMember(member: ReadonlySignal<CollisionCandidateMember>) {
     const id = computed(() => member.value.id);
     const title = computed(() => member.value.title);
     const digest = computed(() => member.value.digest);
-    const uri = computed(() => collisionCandidateUri(member.value.id));
+    const uri = computed(() => collisionCandidateAddress(member.value.id));
     const metadata = computed(() => {
       const value = member.value;
       const context = value.context ? ` · ${value.context}` : '';

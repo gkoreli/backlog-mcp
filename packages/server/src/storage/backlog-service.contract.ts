@@ -63,5 +63,11 @@ export interface IBacklogService {
   getResource?(uri: string): ResourceContent | undefined;
   isHybridSearchActive?(): boolean;
   getFilePath?(id: string): string | null;
+  /**
+   * The resource URI of an entity's document, following it to whatever
+   * folder or filename it has (ADR 0129.1). `null` when the entity has no
+   * document in this home. Callers never synthesize `tasks/<id>.md`.
+   */
+  getResourceUri?(id: string): string | null;
   listSync?(filter?: ListFilter): AnyEntity[];
 }

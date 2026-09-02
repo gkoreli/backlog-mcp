@@ -63,7 +63,7 @@ export const ResourceViewer = component('resource-viewer', () => {
   ) {
     loadState.value = 'loading';
     try {
-      const res = await fetch(buildApiUrl('/mcp/resource', { uri }, selection));
+      const res = await fetch(buildApiUrl('/mcp/resource', { address: uri }, selection));
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load resource');
       if (generation !== loadGeneration) return;

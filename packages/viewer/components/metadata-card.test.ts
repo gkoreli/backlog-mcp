@@ -30,7 +30,7 @@ describe('collision candidate metadata', () => {
     expect(element.textContent).toContain('Production deploys to a local VPS.');
     expect(element.textContent).toContain('priority 0.813');
     expect(element.textContent).not.toContain('[object Object]');
-    expect(element.querySelector('a')?.getAttribute('href')).toBe('mcp://backlog/tasks/MEMO-0002.md');
+    expect(element.querySelector('a')?.getAttribute('href')).toBe('MEMO-0002');
   });
 
   it('formats bounded collision signals without raw search scores', () => {
