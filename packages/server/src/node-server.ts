@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import { serve } from '@hono/node-server';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { paths } from './utils/paths.js';
-import { getServerVersion, shutdownServer } from './cli/server-manager.js';
+import { getServerVersion, shutdownServer, spawnDetachedServer } from './cli/server-manager.js';
+import { readInstalledVersion, releaseStatus } from './core/installed-version.js';
 import {
   createPortCollisionResolver,
   isPortInUse,
@@ -37,9 +40,36 @@ const announce = {
  */
 const DRAIN_FALLBACK_MS = 5000;
 
+/**
+ * Delay between answering `/api/restart` with 202 and beginning the drain, so
+ * the response reaches the viewer before the listener closes.
+ */
+const RESTART_HANDOVER_DELAY_MS = 250;
+
 async function startServer(): Promise<void> {
+  // Release awareness + self-restart (ADR 0131). The install on disk is
+  // re-read per request so a release or rebuild that landed after start is
+  // seen; the handover relaunches this install's own entry point.
+  const serverEntry = join(paths.distRoot, 'node-server.mjs');
+  const packageJsonPath = join(paths.projectRoot, 'package.json');
+  function readReleaseStatus() {
+    return releaseStatus(
+      paths.getVersion(),
+      readInstalledVersion({ packageJsonPath, readFile: (path) => readFileSync(path, 'utf-8') }),
+    );
+  }
+  let handover: { command: string; args: string[] } | undefined;
+  function requestRestart(): void {
+    if (handover !== undefined) return;
+    logger.info('Restart requested', { running: paths.getVersion(), installed: readReleaseStatus().installed });
+    handover = { command: process.execPath, args: [serverEntry] };
+    setTimeout(function beginHandover() { void shutdown(0); }, RESTART_HANDOVER_DELAY_MS);
+  }
+
   const composition = await createLocalNodeApp({
     requestShutdown: () => shutdown(0),
+    readReleaseStatus,
+    requestRestart,
   });
   const app = composition.app;
 
@@ -87,6 +117,20 @@ async function startServer(): Promise<void> {
       logger.error('Runtime shutdown failed', {
         message: error instanceof Error ? error.message : String(error),
       });
+    }
+    // Handover (ADR 0131 R4): only once the listener is closed and every
+    // runtime stopped does the replacement launch, so it finds the port free
+    // and no two daemons ever contend for it.
+    if (handover !== undefined) {
+      try {
+        spawnDetachedServer(handover.command, handover.args, port);
+        logger.info('Replacement daemon launched', { command: handover.command, args: handover.args });
+      } catch (error) {
+        logger.fatalSync('Replacement daemon failed to launch', {
+          command: handover.command,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
     requestExit(code);
   }

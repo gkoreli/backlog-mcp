@@ -4,12 +4,22 @@
  * Reads AppState.isSystemInfoOpen to show/hide. Fetches system info via query()
  * on open. Uses CopyButton factory composition for the data directory copy action.
  *
+ * Release awareness + self-restart (ADR 0131): a second query asks the daemon
+ * whether the install on disk is newer than the process serving it; the
+ * button asks the daemon to hand over to a fresh process and waits for it to
+ * answer before reloading the page.
+ *
  * See ADR 0007 (shared services) for the open/close signal pattern.
  */
-import { computed, component, html, inject, query, onMount } from '@nisli/core';
+import { computed, component, html, inject, query, onMount, signal } from '@nisli/core';
 import { AppState } from '../services/app-state.js';
 import { CopyButton } from './copy-button.js';
 import { buildApiUrl } from '../utils/api.js';
+import {
+  fetchRelease,
+  restartServer,
+  type ReleaseInfo,
+} from '../services/server-restart.js';
 
 interface SystemInfo {
   version: string;
@@ -19,6 +29,11 @@ interface SystemInfo {
   uptime: number;
 }
 
+type RestartPhase =
+  | { kind: 'idle' }
+  | { kind: 'working' }
+  | { kind: 'failed'; error: string };
+
 function formatUptime(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
@@ -27,6 +42,13 @@ function formatUptime(seconds: number): string {
   if (hours > 0) return `${hours}h ${minutes}m ${secs}s`;
   if (minutes > 0) return `${minutes}m ${secs}s`;
   return `${secs}s`;
+}
+
+function describeInstalled(release: ReleaseInfo | undefined): string {
+  if (release === undefined) return '';
+  if (release.installed === null) return 'unknown';
+  if (release.updateAvailable) return `${release.installed} — newer than the running server`;
+  return `${release.installed} (running the current install)`;
 }
 
 export const SystemInfoModal = component('system-info-modal', (_props, _host) => {
@@ -45,10 +67,20 @@ export const SystemInfoModal = component('system-info-modal', (_props, _host) =>
       staleTime: 0, // always refetch on open
     },
   );
+  const releaseQuery = query<ReleaseInfo>(
+    () => ['release', app.isSystemInfoOpen.value],
+    () => fetchRelease(app.requestHomeSelection.value),
+    {
+      enabled: () => app.isSystemInfoOpen.value,
+      staleTime: 0,
+    },
+  );
 
   const info = infoQuery.data;
   const loading = infoQuery.loading;
   const error = computed(() => infoQuery.error.value?.message ?? null);
+  const release = releaseQuery.data;
+  const restartPhase = signal<RestartPhase>({ kind: 'idle' });
 
   // ── Actions ────────────────────────────────────────────────────
   function close() {
@@ -57,6 +89,23 @@ export const SystemInfoModal = component('system-info-modal', (_props, _host) =>
 
   function handleOverlayClick(e: Event) {
     if (e.target === (e.currentTarget as HTMLElement)) close();
+  }
+
+  async function runRestart() {
+    const current = release.value;
+    if (current === undefined) return;
+    restartPhase.value = { kind: 'working' };
+    const outcome = await restartServer(current);
+    if (outcome.ok) {
+      // New daemon, possibly new viewer assets: start over from the server.
+      location.reload();
+      return;
+    }
+    restartPhase.value = { kind: 'failed', error: outcome.error };
+  }
+
+  function onRestartClick() {
+    void runRestart();
   }
 
   // ── Keyboard: Escape to close ──────────────────────────────────
@@ -75,6 +124,18 @@ export const SystemInfoModal = component('system-info-modal', (_props, _host) =>
   const taskCount = computed(() => String(info.value?.taskCount ?? ''));
   const uptime = computed(() => info.value ? formatUptime(info.value.uptime) : '');
   const overlayDisplay = computed(() => app.isSystemInfoOpen.value ? 'flex' : 'none');
+  const installedText = computed(() => releaseQuery.loading.value && !release.value ? 'checking…' : describeInstalled(release.value));
+  const restartLabel = computed(() => {
+    if (restartPhase.value.kind === 'working') return 'Restarting…';
+    const current = release.value;
+    return current?.updateAvailable && current.installed !== null
+      ? `Restart to ${current.installed}`
+      : 'Restart server';
+  });
+  const restartDisabled = computed(() => restartPhase.value.kind === 'working' || release.value?.canRestart !== true);
+  const restartDisplay = computed(() => release.value?.canRestart ? 'inline-flex' : 'none');
+  const restartError = computed(() => restartPhase.value.kind === 'failed' ? restartPhase.value.error : '');
+  const errorDisplay = computed(() => restartError.value ? 'block' : 'none');
 
   const copyDirBtn = CopyButton({ text: dataDir, content: html`Copy` });
 
@@ -84,6 +145,10 @@ export const SystemInfoModal = component('system-info-modal', (_props, _host) =>
       <div class="info-row">
         <span class="info-label">Version</span>
         <span class="info-value">${version}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Installed</span>
+        <span class="info-value">${installedText}</span>
       </div>
       <div class="info-row">
         <span class="info-label">Port</span>
@@ -104,6 +169,10 @@ export const SystemInfoModal = component('system-info-modal', (_props, _host) =>
         <span class="info-label">Uptime</span>
         <span class="info-value">${uptime}</span>
       </div>
+    </div>
+    <div class="release-actions">
+      <button class="btn-outline release-restart" style="${computed(() => `display:${restartDisplay.value}`)}" disabled="${restartDisabled}" @click="${onRestartClick}">${restartLabel}</button>
+      <div class="error release-error" style="${computed(() => `display:${errorDisplay.value}`)}">${restartError}</div>
     </div>
   `;
 

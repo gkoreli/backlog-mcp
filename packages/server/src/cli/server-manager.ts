@@ -46,8 +46,13 @@ async function getServerVersion(port: number): Promise<string | null> {
   });
 }
 
-async function spawnServer(port: number): Promise<void> {
-  const serverPath = join(paths.distRoot, 'node-server.mjs');
+/**
+ * Launch a daemon process detached from this one, on the given port, with its
+ * stdout/stderr appended to `~/.backlog/state/logs/runtime/server.log`.
+ * Shared by the bridge's spawn and the daemon's own self-restart handover
+ * (ADR 0131 R4).
+ */
+export function spawnDetachedServer(command: string, args: readonly string[], port: number): void {
   // Capture the detached server's stdout/stderr instead of discarding them
   // (stdio:'ignore'). Native crash dumps and console.error bypass the
   // structured logger; without a real fd they vanish and the bridge only
@@ -55,7 +60,7 @@ async function spawnServer(port: number): Promise<void> {
   const logDir = globalStatePath('logs', 'runtime');
   mkdirSync(logDir, { recursive: true });
   const out = openSync(join(logDir, 'server.log'), 'a');
-  const child = spawn(process.execPath, [serverPath], {
+  const child = spawn(command, [...args], {
     detached: true,
     stdio: ['ignore', out, out],
     env: { ...process.env, BACKLOG_VIEWER_PORT: String(port) }
@@ -64,6 +69,10 @@ async function spawnServer(port: number): Promise<void> {
   // The child has inherited its own dup of the fd; close the parent's copy
   // so repeated respawns don't leak descriptors.
   closeSync(out);
+}
+
+async function spawnServer(port: number): Promise<void> {
+  spawnDetachedServer(process.execPath, [join(paths.distRoot, 'node-server.mjs')], port);
 }
 
 async function shutdownServer(port: number): Promise<void> {

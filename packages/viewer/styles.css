@@ -2498,3 +2498,17 @@ copy-button {
     flex-direction: column;
   }
 }
+
+/* Release awareness + self-restart (ADR 0131) */
+.release-actions {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--t-border-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.release-restart:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

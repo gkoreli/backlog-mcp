@@ -50,6 +50,8 @@ export function createNodeApp(options: CreateNodeAppOptions): Hono {
     resolveRuntime: options.resolveRuntime,
     requestShutdown: options.requestShutdown,
     recentHomes: options.recentHomes,
+    readReleaseStatus: options.readReleaseStatus,
+    requestRestart: options.requestRestart,
     logError: (message, data) => logger.error(message, data),
   });
 }

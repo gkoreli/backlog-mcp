@@ -90,6 +90,8 @@ export async function createLocalNodeApp(
       resolveRuntime,
       requestShutdown: options.requestShutdown,
       recentHomes,
+      readReleaseStatus: options.readReleaseStatus,
+      requestRestart: options.requestRestart,
     }),
     home,
     runtime,

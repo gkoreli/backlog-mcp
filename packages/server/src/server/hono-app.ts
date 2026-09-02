@@ -50,6 +50,8 @@ import type {
   HomeReadRuntimeSelection,
 } from '../core/home-read-coordinator.types.js';
 import { parseDocumentAddress, resolveDocumentUri } from '../core/document-address.js';
+import type { ReleaseStatus } from '../core/installed-version.js';
+import { isLoopbackOrigin } from './loopback-origin.js';
 import { memoryUsageFieldsFromEntry } from '../memory/memory-entry-usage.js';
 import { withRequestTelemetrySession } from '../memory/retrieval-telemetry.js';
 import type { SubstrateIntentQuarantineDiagnostic } from '../tools/register-substrate-intents.types.js';
@@ -97,6 +99,9 @@ export interface AppDeps extends ToolDeps {
   requestShutdown?: () => void | Promise<void>;
   // Recent-homes registry (ADR 0128); Node-only, absent in Worker.
   recentHomes?: RecentHomesStore;
+  // Release awareness + self-restart (ADR 0131); Node-only, absent in Worker.
+  readReleaseStatus?: () => ReleaseStatus;
+  requestRestart?: () => void;
 }
 
 interface RequestSelectionSource {
@@ -962,9 +967,34 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     });
   }
 
+  // Release awareness (ADR 0131 R1/R4): the running version against the
+  // install on disk — the same fact the newer-wins takeover keys on.
+  app.get('/api/release', (c) => {
+    const running = deps?.version ?? '0.0.0';
+    const status = deps?.readReleaseStatus?.()
+      ?? { running, installed: null, updateAvailable: false };
+    return c.json({ ...status, canRestart: deps?.requestRestart !== undefined });
+  });
+
+  // Self-restart (ADR 0131 R2/R3): drain, hand over to a fresh process from
+  // the install on disk. Loopback-origin callers only.
+  if (deps?.requestRestart !== undefined) {
+    const requestRestart = deps.requestRestart;
+    app.post('/api/restart', (c) => {
+      if (!isLoopbackOrigin(c.req.header('origin'))) {
+        return c.json({ error: 'Forbidden: restart is a same-machine action' }, 403);
+      }
+      requestRestart();
+      return c.json({ status: 'restarting' }, 202);
+    });
+  }
+
   // Shutdown remains app-scoped and retains its existing Node registration.
   if (deps?.requestShutdown !== undefined) {
     app.post('/shutdown', (c) => {
+      if (!isLoopbackOrigin(c.req.header('origin'))) {
+        return c.json({ error: 'Forbidden: shutdown is a same-machine action' }, 403);
+      }
       void Promise.resolve(deps.requestShutdown?.()).catch(function logFailure(
         error,
       ) {
