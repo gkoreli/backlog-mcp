@@ -68,7 +68,7 @@ TASK-0007 through TASK-0010 are complete. Parent captured real HTTP/MCP manifest
 - [Domain audit](../reports/0014-tool-surface-architecture.md): memory lifecycle differs from generic managed writes; selected parser/receipt/policy discrepancies manually reproduced.
 - [Candidate comparison](../reports/0015-tool-surface-candidates.md) and [independent review](../reports/0016-tool-surface-candidate-review.md): prototype the typed daily set first, keep discovery/execution as challenger.
 
-TASK-0011 is in progress: static arithmetic and design review are complete, but real client trials are still required. TASK-0012 remains open for the evidence-backed final ADR. No production tool or CLI behavior changed in this research checkpoint.
+TASK-0011 is in progress: static arithmetic, design review and the client pilot below are complete; broader client and recovery validation remains open. TASK-0012 remains open for the evidence-backed final ADR. The research prototypes do not change the production tool surface.
 
 ### Client pilot checkpoint
 
@@ -77,3 +77,17 @@ TASK-0011 is in progress: static arithmetic and design review are complete, but 
 ### Operational documentation audit — 2026-09-09
 
 TASK-0013 reconciles README, AGENTS, install guidance and current architecture descriptions against compiled contracts. The [audit record](../reports/agent-guidance-audit-2026-09-09.md) documents five invalid README examples, selected-schema discovery after compaction, the shared content-field clarification in 129ec1c, and the ADR-creation bookkeeping blocker. These are corrections to the existing surface, not a decision among the candidate APIs.
+
+### Break checkpoint — 2026-09-09 UTC
+
+The owner requested a break after the documentation cleanup and server release.
+TASK-0013 is complete. TASK-0015 tracks release 0.74.1 and publication evidence.
+Research is paused at this checkpoint; TASK-0011 remains in progress and
+TASK-0012 remains open, rather than being marked complete on pilot evidence.
+
+On resumption, read report 0017 and TASK-0011 for the remaining optional-tail,
+broader-client and compaction/schema-refresh trials. No smaller production
+surface has been selected. TASK-0014 separately tracks the duplicate ADR claims
+blocking managed ADR creation; preserve historical identities until its remedy
+is grounded. Check the installed and running server versions before assuming
+a source fix is active in the daemon, then hydrate only the chosen task.

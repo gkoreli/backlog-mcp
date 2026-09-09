@@ -430,7 +430,7 @@ constraints are not negotiable:
 └───────────────────────────────┬──────────────────────────────────────────────┘
 ┌───────────────────────────────▼──────────────────────────────────────────────┐
 │ STORAGE — frontmatter markdown on disk (human-readable, git-friendly)          │
-│   GLOBAL   ~/.backlog          — cross-project                    [today]       │
+│   GLOBAL   ~/.backlog/docs     — cross-project documents                       │
 │   PROJECT  ./docs (committed)  — ADRs · requirements · memories · tasks  [0112] │
 │   history/truth: markdown authoritative; Loro as derived history/sync [0107, open] │
 └────────────────────────────────────────────────────────────────────────────────┘

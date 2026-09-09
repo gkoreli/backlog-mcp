@@ -4,13 +4,20 @@ All notable changes to `backlog-mcp` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
-Version numbers refer to the published `backlog-mcp` server package; the viewer is
-bumped in lockstep. Entries lead with what you can now do; the italic note under
+Version numbers refer to the published `backlog-mcp` server package; the viewer
+has its own version and is bumped when its behavior changes. Entries lead with
+what you can now do; the italic note under
 each version says why it mattered on the road to the north star
 (`docs/NORTH-STAR.md` — *your backlog is your agent's memory*). This changelog
 begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
+
+## [0.74.1] — 2026-09-09
+
+*This release makes managed creation safer and agent-facing contracts clearer:
+fresh identity checks, preserved parents, registry-aware provenance, and corrected
+tool examples. The viewer remains at 0.66.0.*
 
 ### Fixed
 - **Agent-facing documentation matches current contracts.** Corrected memory

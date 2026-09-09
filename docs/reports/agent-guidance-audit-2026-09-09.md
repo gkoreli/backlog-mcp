@@ -105,3 +105,20 @@ The running daemon also routed TASK-0013 to FLDR-0001 despite the supplied
 EPIC-0001 parent, matching the already-fixed ADR 0132 behavior. Its frontmatter was
 corrected through the native file lane. Source fixes do not imply an installed
 daemon has loaded them.
+
+## Break and release checkpoint — 2026-09-09 UTC
+
+The owner requested final bookkeeping and release 0.74.1 before taking a break.
+The final sweep also corrected the nonexistent MCP spelling
+`backlog_consolidation-candidates` to `backlog_consolidation_candidates`, made
+CLI flags versus MCP field names explicit in AGENTS.md, corrected the global
+document path in the architecture diagram, and removed the changelog's false
+claim that viewer and server versions always advance together.
+
+Release preparation is tracked by
+[TASK-0015](../tasks/TASK-0015-release-server-0-74-1-and-record-the-break-checkpoint.md).
+The server package and exported VERSION are 0.74.1; viewer remains 0.66.0.
+`pnpm build` and `pnpm test` passed locally: server 1,446 passed / 2 skipped,
+viewer 157 passed, memory 49 passed. These later checks supersede the earlier
+partial test checkpoint above. CI publication is verified separately before
+the release task closes. The EPIC-0001 break checkpoint records where to resume.

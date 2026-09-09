@@ -211,8 +211,9 @@ supersede, and rank by usage. Use it; don't let each session start cold.
    gotcha, a convention, or a fact that will matter next session, write it with
    `backlog_remember`. One atomic fact per memory.
 5. **Correct, don't duplicate** — when something you already remembered
-   changes, `--supersedes <MEMO-id>` (keeps lineage, expires the old one) or use
-   `--state-key <key>` for evolving single-value facts (a new holder auto-closes
+   changes, use MCP `supersedes` (CLI: `--supersedes <MEMO-id>`) to keep lineage
+   and expire the old one, or MCP `state_key` (CLI: `--state-key <key>`) for
+   evolving single-value facts (a new holder auto-closes
    the previous). Never write a contradicting second memory.
 
 ### Recall discipline (don't clog context)
@@ -237,10 +238,12 @@ Capture quality is the whole game — noise pollutes recall and erodes trust.
 ### Lifecycle
 
 - `backlog_forget` soft-expires (drops from recall, stays auditable in the
-  viewer); `--expired` hard-deletes already-expired memories (GC).
+  viewer); MCP `expired: true` (CLI: `--expired`) hard-deletes already-expired
+  memories (GC).
 - Recall/read bumps a memory's `usage_count` + `last_used_at` — useful memories
   rank higher over time, stale ones decay. Self-curating; no action needed.
-- When atomic memories sprawl, `backlog_consolidation-candidates` surfaces
+- When atomic memories sprawl, MCP `backlog_consolidation_candidates`
+  (CLI: `backlog consolidation-candidates`) surfaces
   clusters ripe for distillation into fewer `derived` semantic/procedural
   memories (ADR 0092.7). Capture small, compress upward.
 
