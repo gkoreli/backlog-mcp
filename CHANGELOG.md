@@ -13,6 +13,11 @@ begins at 0.57.0 — earlier history lives in git.
 ## [Unreleased]
 
 ### Fixed
+- **Agent-facing documentation matches current contracts.** Corrected memory
+  and edit examples, list defaults, recall/recovery guidance, substrate and
+  home descriptions, and install verification. Historical API examples now
+  point to current contracts; schema deferral is identified as client-owned.
+  [Audit record](docs/reports/agent-guidance-audit-2026-09-09.md), TASK-0013.
 - **Body-field guidance in tool schemas.** The shared `content` field now
   explains that it holds the full Markdown body of the document.
 - **Concurrent writers in one home no longer allocate duplicate document IDs.**

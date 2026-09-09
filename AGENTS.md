@@ -22,10 +22,12 @@ All tests use **memfs** for in-memory filesystem mocking. Zero real file I/O.
 
 ### Test Locations
 
-| Package | Test location | Count |
-|---------|--------------|-------|
-| Server | `packages/server/src/__tests__/*.test.ts` | 537 |
-| Viewer | `packages/viewer/**/*.test.ts` | 92 |
+| Package | Test locations |
+|---------|----------------|
+| Server | `packages/server/src/__tests__/*.test.ts` and co-located `*.test.ts` |
+| Viewer | `packages/viewer/**/*.test.ts` |
+
+Use the test runner's summary for current counts.
 
 ```bash
 pnpm test                                # All workspace tests
@@ -185,17 +187,26 @@ supersede, and rank by usage. Use it; don't let each session start cold.
 
 1. **Wake up once, at session start** — run `backlog_wakeup` (CLI: `backlog
    wakeup`). One dense briefing: active tasks, current epics, top knowledge,
-   recent completions, recent activity. Do not re-run it mid-session.
-2. **Ask before starting work** — use `backlog_recall "<topic>"` for learned
-   knowledge and `backlog_search` for the current corpus. Treat memory hits as
-   ground truth about THIS project's conventions and decisions; they override
-   your priors. Memories are hidden from plain `search`/`list` by design.
+   recent completions, recent activity. Do not repeat it during ordinary work.
+   After compaction or context loss, recover from the durable work record;
+   `backlog_wakeup` with `operation` can restore a known live operation.
+2. **Ask when prior knowledge matters** — use `backlog_recall query="<topic>"`
+   (CLI: `backlog recall "<topic>"`) for learned knowledge and `backlog_search`
+   for the current corpus. Inspect a memory's age, provenance and correction
+   lineage before treating it as current. Project decisions outweigh generic
+   priors; stale memories do not override current user direction or verified
+   contracts. Memories are hidden from ordinary `search`/`list`; explicit
+   `list type="memory"` includes them.
 3. **Expand when the work becomes specific** — call `backlog_get` for full
    content. When starting work on an entity, pass `context: true` to include
    its relational neighborhood (parent, children, siblings, references,
    referenced-by, and related items) as stubs, then expand only the stubs you
    need. One retrieval language, with progressive disclosure throughout:
    orient → ask → expand.
+   For a tool call, expand the selected tool's full input schema before
+   constructing arguments. A discovery summary is not an argument contract;
+   client-owned schema deferral is not guaranteed. Derive field guidance from
+   its owning substrate; the shared Markdown body field is `content`.
 4. **Remember what's durable** — when you learn a non-obvious decision, a
    gotcha, a convention, or a fact that will matter next session, write it with
    `backlog_remember`. One atomic fact per memory.

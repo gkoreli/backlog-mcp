@@ -109,13 +109,14 @@ Underneath the tagline are three architectural claims, each already load-bearing
 
 2. **Its type system is substrates** (ADR 0098, 0106.1). One declaration per type drives
    schema, validation, storage, viewer UI, and agent hints — everything derives from it.
-   *Substrate* = the definition (7 today, design-time); *Entity* = an instance (N,
-   runtime); *Projection* = a shaped view. The catalog is deliberately **open-ended**:
+   *Substrate* = a type definition, built-in or loaded from project data;
+   *Entity* = an instance; *Projection* = a shaped view. The catalog is deliberately **open-ended**:
    most durable knowledge objects in a software project are expressible as substrates.
 
 3. **Progressive disclosure is built into the core** — not bolted on. A dense wakeup
-   briefing → memory stubs → `backlog_get` hydration on demand; token budgets; deferred,
-   intent-shaped tools at the MCP boundary (ADRs 0092.3, 0106). *Never dump; always
+   briefing → memory stubs → `backlog_get` hydration on demand; token budgets;
+   intent-shaped tools at the MCP boundary, with schema deferral where the client
+   supports it (ADRs 0092.3, 0106.5). *Never dump; always
    disclose progressively.* This is one of the defining architectural shifts of agentic
    engineering, and we built the product around it.
 
@@ -131,8 +132,9 @@ product's retrieval story.** Context engineering does not disappear — it survi
 **It IS:**
 
 - **A store, not an actor.** Agents mutate, the viewer observes, humans steer the agents
-  (ARTF-0189, ADR 0097). All state changes flow through MCP tools; the viewer is
-  read-only.
+  (ARTF-0189, ADR 0097). Managed writes flow through the shared core via MCP,
+  CLI or other adapters; native file edits are reconciled afterward (ADR 0117).
+  The viewer is read-only.
 - **An engine over legible truth.** Every artifact is frontmatter markdown you can read
   without the tool — and above that truth layer runs a real engine: a long-lived daemon,
   hybrid BM25+vector retrieval with local embeddings, a compiled substrate registry,
@@ -144,7 +146,7 @@ product's retrieval story.** Context engineering does not disappear — it survi
   with local embeddings, agentic memory, live viewer over SSE. This is where the product
   grows.
 - **A memory you can *see*.** No surveyed competitor (Mem0, Letta, Graphiti, MemPalace —
-  ADR 0092.5) gives the human a live, browsable, editable window into agent memory,
+  ADR 0092.5) gives the human the same combination of a live, browsable window into agent memory and direct Markdown editing,
   including the agent's own *contradictions* (ADR 0092.13). We get it for free from being
   markdown + a viewer.
 
@@ -178,7 +180,8 @@ product's retrieval story.** Context engineering does not disappear — it survi
    filesystem: names first, shape on demand, full content only when opened.* A dense
    briefing first, pointers second, full bodies only when the agent opens them. Token
    budget is a first-class design constraint at every surface — wakeup (~600 tokens),
-   recall (stubs), `get(context:true)` (relation stubs), tool manifests (deferred loading).
+   recall (stubs), `get(context:true)` (relation stubs), and tool manifests
+   (accounting for the client's actual loading behavior).
    If a surface floods context, it is broken (ADRs 0092.3, 0106; essay: *One Hundred Pull
    Requests*).
 3. **Most durable knowledge is a substrate.** New knowledge types cost one declaration, not
@@ -198,10 +201,11 @@ product's retrieval story.** Context engineering does not disappear — it survi
 7. **Capture small, compress upward.** Write atomic facts; let consolidation distill
    clusters into fewer derived memories over time (ADRs 0092.7, 0092.12). Usage ranks the
    useful up and decays the stale down — self-curating, no manual gardening (ADR 0092.9).
-8. **A tool must earn its context cost.** Every tool in the manifest is a permanent tax on
-   every session's context. A tool earns its place only when it beats the agent's *native*
+8. **A tool must earn its context cost.** Tool names, descriptions and schemas cost
+   context when the client discloses them; discovery and retries also count. A tool earns
+   its place only when it beats the agent's *native*
    primitives — Edit, the filesystem, search — by enough to justify the tokens it costs
-   forever: schema-enforced writes, true intent semantics, retrieval the harness can't do.
+   in use: schema-enforced writes, true intent semantics, retrieval the harness can't do.
    When a tool merely re-skins a capability the agent already has, fold it away or cut it
    (ADR 0114 folded `backlog_context` into `get`; ADR 0117 weighs `write_resource` against
    native Edit — and "leave it alone, don't solve it" is a legitimate answer). Prefer
@@ -299,14 +303,17 @@ The vision stands on four pillars. The first two are **built and proven**; the t
 
 ### 1. Substrates — the type system (built · ADR 0098, 0106.1)
 
-One declaration per entity type is the single source of truth. From `SUBSTRATES` derive
-`TYPE_PREFIXES`, `ID_PATTERN`, the `EntitySchema` discriminated union, TypeScript types,
-create/update validation, the viewer's type registry, and MCP tool hints
-(`packages/shared/src/substrates/`). Adding a type is ~40 LOC + one enum member + one
-registry line — and touches nothing generic.
+One declaration per entity type is the single source of truth. The seven built-in
+Zod substrates live in `packages/shared/src/substrates/`; their `SUBSTRATES` registry
+derives the built-in TypeScript union and identity helpers. The selected home's runtime
+registry combines them with packaged and project JSON declarations. Validation, storage
+identity, disclosure and declared intent schemas derive from that registry. Adding a
+project type requires a declaration, not an enum edit or changes to generic consumers
+(ADRs 0113, 0106.5).
 
-- **Substrate** = definition (7 today: task, epic, folder, artifact, milestone, cron,
-  memory). **Entity** = instance (N). **Projection** = a shaped response view. This
+- **Substrate** = definition (built-ins: task, epic, folder, artifact, milestone, cron,
+  memory; the active catalog also includes loaded declarations). **Entity** = instance.
+  **Projection** = a shaped response view. This
   class/instance vocabulary is canonical (ADR 0106.1).
 - The catalog is **open-ended by design** (ADR 0097, Extension 4 ratifies: rule, context,
   session, cli_tool, agent, skill, prompt, alarm). ADR 0113 (shipped) makes **ADR** and
@@ -348,18 +355,19 @@ default to *this* project, not the firehose (ADR 0105).
 Progressive disclosure is the load-bearing pattern: **wakeup briefing → memory stubs →
 `backlog_get` hydration**, each stage spending only the tokens it must. The MCP boundary
 extends the same principle: tools speak **intent** (`remember`, `recall`, `schedule`), each
-carrying only its own fields, and deferred tool loading means the marginal cost of a crisp
-verb is its name + one line, not its full schema (ADR 0106). The durable justification is
-*semantic clarity* (holds on every client); deferred loading is the tailwind. **In flight:**
-generalize the shipped `backlog_remember` pattern into the guiding rule for the whole
-surface, hiding the substrate behind one `createEntity` funnel.
+carrying only its own fields. ADR 0106.5 shipped compiled semantic intents in place of
+generic MCP create/update. The durable justification is *semantic clarity*. Deferred
+schema loading is a client optimization, not a server guarantee: measure names,
+descriptions, loaded schemas, discovery calls and retries in the actual client. A caller
+expands the selected tool's complete contract before supplying arguments; a truncated
+discovery summary does not replace that contract. The current surface and alternatives
+are being evaluated under EPIC-0001; no replacement API is implied here.
 
 ### 4. Docs-native, project-scoped backlog (shipped · ADRs 0112, 0113 — now the core architecture)
 
-Today the backlog lives in a global `~/.backlog`. The vision: it also **bolts onto your
-repo's `docs/` folder** with zero migration, so you end up with two scopes — a **global**
-backlog (`~/.backlog`, cross-project) and a **per-project** backlog (`./docs`, committed to
-the repo). Project-scoped knowledge — ADRs, requirements, memories, tasks — lives where it
+The backlog **bolts onto your repo's `docs/` folder** and also supports a **global**
+document home (`~/.backlog/docs`, cross-project). Project-scoped knowledge — ADRs,
+requirements, memories, tasks — lives where it
 belongs: in the repo, readable on GitHub, workable by anyone with or without the tool.
 
 **Two pressures drove this pivot** (essay: *One Hundred Pull Requests*), and the design
@@ -371,8 +379,8 @@ as if still true. The counter is already built and stays load-bearing here: usag
 (0092.9), `supersedes`/`state_key` (0092.3), and contradiction detection (0092.13) — so
 what surfaces has *earned* its authority rather than merely persisted.
 
-Vision-level requirements the in-flight threads (ADR 0112 storage/scoping/IDs; ADR 0113
-user-defined + ADR/REQ substrates) **must** satisfy — internals are theirs to design, these
+Vision-level requirements the shipped architecture (ADR 0112 storage/scoping/IDs; ADR 0113
+user-defined + ADR/REQ substrates) **must** continue to satisfy — these
 constraints are not negotiable:
 
 - **Zero migration, day-0, fully backwards compatible.** Point it at an existing repo; it
@@ -380,11 +388,11 @@ constraints are not negotiable:
 - **Open folders over hidden dotfiles.** Artifacts are for humans first; per-substrate
   folders (`docs/adr`, `docs/memories`, `docs/tasks`, `docs/requirements`) over a buried
   `.backlog`.
-- **Self-describing filenames:** `NNNN-slug.md`, with `NNNN.T-slug.md` for threads (e.g.
-  `0098-unified-substrate-architecture.md`, `0023.1-uplift-driven-exploration-map.md`) — a
-  unique number, an optional thread, and a human-readable slug. Someone who has never heard
-  of the tool understands the file from its name. Opaque `TASK-0004` is not enough for docs
-  that live in a repo. (The exact filename grammar is quartz's ruling in ADR 0112.)
+- **Self-describing filenames:** managed creation uses the substrate's identity path key
+  plus a title slug (for example `TASK-0004-fix-login.md` or
+  `0132-write-intent-parent-and-memory-provenance.md`). Existing bare and slugged files
+  coexist without migration. The slug is decorative; resolve an entity through storage,
+  never by synthesizing its filename (ADRs 0129, 0129.1).
 - **ADR and Requirement are first-class flagship substrates** (ADR 0113's ruling), not
   artifact sub-types: `supersedes`, the proposed/accepted lifecycle, and threads are native
   to the ADR substrate; Requirement carries product intent the human sets.

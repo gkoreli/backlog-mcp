@@ -16,16 +16,20 @@ land as plain markdown the user reviews in git like any other diff.
 
 - `node --version` must be >= 18. If not, STOP and report — do not install Node uninvited.
 - `npx` must be able to reach the npm registry (it fetches the `backlog-mcp` package).
+- Record `git status --porcelain` before installation so verification can
+  distinguish existing changes from installation effects.
 
 ## 1. Detect the host harness
 
-You normally know which harness you are running in. If unsure, probe in order:
+Use the harness identified by the user or the active session. Installed
+executables show availability, not which harness is active. If the host is
+unknown, establish it before choosing a registration target:
 
 | Evidence | Host | Step |
 |---|---|---|
-| You are Claude Code, or `claude` is on PATH | Claude Code | 2a |
-| `.cursor/` in the project or `~/.cursor/` exists | Cursor | 2b |
-| `codex` on PATH or `~/.codex/config.toml` exists | Codex CLI | 2c |
+| Active session or user identifies Claude Code | Claude Code | 2a |
+| Active session or user identifies Cursor | Cursor | 2b |
+| Active session or user identifies Codex CLI | Codex CLI | 2c |
 | Some other MCP-capable client | Generic MCP | 2d |
 | No MCP client at all | CLI-only | skip to step 3 — the CLI is the full surface |
 
@@ -82,22 +86,27 @@ or `npx -y backlog-mcp serve` in the foreground) and point the client at
 From the user's repo root:
 
 ```bash
-npx -y backlog-mcp wakeup
+backlog_briefing=$(npx -y backlog-mcp wakeup --json)
 ```
 
-Zero setup is expected to work: a repo with a `docs/` folder gets a
-project-scoped briefing (pre-existing, non-tool markdown like bare ADRs is read
+Check that the command succeeded before continuing; retain its JSON for the
+budget check below. Show the captured briefing to the user.
+
+Without an explicit home or configuration override, a discovered repo with a
+`docs/` folder gets a project-scoped briefing (pre-existing, non-tool markdown like bare ADRs is read
 losslessly); a repo without `docs/` falls back to the user's global home
 (`~/.backlog/docs`). To adopt project-scoped memory in a docs-less repo, ask
 the user before creating a `docs/` folder.
 
-Show the user the briefing verbatim, then tell them, briefly:
+After showing the captured briefing, explain briefly:
 
-- The loop is four verbs: `wakeup` (orient at session start), `recall` (ask),
-  `remember` (keep a durable fact), `get` (expand any id).
+- Retrieval is `wakeup` (orient), `recall` / `search` (ask), `get` (expand).
+  `remember` keeps a durable fact; `forget` retracts one. Read a selected
+  tool's full schema when calling it; discovery summaries omit argument detail.
 - Docs-native promise: nothing was moved or rewritten. The tool's writes are
   plain markdown under `docs/` that appear as ordinary git diffs; a `.backlog/`
-  control dir holds only local cache and ignores itself, so git stays clean.
+  control dir holds configuration, caches and runtime state journals. Runtime
+  cache/state paths are ignored; project configuration may be tracked.
 - A live read-only viewer runs at `http://localhost:3030` once an MCP session
   (or a bare `npx -y backlog-mcp`) has started the daemon.
 
@@ -107,11 +116,12 @@ Run all three and include the results in your report:
 
 1. **Git clean** — `git status --porcelain` shows nothing new except files you
    deliberately created (a project-scope `.mcp.json`, or a memory the user
-   asked for). `.backlog/` must NOT appear in the output.
+   asked for). Compare with the pre-install state: existing tracked `.backlog/`
+   configuration is legitimate; generated caches and state must stay ignored.
 2. **Briefing budget** — the wire form must be <= 3072 bytes:
 
    ```bash
-   npx -y backlog-mcp wakeup --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const b=Buffer.byteLength(JSON.stringify(JSON.parse(s),null,1));console.log(b+" bytes");process.exit(b<=3072?0:1)})'
+   printf '%s' "$backlog_briefing" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const b=Buffer.byteLength(JSON.stringify(JSON.parse(s),null,1));console.log(b+" bytes");process.exit(b<=3072?0:1)})'
    ```
 
 3. **Host registration** (if step 2 applied) — after a session reload the
@@ -124,9 +134,10 @@ Run all three and include the results in your report:
   clone the repo or vendor code as a workaround unless the user asks.
 - **Port 3030 taken by an unrelated process**: set `BACKLOG_VIEWER_PORT=<port>`
   in the daemon's environment. CLI verbs need no port at all.
-- **Stale daemon from an older version**: `npx -y backlog-mcp` auto-replaces
-  it; if `npx -y backlog-mcp status` still shows the old version, run
-  `npx -y backlog-mcp stop` and retry.
+- **Stale daemon from an older version**: startup replaces it when the
+  installed package is newer. Check `npx -y backlog-mcp version` and
+  `npx -y backlog-mcp status` to
+  distinguish the installed package from the running daemon before retrying.
 - **First recall/search is slow**: a local embedding model downloads once
   (tens of seconds). It is local-first — no cloud call. Wait, and say so.
 - **A registration flag is rejected**: your harness version differs from this

@@ -4,7 +4,7 @@ title: 'Research a coherent, smaller MCP and CLI surface'
 status: in_progress
 parent_id: FLDR-0001
 created_at: '2026-09-09T01:42:15.041Z'
-updated_at: '2026-09-09T01:46:09.206Z'
+updated_at: '2026-09-09T02:33:59.218Z'
 type: epic
 ---
 ## Problem and research objective
@@ -73,3 +73,7 @@ TASK-0011 is in progress: static arithmetic and design review are complete, but 
 ### Client pilot checkpoint
 
 [Six controlled Codex runs](../reports/0017-tool-surface-client-trials.md) now exercise the full catalog and both candidates on independent homes. The typed daily set loses authoring coverage without its optional tail; discovery/execution retains coverage with extra calls and schema-related retries. Seven malformed/stale/wrong-home probes rejected without journal mutations. This advances TASK-0011 but does not close its broader client/recovery gate or decide the default API.
+
+### Operational documentation audit — 2026-09-09
+
+TASK-0013 reconciles README, AGENTS, install guidance and current architecture descriptions against compiled contracts. The [audit record](../reports/agent-guidance-audit-2026-09-09.md) documents five invalid README examples, selected-schema discovery after compaction, the shared content-field clarification in 129ec1c, and the ADR-creation bookkeeping blocker. These are corrections to the existing surface, not a decision among the candidate APIs.

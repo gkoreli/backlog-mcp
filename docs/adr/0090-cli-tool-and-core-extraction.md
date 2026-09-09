@@ -6,6 +6,11 @@ status: Accepted
 
 # 0090. CLI Tool and Core Function Extraction
 
+> The core-first layering remains current. The command table below records
+> the original API: body inputs became `content` (ADR 0106.4), and MCP generic
+> create/update were replaced by declared intents while the CLI retained its
+> generic commands (ADR 0106.5). Use current tool schemas and CLI `--help`.
+
 ## Problem Statement
 
 All business logic lives inside MCP tool registration callbacks (`src/tools/*.ts`), tightly coupled to the MCP SDK. This means no CLI access, no reuse from HTTP routes, and testing requires MCP server mocking.

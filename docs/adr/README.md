@@ -2,6 +2,18 @@
 
 This directory contains Architecture Decision Records (ADRs) for backlog-mcp.
 
+ADRs preserve the contracts and assumptions at the time of a decision. For
+current invocation, use the selected tool's full schema or CLI `--help`, with
+[README examples](../../README.md#mcp-tools) as orientation. In particular,
+ADR 0106.4 renamed entity bodies to `content`, ADR 0106.5 retired generic MCP
+create/update, and ADR 0129.1 resolves document identities without synthesized
+paths. Historical examples are not a second API. Tool-schema deferral depends
+on the client; it is not guaranteed by the server.
+
+The [2026-09-09 guidance audit](../reports/agent-guidance-audit-2026-09-09.md)
+records current corrections and the duplicate-identity blocker that prevented
+creating its managed ADR (TASK-0013; follow-up TASK-0014).
+
 ## What is an ADR?
 
 An ADR documents an important architectural decision along with its context and consequences. It helps future contributors understand why certain choices were made.
@@ -16,7 +28,7 @@ An ADR documents an important architectural decision along with its context and 
   - [0129.1. One Document Address](./0129.1-one-document-address.md) **[Accepted (goga) — shipped 0.73.0]** - ids, root-relative paths, and `mcp://` URIs resolve through one core grammar; entities follow storage to their real file; the viewer never synthesizes `tasks/<id>.md` again. - 2026-09-01
 - [0121. Retrieval Evaluation from First Principles — Evidence That Binds](./0121-retrieval-evaluation-from-first-principles.md) **[Accepted (goga, 2026-07-17)]** - Resets evaluation honesty: token-cost-to-correct-action as the governing metric; a deterministic structural truth suite (judge-free, regenerated per run) over agent-judged query sets; qrels tiered `constructive:`/`human:`/`llm:`; ranking FROZEN until human-tier qrels exist (R8); implicit-qrels mining build-later-on-trigger; two-tier telemetry. - 2026-07-17
 - [0120. Semantic Collision Candidates — Deterministic Adjudication Pressure](./0120-semantic-collision-candidates.md) **[Proposed — candidate machinery live (0.63.0); phase-two GO awaiting ruling]** - Deterministic collision-candidate surfacing at write time: the engine detects, never acts; a human adjudicates cheaply. - 2026-07-17
-- [0119.1. Implicit Identity Capture — the Attribution Ladder](./0119.1-implicit-identity-capture.md) **[Proposed; build in flight]** - Identity as workspace configuration, git-style: a six-rung resolution ladder (explicit → worktree git config → env → checkout → user config → absent) with the source always disclosed; worktree stamp deliberately beats inherited env (R1); writers get worktrees (R6). Spawned by PROMPT 0009. - 2026-07-17
+- [0119.1. Implicit Identity Capture — the Attribution Ladder](./0119.1-implicit-identity-capture.md) **[Implemented; status reconciled 2026-09-09]** - Identity as workspace configuration, git-style: a six-rung resolution ladder (explicit → worktree git config → env → checkout → user config → absent) with the source always disclosed; worktree stamp deliberately beats inherited env (R1); writers get worktrees (R6). Spawned by PROMPT 0009. - 2026-07-17
 - [0119. Agent Substrate — Durable Identity, Derived Work Correlation](./0119-agent-substrate-and-derived-correlation.md) **[Slice A shipped 0.65.0 — attribution live ("by granite"); further slices design-only]** - Define Agent as a project-authored ADR 0113 substrate containing durable identity only; derive task/thread track record from explicit operation-journal attribution and Git trailers, with Aime remaining an external client and no orchestration, stored aggregates, scoring, or new MCP tool. - 2026-07-16
 - [0118.1. Proactive Recall Refresh — Intent-Gated Recall at Lifecycle Boundaries](./0118.1-intent-gated-recall-lifecycle-hooks.md) **[Slice A shipped 0.65.0 — the wakeup memory-protocol rubric; supersedes 0118 in part]** - Replace every-turn recall injection with one bounded session-start decision rubric, explicit stub-first recall, and client-owned compaction receipts. Claude Code mounts at `SessionStart`/`PreCompact`/`PostCompact`; ordinary prompts pay zero recall tax. A future `POST /memory/recall` is a fixed stub-only adapter over core and cannot ship unauthenticated on the current non-loopback listener. - 2026-07-16
 - [0118. Proactive Recall — Hook-Driven Memory Injection at the Client Boundary](./0118-proactive-recall-hooks.md) **[Parked; superseded in part by 0118.1]** - Historical design and feasibility evidence for stub-first recall, client-owned hooks, fail-open behavior, and warm-daemon latency. Its every-turn `UserPromptSubmit` injection and REST-route disposition are superseded by ADR 0118.1. - 2026-06-20
@@ -137,7 +149,7 @@ An ADR documents an important architectural decision along with its context and 
 
 Proposed ADRs are listed inline in **Active ADRs** above, tagged **[Proposed]**.
 The 2026-07 vision batch (0112–0116) has shipped and is retagged accordingly;
-the genuinely open threads are 0119.1 (build in flight), 0120 (phase-two GO),
+0119.1 is also implemented. The open threads include 0120 (phase-two GO),
 0107/0108/0110 (design-first), and the review-gated 0113.1 status ruling.
 Framework (nisli) ADRs live in the [nisli repository](https://github.com/gkoreli/nisli/tree/main/docs/adr).
 

@@ -4,6 +4,11 @@
 **Status**: Accepted
 **Backlog Item**: TASK-0354
 
+> Historical API: ADR 0106.4 renamed the body input to `content`; ADR 0106.5
+> retired `backlog_create`. Current semantic MCP intents do not accept
+> `source_path`; the CLI retains `create --source`. See the
+> [current invocation guide](../../README.md#intent-writes).
+
 ## Context
 
 LLM agents frequently need to create backlog artifacts from local files. The current workflow requires the agent to read the file into its context window, then pass the content as the `description` string parameter to `backlog_create`. This round-trip through the LLM is lossy (large files get truncated or summarized), wasteful (burns context tokens), and unnecessary since the backlog-mcp server runs locally with direct filesystem access.

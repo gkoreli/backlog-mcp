@@ -105,7 +105,9 @@ The viewer UI is built with [Nisli](https://github.com/gkoreli/nisli) (`@nisli/c
 | Cron | `CRON-0001` | Scheduled-intake descriptors (executed by an external scheduler) |
 | Memory | `MEMO-0001` | Durable agent memories — recalled, decayed, superseded, ranked by usage |
 
-**Status values:** `open`, `in_progress`, `blocked`, `done`, `cancelled`
+**Built-in work status values:** `open`, `in_progress`, `blocked`, `done`,
+`cancelled`. Status fields and transitions belong to each substrate; project
+declarations can define other vocabularies, and some types have no workflow.
 
 Beyond the built-ins, a project can **declare its own substrate types as data** — a versioned JSON definition plus a bounded JSON Schema (Draft 2020-12), never executable code. Built-in and project-defined types share one project-scoped registry, so the catalog grows without touching storage, search, or the viewer (ADR 0113).
 
@@ -131,25 +133,29 @@ The authentication flow has an issue where...
 
 ### Memory (the core loop)
 
-Four verbs, zero ceremony — orient, ask, keep, correct. Memories are first-class entities (`MEMO-` ids), hidden from plain `list`/`search` by design; `recall` is their dedicated read surface.
+Four verbs, zero ceremony — orient, ask, keep, correct. Memories are first-class entities (`MEMO-` ids), hidden from ordinary `list`/`search` results; `recall` is their dedicated retrieval surface. `list type="memory"` explicitly includes them.
 
 ```
 backlog_wakeup                            # Orient: one dense briefing (active work, top knowledge)
 backlog_wakeup operation="OP-0001"        # Orient mid-flight: that operation's live state leads the briefing (goal, next action, constraints)
 backlog_recall query="how do we release?" # Ask: hybrid-ranked recall, returns stubs to expand
-backlog_remember content="..." layer="procedural"   # Keep: one durable, atomic fact
-backlog_forget id="MEMO-0042"             # Correct: soft-expire (stays auditable in the viewer)
+backlog_remember title="Release procedure" content="..." layer="procedural" # Keep one atomic fact
+backlog_forget ids=["MEMO-0042"]           # Retract: soft-expire (stays auditable in the viewer)
 ```
 
 The briefing ends with a two-line memory protocol (when to recall, when to remember) and enforces a hard byte ceiling with a deterministic yield ladder — constraints never yield.
 
 Retrieval is one language: **orient** (`wakeup`) → **ask** (`recall` / `search`) → **expand** (`backlog_get id=… context=true`).
 
+Use `remember` with `supersedes="MEMO-0042"` when replacing a memory with a
+corrected fact; `forget` retracts knowledge without a replacement.
+
 ### backlog_list
 
 ```
-backlog_list                              # Active tasks (open, in_progress, blocked)
-backlog_list status=["done"]              # Completed tasks
+backlog_list                              # Recent entities, up to 20; no default status filter
+backlog_list type="task" status=["open","in_progress","blocked"] # Active tasks
+backlog_list type="task" status=["done"]  # Completed tasks
 backlog_list type="epic"                  # Only epics
 backlog_list parent_id="EPIC-0002"        # Tasks in an epic
 backlog_list parent_id="FLDR-0001"        # Items in a folder
@@ -167,6 +173,10 @@ backlog_get id="TASK-0001" context=true   # Item + neighborhood stubs (parent/ch
 ```
 
 ### Intent writes
+
+Discover the verb, then read its complete input schema before constructing
+arguments. Loading and deferral depend on the MCP client; a shortened tool
+description is not its argument contract. The body field is `content`.
 
 ```
 backlog_create_work title="Fix bug" content="Details..." parent_id="EPIC-0002"
@@ -210,20 +220,22 @@ backlog_search query="search ranking" include_content=true
 
 ### write_resource
 
-Edit the Markdown body of an existing entity. Create and transition entities
-through the substrate-declared intent verbs above.
+Use native file editing for ordinary repository prose. Use `write_resource`
+when an existing entity edit needs schema validation and canonical persistence
+before success is returned. It edits the Markdown body. Create and transition
+entities through the substrate-declared intent verbs above.
 
 ```
 # Edit task body (use str_replace — protects frontmatter)
-write_resource uri="mcp://backlog/tasks/TASK-0001.md" \
+write_resource id="TASK-0001" \
   operation={type: "str_replace", old_str: "old text", new_str: "new text"}
 
 # Insert after a specific line
-write_resource uri="mcp://backlog/tasks/TASK-0001.md" \
+write_resource id="TASK-0001" \
   operation={type: "insert", insert_line: 5, new_str: "inserted line"}
 
-# Append to a file
-write_resource uri="mcp://backlog/resources/log.md" \
+# Append to an existing artifact's body
+write_resource id="ARTF-0001" \
   operation={type: "append", new_str: "New entry"}
 ```
 
@@ -235,14 +247,15 @@ Running `npx -y backlog-mcp` (the default MCP config) does the following:
 
 1. **Starts a persistent HTTP server** as a detached background process — serves both the MCP endpoint (`/mcp`) and the web viewer (`/`) on port 3030
 2. **Bridges stdio to it** — your MCP client communicates via stdio, which gets forwarded to the HTTP server via `mcp-remote`
-3. **Auto-updates**: `npx -y` always pulls the latest published version. If the running server is an older version, it's automatically shut down and restarted with the new one
+3. **Version-aware startup**: if the installed package is newer than the running server, startup replaces the older daemon. Package installation/update and daemon restart are separate steps; `-y` suppresses the npx install prompt
 4. **Resilient recovery**: If the bridge loses connection, a supervisor restarts it with exponential backoff (up to 10 retries). Connection errors like `ECONNREFUSED` are detected and handled automatically
 
 The HTTP server persists across agent sessions — multiple MCP clients can share
 it. Each request selects its own backlog home, so one daemon can serve the
-global `~/.backlog/docs/` and several projects without mixing their state. From
-a repository, the bridge selects that project's `docs/`; outside one, it
-selects global. The web viewer is always available at
+global `~/.backlog/docs/` and several projects without mixing their state. With
+no explicit home or configuration override, a discovered repository with a
+`docs/` directory selects the project home; otherwise selection falls back to
+global. The web viewer is always available at
 `http://localhost:3030`.
 
 ## CLI
@@ -278,7 +291,9 @@ $ npx backlog-mcp status
 Server is not running
 ```
 
-The CLI exists for humans to inspect and manage the background server that agents use. Since the default mode spawns a detached process, you need `status` to check it and `stop` to shut it down.
+The CLI also exposes one-shot retrieval, memory, and document operations over
+the same core. Use `backlog --help` for the current command surface. `status`
+and `stop` inspect and manage the persistent daemon started by the default mode.
 
 `serve` runs the HTTP server in the foreground instead of detached — useful
 for local debugging or running without an MCP client. The daemon binds to
@@ -326,8 +341,10 @@ retrieved data — the briefing stays bounded by a hard 3,072-byte ceiling with
 the rubric as non-droppable content
 ([ADR 0118.1](docs/adr/0118.1-intent-gated-recall-lifecycle-hooks.md)).
 
-The client owns the hooks; the server never automates recall or memory writes
-([ADR 0117](docs/adr/0117-the-write-boundary.md), 0118.1 R1). To mount the
+The client owns the hooks. This recipe injects a briefing; it does not invoke
+recall or author memory bodies (ADR 0118.1 R1). Managed task completion can
+still capture an episode through the core
+([ADR 0092.2](docs/adr/0092.2-phase-3-implicit-episodic-capture.md)). To mount the
 briefing in Claude Code, add a `SessionStart` command hook to
 `.claude/settings.json`:
 

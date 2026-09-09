@@ -7,6 +7,11 @@ backlog_item: TASK-0688
 
 # 0106. Semantic Intent-Tools at the MCP Boundary — Hide the Substrate in Core
 
+> Implementation: ADR 0106.5 shipped the declared intent surface. Examples of
+> generic writes below describe the prior API; body inputs are now `content`
+> (ADR 0106.4). Deferred schema loading depends on the client; semantic intent
+> contracts remain useful when a client loads the whole manifest eagerly.
+
 **Date**: 2026-06-17
 **Status**: Accepted — implemented (vision ratified: NORTH-STAR "Decisions — Resolved" table, "Speak intent; hide the substrate in core"; executed via ADR 0106.5, shipped 0.60.0/0.62.0, 2026-07-16). Status reconciled 2026-07-17.
 **Backlog Item**: TASK-0688
