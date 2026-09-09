@@ -142,6 +142,9 @@ export function nextStorageDocumentId(
   type: string,
   currentMaxId: number,
 ): string {
+  if (!Number.isSafeInteger(currentMaxId) || currentMaxId < 0 || currentMaxId >= Number.MAX_SAFE_INTEGER) {
+    throw new Error(`Document sequence exhausted or invalid for substrate type: ${type}`);
+  }
   const claim = catalog.getStorageClaim(type);
   if (claim === undefined) {
     throw new Error(`No storage claim for entity type: ${type}`);

@@ -24,7 +24,7 @@
  *    process by design. Register an InMemoryStore for 'session' if needed.
  */
 
-import { EntityType, MemorySchema, nextEntityId, isValidEntityId, type Entity, type Memory } from '@backlog-mcp/shared';
+import { EntityType, MemorySchema, isValidEntityId, type Entity, type Memory } from '@backlog-mcp/shared';
 import type { MemoryStore, MemoryEntry, MemoryLayer, RecallQuery, MemoryResult, ForgetFilter } from '@backlog-mcp/memory';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type {
@@ -32,6 +32,7 @@ import type {
   MemoryUsageSummaryStore,
 } from './memory-usage.contract.js';
 import { usageFactor } from './usage-signal.js';
+import { persistNewEntity } from '../core/persist-new-entity.js';
 import {
   memoryEntryUsageMetadata,
   memoryUsageFieldsFromEntry,
@@ -59,12 +60,6 @@ export class BacklogMemoryStore implements MemoryStore {
     }
     const service = this.getService();
     const nowIso = new Date(entry.createdAt || Date.now()).toISOString();
-    const id = service.allocateId === undefined
-      ? nextEntityId(
-        await service.getMaxId(EntityType.Memory),
-        EntityType.Memory,
-      )
-      : await service.allocateId(EntityType.Memory);
 
     const meta = entry.metadata ?? {};
     const entityRefs = Array.isArray(meta.entity_refs)
@@ -81,8 +76,7 @@ export class BacklogMemoryStore implements MemoryStore {
       ...(captureKind ? [captureKind] : []),
     ])];
 
-    const memory = MemorySchema.parse({
-      id,
+    const memory = MemorySchema.omit({ id: true }).parse({
       type: 'memory',
       title: entry.title.trim(),
       content: entry.content,
@@ -114,14 +108,14 @@ export class BacklogMemoryStore implements MemoryStore {
       const all = await service.list({ type: EntityType.Memory });
       for (const m of all) {
         const prev = m as Memory;
-        if (prev.id === id || prev.state_key !== stateKey) continue;
+        if (prev.state_key !== stateKey) continue;
         if (prev.valid_until && Date.parse(prev.valid_until) <= Date.now()) continue;
         await service.save({ ...prev, valid_until: nowIso, updated_at: nowIso } as Entity);
       }
     }
 
-    await service.add(memory as Entity);
-    return this.toMemoryEntry(memory as Memory);
+    const stored = await persistNewEntity(service, memory);
+    return this.toMemoryEntry(MemorySchema.parse(stored));
   }
 
   /** Soft-expire a memory by id (no-op if missing, not a memory, or already expired). */

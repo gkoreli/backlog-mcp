@@ -9,6 +9,13 @@ const DATE_PREFIXED_FILENAME = /^\d{4}-\d{2}-\d{2}(?!\d)/u;
 const NUMBERED_FILENAME = /^(\d+(?:\.\d+)*)(?:-(.*))?$/u;
 const PREFIXED_NUMBER_FILENAME = /^([A-Za-z][A-Za-z0-9]*)-(\d+(?:\.\d+)*)(?:-(.*))?$/u;
 
+/** Digit width is display formatting, never a distinct document identity. */
+export function normalizeDocumentKey(key: string): string {
+  return key.split('.').map(function normalizeSegment(segment) {
+    return segment.replace(/^0+(?=\d)/u, '');
+  }).join('.');
+}
+
 interface ParsedPathIdentity {
   pathKey: string;
   slug?: string;

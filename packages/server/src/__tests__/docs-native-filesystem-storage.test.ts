@@ -484,6 +484,40 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     expect(storage.get('TASK-0001')?.title).toBe('First writer');
   });
 
+  it('rejects a duplicate ID from a stale second writer with a different slug', function rejectsStaleWriter() {
+    const { storage: first } = createStorage('stale-writer');
+    const { storage: second } = createStorage('stale-writer');
+    expect(second.getMaxId(EntityType.Memory)).toBe(0);
+    const memory = buildEntity({
+      id: 'MEMO-0001', type: EntityType.Memory, title: 'First writer',
+      content: 'Original memory', layer: 'semantic',
+    });
+    first.add(memory);
+    expect(function duplicate() {
+      second.add({ ...memory, title: 'Second writer' });
+    }).toThrow(/already exists/);
+    first.invalidate();
+    expect(first.get('MEMO-0001')?.title).toBe('First writer');
+  });
+
+  it('rejects an equivalent ID with a different digit width', function rejectsEquivalentId() {
+    const { storage } = createStorage('equivalent-id');
+    const task = buildEntity({ id: 'TASK-0001', title: 'First' });
+    storage.add(task);
+    expect(function duplicate() {
+      storage.add({ ...task, id: 'TASK-00001', title: 'Different width' });
+    }).toThrow(/already exists/);
+  });
+
+  it('reserves the identity of a claimed document with malformed frontmatter', function reservesQuarantine() {
+    const { home, storage } = createStorage('quarantined-id');
+    writeRawDocument(home, 'tasks/TASK-0007-broken.md', '---\ntitle: [\n---\nBroken');
+    expect(storage.getMaxId(EntityType.Task)).toBe(7);
+    expect(function duplicate() {
+      storage.add(buildEntity({ id: 'TASK-0007', title: 'New title' }));
+    }).toThrow(/already exists/);
+  });
+
   it('writes new documents as <pathKey>-<slug>.md and keeps the id as the only identity (ADR 0129)', function writesSemanticFilenames() {
     const { home, storage } = createStorage('semantic-filenames');
     const task = buildEntity({ id: 'TASK-0003', title: 'Ship the Release: Part II!' });

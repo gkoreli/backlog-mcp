@@ -17,6 +17,8 @@ import {
   type UnifiedSearchResult,
 } from '@backlog-mcp/memory/search';
 import { logger } from '../../utils/logger.js';
+import type { EntityDraft } from '../../core/entity-creation.contract.js';
+import { retryDocumentWrite } from './document-write-lock.js';
 import {
   createSearchEntityDocument,
   isBuiltinSubstrateType,
@@ -295,7 +297,23 @@ export class BacklogService implements IBacklogService {
   }
 
   async add(candidate: AnyEntity): Promise<AnyEntity> {
-    const entity = this.storage.add(candidate);
+    const storage = this.storage;
+    const entity = await retryDocumentWrite(function insert() { return storage.add(candidate); });
+    return this.indexCreatedEntity(entity);
+  }
+
+  /** The local repository owns allocation and insertion as one storage operation. */
+  async create(draft: EntityDraft): Promise<AnyEntity> {
+    const storage = this.storage;
+    if (storage.create === undefined) {
+      return this.add({ ...draft, id: await this.allocateId(draft.type) });
+    }
+    const create = storage.create.bind(storage);
+    const entity = await retryDocumentWrite(function insert() { return create(draft); });
+    return this.indexCreatedEntity(entity);
+  }
+
+  private async indexCreatedEntity(entity: AnyEntity): Promise<AnyEntity> {
     // The new entity document is also a catalog resource (ADR 0127 R2).
     this.resourceManager.invalidate();
     const document = createSearchEntityDocument(entity, this.getSearchFields);
@@ -309,7 +327,8 @@ export class BacklogService implements IBacklogService {
     candidate: AnyEntity,
     options?: StorageSaveOptions,
   ): Promise<AnyEntity> {
-    const entity = this.storage.save(candidate, options);
+    const storage = this.storage;
+    const entity = await retryDocumentWrite(function save() { return storage.save(candidate, options); });
     // The saved document's catalog projection (title/status) may have changed.
     this.resourceManager.invalidate();
     const document = createSearchEntityDocument(entity, this.getSearchFields);
@@ -320,7 +339,8 @@ export class BacklogService implements IBacklogService {
   }
 
   async delete(id: string): Promise<boolean> {
-    const deleted = this.storage.delete(id);
+    const storage = this.storage;
+    const deleted = await retryDocumentWrite(function remove() { return storage.delete(id); });
     if (deleted) {
       this.resourceManager.invalidate();
       await this.enqueueSearchOperation(() => this.search.removeDocument(id));
@@ -352,7 +372,7 @@ export class BacklogService implements IBacklogService {
     return this.storage.getMaxId(type);
   }
 
-  /** Allocate an id through this runtime's storage identity policy. */
+  /** Preview an available ID. Use create() to allocate and insert atomically. */
   async allocateId(type: SubstrateType): Promise<string> {
     const currentMaxId = await this.getMaxId(type);
     if (this.allocateEntityId !== undefined) {

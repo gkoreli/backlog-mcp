@@ -1,4 +1,5 @@
 import type { StorageIdentityPolicy } from '../../storage/substrate-storage-catalog.contract.js';
+import { normalizeDocumentKey } from '../document-identity.js';
 import type {
   ClaimSubstrateDocumentsParams,
   ClaimSubstrateDocumentsResult,
@@ -32,9 +33,7 @@ function normalizeNumericKey(
   const numericPath = identity.strategy === 'prefixed-number' && identity.prefix
     ? pathKey.slice(identity.prefix.length + 1)
     : pathKey;
-  return numericPath.split('.').map(function normalizeSegment(segment) {
-    return segment.replace(/^0+(?=\d)/u, '');
-  }).join('.');
+  return normalizeDocumentKey(numericPath);
 }
 
 function storageKey(

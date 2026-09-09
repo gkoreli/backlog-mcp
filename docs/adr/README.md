@@ -8,6 +8,7 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0133. Atomic document creation](./0133-atomic-document-creation.md) **[Implemented — unreleased]** - One repository creation operation, fresh write authority under a home-local lock, and a separate cached read model. Worktree-family allocation remains open. - 2026-09-08
 - [0132. Preserve intent parents and registry-defined memory provenance](./0132-write-intent-parent-and-memory-provenance.md) **[Implemented — unreleased]** - Fixes supplied-parent routing and validates memory provenance using the selected home's identity declarations. - 2026-09-08
 - [0131. Release Awareness and Self-Restart](./0131-release-awareness-and-self-restart.md) **[Accepted (goga) — shipped 0.74.0]** - System Information compares the running daemon with the install on disk and restarts it through the existing drain-then-handover; mutating control routes accept loopback origins only. - 2026-09-01
 - [0130. Clean Process Exit — the ONNX abort, probe-before-compose, and exit discipline](./0130-clean-process-exit-onnx-abort.md) **[Accepted (goga) — shipped 0.72.1]** - The `mutex lock failed` abort is onnxruntime-node 1.21 tearing down under `process.exit()` after inference; upgrade transformers to 4.x (fixed runtime), decide the port before composing the daemon, drain instead of hard-exit, and route every CLI failure through one boundary. - 2026-09-01

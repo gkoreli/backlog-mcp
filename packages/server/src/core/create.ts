@@ -1,6 +1,5 @@
 import {
   getSubstrate,
-  nextEntityId,
   type SubstrateDefinition,
 } from '@backlog-mcp/shared';
 import { ZodError } from 'zod';
@@ -21,6 +20,7 @@ import type {
 } from './types.js';
 import { formatZodError } from './zod-errors.js';
 import { recordMutation } from './operation-log.js';
+import { persistNewEntity } from './persist-new-entity.js';
 import { routeContainer } from './container-routing.js';
 import { extractEntityIds } from './get-context/cross-reference-traversal.js';
 
@@ -138,7 +138,6 @@ export async function createEntity(
   if (route.parentRequired) {
     throw new ValidationError(`${type} requires an explicit parent_id`);
   }
-  const id = await allocateEntityId(service, type);
   const candidate: Record<string, unknown> = { ...(fields ?? {}) };
   assignDefined(candidate, {
     content,
@@ -148,7 +147,6 @@ export async function createEntity(
     command,
     enabled,
   });
-  candidate.id = id;
   candidate.type = type;
   candidate.title = title;
 
@@ -160,12 +158,7 @@ export async function createEntity(
 
   let stored;
   try {
-    stored = await service.add(candidate as {
-      id: string;
-      type: string;
-      title: string;
-      [field: string]: unknown;
-    });
+    stored = await persistNewEntity(service, { ...candidate, type, title });
   } catch (error) {
     normalizeWriteError(error);
   }
@@ -192,37 +185,4 @@ export async function createEntity(
     result,
   );
   return result;
-}
-
-async function allocateBuiltinId(
-  service: IBacklogService,
-  type: string,
-): Promise<string> {
-  if (!isBuiltinSubstrateType(type)) {
-    throw new ValidationError(`Unknown substrate type: ${type}`);
-  }
-  return nextEntityId(await service.getMaxId(type), type);
-}
-
-async function allocateEntityId(
-  service: IBacklogService,
-  type: string,
-): Promise<string> {
-  if (service.allocateId === undefined) {
-    return allocateBuiltinId(service, type);
-  }
-  try {
-    return await service.allocateId(type);
-  } catch (error) {
-    if (error instanceof SubstrateWriteError) {
-      throw new ValidationError(error.message);
-    }
-    if (
-      error instanceof Error
-      && error.message.startsWith('No storage claim for entity type:')
-    ) {
-      throw new ValidationError(`Unknown substrate type: ${type}`);
-    }
-    throw error;
-  }
 }

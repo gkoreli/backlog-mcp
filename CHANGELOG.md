@@ -13,6 +13,11 @@ begins at 0.57.0 — earlier history lives in git.
 ## [Unreleased]
 
 ### Fixed
+- **Concurrent writers in one home no longer allocate duplicate document IDs.**
+  Creation allocates and inserts under a filesystem lock using fresh markdown
+  identity claims. Duplicate IDs are rejected across different slugs and digit
+  widths, and malformed documents retain their occupied numbers. Cached reads
+  remain fast. Separate worktree-family allocation remains open. ADR 0133.
 - **Artifact attachment preserves the supplied parent.** `backlog_attach_artifact`
   no longer rejects a valid `parent_id` as missing; other create intents also
   preserve explicit parents over routing defaults. [#121](https://github.com/gkoreli/backlog-mcp/issues/121).

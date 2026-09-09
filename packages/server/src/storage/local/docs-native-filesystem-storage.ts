@@ -10,22 +10,20 @@ import matter from 'gray-matter';
 import {
   EntityType,
   type AnyEntity,
-  type RuntimeEntity,
   type SubstrateType,
 } from '@backlog-mcp/shared';
 import { isPathWithin } from '../../core/backlog-home.js';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
+import type { EntityDraft } from '../../core/entity-creation.contract.js';
 import { matchesDeclaredStatus } from '../../core/status-token.js';
-import { discoverDocuments } from '../../core/document-discovery.js';
 import { slugifyDocumentTitle } from '../../core/document-slug.js';
 import {
   normalizeDocumentSourcePath,
+  normalizeDocumentKey,
   parseDocumentIdentity,
 } from '../../core/document-identity.js';
 import {
-  claimSubstrateDocuments,
   SubstrateWriteError,
-  type ClaimedSubstrateDocument,
   type ProjectSubstrateRegistry,
 } from '../../core/substrates/index.js';
 import type {
@@ -36,11 +34,14 @@ import type {
   StoredEntityDocument,
 } from '../storage-adapter.js';
 import {
-  formatStorageDisplayId,
   matchesStorageDocumentIdentity,
+  nextStorageDocumentId,
+  parseStorageDisplayId,
   storageDocumentSourcePath,
 } from '../storage-identity.js';
 import type { SubstrateStorageClaim } from '../substrate-storage-catalog.contract.js';
+import { readDocumentSnapshot, type DocumentSnapshot } from './docs-native-read-model.js';
+import { withDocumentWriteLock } from './document-write-lock.js';
 
 const MARKDOWN_EXTENSION = /\.(?:md|markdown)$/iu;
 
@@ -50,85 +51,6 @@ function isSourcePathUnderFolder(sourcePath: string, folder: string): boolean {
     && relativePath !== '..'
     && !relativePath.startsWith('../')
     && !posix.isAbsolute(relativePath);
-}
-
-function firstHeading(content: string): string | undefined {
-  const heading = /^\s*#\s+(.+?)\s*$/mu.exec(content)?.[1]?.trim();
-  return heading || undefined;
-}
-
-function stringField(
-  data: Record<string, unknown>,
-  field: string,
-): string | undefined {
-  const value = data[field];
-  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
-}
-
-interface ParsedClaimedDocument {
-  document?: StoredEntityDocument;
-  quarantine?: ClaimQuarantine;
-}
-
-function quarantineClaim(
-  claimed: ClaimedSubstrateDocument,
-  reason: string,
-): ParsedClaimedDocument {
-  return {
-    quarantine: {
-      type: claimed.type,
-      sourcePath: claimed.document.sourcePath,
-      reason,
-    },
-  };
-}
-
-function parseStoredDocument(
-  claimed: ClaimedSubstrateDocument,
-  registry: ProjectSubstrateRegistry,
-): ParsedClaimedDocument {
-  const document = claimed.document;
-  if (document.format !== 'markdown' || document.content === undefined) {
-    return quarantineClaim(claimed, 'document is not readable markdown');
-  }
-
-  try {
-    const parsedMarkdown = matter(document.content, {});
-    const data = parsedMarkdown.data as Record<string, unknown>;
-    const claim = registry.getStorageClaim(claimed.type);
-    if (claim === undefined) return {};
-
-    const id = formatStorageDisplayId(claim, claimed.storageKey);
-    const title = stringField(data, 'title')
-      ?? firstHeading(parsedMarkdown.content)
-      ?? document.identity.slug
-      ?? id;
-    const content = parsedMarkdown.content.trim();
-    const projection: RuntimeEntity = {
-      ...data,
-      id,
-      type: claimed.type,
-      title,
-      ...(content ? { content } : {}),
-    };
-
-    return {
-      document: {
-        entity: projection,
-        sourcePath: document.sourcePath,
-        identity: document.identity,
-        markdown: document.content,
-      },
-    };
-  } catch (error) {
-    // A claimed document that cannot compile stays quarantined as a generic
-    // lossless resource (EXP-1 B-3). The visible record here is what keeps
-    // typed disclosure from silently implying completeness.
-    return quarantineClaim(
-      claimed,
-      `frontmatter cannot parse: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
 }
 
 function serializeEntity(entity: AnyEntity): string {
@@ -189,24 +111,6 @@ function validateWriteIdentity(
   }
 }
 
-function numericRoot(identity: string): number | undefined {
-  const localIdentity = identity.includes('-')
-    ? identity.slice(identity.lastIndexOf('-') + 1)
-    : identity;
-  const rootSegment = localIdentity.split('.')[0];
-  if (rootSegment === undefined || !/^\d+$/u.test(rootSegment)) {
-    return undefined;
-  }
-  return Number.parseInt(rootSegment, 10);
-}
-
-function documentSequence(document: StoredEntityDocument): number | undefined {
-  const pathSequence = document.identity.pathKey === undefined
-    ? undefined
-    : numericRoot(document.identity.pathKey);
-  return pathSequence ?? numericRoot(document.entity.id);
-}
-
 function sortableTime(document: StoredEntityDocument): number {
   const updatedAt = document.entity.updated_at;
   const value = typeof updatedAt === 'string'
@@ -219,40 +123,14 @@ function sortableTime(document: StoredEntityDocument): number {
   return Number.isFinite(observedValue) ? observedValue : 0;
 }
 
-/**
- * Docs-native entity storage scoped to one resolved backlog home.
- *
- * Substrate claims select typed documents before frontmatter is interpreted.
- * Declarative documents stay lenient on read; every managed write passes once
- * through the strict project registry and serializes its canonical result.
- */
-/**
- * The parsed, claimed read model for one home, computed once per disk scan
- * and reused across reads until a write or an external-edit reconcile
- * invalidates it (ADR 0127). Markdown on disk stays authoritative; this is a
- * derived snapshot rebuilt from `discoverDocuments()` on the next read after
- * invalidation, never a second source of truth.
- */
-interface StorageSnapshot {
-  documents: StoredEntityDocument[];
-  quarantines: ClaimQuarantine[];
-  claimDiagnostics: readonly ClaimCollisionDiagnostic[];
-  byId: Map<string, StoredEntityDocument>;
-  bySourcePath: Map<string, StoredEntityDocument>;
-}
-
-interface ClaimCollisionDiagnostic {
-  type: string;
-  sourcePaths: readonly string[];
-}
-
+/** Repository adapter: cached document reads and exclusive managed writes. */
 export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   /**
    * Memoized read model. `undefined` means "cold" — the next read rebuilds it
    * from disk. Every mutation and every `invalidate()` resets it to
    * `undefined` (ADR 0127 R1–R3).
    */
-  private snapshotCache: StorageSnapshot | undefined;
+  private snapshotCache: DocumentSnapshot | undefined;
 
   constructor(
     private readonly home: BacklogHome,
@@ -267,54 +145,21 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     this.snapshotCache = undefined;
   }
 
-  private discoverClaims() {
-    const discovery = discoverDocuments({
-      documentsDir: this.home.documentsDir,
-    });
-    return claimSubstrateDocuments({
-      homeKey: this.home.root,
-      documents: discovery.documents,
-      substrates: this.registry.listSubstrates(),
+  private mutate<T>(operation: () => T): T {
+    const storage = this;
+    return withDocumentWriteLock(this.home, function freshWrite() {
+      storage.invalidate();
+      const incomplete = storage.snapshot().incompletePaths;
+      if (incomplete.length > 0) {
+        throw new Error(`Cannot establish document identities: unreadable paths ${incomplete.join(', ')}`);
+      }
+      return operation();
     });
   }
 
-  /**
-   * Build (or reuse) the parsed snapshot. The single disk-scan + parse choke
-   * point: every read funnels here, so memoizing it makes warm reads O(1)
-   * over an already-parsed model instead of re-reading all files (ADR 0127).
-   */
-  private snapshot(): StorageSnapshot {
-    const cached = this.snapshotCache;
-    if (cached !== undefined) return cached;
-
-    const documents: StoredEntityDocument[] = [];
-    const quarantines: ClaimQuarantine[] = [];
-    const { claimed, diagnostics } = this.discoverClaims();
-    for (const claim of claimed) {
-      const parsed = parseStoredDocument(claim, this.registry);
-      if (parsed.document !== undefined) documents.push(parsed.document);
-      if (parsed.quarantine !== undefined) quarantines.push(parsed.quarantine);
-    }
-
-    const byId = new Map<string, StoredEntityDocument>();
-    const bySourcePath = new Map<string, StoredEntityDocument>();
-    for (const document of documents) {
-      // First claim wins on a duplicate id, mirroring the previous linear
-      // scan's find-first semantics; genuine collisions are already reported
-      // as claimDiagnostics and blocked at the write boundary.
-      if (!byId.has(document.entity.id)) byId.set(document.entity.id, document);
-      bySourcePath.set(document.sourcePath, document);
-    }
-
-    const snapshot: StorageSnapshot = {
-      documents,
-      quarantines,
-      claimDiagnostics: diagnostics,
-      byId,
-      bySourcePath,
-    };
-    this.snapshotCache = snapshot;
-    return snapshot;
+  private snapshot(): DocumentSnapshot {
+    this.snapshotCache ??= readDocumentSnapshot(this.home, this.registry);
+    return this.snapshotCache;
   }
 
   private assertNoClaimCollisions(type: SubstrateType): void {
@@ -406,10 +251,13 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     const entity = validation.entity;
     const claim = this.claimFor(entity);
     this.assertNoClaimCollisions(entity.type);
-    // Slugged filenames (ADR 0129) mean two writers minting one id can land
-    // on two different paths, so the `wx` flag alone no longer guards the
-    // id. The read model is the id-level exclusive check (R9).
-    if (exclusive && this.snapshot().byId.has(entity.id)) {
+    const key = parseStorageDisplayId(claim, entity.id);
+    const snapshot = this.snapshot();
+    const occupied = key !== undefined
+      && snapshot.identitiesByType.get(entity.type)?.has(normalizeDocumentKey(key));
+    // Fresh claim identity guards different slugs, digit widths, and
+    // quarantined bodies. Existing canonical saves keep their original path.
+    if (occupied && (exclusive || !snapshot.byId.has(entity.id))) {
       throw new Error(`Document id already exists: ${entity.id}`);
     }
     const target = this.resolveClaimedPath(sourcePath, claim);
@@ -499,7 +347,20 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   }
 
   createDocument(entity: AnyEntity, sourcePath: string): AnyEntity {
-    return this.write(entity, sourcePath, true);
+    const storage = this;
+    return this.mutate(function insert() {
+      return storage.write(entity, sourcePath, true);
+    });
+  }
+
+  /** Allocate and insert under one lock against freshly scanned identity claims. */
+  create(draft: EntityDraft): AnyEntity {
+    const storage = this;
+    return this.mutate(function createEntity() {
+      const id = nextStorageDocumentId(storage.registry, draft.type, storage.getMaxId(draft.type));
+      const entity = { ...draft, id };
+      return storage.write(entity, storage.newDocumentSourcePath(entity), true);
+    });
   }
 
   /**
@@ -521,6 +382,11 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   }
 
   save(entity: AnyEntity, options?: StorageSaveOptions): AnyEntity {
+    const storage = this;
+    return this.mutate(function saveDocument() { return storage.saveCurrent(entity, options); });
+  }
+
+  private saveCurrent(entity: AnyEntity, options?: StorageSaveOptions): AnyEntity {
     const existing = this.getDocumentById(entity.id);
     if (
       existing !== undefined
@@ -537,6 +403,11 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   }
 
   delete(id: string): boolean {
+    const storage = this;
+    return this.mutate(function deleteDocument() { return storage.deleteCurrent(id); });
+  }
+
+  private deleteCurrent(id: string): boolean {
     const document = this.getDocumentById(id);
     if (document === undefined) return false;
 
@@ -584,14 +455,6 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
 
   getMaxId(type: SubstrateType): number {
     this.assertNoClaimCollisions(type);
-    let maxId = 0;
-
-    for (const document of this.iterateDocuments()) {
-      if (document.entity.type !== type) continue;
-      const sequence = documentSequence(document);
-      if (sequence !== undefined && sequence > maxId) maxId = sequence;
-    }
-
-    return maxId;
+    return this.snapshot().maxIds.get(type) ?? 0;
   }
 }

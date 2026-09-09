@@ -17,6 +17,7 @@ import type {
 import type { UnifiedSearchResult, SearchableType } from '@backlog-mcp/memory/search';
 import type { ResourceContent } from '../resources/manager.js';
 import type { ClaimQuarantine, StorageSaveOptions } from './storage-adapter.js';
+import type { EntityCreationPort } from '../core/entity-creation.contract.js';
 
 export interface ListFilter {
   status?: string[];
@@ -27,6 +28,8 @@ export interface ListFilter {
 }
 
 export interface IBacklogService {
+  /** Atomic creation in local mode; constrained adapters may retain explicit-ID add. */
+  create?: EntityCreationPort['create'];
   get(id: string): Promise<AnyEntity | undefined>;
   getMarkdown(id: string): Promise<string | null>;
   list(filter?: ListFilter): Promise<AnyEntity[]>;

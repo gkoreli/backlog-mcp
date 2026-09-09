@@ -23,6 +23,13 @@ function createCatalog(
 }
 
 describe('nextStorageDocumentId', function describeStorageIdentity() {
+  it.each([Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1, -1, 0.5, Number.NaN])(
+    'rejects unsafe sequence %s before allocating', function rejectsUnsafeSequence(max) {
+      expect(function allocate() {
+        nextStorageDocumentId(createCatalog(undefined), 'task', max);
+      }).toThrow(/sequence exhausted or invalid/);
+    },
+  );
   it('uses the claim digit width and a non-derivable display template', function usesClaimTemplate() {
     const catalog = createCatalog({
       type: 'task',

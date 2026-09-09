@@ -6,6 +6,7 @@ import type {
   SubstrateType,
 } from '@backlog-mcp/shared';
 import type { DocumentIdentity } from '../core/document-identity.types.js';
+import type { EntityDraft } from '../core/entity-creation.contract.js';
 
 export interface ListFilter {
   status?: string[];
@@ -32,6 +33,8 @@ export interface AsyncListFilter {
  * Synchronous local storage adapter composed by one docs-native home runtime.
  */
 export interface StorageAdapter {
+  /** Allocate and insert under the storage write boundary when supported. */
+  create?(draft: EntityDraft): AnyEntity;
   get(id: string): AnyEntity | undefined;
   getMarkdown(id: string): string | null;
   list(filter?: ListFilter): AnyEntity[];
