@@ -65,6 +65,8 @@ export function registerRemember(program: Command): void {
           ...(opts.derived !== undefined ? { derived: opts.derived } : {}),
         },
         {
+          ...(runtime.writeContext.substrateRegistry === undefined
+            ? {} : { substrateRegistry: runtime.writeContext.substrateRegistry }),
           memoryComposer: runtime.memoryComposer,
           actorName: runtime.writeContext.actor.name,
           // Intent journal (EXP-1 B-4) — same attribution style as the

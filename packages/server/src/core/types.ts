@@ -59,10 +59,10 @@ export type { MemoryEntry, MemoryResult, RecallQuery, MemoryLayer } from '@backl
 export interface WriteContext {
   actor: Actor;
   operationLog: IOperationLog;
-  /** Active project declarations used only to resolve bounded intake policy. */
+  /** Active project declarations for intake policy and provenance identity. */
   substrateRegistry?: Pick<
     ProjectSubstrateRegistry,
-    'acceptsParent' | 'getIntake'
+    'acceptsParent' | 'getIntake' | 'listSubstrates'
   >;
   /** Selected home's configured default container. */
   scopeRoot?: string;

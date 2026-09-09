@@ -12,8 +12,17 @@ import { MemoryComposer, InMemoryStore } from '@backlog-mcp/memory';
 import { remember } from '../core/remember.js';
 import { forget } from '../core/forget.js';
 import { ValidationError } from '../core/types.js';
+import { createBuiltinSubstrateRegistrations, loadProjectSubstrateDefinitions } from '../core/substrates/index.js';
+import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
+import referenceDefinition from '../../../../docs/substrates/reference.json';
+import agentDefinition from '../../../../docs/substrates/agent.json';
 
 describe('core/remember', () => {
+  const { registry } = loadProjectSubstrateDefinitions(
+    [referenceDefinition, agentDefinition].map(function declaration(value) {
+      return { sourcePath: `substrates/${value.type}.json`, absolutePath: `/test/substrates/${value.type}.json`, value };
+    }), createBuiltinSubstrateRegistrations(new BuiltinSubstrateStorageCatalog()),
+  );
   let composer: MemoryComposer;
   let store: InMemoryStore;
 
@@ -63,6 +72,44 @@ describe('core/remember', () => {
     expect(meta.state_key).toBe('build.bundler');
     expect(meta.occurred_at).toBe('2026-06-01');
     expect(meta.entity_refs).toEqual(['TASK-0629']);
+  });
+
+  it('persists requirement provenance and canonical docs-native aliases (#120)', async function remembersRegistryIds() {
+    await remember({
+      title: 'Adoption strategy', content: 'Telemetry follows the requirement.',
+      entity_refs: ['EPIC-0001', 'REQ-0001', 'ADR-0114', 'ADR-0092.1', 'REF-0015', 'PROMPT 0001', 'AGENT-0001'],
+    }, { memoryComposer: composer, substrateRegistry: registry });
+    const recalled = await store.recall({ query: 'telemetry' });
+    expect(recalled[0]?.entry.metadata?.entity_refs).toEqual([
+      'EPIC-0001', 'REQ-0001', 'ADR 0114', 'ADR 0092.1', 'REF-0015', 'PROMPT 0001', 'AGENT-0001',
+    ]);
+  });
+
+  it.each(['BOGUS-0001', 'REQ-1', '../REQ-0001', 'REQ-0001.md', 'REQ-0001\n', 'REQ-0001 extra', 'PROMPT 0001.2'])(
+    'rejects invalid provenance %j before storage', async function rejectsInvalidRef(ref) {
+      await expect(remember({ title: 'Invalid', content: 'Invalid provenance', entity_refs: [ref] }, {
+        memoryComposer: composer, substrateRegistry: registry,
+      })).rejects.toThrow(/entity_refs must contain valid entity ids/);
+      expect(await store.size()).toBe(0);
+    },
+  );
+
+  it('does not accept a packaged identity when the selected registry omits it', async function rejectsOtherHome() {
+    await expect(remember({ title: 'Scoped', content: 'Scoped provenance', entity_refs: ['REQ-0001'] }, {
+      memoryComposer: composer,
+      substrateRegistry: { listSubstrates: function noSubstrates() { return []; } },
+    })).rejects.toThrow(/entity_refs/);
+    expect(await store.size()).toBe(0);
+  });
+
+  it('rejects project-only provenance in another home', async function isolatesProjectIds() {
+    const otherHome = loadProjectSubstrateDefinitions(
+      [], createBuiltinSubstrateRegistrations(new BuiltinSubstrateStorageCatalog()),
+    ).registry;
+    await expect(remember({ title: 'Scoped', content: 'Scoped provenance', entity_refs: ['REF-0015'] }, {
+      memoryComposer: composer, substrateRegistry: otherHome,
+    })).rejects.toThrow(/entity_refs/);
+    expect(await store.size()).toBe(0);
   });
 
   it('returns scanned-clean advisory candidates after committing the memory', async () => {

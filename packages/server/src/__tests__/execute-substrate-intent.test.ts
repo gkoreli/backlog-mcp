@@ -6,11 +6,13 @@ import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
 import {
   executeSubstrateIntent,
+  createBuiltinSubstrateRegistrations,
   SubstrateIntentExecutionError,
   type IntentWriteValidatorPort,
 } from '../core/substrates/index.js';
 import { ValidationError, type WriteContext } from '../core/types.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
 
 const NOW = '2026-07-16T12:00:00.000Z';
 
@@ -253,6 +255,59 @@ function supersedeIntent(): CompiledSubstrateIntent {
 }
 
 describe('executeSubstrateIntent', () => {
+  const builtinIntents = createBuiltinSubstrateRegistrations(
+    new BuiltinSubstrateStorageCatalog(),
+  ).flatMap(function intents(substrate) { return [...substrate.intents]; });
+
+  it.each(['backlog_attach_artifact', 'backlog_create_work'])(
+    '%s preserves the supplied parent over routing defaults (#121)',
+    async function preservesParent(toolName) {
+      const intent = builtinIntents.find(function matches(candidate) {
+        return candidate.toolName === toolName;
+      });
+      if (intent === undefined) throw new Error(`Missing intent ${toolName}`);
+      const { service, store } = serviceHarness([entity('EPIC-0001', 'epic')]);
+      const { context, entries } = contextHarness();
+      context.scopeRoot = 'FLDR-0099';
+      const { validator } = validatorHarness();
+      const result = await executeSubstrateIntent({
+        intent,
+        input: intent.intentInputSchema.parse({
+          title: 'Adoption research synthesis',
+          parent_id: 'EPIC-0001',
+          content: 'Research synthesis is captured in the epic body.',
+        }),
+        service, validator, context,
+      });
+      const id = result.ids[0];
+      expect(id === undefined ? undefined : store.get(id)).toMatchObject({
+        parent_id: 'EPIC-0001',
+        content: 'Research synthesis is captured in the epic body.',
+      });
+      expect(entries).toEqual([expect.objectContaining({
+        params: expect.objectContaining({ parent_id: 'EPIC-0001' }),
+        result: expect.objectContaining({ parent_id: 'EPIC-0001' }),
+      })]);
+    },
+  );
+
+  it('rejects a missing artifact parent before allocating or writing', async function requiresParent() {
+    const intent = builtinIntents.find(function matches(candidate) {
+      return candidate.toolName === 'backlog_attach_artifact';
+    });
+    if (intent === undefined) throw new Error('Missing artifact intent');
+    const { service } = serviceHarness();
+    const { context, entries } = contextHarness();
+    context.scopeRoot = 'FLDR-0099';
+    const { validator } = validatorHarness();
+    await expect(executeSubstrateIntent({
+      intent, input: { title: 'Unattached' }, service, validator, context,
+    })).rejects.toThrow('artifact requires an explicit parent_id');
+    expect(service.allocateId).not.toHaveBeenCalled();
+    expect(service.add).not.toHaveBeenCalled();
+    expect(entries).toEqual([]);
+  });
+
   it('maps create inputs and applies compiler fixed fields last', async () => {
     const { service, store } = serviceHarness();
     const { context, entries } = contextHarness();

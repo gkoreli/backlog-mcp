@@ -157,10 +157,17 @@ function createParams(
     throw new ValidationError('Create intent must resolve a non-empty title');
   }
   delete fields.title;
+  // Routing reads the core parameter, before the field bag is persisted.
+  const parentId = fields.parent_id;
+  if (parentId !== undefined && typeof parentId !== 'string') {
+    throw new ValidationError('Create intent parent_id must be a string');
+  }
+  delete fields.parent_id;
 
   return {
     title,
     type: intent.substrateType,
+    ...(parentId === undefined ? {} : { parent_id: parentId }),
     fields,
   };
 }

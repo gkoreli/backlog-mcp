@@ -10,7 +10,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MemoryComposer } from '@backlog-mcp/memory';
 import { z } from 'zod';
-import { remember } from '../core/remember.js';
+import { remember, type RememberDeps } from '../core/remember.js';
 import { findCollisionCandidatesForMemory } from '../core/collision-candidates.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { ValidationError } from '../core/types.js';
@@ -23,6 +23,7 @@ import {
 } from './agent-identity-input.js';
 
 export interface BacklogRememberDeps {
+  substrateRegistry?: RememberDeps['substrateRegistry'];
   memoryComposer?: MemoryComposer;
   actor?: Actor;
   /** Intent journal (EXP-1 B-4): one operation row per successful remember. */
@@ -53,7 +54,7 @@ export function registerBacklogRememberTool(
         ),
         context: z.string().optional().describe('Scope container id (e.g. "FLDR-0001") — enables scoped recall and wakeup.'),
         tags: z.array(z.string()).optional().describe('Freeform labels for filterable recall.'),
-        entity_refs: z.array(z.string()).optional().describe('Source entities this knowledge derives from (e.g. ["TASK-0676"]).'),
+        entity_refs: z.array(z.string()).optional().describe('Source entity IDs declared in the selected home (e.g. ["TASK-0676", "REQ-0001"]). Space/hyphen aliases are stored in canonical form.'),
         kind: z.enum(['current', 'historical', 'plan', 'preference', 'timeless']).optional().describe(
           'Temporal kind: current fact / historical fact / future plan / preference / timeless (exempt from recency decay).',
         ),
@@ -91,6 +92,7 @@ export function registerBacklogRememberTool(
             ...(params.derived !== undefined ? { derived: params.derived } : {}),
           },
           {
+            ...(deps?.substrateRegistry ? { substrateRegistry: deps.substrateRegistry } : {}),
             ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
             ...(actor?.name ? { actorName: actor.name } : {}),
             ...(actor && deps?.operationLog

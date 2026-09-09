@@ -17,6 +17,8 @@
 import { isValidEntityId, parseEntityId, EntityType } from '@backlog-mcp/shared';
 import type { MemoryComposer, MemoryEntry } from '@backlog-mcp/memory';
 import { recordMutation } from './operation-log.js';
+import { normalizeMemoryRefs } from './normalize-memory-refs.js';
+import type { ProjectSubstrateRegistry } from './substrates/project-substrate-registry.js';
 import {
   ValidationError,
   type CollisionCandidate,
@@ -27,6 +29,8 @@ import {
 
 export interface RememberDeps {
   memoryComposer?: MemoryComposer;
+  /** Identity vocabulary from the selected home; absent retains built-in validation. */
+  substrateRegistry?: Pick<ProjectSubstrateRegistry, 'listSubstrates'>;
   /** Actor name recorded as source when params.source is absent. */
   actorName?: string;
   /**
@@ -72,11 +76,7 @@ export async function remember(params: RememberParams, deps: RememberDeps): Prom
   if (params.context !== undefined && !isValidEntityId(params.context)) {
     throw new ValidationError(`context must be a valid entity id (e.g. "FLDR-0001"); got ${JSON.stringify(params.context)}`);
   }
-  for (const ref of params.entity_refs ?? []) {
-    if (!isValidEntityId(ref)) {
-      throw new ValidationError(`entity_refs must contain valid entity ids; got ${JSON.stringify(ref)}`);
-    }
-  }
+  const entityRefs = normalizeMemoryRefs(params.entity_refs ?? [], deps.substrateRegistry);
   if (params.supersedes !== undefined) {
     const parsed = isValidEntityId(params.supersedes) ? parseEntityId(params.supersedes) : null;
     if (!parsed || parsed.type !== EntityType.Memory) {
@@ -115,7 +115,7 @@ export async function remember(params: RememberParams, deps: RememberDeps): Prom
     ...(validUntilMs !== undefined ? { expiresAt: validUntilMs } : {}),
     metadata: {
       kind_origin: 'remember',
-      ...(params.entity_refs && params.entity_refs.length > 0 ? { entity_refs: params.entity_refs } : {}),
+      ...(entityRefs.length > 0 ? { entity_refs: entityRefs } : {}),
       ...(params.kind ? { memory_kind: params.kind } : {}),
       ...(params.state_key ? { state_key: params.state_key } : {}),
       ...(params.occurred_at ? { occurred_at: params.occurred_at } : {}),

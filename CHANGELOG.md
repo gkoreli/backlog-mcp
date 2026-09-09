@@ -12,6 +12,16 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+### Fixed
+- **Artifact attachment preserves the supplied parent.** `backlog_attach_artifact`
+  no longer rejects a valid `parent_id` as missing; other create intents also
+  preserve explicit parents over routing defaults. [#121](https://github.com/gkoreli/backlog-mcp/issues/121).
+- **Memory provenance accepts the selected home's substrate IDs.**
+  `backlog_remember.entity_refs` and CLI `remember --refs` accept requirements,
+  ADRs, and project-declared types such as references. Space/hyphen aliases are
+  stored canonically; unknown and malformed IDs still fail validation.
+  [#120](https://github.com/gkoreli/backlog-mcp/issues/120), ADR 0132.
+
 ## [0.74.0] — 2026-09-01
 
 *The release where the daemon tells you it is behind. Releases and rebuilds

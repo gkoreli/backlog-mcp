@@ -48,7 +48,7 @@ export interface ToolDeps {
   operationLog?: IOperationLog;
   substrateRegistry?: Pick<
     ProjectSubstrateRegistry,
-    'acceptsParent' | 'getIntake'
+    'acceptsParent' | 'getIntake' | 'listSubstrates'
   >;
   scopeRoot?: string;
   eventBus?: { emit: (event: any) => void };
@@ -135,6 +135,7 @@ export function registerTools(
       : {}),
   });
   registerBacklogRememberTool(server, {
+    ...(deps?.substrateRegistry ? { substrateRegistry: deps.substrateRegistry } : {}),
     ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
     ...(deps?.actor ? { actor: deps.actor } : {}),
     ...(deps?.operationLog ? { operationLog: deps.operationLog } : {}),
