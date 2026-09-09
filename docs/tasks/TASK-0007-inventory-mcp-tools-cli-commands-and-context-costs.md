@@ -1,10 +1,14 @@
 ---
 id: TASK-0007
 title: 'Inventory MCP tools, CLI commands, and context costs'
-status: open
+status: done
 parent_id: EPIC-0001
+evidence:
+  - >-
+    Research report: docs/reports/0011-tool-surface-inventory.md; evidence and
+    limits reviewed.
 created_at: '2026-09-09T01:42:15.903Z'
-updated_at: '2026-09-09T01:42:15.903Z'
+updated_at: '2026-09-09T02:03:58.441Z'
 type: task
 ---
 ## Research task
@@ -20,3 +24,7 @@ Deliverable: a reproducible inventory and baseline report under docs/reports/, w
 None; first research step.
 
 Parent research worklist: EPIC-0001.
+
+## Research result — 2026-09-08
+
+Completed: [evidence report](../reports/0011-tool-surface-inventory.md). Parent reviewed delegated findings against source; live manifest/CLI experiments and selected adversarial reproductions are recorded in reports 0011 and 0014. Limits and untested claims are explicit. This closes the audit task, not candidate evaluation or a public-surface decision.

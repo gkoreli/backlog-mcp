@@ -1,0 +1,2183 @@
+{
+  "tokenizer": "tiktoken 0.14.0; o200k_base",
+  "scope": "Payload text only; excludes harness wrappers, hidden instructions and provider billing overhead.",
+  "catalogs": {
+    "default": {
+      "count": 27,
+      "tools_list_result": {
+        "bytes": 34156,
+        "tokens": 8034
+      },
+      "names_only": {
+        "bytes": 587,
+        "tokens": 148
+      },
+      "names_descriptions": {
+        "bytes": 7807,
+        "tokens": 1657
+      },
+      "tools": [
+        {
+          "name": "backlog_list",
+          "full": {
+            "bytes": 1524,
+            "tokens": 328
+          },
+          "discovery": {
+            "bytes": 175,
+            "tokens": 34
+          },
+          "schema": {
+            "bytes": 1294,
+            "tokens": 285
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "status",
+            "type",
+            "parent_id",
+            "query",
+            "counts",
+            "limit"
+          ]
+        },
+        {
+          "name": "backlog_get",
+          "full": {
+            "bytes": 1521,
+            "tokens": 352
+          },
+          "discovery": {
+            "bytes": 356,
+            "tokens": 89
+          },
+          "schema": {
+            "bytes": 1110,
+            "tokens": 253
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "id",
+            "context",
+            "depth"
+          ]
+        },
+        {
+          "name": "backlog_delete",
+          "full": {
+            "bytes": 859,
+            "tokens": 188
+          },
+          "discovery": {
+            "bytes": 69,
+            "tokens": 15
+          },
+          "schema": {
+            "bytes": 735,
+            "tokens": 163
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "as",
+            "id"
+          ]
+        },
+        {
+          "name": "backlog_search",
+          "full": {
+            "bytes": 1910,
+            "tokens": 405
+          },
+          "discovery": {
+            "bytes": 233,
+            "tokens": 42
+          },
+          "schema": {
+            "bytes": 1622,
+            "tokens": 353
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "query",
+            "types",
+            "status",
+            "parent_id",
+            "sort",
+            "limit",
+            "include_content",
+            "include_scores"
+          ]
+        },
+        {
+          "name": "write_resource",
+          "full": {
+            "bytes": 2211,
+            "tokens": 481
+          },
+          "discovery": {
+            "bytes": 871,
+            "tokens": 176
+          },
+          "schema": {
+            "bytes": 1246,
+            "tokens": 282
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "as",
+            "id",
+            "operation"
+          ]
+        },
+        {
+          "name": "backlog_wakeup",
+          "full": {
+            "bytes": 2658,
+            "tokens": 592
+          },
+          "discovery": {
+            "bytes": 741,
+            "tokens": 151
+          },
+          "schema": {
+            "bytes": 1824,
+            "tokens": 419
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "scope",
+            "operation",
+            "max_completions",
+            "max_activity",
+            "max_constraints",
+            "evidence_snippet_chars"
+          ]
+        },
+        {
+          "name": "backlog_recall",
+          "full": {
+            "bytes": 2238,
+            "tokens": 507
+          },
+          "discovery": {
+            "bytes": 741,
+            "tokens": 171
+          },
+          "schema": {
+            "bytes": 1442,
+            "tokens": 326
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "query",
+            "context",
+            "tags",
+            "layers",
+            "limit",
+            "full",
+            "token_budget"
+          ]
+        },
+        {
+          "name": "backlog_remember",
+          "full": {
+            "bytes": 3264,
+            "tokens": 717
+          },
+          "discovery": {
+            "bytes": 737,
+            "tokens": 152
+          },
+          "schema": {
+            "bytes": 2472,
+            "tokens": 555
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "as",
+            "content",
+            "title",
+            "layer",
+            "context",
+            "tags",
+            "entity_refs",
+            "kind",
+            "state_key",
+            "occurred_at",
+            "valid_until",
+            "supersedes",
+            "derived"
+          ]
+        },
+        {
+          "name": "backlog_forget",
+          "full": {
+            "bytes": 1389,
+            "tokens": 298
+          },
+          "discovery": {
+            "bytes": 353,
+            "tokens": 73
+          },
+          "schema": {
+            "bytes": 981,
+            "tokens": 215
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "ids",
+            "context",
+            "layer",
+            "older_than",
+            "expired"
+          ]
+        },
+        {
+          "name": "backlog_consolidation_candidates",
+          "full": {
+            "bytes": 1881,
+            "tokens": 437
+          },
+          "discovery": {
+            "bytes": 696,
+            "tokens": 159
+          },
+          "schema": {
+            "bytes": 1130,
+            "tokens": 268
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "min_count",
+            "min_age_days",
+            "min_demand",
+            "context",
+            "limit",
+            "max_digests"
+          ]
+        },
+        {
+          "name": "backlog_contradictions",
+          "full": {
+            "bytes": 1436,
+            "tokens": 299
+          },
+          "discovery": {
+            "bytes": 792,
+            "tokens": 172
+          },
+          "schema": {
+            "bytes": 589,
+            "tokens": 117
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "candidates"
+          ]
+        },
+        {
+          "name": "backlog_accept_adr",
+          "full": {
+            "bytes": 533,
+            "tokens": 126
+          },
+          "discovery": {
+            "bytes": 90,
+            "tokens": 21
+          },
+          "schema": {
+            "bytes": 388,
+            "tokens": 96
+          },
+          "input_fields": [
+            "id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_attach_artifact",
+          "full": {
+            "bytes": 853,
+            "tokens": 199
+          },
+          "discovery": {
+            "bytes": 123,
+            "tokens": 27
+          },
+          "schema": {
+            "bytes": 675,
+            "tokens": 163
+          },
+          "input_fields": [
+            "title",
+            "parent_id",
+            "content",
+            "path",
+            "content_type",
+            "references",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_block_task",
+          "full": {
+            "bytes": 605,
+            "tokens": 142
+          },
+          "discovery": {
+            "bytes": 85,
+            "tokens": 20
+          },
+          "schema": {
+            "bytes": 465,
+            "tokens": 113
+          },
+          "input_fields": [
+            "id",
+            "blocked_reason",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_capture_prompt",
+          "full": {
+            "bytes": 1124,
+            "tokens": 350
+          },
+          "discovery": {
+            "bytes": 131,
+            "tokens": 25
+          },
+          "schema": {
+            "bytes": 938,
+            "tokens": 316
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "date",
+            "uploaded_by",
+            "supersedes",
+            "spawned",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_capture_requirement",
+          "full": {
+            "bytes": 2129,
+            "tokens": 716
+          },
+          "discovery": {
+            "bytes": 127,
+            "tokens": 24
+          },
+          "schema": {
+            "bytes": 1947,
+            "tokens": 683
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "status",
+            "compliance",
+            "domain",
+            "date",
+            "uploaded_by",
+            "grounds_in",
+            "spawned",
+            "supersedes",
+            "checked_at",
+            "checked_by",
+            "check_evidence",
+            "violated_by",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_complete_task",
+          "full": {
+            "bytes": 599,
+            "tokens": 140
+          },
+          "discovery": {
+            "bytes": 102,
+            "tokens": 21
+          },
+          "schema": {
+            "bytes": 442,
+            "tokens": 110
+          },
+          "input_fields": [
+            "id",
+            "evidence",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_create_work",
+          "full": {
+            "bytes": 819,
+            "tokens": 191
+          },
+          "discovery": {
+            "bytes": 159,
+            "tokens": 37
+          },
+          "schema": {
+            "bytes": 605,
+            "tokens": 145
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "parent_id",
+            "references",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_organize_folder",
+          "full": {
+            "bytes": 669,
+            "tokens": 156
+          },
+          "discovery": {
+            "bytes": 178,
+            "tokens": 41
+          },
+          "schema": {
+            "bytes": 436,
+            "tokens": 106
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "parent_id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_pause_cron",
+          "full": {
+            "bytes": 525,
+            "tokens": 125
+          },
+          "discovery": {
+            "bytes": 82,
+            "tokens": 20
+          },
+          "schema": {
+            "bytes": 388,
+            "tokens": 96
+          },
+          "input_fields": [
+            "id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_plan_epic",
+          "full": {
+            "bytes": 830,
+            "tokens": 194
+          },
+          "discovery": {
+            "bytes": 170,
+            "tokens": 40
+          },
+          "schema": {
+            "bytes": 605,
+            "tokens": 145
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "parent_id",
+            "references",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_propose_adr",
+          "full": {
+            "bytes": 1147,
+            "tokens": 289
+          },
+          "discovery": {
+            "bytes": 123,
+            "tokens": 25
+          },
+          "schema": {
+            "bytes": 969,
+            "tokens": 255
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "extends",
+            "implements",
+            "backlog_item",
+            "spawned_by",
+            "respects",
+            "violates",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_resume_cron",
+          "full": {
+            "bytes": 527,
+            "tokens": 125
+          },
+          "discovery": {
+            "bytes": 84,
+            "tokens": 20
+          },
+          "schema": {
+            "bytes": 388,
+            "tokens": 96
+          },
+          "input_fields": [
+            "id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_schedule_cron",
+          "full": {
+            "bytes": 795,
+            "tokens": 185
+          },
+          "discovery": {
+            "bytes": 168,
+            "tokens": 37
+          },
+          "schema": {
+            "bytes": 572,
+            "tokens": 139
+          },
+          "input_fields": [
+            "title",
+            "schedule",
+            "command",
+            "content",
+            "parent_id",
+            "enabled",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_start_task",
+          "full": {
+            "bytes": 529,
+            "tokens": 125
+          },
+          "discovery": {
+            "bytes": 86,
+            "tokens": 20
+          },
+          "schema": {
+            "bytes": 388,
+            "tokens": 96
+          },
+          "input_fields": [
+            "id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_supersede_adr",
+          "full": {
+            "bytes": 677,
+            "tokens": 160
+          },
+          "discovery": {
+            "bytes": 130,
+            "tokens": 29
+          },
+          "schema": {
+            "bytes": 492,
+            "tokens": 122
+          },
+          "input_fields": [
+            "replacement_id",
+            "superseded_id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_target_milestone",
+          "full": {
+            "bytes": 866,
+            "tokens": 203
+          },
+          "discovery": {
+            "bytes": 177,
+            "tokens": 41
+          },
+          "schema": {
+            "bytes": 634,
+            "tokens": 153
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "parent_id",
+            "due_date",
+            "references",
+            "as"
+          ]
+        }
+      ]
+    },
+    "custom": {
+      "count": 28,
+      "tools_list_result": {
+        "bytes": 35864,
+        "tokens": 8444
+      },
+      "names_only": {
+        "bytes": 615,
+        "tokens": 153
+      },
+      "names_descriptions": {
+        "bytes": 8046,
+        "tokens": 1700
+      },
+      "tools": [
+        {
+          "name": "backlog_list",
+          "full": {
+            "bytes": 1524,
+            "tokens": 328
+          },
+          "discovery": {
+            "bytes": 175,
+            "tokens": 34
+          },
+          "schema": {
+            "bytes": 1294,
+            "tokens": 285
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "status",
+            "type",
+            "parent_id",
+            "query",
+            "counts",
+            "limit"
+          ]
+        },
+        {
+          "name": "backlog_get",
+          "full": {
+            "bytes": 1521,
+            "tokens": 352
+          },
+          "discovery": {
+            "bytes": 356,
+            "tokens": 89
+          },
+          "schema": {
+            "bytes": 1110,
+            "tokens": 253
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "id",
+            "context",
+            "depth"
+          ]
+        },
+        {
+          "name": "backlog_delete",
+          "full": {
+            "bytes": 859,
+            "tokens": 188
+          },
+          "discovery": {
+            "bytes": 69,
+            "tokens": 15
+          },
+          "schema": {
+            "bytes": 735,
+            "tokens": 163
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "as",
+            "id"
+          ]
+        },
+        {
+          "name": "backlog_search",
+          "full": {
+            "bytes": 1910,
+            "tokens": 405
+          },
+          "discovery": {
+            "bytes": 233,
+            "tokens": 42
+          },
+          "schema": {
+            "bytes": 1622,
+            "tokens": 353
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "query",
+            "types",
+            "status",
+            "parent_id",
+            "sort",
+            "limit",
+            "include_content",
+            "include_scores"
+          ]
+        },
+        {
+          "name": "write_resource",
+          "full": {
+            "bytes": 2211,
+            "tokens": 481
+          },
+          "discovery": {
+            "bytes": 871,
+            "tokens": 176
+          },
+          "schema": {
+            "bytes": 1246,
+            "tokens": 282
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "as",
+            "id",
+            "operation"
+          ]
+        },
+        {
+          "name": "backlog_wakeup",
+          "full": {
+            "bytes": 2658,
+            "tokens": 592
+          },
+          "discovery": {
+            "bytes": 741,
+            "tokens": 151
+          },
+          "schema": {
+            "bytes": 1824,
+            "tokens": 419
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "scope",
+            "operation",
+            "max_completions",
+            "max_activity",
+            "max_constraints",
+            "evidence_snippet_chars"
+          ]
+        },
+        {
+          "name": "backlog_recall",
+          "full": {
+            "bytes": 2238,
+            "tokens": 507
+          },
+          "discovery": {
+            "bytes": 741,
+            "tokens": 171
+          },
+          "schema": {
+            "bytes": 1442,
+            "tokens": 326
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "query",
+            "context",
+            "tags",
+            "layers",
+            "limit",
+            "full",
+            "token_budget"
+          ]
+        },
+        {
+          "name": "backlog_remember",
+          "full": {
+            "bytes": 3264,
+            "tokens": 717
+          },
+          "discovery": {
+            "bytes": 737,
+            "tokens": 152
+          },
+          "schema": {
+            "bytes": 2472,
+            "tokens": 555
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "as",
+            "content",
+            "title",
+            "layer",
+            "context",
+            "tags",
+            "entity_refs",
+            "kind",
+            "state_key",
+            "occurred_at",
+            "valid_until",
+            "supersedes",
+            "derived"
+          ]
+        },
+        {
+          "name": "backlog_forget",
+          "full": {
+            "bytes": 1389,
+            "tokens": 298
+          },
+          "discovery": {
+            "bytes": 353,
+            "tokens": 73
+          },
+          "schema": {
+            "bytes": 981,
+            "tokens": 215
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "ids",
+            "context",
+            "layer",
+            "older_than",
+            "expired"
+          ]
+        },
+        {
+          "name": "backlog_consolidation_candidates",
+          "full": {
+            "bytes": 1881,
+            "tokens": 437
+          },
+          "discovery": {
+            "bytes": 696,
+            "tokens": 159
+          },
+          "schema": {
+            "bytes": 1130,
+            "tokens": 268
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "min_count",
+            "min_age_days",
+            "min_demand",
+            "context",
+            "limit",
+            "max_digests"
+          ]
+        },
+        {
+          "name": "backlog_contradictions",
+          "full": {
+            "bytes": 1436,
+            "tokens": 299
+          },
+          "discovery": {
+            "bytes": 792,
+            "tokens": 172
+          },
+          "schema": {
+            "bytes": 589,
+            "tokens": 117
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "candidates"
+          ]
+        },
+        {
+          "name": "backlog_accept_adr",
+          "full": {
+            "bytes": 533,
+            "tokens": 126
+          },
+          "discovery": {
+            "bytes": 90,
+            "tokens": 21
+          },
+          "schema": {
+            "bytes": 388,
+            "tokens": 96
+          },
+          "input_fields": [
+            "id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_attach_artifact",
+          "full": {
+            "bytes": 853,
+            "tokens": 199
+          },
+          "discovery": {
+            "bytes": 123,
+            "tokens": 27
+          },
+          "schema": {
+            "bytes": 675,
+            "tokens": 163
+          },
+          "input_fields": [
+            "title",
+            "parent_id",
+            "content",
+            "path",
+            "content_type",
+            "references",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_block_task",
+          "full": {
+            "bytes": 605,
+            "tokens": 142
+          },
+          "discovery": {
+            "bytes": 85,
+            "tokens": 20
+          },
+          "schema": {
+            "bytes": 465,
+            "tokens": 113
+          },
+          "input_fields": [
+            "id",
+            "blocked_reason",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_capture_prompt",
+          "full": {
+            "bytes": 1124,
+            "tokens": 350
+          },
+          "discovery": {
+            "bytes": 131,
+            "tokens": 25
+          },
+          "schema": {
+            "bytes": 938,
+            "tokens": 316
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "date",
+            "uploaded_by",
+            "supersedes",
+            "spawned",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_capture_reference",
+          "full": {
+            "bytes": 1707,
+            "tokens": 410
+          },
+          "discovery": {
+            "bytes": 238,
+            "tokens": 44
+          },
+          "schema": {
+            "bytes": 1414,
+            "tokens": 357
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "category",
+            "what_it_is",
+            "citations",
+            "our_relationship",
+            "bears_on",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_capture_requirement",
+          "full": {
+            "bytes": 2129,
+            "tokens": 716
+          },
+          "discovery": {
+            "bytes": 127,
+            "tokens": 24
+          },
+          "schema": {
+            "bytes": 1947,
+            "tokens": 683
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "status",
+            "compliance",
+            "domain",
+            "date",
+            "uploaded_by",
+            "grounds_in",
+            "spawned",
+            "supersedes",
+            "checked_at",
+            "checked_by",
+            "check_evidence",
+            "violated_by",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_complete_task",
+          "full": {
+            "bytes": 599,
+            "tokens": 140
+          },
+          "discovery": {
+            "bytes": 102,
+            "tokens": 21
+          },
+          "schema": {
+            "bytes": 442,
+            "tokens": 110
+          },
+          "input_fields": [
+            "id",
+            "evidence",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_create_work",
+          "full": {
+            "bytes": 819,
+            "tokens": 191
+          },
+          "discovery": {
+            "bytes": 159,
+            "tokens": 37
+          },
+          "schema": {
+            "bytes": 605,
+            "tokens": 145
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "parent_id",
+            "references",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_organize_folder",
+          "full": {
+            "bytes": 669,
+            "tokens": 156
+          },
+          "discovery": {
+            "bytes": 178,
+            "tokens": 41
+          },
+          "schema": {
+            "bytes": 436,
+            "tokens": 106
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "parent_id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_pause_cron",
+          "full": {
+            "bytes": 525,
+            "tokens": 125
+          },
+          "discovery": {
+            "bytes": 82,
+            "tokens": 20
+          },
+          "schema": {
+            "bytes": 388,
+            "tokens": 96
+          },
+          "input_fields": [
+            "id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_plan_epic",
+          "full": {
+            "bytes": 830,
+            "tokens": 194
+          },
+          "discovery": {
+            "bytes": 170,
+            "tokens": 40
+          },
+          "schema": {
+            "bytes": 605,
+            "tokens": 145
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "parent_id",
+            "references",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_propose_adr",
+          "full": {
+            "bytes": 1147,
+            "tokens": 289
+          },
+          "discovery": {
+            "bytes": 123,
+            "tokens": 25
+          },
+          "schema": {
+            "bytes": 969,
+            "tokens": 255
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "extends",
+            "implements",
+            "backlog_item",
+            "spawned_by",
+            "respects",
+            "violates",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_resume_cron",
+          "full": {
+            "bytes": 527,
+            "tokens": 125
+          },
+          "discovery": {
+            "bytes": 84,
+            "tokens": 20
+          },
+          "schema": {
+            "bytes": 388,
+            "tokens": 96
+          },
+          "input_fields": [
+            "id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_schedule_cron",
+          "full": {
+            "bytes": 795,
+            "tokens": 185
+          },
+          "discovery": {
+            "bytes": 168,
+            "tokens": 37
+          },
+          "schema": {
+            "bytes": 572,
+            "tokens": 139
+          },
+          "input_fields": [
+            "title",
+            "schedule",
+            "command",
+            "content",
+            "parent_id",
+            "enabled",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_start_task",
+          "full": {
+            "bytes": 529,
+            "tokens": 125
+          },
+          "discovery": {
+            "bytes": 86,
+            "tokens": 20
+          },
+          "schema": {
+            "bytes": 388,
+            "tokens": 96
+          },
+          "input_fields": [
+            "id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_supersede_adr",
+          "full": {
+            "bytes": 677,
+            "tokens": 160
+          },
+          "discovery": {
+            "bytes": 130,
+            "tokens": 29
+          },
+          "schema": {
+            "bytes": 492,
+            "tokens": 122
+          },
+          "input_fields": [
+            "replacement_id",
+            "superseded_id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_target_milestone",
+          "full": {
+            "bytes": 866,
+            "tokens": 203
+          },
+          "discovery": {
+            "bytes": 177,
+            "tokens": 41
+          },
+          "schema": {
+            "bytes": 634,
+            "tokens": 153
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "parent_id",
+            "due_date",
+            "references",
+            "as"
+          ]
+        }
+      ]
+    },
+    "global": {
+      "count": 27,
+      "tools_list_result": {
+        "bytes": 34156,
+        "tokens": 8034
+      },
+      "names_only": {
+        "bytes": 587,
+        "tokens": 148
+      },
+      "names_descriptions": {
+        "bytes": 7807,
+        "tokens": 1657
+      },
+      "tools": [
+        {
+          "name": "backlog_list",
+          "full": {
+            "bytes": 1524,
+            "tokens": 328
+          },
+          "discovery": {
+            "bytes": 175,
+            "tokens": 34
+          },
+          "schema": {
+            "bytes": 1294,
+            "tokens": 285
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "status",
+            "type",
+            "parent_id",
+            "query",
+            "counts",
+            "limit"
+          ]
+        },
+        {
+          "name": "backlog_get",
+          "full": {
+            "bytes": 1521,
+            "tokens": 352
+          },
+          "discovery": {
+            "bytes": 356,
+            "tokens": 89
+          },
+          "schema": {
+            "bytes": 1110,
+            "tokens": 253
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "id",
+            "context",
+            "depth"
+          ]
+        },
+        {
+          "name": "backlog_delete",
+          "full": {
+            "bytes": 859,
+            "tokens": 188
+          },
+          "discovery": {
+            "bytes": 69,
+            "tokens": 15
+          },
+          "schema": {
+            "bytes": 735,
+            "tokens": 163
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "as",
+            "id"
+          ]
+        },
+        {
+          "name": "backlog_search",
+          "full": {
+            "bytes": 1910,
+            "tokens": 405
+          },
+          "discovery": {
+            "bytes": 233,
+            "tokens": 42
+          },
+          "schema": {
+            "bytes": 1622,
+            "tokens": 353
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "query",
+            "types",
+            "status",
+            "parent_id",
+            "sort",
+            "limit",
+            "include_content",
+            "include_scores"
+          ]
+        },
+        {
+          "name": "write_resource",
+          "full": {
+            "bytes": 2211,
+            "tokens": 481
+          },
+          "discovery": {
+            "bytes": 871,
+            "tokens": 176
+          },
+          "schema": {
+            "bytes": 1246,
+            "tokens": 282
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "as",
+            "id",
+            "operation"
+          ]
+        },
+        {
+          "name": "backlog_wakeup",
+          "full": {
+            "bytes": 2658,
+            "tokens": 592
+          },
+          "discovery": {
+            "bytes": 741,
+            "tokens": 151
+          },
+          "schema": {
+            "bytes": 1824,
+            "tokens": 419
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "scope",
+            "operation",
+            "max_completions",
+            "max_activity",
+            "max_constraints",
+            "evidence_snippet_chars"
+          ]
+        },
+        {
+          "name": "backlog_recall",
+          "full": {
+            "bytes": 2238,
+            "tokens": 507
+          },
+          "discovery": {
+            "bytes": 741,
+            "tokens": 171
+          },
+          "schema": {
+            "bytes": 1442,
+            "tokens": 326
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "query",
+            "context",
+            "tags",
+            "layers",
+            "limit",
+            "full",
+            "token_budget"
+          ]
+        },
+        {
+          "name": "backlog_remember",
+          "full": {
+            "bytes": 3264,
+            "tokens": 717
+          },
+          "discovery": {
+            "bytes": 737,
+            "tokens": 152
+          },
+          "schema": {
+            "bytes": 2472,
+            "tokens": 555
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "as",
+            "content",
+            "title",
+            "layer",
+            "context",
+            "tags",
+            "entity_refs",
+            "kind",
+            "state_key",
+            "occurred_at",
+            "valid_until",
+            "supersedes",
+            "derived"
+          ]
+        },
+        {
+          "name": "backlog_forget",
+          "full": {
+            "bytes": 1389,
+            "tokens": 298
+          },
+          "discovery": {
+            "bytes": 353,
+            "tokens": 73
+          },
+          "schema": {
+            "bytes": 981,
+            "tokens": 215
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "ids",
+            "context",
+            "layer",
+            "older_than",
+            "expired"
+          ]
+        },
+        {
+          "name": "backlog_consolidation_candidates",
+          "full": {
+            "bytes": 1881,
+            "tokens": 437
+          },
+          "discovery": {
+            "bytes": 696,
+            "tokens": 159
+          },
+          "schema": {
+            "bytes": 1130,
+            "tokens": 268
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "min_count",
+            "min_age_days",
+            "min_demand",
+            "context",
+            "limit",
+            "max_digests"
+          ]
+        },
+        {
+          "name": "backlog_contradictions",
+          "full": {
+            "bytes": 1436,
+            "tokens": 299
+          },
+          "discovery": {
+            "bytes": 792,
+            "tokens": 172
+          },
+          "schema": {
+            "bytes": 589,
+            "tokens": 117
+          },
+          "input_fields": [
+            "home",
+            "project_root",
+            "candidates"
+          ]
+        },
+        {
+          "name": "backlog_accept_adr",
+          "full": {
+            "bytes": 533,
+            "tokens": 126
+          },
+          "discovery": {
+            "bytes": 90,
+            "tokens": 21
+          },
+          "schema": {
+            "bytes": 388,
+            "tokens": 96
+          },
+          "input_fields": [
+            "id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_attach_artifact",
+          "full": {
+            "bytes": 853,
+            "tokens": 199
+          },
+          "discovery": {
+            "bytes": 123,
+            "tokens": 27
+          },
+          "schema": {
+            "bytes": 675,
+            "tokens": 163
+          },
+          "input_fields": [
+            "title",
+            "parent_id",
+            "content",
+            "path",
+            "content_type",
+            "references",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_block_task",
+          "full": {
+            "bytes": 605,
+            "tokens": 142
+          },
+          "discovery": {
+            "bytes": 85,
+            "tokens": 20
+          },
+          "schema": {
+            "bytes": 465,
+            "tokens": 113
+          },
+          "input_fields": [
+            "id",
+            "blocked_reason",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_capture_prompt",
+          "full": {
+            "bytes": 1124,
+            "tokens": 350
+          },
+          "discovery": {
+            "bytes": 131,
+            "tokens": 25
+          },
+          "schema": {
+            "bytes": 938,
+            "tokens": 316
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "date",
+            "uploaded_by",
+            "supersedes",
+            "spawned",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_capture_requirement",
+          "full": {
+            "bytes": 2129,
+            "tokens": 716
+          },
+          "discovery": {
+            "bytes": 127,
+            "tokens": 24
+          },
+          "schema": {
+            "bytes": 1947,
+            "tokens": 683
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "status",
+            "compliance",
+            "domain",
+            "date",
+            "uploaded_by",
+            "grounds_in",
+            "spawned",
+            "supersedes",
+            "checked_at",
+            "checked_by",
+            "check_evidence",
+            "violated_by",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_complete_task",
+          "full": {
+            "bytes": 599,
+            "tokens": 140
+          },
+          "discovery": {
+            "bytes": 102,
+            "tokens": 21
+          },
+          "schema": {
+            "bytes": 442,
+            "tokens": 110
+          },
+          "input_fields": [
+            "id",
+            "evidence",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_create_work",
+          "full": {
+            "bytes": 819,
+            "tokens": 191
+          },
+          "discovery": {
+            "bytes": 159,
+            "tokens": 37
+          },
+          "schema": {
+            "bytes": 605,
+            "tokens": 145
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "parent_id",
+            "references",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_organize_folder",
+          "full": {
+            "bytes": 669,
+            "tokens": 156
+          },
+          "discovery": {
+            "bytes": 178,
+            "tokens": 41
+          },
+          "schema": {
+            "bytes": 436,
+            "tokens": 106
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "parent_id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_pause_cron",
+          "full": {
+            "bytes": 525,
+            "tokens": 125
+          },
+          "discovery": {
+            "bytes": 82,
+            "tokens": 20
+          },
+          "schema": {
+            "bytes": 388,
+            "tokens": 96
+          },
+          "input_fields": [
+            "id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_plan_epic",
+          "full": {
+            "bytes": 830,
+            "tokens": 194
+          },
+          "discovery": {
+            "bytes": 170,
+            "tokens": 40
+          },
+          "schema": {
+            "bytes": 605,
+            "tokens": 145
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "parent_id",
+            "references",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_propose_adr",
+          "full": {
+            "bytes": 1147,
+            "tokens": 289
+          },
+          "discovery": {
+            "bytes": 123,
+            "tokens": 25
+          },
+          "schema": {
+            "bytes": 969,
+            "tokens": 255
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "extends",
+            "implements",
+            "backlog_item",
+            "spawned_by",
+            "respects",
+            "violates",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_resume_cron",
+          "full": {
+            "bytes": 527,
+            "tokens": 125
+          },
+          "discovery": {
+            "bytes": 84,
+            "tokens": 20
+          },
+          "schema": {
+            "bytes": 388,
+            "tokens": 96
+          },
+          "input_fields": [
+            "id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_schedule_cron",
+          "full": {
+            "bytes": 795,
+            "tokens": 185
+          },
+          "discovery": {
+            "bytes": 168,
+            "tokens": 37
+          },
+          "schema": {
+            "bytes": 572,
+            "tokens": 139
+          },
+          "input_fields": [
+            "title",
+            "schedule",
+            "command",
+            "content",
+            "parent_id",
+            "enabled",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_start_task",
+          "full": {
+            "bytes": 529,
+            "tokens": 125
+          },
+          "discovery": {
+            "bytes": 86,
+            "tokens": 20
+          },
+          "schema": {
+            "bytes": 388,
+            "tokens": 96
+          },
+          "input_fields": [
+            "id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_supersede_adr",
+          "full": {
+            "bytes": 677,
+            "tokens": 160
+          },
+          "discovery": {
+            "bytes": 130,
+            "tokens": 29
+          },
+          "schema": {
+            "bytes": 492,
+            "tokens": 122
+          },
+          "input_fields": [
+            "replacement_id",
+            "superseded_id",
+            "as"
+          ]
+        },
+        {
+          "name": "backlog_target_milestone",
+          "full": {
+            "bytes": 866,
+            "tokens": 203
+          },
+          "discovery": {
+            "bytes": 177,
+            "tokens": 41
+          },
+          "schema": {
+            "bytes": 634,
+            "tokens": 153
+          },
+          "input_fields": [
+            "title",
+            "content",
+            "parent_id",
+            "due_date",
+            "references",
+            "as"
+          ]
+        }
+      ]
+    }
+  },
+  "cli": {
+    "named_paths": 25,
+    "root": {
+      "bytes": 2517,
+      "tokens": 448
+    },
+    "all_help_text_sum": {
+      "bytes": 13020,
+      "tokens": 2994
+    },
+    "pages": {
+      "root": {
+        "bytes": 2517,
+        "tokens": 448
+      },
+      "serve": {
+        "bytes": 120,
+        "tokens": 31
+      },
+      "status": {
+        "bytes": 113,
+        "tokens": 29
+      },
+      "stop": {
+        "bytes": 100,
+        "tokens": 27
+      },
+      "list": {
+        "bytes": 352,
+        "tokens": 89
+      },
+      "get": {
+        "bytes": 324,
+        "tokens": 78
+      },
+      "create": {
+        "bytes": 697,
+        "tokens": 155
+      },
+      "update": {
+        "bytes": 892,
+        "tokens": 192
+      },
+      "delete": {
+        "bytes": 422,
+        "tokens": 101
+      },
+      "search": {
+        "bytes": 406,
+        "tokens": 96
+      },
+      "edit": {
+        "bytes": 441,
+        "tokens": 113
+      },
+      "wakeup": {
+        "bytes": 767,
+        "tokens": 178
+      },
+      "recall": {
+        "bytes": 646,
+        "tokens": 168
+      },
+      "remember": {
+        "bytes": 1235,
+        "tokens": 315
+      },
+      "forget": {
+        "bytes": 487,
+        "tokens": 121
+      },
+      "consolidation-candidates": {
+        "bytes": 545,
+        "tokens": 143
+      },
+      "contradictions": {
+        "bytes": 324,
+        "tokens": 70
+      },
+      "migrate": {
+        "bytes": 283,
+        "tokens": 63
+      },
+      "version": {
+        "bytes": 100,
+        "tokens": 26
+      },
+      "help": {
+        "bytes": 94,
+        "tokens": 26
+      },
+      "edit replace": {
+        "bytes": 406,
+        "tokens": 101
+      },
+      "edit append": {
+        "bytes": 399,
+        "tokens": 98
+      },
+      "edit insert": {
+        "bytes": 413,
+        "tokens": 102
+      },
+      "edit help": {
+        "bytes": 441,
+        "tokens": 113
+      },
+      "migrate docs-native": {
+        "bytes": 213,
+        "tokens": 48
+      },
+      "migrate help": {
+        "bytes": 283,
+        "tokens": 63
+      }
+    }
+  },
+  "samples": [
+    {
+      "name": "backlog_plan_epic",
+      "arguments": {
+        "bytes": 36,
+        "tokens": 7
+      },
+      "response": {
+        "bytes": 81,
+        "tokens": 29
+      }
+    },
+    {
+      "name": "backlog_create_work",
+      "arguments": {
+        "bytes": 56,
+        "tokens": 16
+      },
+      "response": {
+        "bytes": 81,
+        "tokens": 28
+      }
+    },
+    {
+      "name": "backlog_remember",
+      "arguments": {
+        "bytes": 173,
+        "tokens": 37
+      },
+      "response": {
+        "bytes": 180,
+        "tokens": 67
+      }
+    },
+    {
+      "name": "backlog_wakeup",
+      "arguments": {
+        "bytes": 2,
+        "tokens": 1
+      },
+      "response": {
+        "bytes": 1802,
+        "tokens": 584
+      }
+    },
+    {
+      "name": "backlog_search",
+      "arguments": {
+        "bytes": 24,
+        "tokens": 6
+      },
+      "response": {
+        "bytes": 429,
+        "tokens": 136
+      }
+    },
+    {
+      "name": "backlog_recall",
+      "arguments": {
+        "bytes": 31,
+        "tokens": 6
+      },
+      "response": {
+        "bytes": 499,
+        "tokens": 157
+      }
+    },
+    {
+      "name": "backlog_get",
+      "arguments": {
+        "bytes": 33,
+        "tokens": 12
+      },
+      "response": {
+        "bytes": 354,
+        "tokens": 124
+      }
+    },
+    {
+      "name": "backlog_start_task",
+      "arguments": {
+        "bytes": 18,
+        "tokens": 8
+      },
+      "response": {
+        "bytes": 81,
+        "tokens": 28
+      }
+    },
+    {
+      "name": "backlog_complete_task",
+      "arguments": {
+        "bytes": 64,
+        "tokens": 18
+      },
+      "response": {
+        "bytes": 81,
+        "tokens": 28
+      }
+    }
+  ],
+  "instructions": {
+    "AGENTS.md": {
+      "bytes": 15117,
+      "tokens": 3723
+    },
+    "memory_protocol_section": {
+      "bytes": 3137,
+      "tokens": 768
+    },
+    "README.md": {
+      "bytes": 21551,
+      "tokens": 5267
+    }
+  }
+}

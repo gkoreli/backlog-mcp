@@ -1,0 +1,22 @@
+{
+  "capabilities": {
+    "resources": {
+      "listChanged": true
+    },
+    "tools": {
+      "listChanged": true
+    }
+  },
+  "resources": {
+    "resources": []
+  },
+  "templates": {
+    "resourceTemplates": [
+      {
+        "name": "Data Directory Resource",
+        "uriTemplate": "mcp://backlog/{+path}",
+        "description": "Any file in the backlog data directory"
+      }
+    ]
+  }
+}

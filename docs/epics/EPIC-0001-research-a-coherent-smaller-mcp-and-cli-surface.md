@@ -1,10 +1,10 @@
 ---
 id: EPIC-0001
 title: 'Research a coherent, smaller MCP and CLI surface'
-status: open
+status: in_progress
 parent_id: FLDR-0001
 created_at: '2026-09-09T01:42:15.041Z'
-updated_at: '2026-09-09T01:42:15.041Z'
+updated_at: '2026-09-09T01:46:09.206Z'
 type: epic
 ---
 ## Problem and research objective
@@ -57,3 +57,15 @@ An ADR must choose retained/merged/relocated/removed capabilities; define one un
 - [ADR 0090](../adr/0090-cli-tool-and-core-extraction.md): core-first architecture.
 - [ADR 0106.5](../adr/0106.5-intent-write-surface.md): semantic intents, deferred loading premise, CLI escape hatch.
 - [ADR 0114](../adr/0114-memory-context-surface-disposition.md): one retrieval language and context-tool fold.
+
+## Research progress — 2026-09-08
+
+TASK-0007 through TASK-0010 are complete. Parent captured real HTTP/MCP manifests, CLI help, token counts and selected boundary behavior; three independent read-only workers audited workflows, harness discovery, and domain ownership. A fourth worker reviewed the candidate designs. Reports were independently checked, and stale telemetry assumptions corrected before acceptance.
+
+- [Measured inventory](../reports/0011-tool-surface-inventory.md): default 27 tools, 8,034 o200k_base payload tokens; 25 named CLI paths including groups/help, 19 operational leaves.
+- [Workflow ambiguity](../reports/0012-tool-surface-workflows.md): preserve learned-knowledge versus current-document retrieval; observed usage is not a representative adoption sample.
+- [Harness discovery](../reports/0013-tool-surface-harnesses.md): deferral is client-specific; local Codex loading remains unmeasured; backlog has no server-wide discovery instructions or proactive catalog refresh.
+- [Domain audit](../reports/0014-tool-surface-architecture.md): memory lifecycle differs from generic managed writes; selected parser/receipt/policy discrepancies manually reproduced.
+- [Candidate comparison](../reports/0015-tool-surface-candidates.md) and [independent review](../reports/0016-tool-surface-candidate-review.md): prototype the typed daily set first, keep discovery/execution as challenger.
+
+TASK-0011 is in progress: static arithmetic and design review are complete, but real client trials are still required. TASK-0012 remains open for the evidence-backed final ADR. No production tool or CLI behavior changed in this research checkpoint.

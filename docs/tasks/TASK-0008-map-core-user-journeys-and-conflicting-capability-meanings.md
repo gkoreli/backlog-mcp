@@ -1,10 +1,14 @@
 ---
 id: TASK-0008
 title: Map core user journeys and conflicting capability meanings
-status: open
+status: done
 parent_id: EPIC-0001
+evidence:
+  - >-
+    Research report: docs/reports/0012-tool-surface-workflows.md; evidence and
+    limits reviewed.
 created_at: '2026-09-09T01:42:16.553Z'
-updated_at: '2026-09-09T01:42:16.553Z'
+updated_at: '2026-09-09T02:03:59.678Z'
 type: task
 ---
 ## Research task
@@ -20,3 +24,7 @@ Deliverable: workflow/ambiguity matrix with concrete examples, evidence strength
 TASK-0007 (inventory); these research tracks can proceed independently once the baseline is available.
 
 Parent research worklist: EPIC-0001.
+
+## Research result — 2026-09-08
+
+Completed: [evidence report](../reports/0012-tool-surface-workflows.md). Parent reviewed delegated findings against source; live manifest/CLI experiments and selected adversarial reproductions are recorded in reports 0011 and 0014. Limits and untested claims are explicit. This closes the audit task, not candidate evaluation or a public-surface decision.

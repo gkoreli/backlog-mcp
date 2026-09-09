@@ -1,0 +1,149 @@
+{
+  "status": "Static manifest models only; not implemented, not validated agent success or latency. All unchanged tools retain full existing schemas/descriptions.",
+  "candidates": {
+    "baseline": {
+      "count": 27,
+      "bytes": 34156,
+      "tokens": 8034,
+      "names": [
+        "backlog_list",
+        "backlog_get",
+        "backlog_delete",
+        "backlog_search",
+        "write_resource",
+        "backlog_wakeup",
+        "backlog_recall",
+        "backlog_remember",
+        "backlog_forget",
+        "backlog_consolidation_candidates",
+        "backlog_contradictions",
+        "backlog_accept_adr",
+        "backlog_attach_artifact",
+        "backlog_block_task",
+        "backlog_capture_prompt",
+        "backlog_capture_requirement",
+        "backlog_complete_task",
+        "backlog_create_work",
+        "backlog_organize_folder",
+        "backlog_pause_cron",
+        "backlog_plan_epic",
+        "backlog_propose_adr",
+        "backlog_resume_cron",
+        "backlog_schedule_cron",
+        "backlog_start_task",
+        "backlog_supersede_adr",
+        "backlog_target_milestone"
+      ]
+    },
+    "daily_task_profile": {
+      "count": 10,
+      "bytes": 15553,
+      "tokens": 3473,
+      "names": [
+        "backlog_wakeup",
+        "backlog_recall",
+        "backlog_search",
+        "backlog_get",
+        "backlog_remember",
+        "backlog_forget",
+        "backlog_create_work",
+        "backlog_start_task",
+        "backlog_complete_task",
+        "backlog_block_task"
+      ]
+    },
+    "discovered_intents": {
+      "count": 8,
+      "bytes": 14983,
+      "tokens": 3277,
+      "names": [
+        "backlog_wakeup",
+        "backlog_recall",
+        "backlog_search",
+        "backlog_get",
+        "backlog_remember",
+        "backlog_forget",
+        "backlog_intents",
+        "backlog_execute"
+      ]
+    }
+  },
+  "proposed_tools": [
+    {
+      "name": "backlog_intents",
+      "description": "Discover declared project actions before execution. Omit name for brief action summaries; provide an exact name to retrieve its input schema. Results are scoped to the selected home and include a catalog revision. This does not mutate documents.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
+          "home": {
+            "description": "Select the document home for this call. Overrides bridge defaults: global uses the user-wide home; project uses project_root or the bridge project.",
+            "type": "string",
+            "enum": [
+              "global",
+              "project"
+            ]
+          },
+          "project_root": {
+            "description": "Project root for this call. Overrides the bridge project root and selects the project home.",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "backlog_execute",
+      "description": "Execute a declared project action using the exact name, catalog revision, and input schema returned by backlog_intents. The server validates inputs against the active compiled schema and enforces the existing domain rules; unknown actions and stale catalog revisions fail without writes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "catalog_revision": {
+            "type": "string"
+          },
+          "input": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "home": {
+            "description": "Select the document home for this call. Overrides bridge defaults: global uses the user-wide home; project uses project_root or the bridge project.",
+            "type": "string",
+            "enum": [
+              "global",
+              "project"
+            ]
+          },
+          "project_root": {
+            "description": "Project root for this call. Overrides the bridge project root and selects the project home.",
+            "type": "string",
+            "minLength": 1
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write \u2014 an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "catalog_revision",
+          "input"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

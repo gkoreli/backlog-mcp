@@ -1,0 +1,124 @@
+[
+  {
+    "scenario": "invalid static home",
+    "name": "backlog_remember",
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "MCP error -32602: Input validation error: Invalid arguments for tool backlog_remember: [\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      \"global\",\n      \"project\"\n    ],\n    \"path\": [\n      \"home\"\n    ],\n    \"message\": \"Invalid option: expected one of \\\"global\\\"|\\\"project\\\"\"\n  }\n]"
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "scenario": "invalid static project root",
+    "name": "backlog_remember",
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "MCP error -32602: Input validation error: Invalid arguments for tool backlog_remember: [\n  {\n    \"expected\": \"string\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"project_root\"\n    ],\n    \"message\": \"Invalid input: expected string, received number\"\n  }\n]"
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "scenario": "wrong entity type",
+    "name": "backlog_start_task",
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"error\":\"Intent for task cannot mutate EPIC-0001 (epic)\"}"
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "scenario": "completed task cannot restart through intent",
+    "name": "backlog_start_task",
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"error\":\"Transition status cannot move from \\\"done\\\" to \\\"in_progress\\\"\"}"
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "scenario": "valid home fields absent from declared intent schema",
+    "name": "backlog_create_work",
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "MCP error -32602: Input validation error: Invalid arguments for tool backlog_create_work: [\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"home\",\n      \"project_root\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized keys: \\\"home\\\", \\\"project_root\\\"\"\n  }\n]"
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "scenario": "undeclared tool",
+    "name": "backlog_missing_action",
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "MCP error -32602: Tool backlog_missing_action not found"
+        }
+      ],
+      "isError": true
+    }
+  },
+  {
+    "scenario": "Generic CLI deliberately permits schema-valid lifecycle repair",
+    "command": "update TASK-0001 --status open (from done)",
+    "exit": 0,
+    "response": "{\n  \"id\": \"TASK-0001\"\n}\n"
+  },
+  {
+    "scenario": "Malformed CLI line number",
+    "exit": 0,
+    "response": "{\n  \"success\": true,\n  \"message\": \"Successfully applied insert to TASK-0001\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "name": "backlog_delete",
+    "arguments": {
+      "id": "TASK-9999"
+    },
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Deleted TASK-9999"
+        }
+      ]
+    }
+  },
+  {
+    "scenario": "Generic CLI creates derived memory without sources",
+    "exit": 0,
+    "response": "{\n  \"id\": \"MEMO-0003\",\n  \"parent_id\": \"EPIC-0001\",\n  \"routed_by\": \"session\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "scenario": "Remember rejects derived memory without sources",
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"error\":\"derived memories must cite their sources: entity_refs is required when derived is true\"}"
+        }
+      ],
+      "isError": true
+    }
+  }
+]

@@ -1,10 +1,14 @@
 ---
 id: TASK-0010
 title: Audit domain boundaries and MCP–CLI semantic divergence
-status: open
+status: done
 parent_id: EPIC-0001
+evidence:
+  - >-
+    Research report: docs/reports/0014-tool-surface-architecture.md; evidence
+    and limits reviewed.
 created_at: '2026-09-09T01:42:18.185Z'
-updated_at: '2026-09-09T01:42:18.185Z'
+updated_at: '2026-09-09T02:04:02.106Z'
 type: task
 ---
 ## Research task
@@ -20,3 +24,7 @@ Deliverable: file-cited ownership/call-path map, concrete divergences, and minim
 TASK-0007 (inventory); these research tracks can proceed independently once the baseline is available.
 
 Parent research worklist: EPIC-0001.
+
+## Research result — 2026-09-08
+
+Completed: [evidence report](../reports/0014-tool-surface-architecture.md). Parent reviewed delegated findings against source; live manifest/CLI experiments and selected adversarial reproductions are recorded in reports 0011 and 0014. Limits and untested claims are explicit. This closes the audit task, not candidate evaluation or a public-surface decision.

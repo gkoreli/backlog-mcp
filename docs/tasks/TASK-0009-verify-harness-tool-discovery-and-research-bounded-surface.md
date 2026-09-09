@@ -1,10 +1,14 @@
 ---
 id: TASK-0009
 title: Verify harness tool discovery and research bounded surface alternatives
-status: open
+status: done
 parent_id: EPIC-0001
+evidence:
+  - >-
+    Research report: docs/reports/0013-tool-surface-harnesses.md; evidence and
+    limits reviewed.
 created_at: '2026-09-09T01:42:17.386Z'
-updated_at: '2026-09-09T01:42:17.386Z'
+updated_at: '2026-09-09T02:04:01.043Z'
 type: task
 ---
 ## Research task
@@ -20,3 +24,7 @@ Deliverable: sourced findings that test ADR 0106.5’s deferred-loading premise 
 TASK-0007 (inventory); these research tracks can proceed independently once the baseline is available.
 
 Parent research worklist: EPIC-0001.
+
+## Research result — 2026-09-08
+
+Completed: [evidence report](../reports/0013-tool-surface-harnesses.md). Parent reviewed delegated findings against source; live manifest/CLI experiments and selected adversarial reproductions are recorded in reports 0011 and 0014. Limits and untested claims are explicit. This closes the audit task, not candidate evaluation or a public-surface decision.

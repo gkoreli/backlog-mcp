@@ -1,10 +1,10 @@
 ---
 id: TASK-0011
 title: Evaluate candidate surfaces against representative agent workflows
-status: open
+status: in_progress
 parent_id: EPIC-0001
 created_at: '2026-09-09T01:42:18.994Z'
-updated_at: '2026-09-09T01:42:18.994Z'
+updated_at: '2026-09-09T02:04:03.161Z'
 type: task
 ---
 ## Research task
@@ -22,3 +22,7 @@ Deliverable: comparative results, reproducible scenarios, failures, and recommen
 TASK-0007, TASK-0008, TASK-0009, TASK-0010
 
 Parent research worklist: EPIC-0001.
+
+## Evaluation started — 2026-09-08
+
+[Candidate comparison](../reports/0015-tool-surface-candidates.md) models the current 27-tool surface, a 10-tool typed daily set, and an 8-tool discovery/execution set. [Independent design review](../reports/0016-tool-surface-candidate-review.md) recommends prototyping the typed set first; this is not a default-surface ruling. Real client trials, cumulative context, selection outcomes and stale-catalog checks remain pending.

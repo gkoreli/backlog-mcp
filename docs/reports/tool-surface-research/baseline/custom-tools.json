@@ -1,0 +1,1515 @@
+{
+  "tools": [
+    {
+      "name": "backlog_list",
+      "description": "List backlog entities from the active project substrate registry. Returns most recently observed items first, limited to 20 by default.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "description": "Select the document home for this call. Overrides bridge defaults: global uses the user-wide home; project uses project_root or the bridge project.",
+            "type": "string",
+            "enum": [
+              "global",
+              "project"
+            ]
+          },
+          "project_root": {
+            "description": "Project root for this call. Overrides the bridge project root and selects the project home.",
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "description": "Filter by substrate-defined status.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "type": {
+            "description": "Filter by substrate type. Default: returns all.",
+            "type": "string"
+          },
+          "parent_id": {
+            "description": "Filter items by parent. Example: parent_id=\"FLDR-0001\"",
+            "type": "string"
+          },
+          "query": {
+            "description": "Search across all task fields (title, content, evidence, references, etc.). Case-insensitive substring matching.",
+            "type": "string"
+          },
+          "counts": {
+            "description": "Include global counts { total_tasks, total_epics, by_status, by_type } alongside results. Use this to detect if more items exist beyond the limit. Default: false",
+            "type": "boolean"
+          },
+          "limit": {
+            "description": "Max items to return. Default: 20. Increase if you need to see more items (e.g., limit=100 to list all epics).",
+            "type": "number"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_get",
+      "description": "Get full details by ID. Accepts task IDs (TASK-0001, EPIC-0002), document paths (README.md, docs/adr/0001-example.md), or MCP resource URIs (mcp://backlog/resources/design.md). Works for any item regardless of status. Pass context:true when starting work on an entity to also see its relational neighborhood as stubs.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "description": "Select the document home for this call. Overrides bridge defaults: global uses the user-wide home; project uses project_root or the bridge project.",
+            "type": "string",
+            "enum": [
+              "global",
+              "project"
+            ]
+          },
+          "project_root": {
+            "description": "Project root for this call. Overrides the bridge project root and selects the project home.",
+            "type": "string",
+            "minLength": 1
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ],
+            "description": "Task ID (e.g. TASK-0001), document path (e.g. README.md, docs/notes/file.md), or MCP resource URI (e.g. mcp://backlog/resources/file.md). Array for batch fetch."
+          },
+          "context": {
+            "description": "Expand the entity's relational neighborhood as stubs — parent/children/siblings/references/referenced_by/related; hydrate any stub with another backlog_get.",
+            "type": "boolean"
+          },
+          "depth": {
+            "description": "Relational expansion depth with context:true. 1 = direct relations (default), 2 = grandparents/grandchildren.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_delete",
+      "description": "Delete an item permanently.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "description": "Select the document home for this call. Overrides bridge defaults: global uses the user-wide home; project uses project_root or the bridge project.",
+            "type": "string",
+            "enum": [
+              "global",
+              "project"
+            ]
+          },
+          "project_root": {
+            "description": "Project root for this call. Overrides the bridge project root and selects the project home.",
+            "type": "string",
+            "minLength": 1
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "Task ID to delete"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_search",
+      "description": "Search across all indexed backlog substrates and generic resources. Returns relevance-ranked results with match context. Use this for discovery; use backlog_list for filtering by status/type.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "description": "Select the document home for this read. \"all\" queries global plus the explicitly supplied/bridged project root; it never scans prior projects.",
+            "type": "string",
+            "enum": [
+              "global",
+              "project",
+              "all"
+            ]
+          },
+          "project_root": {
+            "description": "Project root for this call. Overrides the bridge project root and selects the project home.",
+            "type": "string",
+            "minLength": 1
+          },
+          "query": {
+            "type": "string",
+            "description": "Search query. Supports keywords, phrases, and natural language. Fuzzy matching and semantic similarity are applied automatically."
+          },
+          "types": {
+            "description": "Filter by substrate type or \"resource\". Default: all searchable types.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "status": {
+            "description": "Filter entities by canonical substrate status. Default: all statuses.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "parent_id": {
+            "description": "Scope search to items under a specific parent. Example: \"EPIC-0001\"",
+            "type": "string"
+          },
+          "sort": {
+            "description": "Sort mode. \"relevant\" (default) ranks by search relevance. \"recent\" ranks by last updated.",
+            "type": "string",
+            "enum": [
+              "relevant",
+              "recent"
+            ]
+          },
+          "limit": {
+            "description": "Max results to return. Default: 20, max: 100.",
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "include_content": {
+            "description": "Include full content in results. Default: false (returns snippets only). Set true when you need the full text.",
+            "type": "boolean"
+          },
+          "include_scores": {
+            "description": "Include relevance scores in results. Default: false.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "write_resource",
+      "description": "Use when you want backlog-mcp to validate and canonically persist an existing entity edit before reporting success. For ordinary repository prose edits, use your native Edit tool; reconciliation updates indexes and diagnostics afterward. Create and transition entities through the substrate-declared intent tools.\n * The `append` command will add content to the end of the body, automatically adding a newline if needed.\n Notes for using the `str_replace` command:\n * The `old_str` parameter should match EXACTLY one or more consecutive lines from the original body. Be mindful of whitespaces!\n * If the `old_str` parameter is not unique in the body, the replacement will not be performed. Include enough context to make it unique.\n * The `new_str` parameter should contain the edited lines that should replace the `old_str`",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "description": "Select the document home for this call. Overrides bridge defaults: global uses the user-wide home; project uses project_root or the bridge project.",
+            "type": "string",
+            "enum": [
+              "global",
+              "project"
+            ]
+          },
+          "project_root": {
+            "description": "Project root for this call. Overrides the bridge project root and selects the project home.",
+            "type": "string",
+            "minLength": 1
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "description": "Task or epic ID, e.g. TASK-0001 or EPIC-0002"
+          },
+          "operation": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "str_replace",
+                  "insert",
+                  "append"
+                ],
+                "description": "Operation type"
+              },
+              "old_str": {
+                "description": "str_replace: exact string to replace",
+                "type": "string"
+              },
+              "new_str": {
+                "description": "str_replace/insert/append: replacement or new content",
+                "type": "string"
+              },
+              "insert_line": {
+                "description": "insert: line number to insert after",
+                "type": "number"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "description": "Operation to apply to the body"
+          }
+        },
+        "required": [
+          "id",
+          "operation"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "_meta": {
+        "anthropic/alwaysLoad": false
+      }
+    },
+    {
+      "name": "backlog_wakeup",
+      "description": "Dense session-start briefing: active tasks, current epics, project constraints (requirements as stubs, violated/at-risk first — treat these as standing product intent), recent completions (with evidence snippets), recent activity, and the home-wide unfiled work count. No focal entity required — use this at the start of every session to understand what you were working on. Optional `scope` narrows the entity sections to a folder, milestone, or epic; unfiled remains home-wide because parentless work has no subtree ancestry. Optional `operation` resumes a mid-flight operation document: its live state becomes the briefing's FOCUS centerpiece and the rest of the briefing yields budget to it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "description": "Select the document home for this read. \"all\" queries global plus the explicitly supplied/bridged project root; it never scans prior projects.",
+            "type": "string",
+            "enum": [
+              "global",
+              "project",
+              "all"
+            ]
+          },
+          "project_root": {
+            "description": "Project root for this call. Overrides the bridge project root and selects the project home.",
+            "type": "string",
+            "minLength": 1
+          },
+          "scope": {
+            "description": "Optional entity ID to scope the briefing to a subtree. Must be a container (folder/milestone/epic). Use a folder ID for project-scoped wake-up (e.g. \"FLDR-0001\"). Omit to get everything across the whole backlog.",
+            "type": "string"
+          },
+          "operation": {
+            "description": "Optional focal document ID (e.g. \"OP-0001\") to resume a mid-flight operation: the briefing gains a `focus` centerpiece carrying that document's declared wakeup projection, and non-focal sections yield budget deterministically (completions 5→2, activity 5→2, knowledge 5→3, declared sections capped at 2; constraints never yield). Works for any document whose substrate declares `disclosure.wakeup`. Unknown or non-live IDs error honestly, naming live candidates.",
+            "type": "string"
+          },
+          "max_completions": {
+            "description": "Max done tasks in the \"recent\" section. Default: 5.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 50
+          },
+          "max_activity": {
+            "description": "Max recent activity-log entries. Default: 5.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 50
+          },
+          "max_constraints": {
+            "description": "Max requirement constraint stubs. Default: 3; 0 disables. Truncation is reported via metadata.constraints_omitted.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 50
+          },
+          "evidence_snippet_chars": {
+            "description": "Max chars of evidence to include per completion. Default: 160.",
+            "type": "number",
+            "minimum": 40,
+            "maximum": 1000
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      },
+      "_meta": {
+        "anthropic/alwaysLoad": true
+      }
+    },
+    {
+      "name": "backlog_recall",
+      "description": "Recall memories — knowledge and episodes captured across sessions. Returns STUBS (title + one-line digest + provenance) by default; expand interesting ones with backlog_get(MEMO-id), or pass full:true for bodies. Weigh a stub's trust BEFORE hydrating: age_days (on the knowledge's own timeline), uses/idle_days (recall demand), supersedes (this is a correction), derived (consolidator inference), kind (current/historical/plan/preference/timeless). Old + never-used = treat as hypothesis, not truth. Distinct from backlog_search (live entities). Use to answer \"how do we deploy?\", \"have I hit this before?\", \"what did I finish about X?\". Memories point back to source entities via entity_id.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "description": "Select the document home for this read. \"all\" queries global plus the explicitly supplied/bridged project root; it never scans prior projects.",
+            "type": "string",
+            "enum": [
+              "global",
+              "project",
+              "all"
+            ]
+          },
+          "project_root": {
+            "description": "Project root for this call. Overrides the bridge project root and selects the project home.",
+            "type": "string",
+            "minLength": 1
+          },
+          "query": {
+            "type": "string",
+            "description": "Free-text query (keyword or phrase)."
+          },
+          "context": {
+            "description": "Optional scope — usually a parent_id like \"FLDR-0001\". Filters to memories captured with that entity as their context.",
+            "type": "string"
+          },
+          "tags": {
+            "description": "Filter by memory tags (any-match). e.g. [\"artifact\"] or [\"task\"].",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "layers": {
+            "description": "Restrict to specific memory layers. Default: all persisted layers (episodic + semantic + procedural).",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "session",
+                "episodic",
+                "semantic",
+                "procedural"
+              ]
+            }
+          },
+          "limit": {
+            "description": "Max results. Default: 10.",
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "full": {
+            "description": "Return full memory bodies instead of stubs. Prefer stubs + backlog_get for the ones you need.",
+            "type": "boolean"
+          },
+          "token_budget": {
+            "description": "Approximate token budget — results are greedily packed to fit.",
+            "type": "number",
+            "minimum": 50
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_remember",
+      "description": "Write a durable memory — a stable fact, a procedure, or a preference you should know next session. Use when you learn something worth keeping: \"this repo deploys via wrangler\", \"Goga prefers terse evidence bullets\". To CORRECT existing knowledge, pass supersedes (the old MEMO- id is expired, lineage kept) or state_key (previous holders of the same evolving fact are closed). The optional collision_candidates receipt is tri-state: [] means the advisory scan completed clean; a non-empty array means nearby facts deserve adjudication; absent means the advisory scan did not run or failed, not that the write failed. Do not use for task events — completions are captured automatically.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "description": "Select the document home for this call. Overrides bridge defaults: global uses the user-wide home; project uses project_root or the bridge project.",
+            "type": "string",
+            "enum": [
+              "global",
+              "project"
+            ]
+          },
+          "project_root": {
+            "description": "Project root for this call. Overrides the bridge project root and selects the project home.",
+            "type": "string",
+            "minLength": 1
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          },
+          "content": {
+            "type": "string",
+            "description": "The memory body (markdown) — the fact itself."
+          },
+          "title": {
+            "type": "string",
+            "description": "Memory title (required, like a task title) — a short human-readable label for the fact. Title and body are both first-class."
+          },
+          "layer": {
+            "description": "semantic = stable fact (default). procedural = how-to/process. episodic = a specific event worth keeping.",
+            "type": "string",
+            "enum": [
+              "episodic",
+              "semantic",
+              "procedural"
+            ]
+          },
+          "context": {
+            "description": "Scope container id (e.g. \"FLDR-0001\") — enables scoped recall and wakeup.",
+            "type": "string"
+          },
+          "tags": {
+            "description": "Freeform labels for filterable recall.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entity_refs": {
+            "description": "Source entity IDs declared in the selected home (e.g. [\"TASK-0676\", \"REQ-0001\"]). Space/hyphen aliases are stored in canonical form.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "kind": {
+            "description": "Temporal kind: current fact / historical fact / future plan / preference / timeless (exempt from recency decay).",
+            "type": "string",
+            "enum": [
+              "current",
+              "historical",
+              "plan",
+              "preference",
+              "timeless"
+            ]
+          },
+          "state_key": {
+            "description": "Evolving-fact key (e.g. \"build.bundler\"). Storing a new memory with an existing key closes the previous holder.",
+            "type": "string"
+          },
+          "occurred_at": {
+            "description": "When the remembered event occurred — ISO date/datetime. Decay uses this instead of write time.",
+            "type": "string"
+          },
+          "valid_until": {
+            "description": "Expiry — ISO date/datetime. After this the memory drops out of recall.",
+            "type": "string"
+          },
+          "supersedes": {
+            "description": "MEMO- id this memory replaces. The predecessor is soft-expired.",
+            "type": "string"
+          },
+          "derived": {
+            "description": "Mark as inference (consolidator output). Requires non-empty entity_refs citing the sources.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "content",
+          "title"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_forget",
+      "description": "Retract memories — soft-expire them so recall stops returning them (the record stays auditable in the viewer). Use when knowledge is wrong or obsolete and there is no replacement (if there IS a replacement, use backlog_remember with supersedes instead). expired:true garbage-collects already-expired memories.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "description": "Select the document home for this call. Overrides bridge defaults: global uses the user-wide home; project uses project_root or the bridge project.",
+            "type": "string",
+            "enum": [
+              "global",
+              "project"
+            ]
+          },
+          "project_root": {
+            "description": "Project root for this call. Overrides the bridge project root and selects the project home.",
+            "type": "string",
+            "minLength": 1
+          },
+          "ids": {
+            "description": "Specific MEMO- ids to forget.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "context": {
+            "description": "Forget all memories scoped to this context (e.g. \"FLDR-0001\").",
+            "type": "string"
+          },
+          "layer": {
+            "description": "Forget all memories in a layer.",
+            "type": "string",
+            "enum": [
+              "episodic",
+              "semantic",
+              "procedural"
+            ]
+          },
+          "older_than": {
+            "description": "Forget memories created before this ISO date/datetime.",
+            "type": "string"
+          },
+          "expired": {
+            "description": "GC mode: hard-delete memories that are already expired.",
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_consolidation_candidates",
+      "description": "List clusters of episodic memories that are ripe for consolidation into durable knowledge. Consolidator workflow: (1) call this and take ripe bundles; (2) per bundle, read members (backlog_get on MEMO- ids for depth), then write ONE narrative memory via backlog_remember({ layer: \"semantic\"|\"procedural\", derived: true, entity_refs: [member MEMO- ids + key source entities], context }) — a self-contained story, not fragments; (3) retire the members via backlog_forget({ ids }) so they stop appearing here while staying auditable; (4) track your progress with a backlog_remember state_key like \"consolidation.watermark.<scope>\".",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "description": "Select the document home for this call. Overrides bridge defaults: global uses the user-wide home; project uses project_root or the bridge project.",
+            "type": "string",
+            "enum": [
+              "global",
+              "project"
+            ]
+          },
+          "project_root": {
+            "description": "Project root for this call. Overrides the bridge project root and selects the project home.",
+            "type": "string",
+            "minLength": 1
+          },
+          "min_count": {
+            "description": "Minimum bundle size to be ripe. Default: 3.",
+            "type": "number",
+            "minimum": 1
+          },
+          "min_age_days": {
+            "description": "Minimum age (days) of the oldest member. Default: 7.",
+            "type": "number",
+            "minimum": 0
+          },
+          "min_demand": {
+            "description": "Recall-demand threshold — bundles recalled this often (30d) are ripe regardless of age. Default: 3.",
+            "type": "number",
+            "minimum": 0
+          },
+          "context": {
+            "description": "Restrict to one context (e.g. \"FLDR-0001\").",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Max bundles, ripe first. Default: 10.",
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "max_digests": {
+            "description": "Max digest lines per bundle. Default: 10.",
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_contradictions",
+      "description": "List structural contradictions in memory: sets of ≥2 LIVE memories that share one state_key (e.g. \"db.primary\"), which should never happen — a new memory with a state_key auto-expires the previous holder. Each set means two beliefs about the same fact are both active. Resolution is yours, never automatic: pick the correct member, then either backlog_remember({ content, state_key, supersedes: <stale MEMO- id> }) to record the right value and retire the rest, or backlog_forget({ ids: [<stale MEMO- ids>] }) to expire the wrong ones. Read members with backlog_get for full context before deciding. Set candidates: true to list semantic collision candidates instead: nearby live facts that deserve review, never contradiction verdicts.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "home": {
+            "description": "Select the document home for this call. Overrides bridge defaults: global uses the user-wide home; project uses project_root or the bridge project.",
+            "type": "string",
+            "enum": [
+              "global",
+              "project"
+            ]
+          },
+          "project_root": {
+            "description": "Project root for this call. Overrides the bridge project root and selects the project home.",
+            "type": "string",
+            "minLength": 1
+          },
+          "candidates": {
+            "description": "Return semantic collision candidates instead of structural state_key contradictions.",
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_accept_adr",
+      "description": "Use when ratifying an existing proposed ADR.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_attach_artifact",
+      "description": "Use when attaching an artifact to a project item. parent_id is required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "parent_id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "parent_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_block_task",
+      "description": "Use when blocking a task with a reason.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "blocked_reason": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "blocked_reason"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_capture_prompt",
+      "description": "Use when preserving a verbatim human directive as a chronological project prompt.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 2000000
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "uploaded_by": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "supersedes": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "spawned": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "content"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_capture_reference",
+      "description": "Use when recording an external technology, prior-art system, or benchmark this project builds on — with authoritative citations and the project's adopt/park/reject relationship to it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 2000000
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "stack-technology",
+              "prior-art-system",
+              "benchmark"
+            ]
+          },
+          "what_it_is": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "citations": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "url": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "paper",
+                    "official-docs",
+                    "repo",
+                    "post"
+                  ]
+                }
+              },
+              "required": [
+                "title",
+                "url",
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "our_relationship": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "What this project adopts, parks, or rejects from the subject, and why — with exact repo file citations where reproductions exist."
+          },
+          "bears_on": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "description": "NORTH-STAR tenets/invariants and ADRs this subject bears on."
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "content",
+          "category",
+          "what_it_is",
+          "citations",
+          "our_relationship",
+          "bears_on"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_capture_requirement",
+      "description": "Use when recording a human or system requirement in the current project.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 2000000
+          },
+          "status": {
+            "default": "intake",
+            "type": "string",
+            "enum": [
+              "intake",
+              "ruled",
+              "building",
+              "done",
+              "dropped"
+            ]
+          },
+          "compliance": {
+            "default": "unchecked",
+            "type": "string",
+            "enum": [
+              "unchecked",
+              "satisfied",
+              "at_risk",
+              "violated",
+              "not_applicable"
+            ]
+          },
+          "domain": {
+            "oneOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 200
+                }
+              }
+            ]
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "uploaded_by": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "grounds_in": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "spawned": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "supersedes": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          },
+          "checked_by": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "check_evidence": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "violated_by": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "content"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_complete_task",
+      "description": "Use when completing a task, optionally with evidence.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_create_work",
+      "description": "Use when creating a project work item. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string"
+          },
+          "parent_id": {
+            "type": "string"
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_organize_folder",
+      "description": "Use when creating a folder to organize project items. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string"
+          },
+          "parent_id": {
+            "type": "string"
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_pause_cron",
+      "description": "Use when pausing a scheduled intake.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_plan_epic",
+      "description": "Use when planning an epic that groups related work. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string"
+          },
+          "parent_id": {
+            "type": "string"
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_propose_adr",
+      "description": "Use when recording a proposed architectural decision in the current project.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 2000000
+          },
+          "extends": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "implements": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "backlog_item": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "spawned_by": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "respects": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "violates": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "content"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_resume_cron",
+      "description": "Use when resuming a scheduled intake.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_schedule_cron",
+      "description": "Use when scheduling recurring project intake. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "schedule": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string"
+          },
+          "parent_id": {
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "type": "boolean"
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "schedule",
+          "command"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_start_task",
+      "description": "Use when starting active work on a task.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_supersede_adr",
+      "description": "Use when a newer ADR replaces an accepted or living ADR while preserving lineage.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "replacement_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "superseded_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "replacement_id",
+          "superseded_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    },
+    {
+      "name": "backlog_target_milestone",
+      "description": "Use when creating a milestone for a project target. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string"
+          },
+          "parent_id": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": "string"
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "as": {
+            "description": "OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. \"aime:granite\"). Values are trimmed; whitespace-only is treated as absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      },
+      "execution": {
+        "taskSupport": "forbidden"
+      }
+    }
+  ]
+}

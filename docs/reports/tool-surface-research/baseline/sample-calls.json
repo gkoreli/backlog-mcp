@@ -1,0 +1,137 @@
+[
+  {
+    "name": "backlog_plan_epic",
+    "arguments": {
+      "title": "Surface research fixture"
+    },
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ids\":[\"EPIC-0001\"],\"changed\":true}"
+        }
+      ]
+    }
+  },
+  {
+    "name": "backlog_create_work",
+    "arguments": {
+      "title": "Measure public tools",
+      "parent_id": "EPIC-0001"
+    },
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ids\":[\"TASK-0001\"],\"changed\":true}"
+        }
+      ]
+    }
+  },
+  {
+    "name": "backlog_remember",
+    "arguments": {
+      "title": "Research convention",
+      "content": "Use measured evidence before changing the public tool surface.",
+      "layer": "procedural",
+      "kind": "timeless",
+      "entity_refs": [
+        "TASK-0001"
+      ]
+    },
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\n  \"id\": \"MEMO-0001\",\n  \"layer\": \"procedural\",\n  \"created_at\": \"2026-09-09T01:57:57.792Z\",\n  \"collision_candidates\": []\n}"
+        }
+      ]
+    }
+  },
+  {
+    "name": "backlog_wakeup",
+    "arguments": {},
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\n \"now\": {\n  \"active_tasks\": [],\n  \"current_epics\": [\n   {\n    \"id\": \"EPIC-0001\",\n    \"title\": \"Surface research fixture\",\n    \"status\": \"open\",\n    \"age_days\": 0\n   }\n  ]\n },\n \"knowledge\": [\n  {\n   \"id\": \"MEMO-0001\",\n   \"layer\": \"procedural\",\n   \"title\": \"Research convention\",\n   \"age_days\": 0,\n   \"uses\": 0,\n   \"kind\": \"timeless\",\n   \"source_ref\": \"TASK-0001\"\n  }\n ],\n \"constraints\": [],\n \"sections\": {\n  \"decisions\": []\n },\n \"orientation\": {\n  \"docs\": [],\n  \"indexed_documents\": 3\n },\n \"recent\": {\n  \"completions\": [],\n  \"activity\": [\n   {\n    \"ts\": \"2026-09-09T01:57:57.794Z\",\n    \"tool\": \"backlog_remember\",\n    \"actor\": \"aime:granite\",\n    \"entity_id\": \"MEMO-0001\"\n   },\n   {\n    \"ts\": \"2026-09-09T01:57:57.774Z\",\n    \"tool\": \"backlog_create_work\",\n    \"actor\": \"aime:granite\",\n    \"entity_id\": \"TASK-0001\"\n   },\n   {\n    \"ts\": \"2026-09-09T01:57:57.752Z\",\n    \"tool\": \"backlog_plan_epic\",\n    \"actor\": \"aime:granite\",\n    \"entity_id\": \"EPIC-0001\"\n   }\n  ]\n },\n \"metadata\": {\n  \"identity\": \"aime:granite (env)\"\n },\n \"memory_protocol\": {\n  \"recall\": \"Recall before re-deriving what a prior session likely solved, on unfamiliar identifiers, and before contradicting a recorded decision. Skip what is generic or already visible. Stubs first; get only the IDs that matter.\",\n  \"remember\": \"Before this session ends, remember what it earned: a lesson proven by failure, a decision that changed direction, a fact that cost tokens to derive and will be needed again. Write at your own checkpoint, in your own words — never summarize another agent's work into memory.\"\n }\n}"
+        }
+      ]
+    }
+  },
+  {
+    "name": "backlog_search",
+    "arguments": {
+      "query": "public tools"
+    },
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\n  \"results\": [\n    {\n      \"id\": \"TASK-0001\",\n      \"title\": \"Measure public tools\",\n      \"type\": \"task\",\n      \"status\": \"open\",\n      \"parent_id\": \"EPIC-0001\",\n      \"snippet\": \"Measure public tools\",\n      \"matched_fields\": [\n        \"title\"\n      ]\n    }\n  ],\n  \"total\": 1,\n  \"query\": \"public tools\",\n  \"search_mode\": \"bm25\"\n}"
+        }
+      ]
+    }
+  },
+  {
+    "name": "backlog_recall",
+    "arguments": {
+      "query": "Research convention"
+    },
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\n  \"items\": [\n    {\n      \"id\": \"MEMO-0001\",\n      \"title\": \"Research convention\",\n      \"digest\": \"Use measured evidence before changing the public tool surface.\",\n      \"layer\": \"procedural\",\n      \"source\": \"aime:granite\",\n      \"score\": 3.5,\n      \"age_days\": 0,\n      \"uses\": 0,\n      \"entity_id\": \"TASK-0001\",\n      \"kind\": \"timeless\"\n    }\n  ],\n  \"total\": 1,\n  \"query\": \"Research convention\"\n}"
+        }
+      ]
+    }
+  },
+  {
+    "name": "backlog_get",
+    "arguments": {
+      "id": "TASK-0001",
+      "context": true
+    },
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "---\nid: TASK-0001\ntitle: Measure public tools\nstatus: open\nparent_id: EPIC-0001\ncreated_at: '2026-09-09T01:57:57.770Z'\nupdated_at: '2026-09-09T01:57:57.770Z'\ntype: task\n---\n\n\n\n## Context — relational stubs (hydrate with backlog_get)\n\nparent:\n- EPIC-0001 · epic · open — Surface research fixture"
+        }
+      ]
+    }
+  },
+  {
+    "name": "backlog_start_task",
+    "arguments": {
+      "id": "TASK-0001"
+    },
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ids\":[\"TASK-0001\"],\"changed\":true}"
+        }
+      ]
+    }
+  },
+  {
+    "name": "backlog_complete_task",
+    "arguments": {
+      "id": "TASK-0001",
+      "evidence": [
+        "Research capture fixture only."
+      ]
+    },
+    "response": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"ids\":[\"TASK-0001\"],\"changed\":true}"
+        }
+      ]
+    }
+  }
+]
