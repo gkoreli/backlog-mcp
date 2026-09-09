@@ -88,8 +88,9 @@ serialized schema bytes across those six tools, not a measured token cost.
   initial broad server run passed 1,445 tests with two skipped and failed only the
   expected old manifest fingerprint, which was refreshed and rechecked.
 
-No new tests were added for prose changes. No release, build deployment or daemon
-restart was performed; installed processes and client schema caches can lag source.
+No new tests were added for prose changes. At the initial audit checkpoint, no
+release, build deployment or daemon restart was performed; installed processes
+and client schema caches can lag source. The later release is recorded below.
 
 ## Bookkeeping exception and follow-up
 
@@ -122,3 +123,14 @@ The server package and exported VERSION are 0.74.1; viewer remains 0.66.0.
 viewer 157 passed, memory 49 passed. These later checks supersede the earlier
 partial test checkpoint above. CI publication is verified separately before
 the release task closes. The EPIC-0001 break checkpoint records where to resume.
+
+### Publication verified
+
+[Release v0.74.1](https://github.com/gkoreli/backlog-mcp/releases/tag/v0.74.1)
+was created from `07013d8783888d1c7b6b4655c81dbc3c6c031fa4`.
+[CI run 34304923248](https://github.com/gkoreli/backlog-mcp/actions/runs/34304923248)
+passed install, build, tests, tagging, GitHub release and npm publication with
+signed provenance. Public registry reads subsequently confirmed version 0.74.1
+and `dist-tags.latest = 0.74.1`; initial cached reads briefly returned the prior
+release. TASK-0015 is complete. The final documentation receipt is committed
+after the release tag. No research or identity repair was started during the break.

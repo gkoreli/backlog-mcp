@@ -81,7 +81,8 @@ TASK-0013 reconciles README, AGENTS, install guidance and current architecture d
 ### Break checkpoint — 2026-09-09 UTC
 
 The owner requested a break after the documentation cleanup and server release.
-TASK-0013 is complete. TASK-0015 tracks release 0.74.1 and publication evidence.
+TASK-0013 and TASK-0015 are complete. Server 0.74.1 is published on npm as
+`latest`, with a GitHub release and passing CI; viewer remains 0.66.0.
 Research is paused at this checkpoint; TASK-0011 remains in progress and
 TASK-0012 remains open, rather than being marked complete on pilot evidence.
 

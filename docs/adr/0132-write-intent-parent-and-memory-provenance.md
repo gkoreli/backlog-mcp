@@ -1,7 +1,7 @@
 ---
 title: "0132 — Preserve intent parents and registry-defined memory provenance"
 date: 2026-09-08
-status: "Implemented — unreleased"
+status: "Implemented — released in 0.74.1"
 author: Codex
 relates_to:
   - 0106.5-intent-write-surface.md
@@ -73,5 +73,6 @@ A second home rejected the first home's project-only reference prefix. The
 rebuilt CLI also completed `remember --refs REQ-0001,ADR-0114,REF-0015`.
 The temporary homes, listeners, and runtimes were removed or closed afterward.
 
-No migration or version bump is required. The running installed daemon picks
-up these fixes after an update/restart; this change does not publish a release.
+The initial implementation required no data migration and did not publish a
+release. These fixes are included in release 0.74.1 (2026-09-09 UTC). The running
+daemon picks them up after an update/restart.

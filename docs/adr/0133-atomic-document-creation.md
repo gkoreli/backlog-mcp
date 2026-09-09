@@ -1,7 +1,7 @@
 ---
 title: "0133 — Atomic document creation: fresh write authority, cached reads"
 date: 2026-09-08
-status: "Implemented — unreleased; worktree-family allocation remains open"
+status: "Implemented — released in 0.74.1; worktree-family allocation remains open"
 author: Codex
 relates_to:
   - 0127-storage-read-cache-uncached-corpus-rescan.md
@@ -140,3 +140,6 @@ policy. The W1 family probe is currently fail-open and excludes main checkouts
 and detached HEADs, which makes it unsuitable as write authority without a
 new contract. A future family allocator must define bootstrap from existing
 branch histories, clone/offline semantics, and recovery of reservation state.
+
+Released in 0.74.1 (2026-09-09 UTC); this release does not close TASK-0005 or the
+historical ADR identity reconciliation tracked by TASK-0014.
