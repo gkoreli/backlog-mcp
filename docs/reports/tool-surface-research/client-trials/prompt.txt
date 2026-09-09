@@ -1,0 +1,14 @@
+Use only the connected surface MCP server for this isolated experiment. All requested writes are authorized in its disposable fixture. Do not use shell, filesystem, web, any other server, or other agents. Do not write additional memories or perform unrelated maintenance.
+
+Starting cold, find the project's stored convention for command-line validation evidence and the existing task titled "Validate command-line tool surface". Read what you need, start that task, then complete it with evidence that follows the stored convention.
+
+Then record a proposed architectural decision titled "Trial: smaller tool surface", with body "Keep domain validation central." Finally capture this external reference:
+- title: MCP tool contract
+- category: benchmark
+- what_it_is: The protocol contract for agent tool discovery and invocation.
+- citations: one item, title "MCP tools", url "https://modelcontextprotocol.io/specification/2026-07-28/server/tools", kind "official-docs"
+- our_relationship: Adopt typed contracts; evaluate discovery overhead before changing exposure.
+- bears_on: ["NORTH-STAR"]
+- body/content: Research fixture for a custom project substrate.
+
+Use the supported actions you can actually discover. If an action is unavailable, report that limitation honestly without guessing a nonexistent tool or using an alternate channel. Finish with the IDs and completed versus unavailable actions. Never claim a write without a successful receipt.

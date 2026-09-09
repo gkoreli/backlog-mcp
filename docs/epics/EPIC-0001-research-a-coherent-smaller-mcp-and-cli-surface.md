@@ -69,3 +69,7 @@ TASK-0007 through TASK-0010 are complete. Parent captured real HTTP/MCP manifest
 - [Candidate comparison](../reports/0015-tool-surface-candidates.md) and [independent review](../reports/0016-tool-surface-candidate-review.md): prototype the typed daily set first, keep discovery/execution as challenger.
 
 TASK-0011 is in progress: static arithmetic and design review are complete, but real client trials are still required. TASK-0012 remains open for the evidence-backed final ADR. No production tool or CLI behavior changed in this research checkpoint.
+
+### Client pilot checkpoint
+
+[Six controlled Codex runs](../reports/0017-tool-surface-client-trials.md) now exercise the full catalog and both candidates on independent homes. The typed daily set loses authoring coverage without its optional tail; discovery/execution retains coverage with extra calls and schema-related retries. Seven malformed/stale/wrong-home probes rejected without journal mutations. This advances TASK-0011 but does not close its broader client/recovery gate or decide the default API.

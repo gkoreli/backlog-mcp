@@ -1,0 +1,1081 @@
+{
+  "researchOnly": true,
+  "client": "codex-cli 0.153.4",
+  "model": "gpt-5.6-terra",
+  "effort": "medium",
+  "fixture": "Identical task and convention memory; custom reference substrate; independent home per variant and round; BM25; no CLI/operator fallback allowed.",
+  "tokenizer": "tiktoken 0.14.0; o200k_base",
+  "limitations": [
+    "One compound scenario per variant in each of two rounds; startup requirement changed between rounds.",
+    "No model-request/schema-injection trace; CLI aggregate token usage is not peak or unique context.",
+    "Prototype uses substring action discovery, generic errors, no optional profile switching; these limitations affect outcomes.",
+    "No Claude trials, actual schema-change/restart/compaction tests, or statistical confidence."
+  ],
+  "rounds": [
+    {
+      "round": "initial",
+      "requiredServerStartup": false,
+      "variants": [
+        {
+          "variant": "baseline",
+          "toolCount": 28,
+          "manifestPayloadTokens": 8457,
+          "calls": [],
+          "toolCallCount": 0,
+          "errorReceipts": 0,
+          "toolArgumentsAndResultsTokens": 0,
+          "cliReportedUsage": {
+            "input_tokens": 15214,
+            "cached_input_tokens": 11008,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 221,
+            "reasoning_output_tokens": 155
+          },
+          "wallSeconds": 10.575349167,
+          "verifiedDiskOutcome": {
+            "taskStatus": "open",
+            "evidenceContainsConvention": false,
+            "adrCount": 0,
+            "referenceCount": 0
+          },
+          "agentReport": "I can\u2019t access a connected surface MCP server in this session\u2014no surface actions are exposed\u2014so I could not read, start, complete, or create any requested records.\n\nCompleted: none.  \nUnavailable: project convention lookup; task lookup/start/completion; architectural decision creation; external-reference capture."
+        },
+        {
+          "variant": "daily",
+          "toolCount": 10,
+          "manifestPayloadTokens": 3475,
+          "calls": [
+            {
+              "name": "backlog_search",
+              "arguments": {
+                "query": "Validate command-line tool surface",
+                "home": "project",
+                "include_content": true,
+                "limit": 10
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\n  \"results\": [\n    {\n      \"id\": \"TASK-0001\",\n      \"title\": \"Validate command-line tool surface\",\n      \"type\": \"task\",\n      \"status\": \"open\",\n      \"snippet\": \"Validate command-line tool surface\",\n      \"matched_fields\": [\n        \"title\"\n      ],\n      \"content\": \"Record the project evidence convention, start this task, then complete it with evidence.\"\n    }\n  ],\n  \"total\": 1,\n  \"query\": \"Validate command-line tool surface\",\n  \"search_mode\": \"bm25\"\n}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 16.843249999990803
+            },
+            {
+              "name": "backlog_recall",
+              "arguments": {
+                "query": "command-line validation evidence convention",
+                "home": "project",
+                "full": true,
+                "limit": 10
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\n  \"items\": [\n    {\n      \"id\": \"MEMO-0001\",\n      \"title\": \"Command-line validation convention\",\n      \"digest\": \"Completion evidence must include the words: checked real processes.\",\n      \"layer\": \"procedural\",\n      \"source\": \"aime:granite\",\n      \"score\": 1.45,\n      \"age_days\": 0,\n      \"uses\": 0,\n      \"content\": \"Completion evidence must include the words: checked real processes.\",\n      \"kind\": \"timeless\"\n    }\n  ],\n  \"total\": 1,\n  \"query\": \"command-line validation evidence convention\"\n}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 16.95100000000093
+            },
+            {
+              "name": "backlog_start_task",
+              "arguments": {
+                "id": "TASK-0001"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"TASK-0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 28.858124999998836
+            },
+            {
+              "name": "backlog_complete_task",
+              "arguments": {
+                "id": "TASK-0001",
+                "evidence": [
+                  "checked real processes."
+                ]
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"TASK-0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 24.30154099999345
+            }
+          ],
+          "toolCallCount": 4,
+          "errorReceipts": 0,
+          "toolArgumentsAndResultsTokens": 482,
+          "cliReportedUsage": {
+            "input_tokens": 173340,
+            "cached_input_tokens": 152832,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 822,
+            "reasoning_output_tokens": 344
+          },
+          "wallSeconds": 26.793500709,
+          "verifiedDiskOutcome": {
+            "taskStatus": "done",
+            "evidenceContainsConvention": true,
+            "adrCount": 0,
+            "referenceCount": 0
+          },
+          "agentReport": "Completed:\n\n- Task `TASK-0001` \u2014 started and completed.\n- Completion evidence followed the stored convention: \u201cchecked real processes.\u201d\n\nUnavailable:\n\n- Proposed architectural decision \u201cTrial: smaller tool surface\u201d\n- External reference \u201cMCP tool contract\u201d\n\nThe connected surface exposed task creation/completion but no supported action to create decision or external-reference records with the requested structured fields."
+        },
+        {
+          "variant": "discovery",
+          "toolCount": 8,
+          "manifestPayloadTokens": 3275,
+          "calls": [
+            {
+              "name": "backlog_wakeup",
+              "arguments": {
+                "home": "project",
+                "max_activity": 5,
+                "max_completions": 5,
+                "max_constraints": 3
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\n \"now\": {\n  \"active_tasks\": [],\n  \"current_epics\": []\n },\n \"knowledge\": [\n  {\n   \"id\": \"MEMO-0001\",\n   \"layer\": \"procedural\",\n   \"title\": \"Command-line validation convention\",\n   \"age_days\": 0,\n   \"uses\": 0,\n   \"kind\": \"timeless\"\n  }\n ],\n \"constraints\": [],\n \"sections\": {\n  \"decisions\": []\n },\n \"orientation\": {\n  \"docs\": [],\n  \"indexed_documents\": 2\n },\n \"recent\": {\n  \"completions\": [],\n  \"activity\": [\n   {\n    \"ts\": \"2026-09-09T02:08:48.409Z\",\n    \"tool\": \"backlog_remember\",\n    \"actor\": \"aime:granite\",\n    \"entity_id\": \"MEMO-0001\"\n   },\n   {\n    \"ts\": \"2026-09-09T02:08:48.396Z\",\n    \"tool\": \"backlog_create_work\",\n    \"actor\": \"aime:granite\",\n    \"entity_id\": \"TASK-0001\"\n   }\n  ]\n },\n \"metadata\": {\n  \"identity\": \"aime:granite (env)\",\n  \"unfiled_count\": 1\n },\n \"memory_protocol\": {\n  \"recall\": \"Recall before re-deriving what a prior session likely solved, on unfamiliar identifiers, and before contradicting a recorded decision. Skip what is generic or already visible. Stubs first; get only the IDs that matter.\",\n  \"remember\": \"Before this session ends, remember what it earned: a lesson proven by failure, a decision that changed direction, a fact that cost tokens to derive and will be needed again. Write at your own checkpoint, in your own words \u2014 never summarize another agent's work into memory.\"\n }\n}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 35.15733299999556
+            },
+            {
+              "name": "backlog_get",
+              "arguments": {
+                "id": "MEMO-0001",
+                "home": "project"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "---\nid: MEMO-0001\ntitle: Command-line validation convention\ncreated_at: '2026-09-09T02:08:48.408Z'\nupdated_at: '2026-09-09T02:08:48.408Z'\ntype: memory\nlayer: procedural\nsource: 'aime:granite'\nkind: timeless\n---\nCompletion evidence must include the words: checked real processes.\n"
+                  }
+                ]
+              },
+              "serverElapsedMs": 20.146374999996624
+            },
+            {
+              "name": "backlog_search",
+              "arguments": {
+                "query": "Validate command-line tool surface",
+                "home": "project",
+                "include_content": true,
+                "limit": 10
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\n  \"results\": [\n    {\n      \"id\": \"TASK-0001\",\n      \"title\": \"Validate command-line tool surface\",\n      \"type\": \"task\",\n      \"status\": \"open\",\n      \"snippet\": \"Validate command-line tool surface\",\n      \"matched_fields\": [\n        \"title\"\n      ],\n      \"content\": \"Record the project evidence convention, start this task, then complete it with evidence.\"\n    }\n  ],\n  \"total\": 1,\n  \"query\": \"Validate command-line tool surface\",\n  \"search_mode\": \"bm25\"\n}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 15.326125000006869
+            },
+            {
+              "name": "backlog_intents",
+              "arguments": {
+                "home": "project"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"catalog_revision\":\"9fbe358d89b2b9ab76d0f3c38636220c5470592e593b0a1c2ab2962cef130343\",\"actions\":[{\"name\":\"backlog_accept_adr\",\"description\":\"Use when ratifying an existing proposed ADR.\"},{\"name\":\"backlog_attach_artifact\",\"description\":\"Use when attaching an artifact to a project item. parent_id is required.\"},{\"name\":\"backlog_block_task\",\"description\":\"Use when blocking a task with a reason.\"},{\"name\":\"backlog_capture_prompt\",\"description\":\"Use when preserving a verbatim human directive as a chronological project prompt.\"},{\"name\":\"backlog_capture_reference\",\"description\":\"Use when recording an external technology, prior-art system, or benchmark this project builds on \u2014 with authoritative citations and the project's adopt/park/reject relationship to it.\"},{\"name\":\"backlog_capture_requirement\",\"description\":\"Use when recording a human or system requirement in the current project.\"},{\"name\":\"backlog_complete_task\",\"description\":\"Use when completing a task, optionally with evidence.\"},{\"name\":\"backlog_create_work\",\"description\":\"Use when creating a project work item. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.\"},{\"name\":\"backlog_organize_folder\",\"description\":\"Use when creating a folder to organize project items. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.\"},{\"name\":\"backlog_pause_cron\",\"description\":\"Use when pausing a scheduled intake.\"},{\"name\":\"backlog_plan_epic\",\"description\":\"Use when planning an epic that groups related work. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.\"},{\"name\":\"backlog_propose_adr\",\"description\":\"Use when recording a proposed architectural decision in the current project.\"},{\"name\":\"backlog_resume_cron\",\"description\":\"Use when resuming a scheduled intake.\"},{\"name\":\"backlog_schedule_cron\",\"description\":\"Use when scheduling recurring project intake. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.\"},{\"name\":\"backlog_start_task\",\"description\":\"Use when starting active work on a task.\"},{\"name\":\"backlog_supersede_adr\",\"description\":\"Use when a newer ADR replaces an accepted or living ADR while preserving lineage.\"},{\"name\":\"backlog_target_milestone\",\"description\":\"Use when creating a milestone for a project target. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.\"}],\"total\":17}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 21.829458000007435
+            },
+            {
+              "name": "backlog_intents",
+              "arguments": {
+                "home": "project",
+                "name": "backlog_start_task"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"catalog_revision\":\"9fbe358d89b2b9ab76d0f3c38636220c5470592e593b0a1c2ab2962cef130343\",\"action\":{\"name\":\"backlog_start_task\",\"description\":\"Use when starting active work on a task.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"as\":{\"description\":\"OPTIONAL agent identity for this write \u2014 an AGENT- doc id or declared principal (e.g. \\\"aime:granite\\\"). Values are trimmed; whitespace-only is treated as absent.\",\"type\":\"string\"}},\"required\":[\"id\"],\"additionalProperties\":false},\"execution\":{\"taskSupport\":\"forbidden\"}}}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 23.439208000010694
+            },
+            {
+              "name": "backlog_execute",
+              "arguments": {
+                "home": "project",
+                "catalog_revision": "9fbe358d89b2b9ab76d0f3c38636220c5470592e593b0a1c2ab2962cef130343",
+                "name": "backlog_start_task",
+                "args": {
+                  "id": "TASK-0001"
+                }
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"error\":\"Invalid execution envelope.\"}"
+                  }
+                ],
+                "isError": true
+              },
+              "serverElapsedMs": 19.07933399999456
+            },
+            {
+              "name": "backlog_execute",
+              "arguments": {
+                "home": "project",
+                "catalog_revision": "9fbe358d89b2b9ab76d0f3c38636220c5470592e593b0a1c2ab2962cef130343",
+                "name": "backlog_start_task",
+                "input": {
+                  "id": "TASK-0001"
+                }
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"TASK-0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 40.265291000003344
+            },
+            {
+              "name": "backlog_intents",
+              "arguments": {
+                "home": "project",
+                "name": "backlog_capture_reference"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"catalog_revision\":\"9fbe358d89b2b9ab76d0f3c38636220c5470592e593b0a1c2ab2962cef130343\",\"action\":{\"name\":\"backlog_capture_reference\",\"description\":\"Use when recording an external technology, prior-art system, or benchmark this project builds on \u2014 with authoritative citations and the project's adopt/park/reject relationship to it.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":300},\"content\":{\"type\":\"string\",\"maxLength\":2000000},\"category\":{\"type\":\"string\",\"enum\":[\"stack-technology\",\"prior-art-system\",\"benchmark\"]},\"what_it_is\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":500},\"citations\":{\"minItems\":1,\"maxItems\":20,\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":300},\"url\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"kind\":{\"type\":\"string\",\"enum\":[\"paper\",\"official-docs\",\"repo\",\"post\"]}},\"required\":[\"title\",\"url\",\"kind\"],\"additionalProperties\":false}},\"our_relationship\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000,\"description\":\"What this project adopts, parks, or rejects from the subject, and why \u2014 with exact repo file citations where reproductions exist.\"},\"bears_on\":{\"minItems\":1,\"maxItems\":20,\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":300},\"description\":\"NORTH-STAR tenets/invariants and ADRs this subject bears on.\"},\"as\":{\"description\":\"OPTIONAL agent identity for this write \u2014 an AGENT- doc id or declared principal (e.g. \\\"aime:granite\\\"). Values are trimmed; whitespace-only is treated as absent.\",\"type\":\"string\"}},\"required\":[\"title\",\"content\",\"category\",\"what_it_is\",\"citations\",\"our_relationship\",\"bears_on\"],\"additionalProperties\":false},\"execution\":{\"taskSupport\":\"forbidden\"}}}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 20.486082999996142
+            },
+            {
+              "name": "backlog_intents",
+              "arguments": {
+                "home": "project",
+                "name": "backlog_propose_adr"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"catalog_revision\":\"9fbe358d89b2b9ab76d0f3c38636220c5470592e593b0a1c2ab2962cef130343\",\"action\":{\"name\":\"backlog_propose_adr\",\"description\":\"Use when recording a proposed architectural decision in the current project.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":300},\"content\":{\"type\":\"string\",\"maxLength\":2000000},\"extends\":{\"maxItems\":100,\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":500}},\"implements\":{\"maxItems\":100,\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":500}},\"backlog_item\":{\"maxItems\":100,\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":500}},\"spawned_by\":{\"maxItems\":100,\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":500}},\"respects\":{\"maxItems\":100,\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":500}},\"violates\":{\"maxItems\":100,\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":500}},\"as\":{\"description\":\"OPTIONAL agent identity for this write \u2014 an AGENT- doc id or declared principal (e.g. \\\"aime:granite\\\"). Values are trimmed; whitespace-only is treated as absent.\",\"type\":\"string\"}},\"required\":[\"title\",\"content\"],\"additionalProperties\":false},\"execution\":{\"taskSupport\":\"forbidden\"}}}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 17.40633299999172
+            },
+            {
+              "name": "backlog_intents",
+              "arguments": {
+                "home": "project",
+                "name": "backlog_complete_task"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"catalog_revision\":\"9fbe358d89b2b9ab76d0f3c38636220c5470592e593b0a1c2ab2962cef130343\",\"action\":{\"name\":\"backlog_complete_task\",\"description\":\"Use when completing a task, optionally with evidence.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"evidence\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"as\":{\"description\":\"OPTIONAL agent identity for this write \u2014 an AGENT- doc id or declared principal (e.g. \\\"aime:granite\\\"). Values are trimmed; whitespace-only is treated as absent.\",\"type\":\"string\"}},\"required\":[\"id\"],\"additionalProperties\":false},\"execution\":{\"taskSupport\":\"forbidden\"}}}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 16.223165999996127
+            },
+            {
+              "name": "backlog_execute",
+              "arguments": {
+                "home": "project",
+                "catalog_revision": "9fbe358d89b2b9ab76d0f3c38636220c5470592e593b0a1c2ab2962cef130343",
+                "name": "backlog_complete_task",
+                "input": {
+                  "id": "TASK-0001",
+                  "evidence": [
+                    "checked real processes."
+                  ]
+                }
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"TASK-0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 36.28108400000201
+            },
+            {
+              "name": "backlog_execute",
+              "arguments": {
+                "home": "project",
+                "catalog_revision": "9fbe358d89b2b9ab76d0f3c38636220c5470592e593b0a1c2ab2962cef130343",
+                "name": "backlog_propose_adr",
+                "input": {
+                  "title": "Trial: smaller tool surface",
+                  "content": "Keep domain validation central."
+                }
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"ADR 0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 36.89908400000422
+            },
+            {
+              "name": "backlog_execute",
+              "arguments": {
+                "home": "project",
+                "catalog_revision": "9fbe358d89b2b9ab76d0f3c38636220c5470592e593b0a1c2ab2962cef130343",
+                "name": "backlog_capture_reference",
+                "input": {
+                  "title": "MCP tool contract",
+                  "content": "Research fixture for a custom project substrate.",
+                  "category": "benchmark",
+                  "what_it_is": "The protocol contract for agent tool discovery and invocation.",
+                  "citations": [
+                    {
+                      "title": "MCP tools",
+                      "url": "https://modelcontextprotocol.io/specification/2026-07-28/server/tools",
+                      "kind": "official-docs"
+                    }
+                  ],
+                  "our_relationship": "Adopt typed contracts; evaluate discovery overhead before changing exposure.",
+                  "bears_on": [
+                    "NORTH-STAR"
+                  ]
+                }
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"REF-0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 41.887791000001016
+            }
+          ],
+          "toolCallCount": 13,
+          "errorReceipts": 1,
+          "toolArgumentsAndResultsTokens": 3342,
+          "cliReportedUsage": {
+            "input_tokens": 378236,
+            "cached_input_tokens": 349696,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1698,
+            "reasoning_output_tokens": 595
+          },
+          "wallSeconds": 58.406554207999996,
+          "verifiedDiskOutcome": {
+            "taskStatus": "done",
+            "evidenceContainsConvention": true,
+            "adrCount": 1,
+            "referenceCount": 1
+          },
+          "agentReport": "Completed successfully:\n\n- Task `TASK-0001` \u2014 started and completed with required evidence: \u201cchecked real processes.\u201d\n- Proposed ADR `ADR 0001` \u2014 \u201cTrial: smaller tool surface.\u201d\n- External reference `REF-0001` \u2014 \u201cMCP tool contract.\u201d\n\nUnavailable actions: none."
+        }
+      ]
+    },
+    {
+      "round": "required_startup",
+      "requiredServerStartup": true,
+      "variants": [
+        {
+          "variant": "baseline",
+          "toolCount": 28,
+          "manifestPayloadTokens": 8457,
+          "calls": [
+            {
+              "name": "backlog_wakeup",
+              "arguments": {
+                "home": "project"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\n \"now\": {\n  \"active_tasks\": [],\n  \"current_epics\": []\n },\n \"knowledge\": [\n  {\n   \"id\": \"MEMO-0001\",\n   \"layer\": \"procedural\",\n   \"title\": \"Command-line validation convention\",\n   \"age_days\": 0,\n   \"uses\": 0,\n   \"kind\": \"timeless\"\n  }\n ],\n \"constraints\": [],\n \"sections\": {\n  \"decisions\": []\n },\n \"orientation\": {\n  \"docs\": [],\n  \"indexed_documents\": 2\n },\n \"recent\": {\n  \"completions\": [],\n  \"activity\": [\n   {\n    \"ts\": \"2026-09-09T02:11:14.138Z\",\n    \"tool\": \"backlog_remember\",\n    \"actor\": \"aime:granite\",\n    \"entity_id\": \"MEMO-0001\"\n   },\n   {\n    \"ts\": \"2026-09-09T02:11:14.123Z\",\n    \"tool\": \"backlog_create_work\",\n    \"actor\": \"aime:granite\",\n    \"entity_id\": \"TASK-0001\"\n   }\n  ]\n },\n \"metadata\": {\n  \"identity\": \"aime:granite (env)\",\n  \"unfiled_count\": 1\n },\n \"memory_protocol\": {\n  \"recall\": \"Recall before re-deriving what a prior session likely solved, on unfamiliar identifiers, and before contradicting a recorded decision. Skip what is generic or already visible. Stubs first; get only the IDs that matter.\",\n  \"remember\": \"Before this session ends, remember what it earned: a lesson proven by failure, a decision that changed direction, a fact that cost tokens to derive and will be needed again. Write at your own checkpoint, in your own words \u2014 never summarize another agent's work into memory.\"\n }\n}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 38.46941700000025
+            },
+            {
+              "name": "backlog_recall",
+              "arguments": {
+                "home": "project",
+                "query": "command-line validation evidence",
+                "full": true,
+                "limit": 10
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\n  \"items\": [\n    {\n      \"id\": \"MEMO-0001\",\n      \"title\": \"Command-line validation convention\",\n      \"digest\": \"Completion evidence must include the words: checked real processes.\",\n      \"layer\": \"procedural\",\n      \"source\": \"aime:granite\",\n      \"score\": 1.44,\n      \"age_days\": 0,\n      \"uses\": 0,\n      \"content\": \"Completion evidence must include the words: checked real processes.\",\n      \"kind\": \"timeless\"\n    }\n  ],\n  \"total\": 1,\n  \"query\": \"command-line validation evidence\"\n}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 20.292124999999942
+            },
+            {
+              "name": "backlog_list",
+              "arguments": {
+                "home": "project",
+                "query": "Validate command-line tool surface",
+                "limit": 20
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\n  \"tasks\": [\n    {\n      \"id\": \"TASK-0001\",\n      \"title\": \"Validate command-line tool surface\",\n      \"status\": \"open\",\n      \"type\": \"task\"\n    }\n  ]\n}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 19.925959000000148
+            },
+            {
+              "name": "backlog_get",
+              "arguments": {
+                "home": "project",
+                "id": "TASK-0001",
+                "context": true
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "---\nid: TASK-0001\ntitle: Validate command-line tool surface\nstatus: open\ncreated_at: '2026-09-09T02:11:14.119Z'\nupdated_at: '2026-09-09T02:11:14.119Z'\ntype: task\n---\nRecord the project evidence convention, start this task, then complete it with evidence.\n"
+                  }
+                ]
+              },
+              "serverElapsedMs": 26.50174999999581
+            },
+            {
+              "name": "backlog_start_task",
+              "arguments": {
+                "id": "TASK-0001"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"TASK-0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 25.165290999997524
+            },
+            {
+              "name": "backlog_complete_task",
+              "arguments": {
+                "id": "TASK-0001",
+                "evidence": [
+                  "checked real processes."
+                ]
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"TASK-0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 19.65679100000125
+            },
+            {
+              "name": "backlog_propose_adr",
+              "arguments": {
+                "title": "Trial: smaller tool surface",
+                "content": "Keep domain validation central."
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"ADR 0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 19.24954200000502
+            },
+            {
+              "name": "backlog_capture_reference",
+              "arguments": {
+                "title": "MCP tool contract",
+                "category": "benchmark",
+                "what_it_is": "The protocol contract for agent tool discovery and invocation.",
+                "citations": [
+                  {
+                    "title": "MCP tools",
+                    "url": "https://modelcontextprotocol.io/specification/2026-07-28/server/tools",
+                    "kind": "official-docs"
+                  }
+                ],
+                "our_relationship": "Adopt typed contracts; evaluate discovery overhead before changing exposure.",
+                "bears_on": [
+                  "NORTH-STAR"
+                ],
+                "content": "Research fixture for a custom project substrate."
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"REF-0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 19.567917000007583
+            }
+          ],
+          "toolCallCount": 8,
+          "errorReceipts": 0,
+          "toolArgumentsAndResultsTokens": 1194,
+          "cliReportedUsage": {
+            "input_tokens": 314068,
+            "cached_input_tokens": 284928,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1131,
+            "reasoning_output_tokens": 374
+          },
+          "wallSeconds": 47.368196375,
+          "verifiedDiskOutcome": {
+            "taskStatus": "done",
+            "evidenceContainsConvention": true,
+            "adrCount": 1,
+            "referenceCount": 1
+          },
+          "agentReport": "Completed:\n\n- Task `TASK-0001` \u2014 started and completed with stored-convention evidence: \u201cchecked real processes.\u201d\n- Proposed ADR `ADR 0001` \u2014 \u201cTrial: smaller tool surface\u201d\n- External reference `REF-0001` \u2014 \u201cMCP tool contract\u201d\n\nUnavailable actions: none."
+        },
+        {
+          "variant": "daily",
+          "toolCount": 10,
+          "manifestPayloadTokens": 3475,
+          "calls": [
+            {
+              "name": "backlog_search",
+              "arguments": {
+                "home": "project",
+                "query": "Validate command-line tool surface",
+                "include_content": true,
+                "limit": 10
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\n  \"results\": [\n    {\n      \"id\": \"TASK-0001\",\n      \"title\": \"Validate command-line tool surface\",\n      \"type\": \"task\",\n      \"status\": \"open\",\n      \"snippet\": \"Validate command-line tool surface\",\n      \"matched_fields\": [\n        \"title\"\n      ],\n      \"content\": \"Record the project evidence convention, start this task, then complete it with evidence.\"\n    }\n  ],\n  \"total\": 1,\n  \"query\": \"Validate command-line tool surface\",\n  \"search_mode\": \"bm25\"\n}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 24.157584000000497
+            },
+            {
+              "name": "backlog_recall",
+              "arguments": {
+                "home": "project",
+                "query": "command-line validation evidence convention",
+                "full": true,
+                "limit": 10
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\n  \"items\": [\n    {\n      \"id\": \"MEMO-0001\",\n      \"title\": \"Command-line validation convention\",\n      \"digest\": \"Completion evidence must include the words: checked real processes.\",\n      \"layer\": \"procedural\",\n      \"source\": \"aime:granite\",\n      \"score\": 1.45,\n      \"age_days\": 0,\n      \"uses\": 0,\n      \"content\": \"Completion evidence must include the words: checked real processes.\",\n      \"kind\": \"timeless\"\n    }\n  ],\n  \"total\": 1,\n  \"query\": \"command-line validation evidence convention\"\n}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 18.288790999999037
+            },
+            {
+              "name": "backlog_start_task",
+              "arguments": {
+                "id": "TASK-0001"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"TASK-0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 19.184624999994412
+            },
+            {
+              "name": "backlog_complete_task",
+              "arguments": {
+                "id": "TASK-0001",
+                "evidence": [
+                  "checked real processes."
+                ]
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"TASK-0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 24.652249999999185
+            },
+            {
+              "name": "backlog_get",
+              "arguments": {
+                "id": "TASK-0001"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "---\nid: TASK-0001\ntitle: Validate command-line tool surface\nstatus: done\nevidence:\n  - checked real processes.\ncreated_at: '2026-09-09T02:11:14.191Z'\nupdated_at: '2026-09-09T02:12:21.320Z'\ntype: task\n---\nRecord the project evidence convention, start this task, then complete it with evidence.\n"
+                  }
+                ]
+              },
+              "serverElapsedMs": 18.408124999987194
+            }
+          ],
+          "toolCallCount": 5,
+          "errorReceipts": 0,
+          "toolArgumentsAndResultsTokens": 609,
+          "cliReportedUsage": {
+            "input_tokens": 224461,
+            "cached_input_tokens": 201472,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1063,
+            "reasoning_output_tokens": 458
+          },
+          "wallSeconds": 37.055588959,
+          "verifiedDiskOutcome": {
+            "taskStatus": "done",
+            "evidenceContainsConvention": true,
+            "adrCount": 0,
+            "referenceCount": 0
+          },
+          "agentReport": "Completed:\n\n- `TASK-0001` \u2014 \u201cValidate command-line tool surface\u201d; status `done`.\n- Evidence recorded: `checked real processes.`\n\nUnavailable on the connected surface:\n\n- Proposed architectural decision \u201cTrial: smaller tool surface\u201d\n- External reference \u201cMCP tool contract\u201d\n\nThe server exposes task/work and memory writes, but no supported action for architectural-decision or external-reference records. I did not substitute another type or create extra memories."
+        },
+        {
+          "variant": "discovery",
+          "toolCount": 8,
+          "manifestPayloadTokens": 3275,
+          "calls": [
+            {
+              "name": "backlog_search",
+              "arguments": {
+                "home": "project",
+                "query": "Validate command-line tool surface",
+                "include_content": true,
+                "limit": 10
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\n  \"results\": [\n    {\n      \"id\": \"TASK-0001\",\n      \"title\": \"Validate command-line tool surface\",\n      \"type\": \"task\",\n      \"status\": \"open\",\n      \"snippet\": \"Validate command-line tool surface\",\n      \"matched_fields\": [\n        \"title\"\n      ],\n      \"content\": \"Record the project evidence convention, start this task, then complete it with evidence.\"\n    }\n  ],\n  \"total\": 1,\n  \"query\": \"Validate command-line tool surface\",\n  \"search_mode\": \"bm25\"\n}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 23.71600000000035
+            },
+            {
+              "name": "backlog_recall",
+              "arguments": {
+                "home": "project",
+                "query": "command-line validation evidence",
+                "full": true,
+                "limit": 10
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\n  \"items\": [\n    {\n      \"id\": \"MEMO-0001\",\n      \"title\": \"Command-line validation convention\",\n      \"digest\": \"Completion evidence must include the words: checked real processes.\",\n      \"layer\": \"procedural\",\n      \"source\": \"aime:granite\",\n      \"score\": 1.44,\n      \"age_days\": 0,\n      \"uses\": 0,\n      \"content\": \"Completion evidence must include the words: checked real processes.\",\n      \"kind\": \"timeless\"\n    }\n  ],\n  \"total\": 1,\n  \"query\": \"command-line validation evidence\"\n}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 19.71862500000134
+            },
+            {
+              "name": "backlog_get",
+              "arguments": {
+                "home": "project",
+                "id": "TASK-0001",
+                "context": true
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "---\nid: TASK-0001\ntitle: Validate command-line tool surface\nstatus: open\ncreated_at: '2026-09-09T02:11:14.253Z'\nupdated_at: '2026-09-09T02:11:14.253Z'\ntype: task\n---\nRecord the project evidence convention, start this task, then complete it with evidence.\n"
+                  }
+                ]
+              },
+              "serverElapsedMs": 27.61454199999571
+            },
+            {
+              "name": "backlog_intents",
+              "arguments": {
+                "home": "project",
+                "query": "task start complete architectural decision external reference",
+                "limit": 50
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"error\":\"Invalid discovery input.\"}"
+                  }
+                ],
+                "isError": true
+              },
+              "serverElapsedMs": 22.29058300000179
+            },
+            {
+              "name": "backlog_intents",
+              "arguments": {
+                "home": "project",
+                "limit": 100
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"error\":\"Invalid discovery input.\"}"
+                  }
+                ],
+                "isError": true
+              },
+              "serverElapsedMs": 22.776624999998603
+            },
+            {
+              "name": "backlog_intents",
+              "arguments": {
+                "home": "project"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"catalog_revision\":\"4407915efa0b0622f9ac60a44d83e492940acdcf412a54f252b1373e74e9707d\",\"actions\":[{\"name\":\"backlog_accept_adr\",\"description\":\"Use when ratifying an existing proposed ADR.\"},{\"name\":\"backlog_attach_artifact\",\"description\":\"Use when attaching an artifact to a project item. parent_id is required.\"},{\"name\":\"backlog_block_task\",\"description\":\"Use when blocking a task with a reason.\"},{\"name\":\"backlog_capture_prompt\",\"description\":\"Use when preserving a verbatim human directive as a chronological project prompt.\"},{\"name\":\"backlog_capture_reference\",\"description\":\"Use when recording an external technology, prior-art system, or benchmark this project builds on \u2014 with authoritative citations and the project's adopt/park/reject relationship to it.\"},{\"name\":\"backlog_capture_requirement\",\"description\":\"Use when recording a human or system requirement in the current project.\"},{\"name\":\"backlog_complete_task\",\"description\":\"Use when completing a task, optionally with evidence.\"},{\"name\":\"backlog_create_work\",\"description\":\"Use when creating a project work item. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.\"},{\"name\":\"backlog_organize_folder\",\"description\":\"Use when creating a folder to organize project items. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.\"},{\"name\":\"backlog_pause_cron\",\"description\":\"Use when pausing a scheduled intake.\"},{\"name\":\"backlog_plan_epic\",\"description\":\"Use when planning an epic that groups related work. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.\"},{\"name\":\"backlog_propose_adr\",\"description\":\"Use when recording a proposed architectural decision in the current project.\"},{\"name\":\"backlog_resume_cron\",\"description\":\"Use when resuming a scheduled intake.\"},{\"name\":\"backlog_schedule_cron\",\"description\":\"Use when scheduling recurring project intake. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.\"},{\"name\":\"backlog_start_task\",\"description\":\"Use when starting active work on a task.\"},{\"name\":\"backlog_supersede_adr\",\"description\":\"Use when a newer ADR replaces an accepted or living ADR while preserving lineage.\"},{\"name\":\"backlog_target_milestone\",\"description\":\"Use when creating a milestone for a project target. Pass parent_id when known; parentless work surfaces as unfiled at wakeup.\"}],\"total\":17}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 23.966207999998005
+            },
+            {
+              "name": "backlog_intents",
+              "arguments": {
+                "home": "project",
+                "name": "backlog_start_task"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"catalog_revision\":\"4407915efa0b0622f9ac60a44d83e492940acdcf412a54f252b1373e74e9707d\",\"action\":{\"name\":\"backlog_start_task\",\"description\":\"Use when starting active work on a task.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"as\":{\"description\":\"OPTIONAL agent identity for this write \u2014 an AGENT- doc id or declared principal (e.g. \\\"aime:granite\\\"). Values are trimmed; whitespace-only is treated as absent.\",\"type\":\"string\"}},\"required\":[\"id\"],\"additionalProperties\":false},\"execution\":{\"taskSupport\":\"forbidden\"}}}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 21.490208000002895
+            },
+            {
+              "name": "backlog_intents",
+              "arguments": {
+                "home": "project",
+                "name": "backlog_complete_task"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"catalog_revision\":\"4407915efa0b0622f9ac60a44d83e492940acdcf412a54f252b1373e74e9707d\",\"action\":{\"name\":\"backlog_complete_task\",\"description\":\"Use when completing a task, optionally with evidence.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"evidence\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"as\":{\"description\":\"OPTIONAL agent identity for this write \u2014 an AGENT- doc id or declared principal (e.g. \\\"aime:granite\\\"). Values are trimmed; whitespace-only is treated as absent.\",\"type\":\"string\"}},\"required\":[\"id\"],\"additionalProperties\":false},\"execution\":{\"taskSupport\":\"forbidden\"}}}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 19.15233400001307
+            },
+            {
+              "name": "backlog_intents",
+              "arguments": {
+                "home": "project",
+                "name": "backlog_propose_adr"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"catalog_revision\":\"4407915efa0b0622f9ac60a44d83e492940acdcf412a54f252b1373e74e9707d\",\"action\":{\"name\":\"backlog_propose_adr\",\"description\":\"Use when recording a proposed architectural decision in the current project.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":300},\"content\":{\"type\":\"string\",\"maxLength\":2000000},\"extends\":{\"maxItems\":100,\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":500}},\"implements\":{\"maxItems\":100,\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":500}},\"backlog_item\":{\"maxItems\":100,\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":500}},\"spawned_by\":{\"maxItems\":100,\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":500}},\"respects\":{\"maxItems\":100,\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":500}},\"violates\":{\"maxItems\":100,\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":500}},\"as\":{\"description\":\"OPTIONAL agent identity for this write \u2014 an AGENT- doc id or declared principal (e.g. \\\"aime:granite\\\"). Values are trimmed; whitespace-only is treated as absent.\",\"type\":\"string\"}},\"required\":[\"title\",\"content\"],\"additionalProperties\":false},\"execution\":{\"taskSupport\":\"forbidden\"}}}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 19.972833000007086
+            },
+            {
+              "name": "backlog_intents",
+              "arguments": {
+                "home": "project",
+                "name": "backlog_capture_reference"
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"catalog_revision\":\"4407915efa0b0622f9ac60a44d83e492940acdcf412a54f252b1373e74e9707d\",\"action\":{\"name\":\"backlog_capture_reference\",\"description\":\"Use when recording an external technology, prior-art system, or benchmark this project builds on \u2014 with authoritative citations and the project's adopt/park/reject relationship to it.\",\"inputSchema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":300},\"content\":{\"type\":\"string\",\"maxLength\":2000000},\"category\":{\"type\":\"string\",\"enum\":[\"stack-technology\",\"prior-art-system\",\"benchmark\"]},\"what_it_is\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":500},\"citations\":{\"minItems\":1,\"maxItems\":20,\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":300},\"url\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"kind\":{\"type\":\"string\",\"enum\":[\"paper\",\"official-docs\",\"repo\",\"post\"]}},\"required\":[\"title\",\"url\",\"kind\"],\"additionalProperties\":false}},\"our_relationship\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000,\"description\":\"What this project adopts, parks, or rejects from the subject, and why \u2014 with exact repo file citations where reproductions exist.\"},\"bears_on\":{\"minItems\":1,\"maxItems\":20,\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":300},\"description\":\"NORTH-STAR tenets/invariants and ADRs this subject bears on.\"},\"as\":{\"description\":\"OPTIONAL agent identity for this write \u2014 an AGENT- doc id or declared principal (e.g. \\\"aime:granite\\\"). Values are trimmed; whitespace-only is treated as absent.\",\"type\":\"string\"}},\"required\":[\"title\",\"content\",\"category\",\"what_it_is\",\"citations\",\"our_relationship\",\"bears_on\"],\"additionalProperties\":false},\"execution\":{\"taskSupport\":\"forbidden\"}}}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 20.35358300000371
+            },
+            {
+              "name": "backlog_execute",
+              "arguments": {
+                "home": "project",
+                "catalog_revision": "4407915efa0b0622f9ac60a44d83e492940acdcf412a54f252b1373e74e9707d",
+                "name": "backlog_start_task",
+                "input": {
+                  "id": "TASK-0001"
+                }
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"TASK-0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 38.795332999987295
+            },
+            {
+              "name": "backlog_execute",
+              "arguments": {
+                "home": "project",
+                "catalog_revision": "4407915efa0b0622f9ac60a44d83e492940acdcf412a54f252b1373e74e9707d",
+                "name": "backlog_complete_task",
+                "input": {
+                  "id": "TASK-0001",
+                  "evidence": [
+                    "Command-line validation convention recorded: checked real processes."
+                  ]
+                }
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"TASK-0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 36.241958999991766
+            },
+            {
+              "name": "backlog_execute",
+              "arguments": {
+                "home": "project",
+                "catalog_revision": "4407915efa0b0622f9ac60a44d83e492940acdcf412a54f252b1373e74e9707d",
+                "name": "backlog_capture_reference",
+                "input": {
+                  "title": "MCP tool contract",
+                  "category": "benchmark",
+                  "what_it_is": "The protocol contract for agent tool discovery and invocation.",
+                  "citations": [
+                    {
+                      "title": "MCP tools",
+                      "url": "https://modelcontextprotocol.io/specification/2026-07-28/server/tools",
+                      "kind": "official-docs"
+                    }
+                  ],
+                  "our_relationship": "Adopt typed contracts; evaluate discovery overhead before changing exposure.",
+                  "bears_on": [
+                    "NORTH-STAR"
+                  ],
+                  "content": "Research fixture for a custom project substrate."
+                }
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"REF-0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 39.75883299999987
+            },
+            {
+              "name": "backlog_execute",
+              "arguments": {
+                "home": "project",
+                "catalog_revision": "4407915efa0b0622f9ac60a44d83e492940acdcf412a54f252b1373e74e9707d",
+                "name": "backlog_propose_adr",
+                "input": {
+                  "title": "Trial: smaller tool surface",
+                  "content": "Keep domain validation central."
+                }
+              },
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"ids\":[\"ADR 0001\"],\"changed\":true}"
+                  }
+                ]
+              },
+              "serverElapsedMs": 39.576958000005106
+            }
+          ],
+          "toolCallCount": 14,
+          "errorReceipts": 2,
+          "toolArgumentsAndResultsTokens": 3020,
+          "cliReportedUsage": {
+            "input_tokens": 230262,
+            "cached_input_tokens": 210432,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1421,
+            "reasoning_output_tokens": 459
+          },
+          "wallSeconds": 47.069310042000005,
+          "verifiedDiskOutcome": {
+            "taskStatus": "done",
+            "evidenceContainsConvention": true,
+            "adrCount": 1,
+            "referenceCount": 1
+          },
+          "agentReport": "Completed:\n\n- Task: `TASK-0001` \u2014 started and completed with evidence: \u201cchecked real processes.\u201d\n- Proposed ADR: `ADR 0001` \u2014 \u201cTrial: smaller tool surface\u201d\n- External reference: `REF-0001` \u2014 \u201cMCP tool contract\u201d\n\nUnavailable actions: none."
+        }
+      ]
+    }
+  ],
+  "manualBoundaries": {
+    "journalUnchanged": true,
+    "observations": [
+      {
+        "scenario": "Wrong home selection",
+        "response": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"error\":\"Experiment home mismatch; nothing written.\"}"
+            }
+          ],
+          "isError": true
+        }
+      },
+      {
+        "scenario": "Stale revision",
+        "response": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"error\":\"Stale or wrong-home catalog revision; rediscover before execution.\"}"
+            }
+          ],
+          "isError": true
+        }
+      },
+      {
+        "scenario": "Invalid compiled input",
+        "response": {
+          "content": [
+            {
+              "type": "text",
+              "text": "MCP error -32602: Input validation error: Invalid arguments for tool backlog_create_work: [\n  {\n    \"expected\": \"string\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"title\"\n    ],\n    \"message\": \"Invalid input: expected string, received number\"\n  }\n]"
+            }
+          ],
+          "isError": true
+        }
+      },
+      {
+        "scenario": "Nested transport override",
+        "response": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"error\":\"Transport/actor fields belong only to the outer envelope.\"}"
+            }
+          ],
+          "isError": true
+        }
+      },
+      {
+        "scenario": "Undeclared action",
+        "response": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"error\":\"Unknown declared action.\"}"
+            }
+          ],
+          "isError": true
+        }
+      },
+      {
+        "scenario": "Memory cannot bypass dedicated path",
+        "response": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"error\":\"Unknown declared action.\"}"
+            }
+          ],
+          "isError": true
+        }
+      },
+      {
+        "scenario": "Invalid discovery limit",
+        "response": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"error\":\"Invalid discovery input.\"}"
+            }
+          ],
+          "isError": true
+        }
+      }
+    ]
+  },
+  "researchCheckpoint": "346c904",
+  "catalogVerifiedEqualTo": "tool-surface-research/baseline/custom-tools.json (both rounds)"
+}

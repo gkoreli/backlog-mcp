@@ -26,3 +26,7 @@ Parent research worklist: EPIC-0001.
 ## Evaluation started — 2026-09-08
 
 [Candidate comparison](../reports/0015-tool-surface-candidates.md) models the current 27-tool surface, a 10-tool typed daily set, and an 8-tool discovery/execution set. [Independent design review](../reports/0016-tool-surface-candidate-review.md) recommends prototyping the typed set first; this is not a default-surface ruling. Real client trials, cumulative context, selection outcomes and stale-catalog checks remain pending.
+
+## Client pilot checkpoint — 2026-09-08
+
+[Report 0017](../reports/0017-tool-surface-client-trials.md) records six real Codex runs on isolated fixtures plus seven invalid-execution probes. Both smaller prototypes completed the task workflow; only the full catalog and discovery/executor exposed the ADR/reference authoring path in this MCP-only setup. The successful full-catalog round used 8 calls with no errors; discovery used 14 with two recovered input errors. Payload and cumulative client token accounting are recorded separately. Broader clients, actual schema-refresh/compaction, and optional-tail discovery remain open; do not treat this pilot as final surface acceptance.

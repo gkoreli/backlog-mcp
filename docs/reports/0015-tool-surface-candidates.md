@@ -70,4 +70,6 @@ Record successful durable outcome, first correct action, unsupported-action hand
 
 Acceptance requires all domain and home-isolation cases to retain their expected behavior, no silent capability loss in the claimed supported client set, and a measured context reduction that survives discovery/help/retries. Treat the current defects in report 0014 as known baseline defects, not guarantees to preserve. Set numerical usability/latency tolerances from the baseline trials before comparing candidates; do not invent performance percentages from manifest arithmetic.
 
+**Update:** [Report 0017](0017-tool-surface-client-trials.md) now records six real Codex runs and seven executor-boundary probes. It demonstrates capability loss in A’s MCP-only default and successful but more call-heavy execution in B. The broader client/compaction/refresh matrix remains incomplete.
+
 Do not close TASK-0011 based on this report alone. Prototypes, real client selections, cumulative-token comparisons and stale-catalog adversarial execution remain pending. TASK-0012 must choose and record the public surface only after that gate, with explicit ADR supersessions and a bounded engineering plan.
