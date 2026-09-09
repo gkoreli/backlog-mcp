@@ -13,6 +13,8 @@ begins at 0.57.0 — earlier history lives in git.
 ## [Unreleased]
 
 ### Fixed
+- **Body-field guidance in tool schemas.** The shared `content` field now
+  explains that it holds the full Markdown body of the document.
 - **Concurrent writers in one home no longer allocate duplicate document IDs.**
   Creation allocates and inserts under a filesystem lock using fresh markdown
   identity claims. Duplicate IDs are rejected across different slugs and digit

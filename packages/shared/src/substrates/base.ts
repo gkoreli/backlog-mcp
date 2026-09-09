@@ -40,7 +40,7 @@ export type Reference = z.infer<typeof ReferenceSchema>;
 export const BaseEntitySchema = z.object({
   id: z.string(),
   title: z.string().min(1),
-  content: z.string().optional(),
+  content: z.string().optional().describe('Full Markdown body of the document'),
   status: StatusSchema.optional(),
   parent_id: z.string().optional(),
   references: z.array(ReferenceSchema).optional(),
