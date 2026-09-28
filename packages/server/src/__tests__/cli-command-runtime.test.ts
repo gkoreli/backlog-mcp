@@ -1,7 +1,7 @@
 import { MemoryComposer } from '@backlog-mcp/memory';
 import { EntityType } from '@backlog-mcp/shared';
 import { Command } from 'commander';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import matter from 'gray-matter';
@@ -90,7 +90,8 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
     mocks.createEntity.mockReset();
   });
 
-  it('routes create source reads and writes through the selected bundle', async function routesCreate() {
+  it('routes create body-file reads and writes through the selected bundle', async function routesCreate() {
+    writeFileSync('/cli-command-runtime-input.md', 'body file content');
     const runtime = createRuntime();
     mocks.createEntity.mockResolvedValue({ id: 'TASK-0001' });
     mocks.run.mockImplementation(async function runSelected(
@@ -110,19 +111,19 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
       'create',
       'Selected task',
       '--source',
-      'input.md',
+      '/cli-command-runtime-input.md',
       '--home',
       'project',
       '--project-root',
       '/workspace/repo',
     ]);
 
-    expect(runtime.resolveSourcePath).toHaveBeenCalledWith('input.md');
+    expect(runtime.resolveSourcePath).not.toHaveBeenCalled();
     expect(mocks.createEntity).toHaveBeenCalledWith(
       runtime.service,
       expect.objectContaining({
         title: 'Selected task',
-        content: 'selected home content: input.md',
+        content: 'body file content',
         type: 'task',
       }),
       runtime.writeContext,

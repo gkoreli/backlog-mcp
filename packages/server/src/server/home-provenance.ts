@@ -1,12 +1,9 @@
 import { homedir } from 'node:os';
 import type { AnyEntity } from '@backlog-mcp/shared';
 import type { UnifiedSearchResult } from '@backlog-mcp/memory/search';
-import {
-  presentGlobalHome,
-  presentProjectHome,
-} from '../core/home-presentation.js';
+import { projectHomeProvenance } from '../core/home-provenance.js';
+import type { HomeProvenance } from '../core/home-provenance.types.js';
 import type { AppRequestRuntime } from './app-request-runtime.types.js';
-import type { HomeProvenance } from './home-provenance.types.js';
 
 /**
  * Return provenance only for a request-selected docs-native home.
@@ -21,21 +18,9 @@ export function getHomeProvenance(
   sourcePath?: string,
 ): Partial<HomeProvenance> {
   const home = runtime.home;
-  if (home === undefined) return {};
-
-  const presentation = home.kind === 'global'
-    ? presentGlobalHome(home.root, homedir())
-    : presentProjectHome(home.root, homedir());
-
-  return {
-    home: home.kind,
-    home_id: home.id,
-    root: home.root,
-    documents_dir: home.documentsDir,
-    label: presentation.label,
-    display_path: presentation.display_path,
-    ...(sourcePath === undefined ? {} : { source_path: sourcePath }),
-  };
+  return home === undefined
+    ? {}
+    : projectHomeProvenance(home, homedir(), sourcePath);
 }
 
 /** Attach selected-home provenance to one entity response. */

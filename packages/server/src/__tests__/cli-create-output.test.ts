@@ -1,43 +1,68 @@
+import { writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
 import { createBacklogHome } from '../core/backlog-home.js';
+import { resolveCreateContent } from '../cli/commands/create.js';
 import {
   formatCreateResult,
-  readStdin,
-  resolveCreateContent,
   withCreateProvenance,
-} from '../cli/commands/create.js';
+} from '../cli/commands/create-output.js';
+import { projectHomeProvenance } from '../core/home-provenance.js';
+import { readBodyFile, readStdin } from '../cli/body-file.js';
 import { cliProgramName } from '../cli/program-name.js';
 
 const projectHome = createBacklogHome({ kind: 'project', root: '/work/repo' });
 
 describe('CLI create content sources', function describeSources() {
-  it('reads stdin for --source - without touching the home resolver', async function readsStdin() {
-    const resolveSourcePath = vi.fn();
-    const content = await resolveCreateContent(
-      { source: '-' },
-      { resolveSourcePath },
-      async function stdin() { return '# from stdin'; },
-    );
-    expect(content).toBe('# from stdin');
-    expect(resolveSourcePath).not.toHaveBeenCalled();
+  it('reads --body-file through the reader', async function readsBodyFile() {
+    const read = vi.fn(async function read(file: string) { return `file:${file}`; });
+    await expect(resolveCreateContent({ bodyFile: '/tmp/draft.md' }, read))
+      .resolves.toBe('file:/tmp/draft.md');
   });
 
-  it('keeps file sources on the home-contained resolver', async function keepsContainment() {
-    const resolveSourcePath = vi.fn(function resolve(path: string) { return `file:${path}`; });
-    const stdin = vi.fn();
-    await expect(resolveCreateContent({ source: 'notes.md' }, { resolveSourcePath }, stdin))
-      .resolves.toBe('file:notes.md');
-    expect(stdin).not.toHaveBeenCalled();
+  it('treats --source as an alias of --body-file', async function aliasSource() {
+    const read = vi.fn(async function read(file: string) { return `file:${file}`; });
+    await expect(resolveCreateContent({ source: '-' }, read)).resolves.toBe('file:-');
   });
 
-  it('falls back to --content when no source is given', async function usesContent() {
-    await expect(resolveCreateContent({ content: 'inline' }, { resolveSourcePath: vi.fn() }))
-      .resolves.toBe('inline');
+  it('rejects more than one body input, like gh', async function rejectsBoth() {
+    await expect(resolveCreateContent({ content: 'x', bodyFile: 'y' }, vi.fn()))
+      .rejects.toThrow('Specify only one of --content, --body-file');
+  });
+
+  it('falls back to --content when no file is given', async function usesContent() {
+    await expect(resolveCreateContent({ content: 'inline' }, vi.fn())).resolves.toBe('inline');
   });
 
   it('concatenates stdin chunks as UTF-8', async function concatenates() {
     await expect(readStdin(Readable.from(['ა', Buffer.from('b')]))).resolves.toBe('აb');
+  });
+});
+
+describe('readBodyFile (gh --body-file semantics)', function describeBodyFile() {
+  it('reads - from stdin', async function readsDash() {
+    await expect(readBodyFile('-', async function stdin() { return 'piped'; }))
+      .resolves.toBe('piped');
+  });
+
+  it('reads any user path, outside any backlog home', async function readsAnyPath() {
+    writeFileSync('/draft-outside-home.md', '# draft');
+    await expect(readBodyFile('/draft-outside-home.md')).resolves.toBe('# draft');
+  });
+
+  it('expands ~ to the home directory', async function expandsTilde() {
+    const file = join(homedir(), 'tilde-draft.md');
+    const { mkdirSync } = await import('node:fs');
+    mkdirSync(homedir(), { recursive: true });
+    writeFileSync(file, 'tilde');
+    await expect(readBodyFile('~/tilde-draft.md')).resolves.toBe('tilde');
+  });
+
+  it('reports missing files and directories clearly', async function reportsErrors() {
+    await expect(readBodyFile('/no/such/file.md')).rejects.toThrow('File not found: /no/such/file.md');
+    await expect(readBodyFile('/')).rejects.toThrow('Not a file: /');
   });
 });
 
@@ -52,12 +77,10 @@ describe('CLI create home provenance', function describeProvenance() {
         },
       },
     );
-    expect(result).toMatchObject({
+    expect(result).toEqual({
       id: 'TASK-0001',
       routed_by: 'default',
-      home: 'project',
-      home_id: projectHome.id,
-      source_path: '/work/repo/docs/tasks/TASK-0001-x.md',
+      ...projectHomeProvenance(projectHome, homedir(), '/work/repo/docs/tasks/TASK-0001-x.md'),
     });
   });
 
@@ -71,9 +94,11 @@ describe('CLI create home provenance', function describeProvenance() {
       routed_by: 'default',
       home: 'project',
       home_id: '/work/repo',
+      root: '/work/repo',
+      documents_dir: '/work/repo/docs',
       display_path: '/work/repo',
       source_path: 'tasks/TASK-0001-x.md',
-    }, { root: '/work/repo', documentsDir: '/work/repo/docs' });
+    });
     expect(text.split('\n')).toEqual([
       'Created TASK-0001',
       '  project home /work/repo: docs/tasks/TASK-0001-x.md',
@@ -85,8 +110,10 @@ describe('CLI create home provenance', function describeProvenance() {
       id: 'TASK-0004',
       home: 'project',
       home_id: '/work/repo',
+      root: '/work/repo',
+      documents_dir: '/elsewhere/docs',
       source_path: 'tasks/TASK-0004-y.md',
-    }, { root: '/work/repo', documentsDir: '/elsewhere/docs' }))
+    }))
       .toBe('Created TASK-0004\n  project home /work/repo: /elsewhere/docs/tasks/TASK-0004-y.md');
   });
 

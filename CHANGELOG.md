@@ -14,17 +14,29 @@ begins at 0.57.0 — earlier history lives in git.
 ## [Unreleased]
 
 ### Added
-- **`backlog create --source -` reads the body from stdin.** Content that lives
-  outside the selected home (e.g. a draft in `/tmp`) can be piped in:
-  `backlog create "Title" --source - < /tmp/draft.md`. File sources stay
-  contained to the home, as before.
+- **`backlog create -F/--body-file <file>` reads the body from any file you
+  can read, or from stdin with `-`**, the same convention as
+  `gh issue create --body-file` and `git commit -F`:
+  `backlog create "Title" -F /tmp/draft.md`, or `-F - <<'EOF' … EOF`.
+  Paths resolve from your cwd, and `~` is expanded. `--source` is an alias.
+
+### Fixed
+- **`--source` reads files outside the home again.** Since the docs-native
+  cutover, the CLI had borrowed the server's home-contained resolver, so
+  `--source /tmp/draft.md` failed. That containment protects request-supplied
+  paths on the server (ADR 0112 R-2), which is unchanged. The CLI reads as the
+  local user (ADR 0106.5 R8).
 
 ### Changed
 - **`backlog create` says where the item landed.** A second output line names
   the home and the file, e.g. `project home ~/code/app: docs/tasks/TASK-0001-….md`,
   because a project home can be selected just by having a `docs/` folder
-  (ADR 0112 R-2). `--json` gains additive `home`, `home_id`, `display_path`,
-  and `source_path` fields (ADR 0112 R-9 provenance).
+  (ADR 0112 R-2). `--json` gains the same additive `HomeProvenance` fields the
+  HTTP API returns (`home`, `home_id`, `root`, `documents_dir`, `label`,
+  `display_path`, `source_path`). The projection now lives in core
+  (`core/home-provenance.ts`) and is shared by both adapters.
+- **Passing more than one of `--content`, `--body-file`, `--source` is an error**
+  instead of one silently winning.
 - **Quieter create output.** The `(default → unfiled)` suffix is gone. Routing
   is mentioned only when it picked a parent for you:
   `Created TASK-0005 in EPIC-0001 via session`. `--json` still has `routed_by`.
