@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { resolveAgentIdentity } from '../core/identity-resolution.js';
-import type { Actor } from '../operations/types.js';
+import type { Actor } from '../core/operation-log.contract.js';
 
 const AGENT_IDENTITY_DESCRIPTION =
   'OPTIONAL agent identity for this write — an AGENT- doc id or declared principal (e.g. "aime:granite"). Values are trimmed; whitespace-only is treated as absent.';

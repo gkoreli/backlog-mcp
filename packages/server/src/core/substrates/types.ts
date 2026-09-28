@@ -13,7 +13,7 @@ import type {
   DiscoveredSubstrateDeclaration,
   DiscoveredSubstrateHistoryFile,
 } from '../document-discovery.types.js';
-import type { SubstrateStorageClaim } from '../../storage/substrate-storage-catalog.contract.js';
+import type { SubstrateStorageClaim } from './substrate-storage-catalog.contract.js';
 import type { ProjectSubstrateRegistry } from './project-substrate-registry.js';
 
 export type SubstrateDefinitionIssueCode =

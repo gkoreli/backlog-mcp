@@ -16,7 +16,7 @@ import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js
 import {
   RESERVED_TOOL_NAMES,
   STATIC_TOOL_NAMES,
-} from '../server/tool-name-reservations.js';
+} from '../core/substrates/tool-name-reservations.js';
 
 type ToolHandler = (
   params: Record<string, unknown>,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
-import type { SubstrateStorageClaim } from '../storage/substrate-storage-catalog.contract.js';
+import type { SubstrateStorageClaim } from '../core/substrates/substrate-storage-catalog.contract.js';
 
 interface StorageClaimCase {
   type: string;

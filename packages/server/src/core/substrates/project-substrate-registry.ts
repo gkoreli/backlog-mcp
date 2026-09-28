@@ -7,7 +7,7 @@ import type {
 import type {
   SubstrateStorageCatalog,
   SubstrateStorageClaim,
-} from '../../storage/substrate-storage-catalog.contract.js';
+} from './substrate-storage-catalog.contract.js';
 import type {
   CompiledBuiltinSubstrate,
   CompiledSubstrateDefinition,

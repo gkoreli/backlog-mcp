@@ -7,7 +7,7 @@ import type { BacklogHome } from '../core/backlog-home.types.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import type { OperationLogger } from '../operations/logger.js';
-import type { Actor, IOperationLog } from '../operations/types.js';
+import type { Actor, IOperationLog } from '../core/operation-log.contract.js';
 import type { ResolvedAgentIdentity } from '../core/identity-resolution.js';
 import type { ResourceManager } from '../resources/manager.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';

@@ -4,7 +4,7 @@ import matter from 'gray-matter';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
-import type { IOperationLog, Actor } from '../operations/types.js';
+import type { IOperationLog, Actor } from '../core/operation-log.contract.js';
 import { extractTargetFilename } from '../operations/resource-id.js';
 import { normalizeOperationEntry } from '../operations/mutation.js';
 import { registerTools, type ToolDeps } from '../tools/index.js';

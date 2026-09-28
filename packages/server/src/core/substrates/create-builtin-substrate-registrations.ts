@@ -10,7 +10,7 @@ import { z } from 'zod';
 import {
   BUILTIN_SUBSTRATE_INTENT_DEFINITIONS,
 } from '../../substrate-definitions/builtin-substrate-intent-definitions.js';
-import type { SubstrateStorageCatalog } from '../../storage/substrate-storage-catalog.contract.js';
+import type { SubstrateStorageCatalog } from './substrate-storage-catalog.contract.js';
 import { compileSubstrateIntents } from './compile-substrate-intents.js';
 import type {
   CompiledBuiltinSubstrate,

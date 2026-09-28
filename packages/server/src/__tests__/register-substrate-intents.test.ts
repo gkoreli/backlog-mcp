@@ -6,7 +6,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import type { OperationEntry } from '../operations/types.js';
+import type { OperationEntry } from '../core/operation-log.contract.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { registerSubstrateIntents } from '../tools/register-substrate-intents.js';
 import type { SubstrateIntentQuarantineDiagnostic } from '../tools/register-substrate-intents.types.js';
@@ -15,7 +15,7 @@ import {
   loadProjectSubstrateDefinitions,
 } from '../core/substrates/index.js';
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
-import { RESERVED_TOOL_NAMES } from '../server/tool-name-reservations.js';
+import { RESERVED_TOOL_NAMES } from '../core/substrates/tool-name-reservations.js';
 import { registerTools } from '../tools/index.js';
 
 type ToolResult = {

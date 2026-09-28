@@ -10,7 +10,7 @@ import type {
 import type { WakeupGrounding, WriteContext } from '../core/types.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import type { OperationLogger } from '../operations/logger.js';
-import type { Actor } from '../operations/types.js';
+import type { Actor } from '../core/operation-log.contract.js';
 import type { AppRequestRuntime } from '../server/app-request-runtime.types.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';

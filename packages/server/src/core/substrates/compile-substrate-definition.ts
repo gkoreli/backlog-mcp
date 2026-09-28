@@ -9,7 +9,7 @@ import {
   type ErrorObject,
   type ValidateFunction,
 } from 'ajv/dist/2020.js';
-import type { SubstrateStorageClaim } from '../../storage/substrate-storage-catalog.contract.js';
+import type { SubstrateStorageClaim } from './substrate-storage-catalog.contract.js';
 import type {
   CompileSubstrateDefinitionParams,
   CompileSubstrateDefinitionResult,

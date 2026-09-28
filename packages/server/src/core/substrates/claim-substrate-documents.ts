@@ -1,4 +1,4 @@
-import type { StorageIdentityPolicy } from '../../storage/substrate-storage-catalog.contract.js';
+import type { StorageIdentityPolicy } from './substrate-storage-catalog.contract.js';
 import { normalizeDocumentKey } from '../document-identity.js';
 import type {
   ClaimSubstrateDocumentsParams,

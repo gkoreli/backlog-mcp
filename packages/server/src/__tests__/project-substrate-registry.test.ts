@@ -14,7 +14,7 @@ import type {
 } from '../core/substrates/types.js';
 import type { DiscoveredDocument } from '../core/document-discovery.types.js';
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
-import { RESERVED_TOOL_NAMES } from '../server/tool-name-reservations.js';
+import { RESERVED_TOOL_NAMES } from '../core/substrates/tool-name-reservations.js';
 
 function canonicalSchema(type: string): Record<string, unknown> {
   return {

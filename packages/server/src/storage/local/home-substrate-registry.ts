@@ -5,7 +5,7 @@ import {
   loadProjectSubstrateDefinitions,
   type LoadSubstrateDefinitionsResult,
 } from '../../core/substrates/index.js';
-import type { SubstrateStorageCatalog } from '../substrate-storage-catalog.contract.js';
+import type { SubstrateStorageCatalog } from '../../core/substrates/substrate-storage-catalog.contract.js';
 import { BuiltinSubstrateStorageCatalog } from './builtin-substrate-storage-catalog.js';
 
 /** Compile the active storage/write registry for one home from its docs tree. */

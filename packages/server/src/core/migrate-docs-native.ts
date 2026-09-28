@@ -27,7 +27,7 @@ import { discoverDocuments } from './document-discovery.js';
 import { parseDocumentIdentity } from './document-identity.js';
 import { claimSubstrateDocuments } from './substrates/index.js';
 import { isPathWithin } from './backlog-home.js';
-import { storageDocumentSourcePath } from '../storage/storage-identity.js';
+import { storageDocumentSourcePath } from './substrates/storage-identity.js';
 import type {
   DocsNativeMigrationAction,
   AssertDocsNativeMigrationCompleteOptions,

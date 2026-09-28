@@ -57,7 +57,7 @@ import {
   resetAmbientAgentIdentityCacheForTests,
 } from '../storage/local/agent-identity.js';
 import { withAgentIdentity } from '../cli/runner.js';
-import type { Actor } from '../operations/types.js';
+import type { Actor } from '../core/operation-log.contract.js';
 
 type ToolHandler = (params: Record<string, unknown>) => Promise<{ content: Array<{ text: string }>; isError?: boolean }>;
 

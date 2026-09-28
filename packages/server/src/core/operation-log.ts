@@ -15,7 +15,7 @@
  */
 
 import type { WriteContext } from './types.js';
-import type { Mutation, MutationAttribution, OperationEntry } from '../operations/types.js';
+import type { Mutation, MutationAttribution, OperationEntry } from './operation-log.contract.js';
 
 /** Mutation class → SSE event type. Semantic tool names remain payload data. */
 const MUTATION_EVENT_MAP: Record<Mutation, string> = {

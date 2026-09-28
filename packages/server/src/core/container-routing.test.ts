@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { OperationEntry } from '../operations/types.js';
+import type { OperationEntry } from './operation-log.contract.js';
 import { routeContainer, type ContainerRoutingInput } from './container-routing.js';
 
 const NOW = '2026-07-16T20:00:00.000Z';

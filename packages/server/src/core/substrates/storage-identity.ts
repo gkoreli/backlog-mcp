@@ -1,5 +1,5 @@
 import { posix } from 'node:path';
-import type { DocumentIdentity } from '../core/document-identity.types.js';
+import type { DocumentIdentity } from '../document-identity.types.js';
 import type { SubstrateStorageCatalog } from './substrate-storage-catalog.contract.js';
 import type { SubstrateStorageClaim } from './substrate-storage-catalog.contract.js';
 

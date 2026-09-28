@@ -12,7 +12,7 @@
 import { execSync } from 'node:child_process';
 import { connect } from 'node:net';
 import { LOCAL_SERVER_HOSTNAME } from '../utils/ports.js';
-import { isOlderVersion } from '../utils/version.js';
+import { isOlderVersion } from '../core/version-compare.js';
 
 /**
  * Action a fresh instance takes when it finds the port already bound.

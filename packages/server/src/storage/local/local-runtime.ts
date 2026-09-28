@@ -14,7 +14,7 @@ import {
   type ProjectSubstrateRegistry,
   type SubstrateDefinitionDiagnostic,
 } from '../../core/substrates/index.js';
-import { RESERVED_TOOL_NAMES } from '../../server/tool-name-reservations.js';
+import { RESERVED_TOOL_NAMES } from '../../core/substrates/tool-name-reservations.js';
 import { LocalEventBus } from '../../events/local-event-bus.js';
 import { BacklogMemoryStore } from '../../memory/backlog-memory-store.js';
 import { createComposerForStore } from '../../memory/bootstrap.js';
@@ -41,7 +41,7 @@ import type {
 import type { LocalRuntimeDependencies } from './local-runtime.types.js';
 import { loadHomeSubstrateRegistry } from './home-substrate-registry.js';
 import { ParcelDocsTreeWatcher } from './parcel-docs-tree-watcher.js';
-import { nextStorageDocumentId } from '../storage-identity.js';
+import { nextStorageDocumentId } from '../../core/substrates/storage-identity.js';
 
 const SEARCH_HALF_LIFE_DAYS = 30;
 const MEMORY_USAGE_LOG = 'memory-usage.jsonl';

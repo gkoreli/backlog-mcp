@@ -6,11 +6,11 @@ import {
   nextStorageDocumentId,
   parseStorageDisplayId,
   storageDocumentSourcePath,
-} from '../storage/storage-identity.js';
+} from '../core/substrates/storage-identity.js';
 import type {
   SubstrateStorageCatalog,
   SubstrateStorageClaim,
-} from '../storage/substrate-storage-catalog.contract.js';
+} from '../core/substrates/substrate-storage-catalog.contract.js';
 
 function createCatalog(
   claim: Readonly<SubstrateStorageClaim> | undefined,

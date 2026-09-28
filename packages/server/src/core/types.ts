@@ -27,7 +27,7 @@ import type {
   Actor,
   IOperationLog,
   MutationAttribution,
-} from '../operations/types.js';
+} from './operation-log.contract.js';
 import type { ContextStubs } from './get-context/types.js';
 import type { ConstraintStub } from './requirements/constraint-stub.js';
 import type { ProjectSubstrateRegistry } from './substrates/project-substrate-registry.js';
@@ -37,7 +37,7 @@ export type {
   Actor,
   IOperationLog,
   MutationAttribution,
-} from '../operations/types.js';
+} from './operation-log.contract.js';
 export type { MemoryEntry, MemoryResult, RecallQuery, MemoryLayer } from '@backlog-mcp/memory';
 
 // ── Write boundary ──

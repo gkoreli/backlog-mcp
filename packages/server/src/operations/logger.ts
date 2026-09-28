@@ -8,7 +8,7 @@ import {
   type AmbientAgentIdentityOverrides,
 } from '../storage/local/agent-identity.js';
 import { OperationStorage } from './storage.js';
-import type { Actor, OperationEntry, OperationFilter, IOperationLog } from './types.js';
+import type { Actor, OperationEntry, OperationFilter, IOperationLog } from '../core/operation-log.contract.js';
 
 /**
  * Build an Actor from the current process environment.
@@ -86,4 +86,4 @@ export function createOperationLogger(logPath: string): OperationLogger {
 }
 
 // Re-export types for convenience
-export type { Actor, OperationEntry, OperationFilter } from './types.js';
+export type { Actor, OperationEntry, OperationFilter } from '../core/operation-log.contract.js';

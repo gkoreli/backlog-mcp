@@ -2,7 +2,7 @@ import { EntityType, TYPE_PREFIXES } from '@backlog-mcp/shared';
 import type {
   SubstrateStorageCatalog,
   SubstrateStorageClaim,
-} from '../substrate-storage-catalog.contract.js';
+} from '../../core/substrates/substrate-storage-catalog.contract.js';
 
 function createStorageClaim(
   type: EntityType,

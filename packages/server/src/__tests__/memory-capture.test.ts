@@ -22,7 +22,7 @@ import type {
   UpdateEntityParams,
   WriteContext,
 } from '../core/types.js';
-import { buildCompletionEntry, buildArtifactEntry } from '../memory/capture.js';
+import { buildCompletionEntry, buildArtifactEntry } from '../core/memory-capture.js';
 
 const CREATE_ATTRIBUTION = {
   tool: 'backlog_attach_artifact',

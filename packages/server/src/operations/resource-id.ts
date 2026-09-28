@@ -1,4 +1,4 @@
-import type { Mutation } from './types.js';
+import type { Mutation } from '../core/operation-log.contract.js';
 
 /**
  * Extract a display filename for write_resource operations.

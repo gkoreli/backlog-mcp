@@ -3,7 +3,7 @@ import {
   parseEntityId,
   type SubstrateIntakeDefinition,
 } from '@backlog-mcp/shared';
-import type { Actor, OperationEntry } from '../operations/types.js';
+import type { Actor, OperationEntry } from './operation-log.contract.js';
 
 export type ContainerRouteProvenance = 'reference' | 'session' | 'default';
 

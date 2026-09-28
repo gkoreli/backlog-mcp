@@ -1,6 +1,6 @@
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { Operation } from '@backlog-mcp/shared';
-import { applyOperation } from '../resources/operations.js';
+import { applyOperation } from './text-operations.js';
 import {
   NotFoundError,
   type EditParams,

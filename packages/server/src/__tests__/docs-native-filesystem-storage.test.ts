@@ -20,7 +20,7 @@ import {
 import { buildEntity } from '../storage/entity-factory.js';
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
 import { DocsNativeFilesystemStorage } from '../storage/local/docs-native-filesystem-storage.js';
-import type { SubstrateStorageCatalog } from '../storage/substrate-storage-catalog.contract.js';
+import type { SubstrateStorageCatalog } from '../core/substrates/substrate-storage-catalog.contract.js';
 
 interface StorageHarness {
   home: BacklogHome;

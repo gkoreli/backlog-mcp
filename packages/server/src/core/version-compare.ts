@@ -1,9 +1,9 @@
 /**
  * Semantic-version comparison utilities.
  *
- * Lives in `utils/` (not `cli/`) because both the CLI bridge's upgrade check
- * (`ensureServer`) and the server's port-collision resolver depend on it — a
- * shared comparator must not force a `server → cli` layering dependency.
+ * Lives in core (ADR 0134.1 R2): it is pure, and the CLI bridge's upgrade
+ * check (`ensureServer`), the server's port-collision resolver, and core's
+ * installed-version check all depend on it.
  */
 
 /**

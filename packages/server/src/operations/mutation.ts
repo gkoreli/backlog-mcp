@@ -1,4 +1,4 @@
-import type { Mutation, OperationEntry } from './types.js';
+import type { Mutation, OperationEntry } from '../core/operation-log.contract.js';
 
 const LEGACY_MUTATIONS: Readonly<Record<string, Mutation>> = {
   backlog_create: 'create',

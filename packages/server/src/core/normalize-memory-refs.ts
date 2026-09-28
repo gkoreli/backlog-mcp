@@ -1,6 +1,6 @@
 import { isValidEntityId } from '@backlog-mcp/shared';
 import { canonicalizeIdQuery, idIntentSpecsFromIdentities } from '@backlog-mcp/memory/search';
-import { parseStorageDisplayId } from '../storage/storage-identity.js';
+import { parseStorageDisplayId } from './substrates/storage-identity.js';
 import type { ProjectSubstrateRegistry } from './substrates/project-substrate-registry.js';
 import { ValidationError } from './types.js';
 

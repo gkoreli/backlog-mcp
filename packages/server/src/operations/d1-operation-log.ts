@@ -4,7 +4,7 @@
  * All writes use ctx.waitUntil() so they are non-blocking.
  */
 
-import type { OperationEntry, OperationFilter, IOperationLog } from './types.js';
+import type { OperationEntry, OperationFilter, IOperationLog } from '../core/operation-log.contract.js';
 import { normalizeOperationEntry } from './mutation.js';
 
 // Minimal D1 API surface typed here to enable generic calls without

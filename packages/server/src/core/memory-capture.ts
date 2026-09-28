@@ -17,7 +17,7 @@
 
 import type { Entity } from '@backlog-mcp/shared';
 import type { MemoryComposer, MemoryEntry } from '@backlog-mcp/memory';
-import type { Actor } from '../operations/types.js';
+import type { Actor } from './operation-log.contract.js';
 
 const DIGEST_MAX = 200;
 const ARTIFACT_DESC_MAX = 160;

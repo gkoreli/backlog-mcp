@@ -4,7 +4,7 @@ import type {
   DocsTreeWatcher,
   DocsTreeWatcherErrorCallback,
 } from './docs-tree-watcher.contract.js';
-import type { SubstrateStorageCatalog } from '../substrate-storage-catalog.contract.js';
+import type { SubstrateStorageCatalog } from '../../core/substrates/substrate-storage-catalog.contract.js';
 
 /** Injectable construction seams for one local backlog runtime. */
 export interface LocalRuntimeDependencies {

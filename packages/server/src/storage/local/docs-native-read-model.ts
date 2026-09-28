@@ -1,7 +1,7 @@
 import { discoverDocuments } from '../../core/document-discovery.js';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
 import { claimSubstrateDocuments, type ClaimedSubstrateDocument, type ProjectSubstrateRegistry } from '../../core/substrates/index.js';
-import { formatStorageDisplayId } from '../storage-identity.js';
+import { formatStorageDisplayId } from '../../core/substrates/storage-identity.js';
 import type { ClaimQuarantine, StoredEntityDocument } from '../storage-adapter.js';
 import type { RuntimeEntity } from '@backlog-mcp/shared';
 import matter from 'gray-matter';

@@ -14,7 +14,7 @@ import { remember, type RememberDeps } from '../core/remember.js';
 import { findCollisionCandidatesForMemory } from '../core/collision-candidates.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { ValidationError } from '../core/types.js';
-import type { Actor, IOperationLog } from '../operations/types.js';
+import type { Actor, IOperationLog } from '../core/operation-log.contract.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 import {

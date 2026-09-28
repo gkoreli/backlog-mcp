@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isOlderVersion, parseVersionResponse } from '../utils/version.js';
+import { isOlderVersion, parseVersionResponse } from '../core/version-compare.js';
 
 /**
  * The comparator behind the monotonic upgrade rule: ensureServer (CLI bridge)

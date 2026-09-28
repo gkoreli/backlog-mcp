@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyOperation } from '../resources/operations.js';
+import { applyOperation } from '../core/text-operations.js';
 
 /**
  * Reproduces the exact failure from the agent transcript (2026-04-20):

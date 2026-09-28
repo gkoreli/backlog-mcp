@@ -4,8 +4,8 @@ import {
 } from '@backlog-mcp/shared';
 import { ZodError } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
-import { shouldCaptureArtifact } from '../memory/capture-rules.js';
-import { captureArtifact } from '../memory/capture.js';
+import { shouldCaptureArtifact } from './memory-capture-rules.js';
+import { captureArtifact } from './memory-capture.js';
 import {
   asBuiltinEntity,
   isBuiltinSubstrateType,

@@ -30,7 +30,7 @@ import { createLocalRuntime } from '../storage/local/local-runtime.js';
 import type {
   SubstrateStorageCatalog,
   SubstrateStorageClaim,
-} from '../storage/substrate-storage-catalog.contract.js';
+} from '../core/substrates/substrate-storage-catalog.contract.js';
 
 const CREATE_ATTRIBUTION = {
   tool: 'backlog_create_work',

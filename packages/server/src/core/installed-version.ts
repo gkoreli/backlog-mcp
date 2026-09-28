@@ -1,4 +1,4 @@
-import { isOlderVersion } from '../utils/version.js';
+import { isOlderVersion } from './version-compare.js';
 
 /**
  * Release awareness for the locally running daemon (ADR 0131 R1).

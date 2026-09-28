@@ -6,7 +6,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { utcToLocalDateKey } from '@server/utils/date.js';
-import type { OperationEntry, OperationFilter } from './types.js';
+import type { OperationEntry, OperationFilter } from '../core/operation-log.contract.js';
 import { normalizeOperationEntry } from './mutation.js';
 
 export class OperationStorage {

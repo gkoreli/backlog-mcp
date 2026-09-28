@@ -6,7 +6,7 @@ import {
   BACKLOG_PROJECT_ROOT_HEADER,
 } from '../core/backlog-home.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';
-import type { IOperationLog, OperationEntry } from '../operations/types.js';
+import type { IOperationLog, OperationEntry } from '../core/operation-log.contract.js';
 import type { AppRequestRuntime } from '../server/app-request-runtime.types.js';
 import { createApp } from '../server/hono-app.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';

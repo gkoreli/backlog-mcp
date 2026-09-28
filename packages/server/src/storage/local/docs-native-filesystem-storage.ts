@@ -38,8 +38,8 @@ import {
   nextStorageDocumentId,
   parseStorageDisplayId,
   storageDocumentSourcePath,
-} from '../storage-identity.js';
-import type { SubstrateStorageClaim } from '../substrate-storage-catalog.contract.js';
+} from '../../core/substrates/storage-identity.js';
+import type { SubstrateStorageClaim } from '../../core/substrates/substrate-storage-catalog.contract.js';
 import { readDocumentSnapshot, type DocumentSnapshot } from './docs-native-read-model.js';
 import { withDocumentWriteLock } from './document-write-lock.js';
 

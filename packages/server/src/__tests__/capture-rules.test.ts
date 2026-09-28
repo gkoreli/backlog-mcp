@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import type { Entity, Status } from '@backlog-mcp/shared';
-import { shouldCaptureCompletion, shouldCaptureArtifact } from '../memory/capture-rules.js';
+import { shouldCaptureCompletion, shouldCaptureArtifact } from '../core/memory-capture-rules.js';
 
 function task(status: Status, type: 'task' | 'epic' = 'task'): Entity {
   return {

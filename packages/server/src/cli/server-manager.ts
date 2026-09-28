@@ -4,7 +4,7 @@ import { openSync, closeSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { globalStatePath } from '@server/utils/global-home-paths.js';
 import { paths } from '@server/utils/paths.js';
-import { isOlderVersion, parseVersionResponse } from '@server/utils/version.js';
+import { isOlderVersion, parseVersionResponse } from '@server/core/version-compare.js';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 

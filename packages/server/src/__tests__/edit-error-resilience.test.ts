@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { applyOperation } from '../resources/operations.js';
+import { applyOperation } from '../core/text-operations.js';
 import { editItem as editItemCore } from '../core/edit.js';
 import {
   NotFoundError,

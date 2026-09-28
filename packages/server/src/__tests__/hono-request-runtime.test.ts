@@ -4,7 +4,7 @@ import {
   BACKLOG_HOME_HEADER,
   BACKLOG_PROJECT_ROOT_HEADER,
 } from '../core/backlog-home.js';
-import type { OperationEntry, IOperationLog } from '../operations/types.js';
+import type { OperationEntry, IOperationLog } from '../core/operation-log.contract.js';
 import {
   createApp,
   selectAppRequestRuntime,
