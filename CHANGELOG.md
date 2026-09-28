@@ -13,6 +13,25 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+### Added
+- **Every write says where it landed.** `update`, `delete`, `edit`, and
+  `remember` now print the same second line as `create`, e.g.
+  `project home ~/code/app: docs/tasks/TASK-0001-….md`, and their `--json`
+  output gains the `HomeProvenance` fields. `edit` output also gains `id`.
+  Over MCP, compiled write intents return the home plus
+  `documents: [{ id, source_path }]`, `backlog_remember` returns flat
+  provenance, and `backlog_delete` adds the location line. All fields are
+  additive (ADR 0134.1 R4).
+
+### Changed
+- **Internal architecture follows ADR 0134.** A ratcheted architecture test
+  now fails on new layering violations. Eight pure domain modules moved into
+  core, the runtime shared by HTTP, MCP, and the CLI moved to `composition/`,
+  and the CLI no longer imports server code (ADR 0134.1).
+
+### Removed
+- **The unused home-contained `resolveSourcePath` capability.** No tool or
+  command read it after 0.75.0's `-F/--body-file`.
 ## [0.75.0] — 2026-09-28
 
 *This release makes the CLI tell you where writes land and lets it read content

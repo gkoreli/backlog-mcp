@@ -52,13 +52,14 @@ vi.mock(
               arguments?: Record<string, unknown>;
             };
           };
+          const toolName = body.params?.name;
           if (
             body.method === 'tools/call'
-            && body.params?.name === 'backlog_search'
+            && (toolName === 'backlog_search' || toolName === 'backlog_delete')
           ) {
-            const handler = registeredTools.get(body.params.name);
+            const handler = registeredTools.get(toolName);
             if (handler === undefined) {
-              throw new Error('backlog_search handler was not registered');
+              throw new Error(`${toolName} handler was not registered`);
             }
             return Response.json(await handler(
               body.params.arguments ?? {},
@@ -118,6 +119,52 @@ describe('/mcp explicit tool home selection', function describeMcpRouting() {
     expect(resolver).toHaveBeenCalledWith({ home: 'global' });
     expect(transportRequests).toHaveBeenCalledOnce();
     expect(await response.text()).toBe(body);
+  });
+
+  it('reports where backlog_delete wrote, through the host-injected provenance (ADR 0134.1 R4.5)', async function reportsDeleteLocation() {
+    const deleteDocument = vi.fn(async function deleteDocument() {
+      return true;
+    });
+    const resolver = vi.fn(async function resolveRuntime() {
+      return {
+        home: {
+          kind: 'project' as const,
+          id: '/workspace/project',
+          root: '/workspace/project',
+          documentsDir: '/workspace/project/docs',
+          controlDir: '/workspace/project/.backlog',
+        },
+        service: { delete: deleteDocument } as unknown as IBacklogService,
+        actor: { type: 'agent' as const, name: 'mcp-test' },
+        operationLog: {
+          append: vi.fn(),
+          query: async function query() { return []; },
+          countForTask: async function countForTask() { return 0; },
+        },
+        getSourcePath: function getSourcePath(id: string) {
+          return `tasks/${id}-doomed.md`;
+        },
+        intentRegistrationMode: 'unavailable' as const,
+      };
+    });
+    const app = createApp(EMPTY_SERVICE, { resolveRuntime: resolver, logError: vi.fn() });
+
+    const response = await app.request('/mcp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: { name: 'backlog_delete', arguments: { id: 'TASK-0001' } },
+      }),
+    });
+
+    const toolResult = await response.json() as { content: Array<{ text: string }> };
+    expect(deleteDocument).toHaveBeenCalledWith('TASK-0001');
+    expect(toolResult.content[0]?.text).toBe(
+      'Deleted TASK-0001\n  project home /workspace/project: docs/tasks/TASK-0001-doomed.md',
+    );
   });
 
   it('fails before transport when a writable runtime has incomplete intent ports', async function rejectsIncompleteIntentRuntime() {

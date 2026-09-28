@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { ToolDeps } from './index.js';
 import { deleteItem } from '../core/delete.js';
+import { describeDocumentLocation } from '../core/home-provenance.js';
 import { buildWriteContext } from './build-write-context.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 import { AGENT_IDENTITY_INPUT_FIELDS } from './agent-identity-input.js';
@@ -24,13 +25,18 @@ export function registerBacklogDeleteTool(server: McpServer, service: IBacklogSe
       }),
     },
     async ({ id, as: agentIdentity }) => {
+      // The path is looked up first: after deletion it no longer resolves.
+      const location = describeDocumentLocation(deps?.writeProvenance?.document(id) ?? {});
       const result = await deleteItem(
         service,
         { id },
         buildWriteContext(deps, agentIdentity),
         DELETE_ATTRIBUTION,
       );
-      return { content: [{ type: 'text', text: `Deleted ${result.id}` }] };
+      const text = location === undefined
+        ? `Deleted ${result.id}`
+        : `Deleted ${result.id}\n  ${location}`;
+      return { content: [{ type: 'text', text }] };
     }
   );
 }

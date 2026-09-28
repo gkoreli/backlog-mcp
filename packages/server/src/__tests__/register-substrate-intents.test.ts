@@ -17,6 +17,8 @@ import {
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
 import { RESERVED_TOOL_NAMES } from '../core/substrates/tool-name-reservations.js';
 import { registerTools } from '../tools/index.js';
+import { createBacklogHome } from '../core/backlog-home.js';
+import { createWriteProvenance } from '../composition/write-provenance.js';
 
 type ToolResult = {
   content: Array<{ type: 'text'; text: string }>;
@@ -448,6 +450,48 @@ describe('registerSubstrateIntents', function describeIntentRegistrar() {
     expect(entries.at(-1)?.actor).toEqual({
       type: 'agent',
       name: 'registrar-test',
+    });
+  });
+
+  it('reports where an intent wrote when the host injects write provenance (ADR 0134.1 R4.5)', async function reportsWriteProvenance() {
+    const intent = createRequirementIntent();
+    const { server, tools } = captureServer();
+    const { service } = serviceHarness();
+    const options = registrationOptions([intent], [], vi.fn());
+    const home = createBacklogHome({ kind: 'project', root: '/work/repo' });
+
+    registerSubstrateIntents(server, service, {
+      ...options,
+      toolDeps: {
+        ...options.toolDeps,
+        writeProvenance: createWriteProvenance({
+          home,
+          getSourcePath: function getSourcePath(id: string) {
+            return `requirements/${id}.md`;
+          },
+        }, undefined),
+      },
+    });
+    const registered = tools.get(intent.toolName);
+    if (registered === undefined) throw new Error('semantic intent was not registered');
+
+    const response = await registered.handler({
+      title: 'Local storage',
+      content: 'The core path stays local-first.',
+    });
+    const text = response.content[0]?.text;
+    if (text === undefined) throw new Error('intent returned no text');
+
+    expect(JSON.parse(text)).toEqual({
+      ids: ['requirement-001-root'],
+      changed: true,
+      home: 'project',
+      home_id: home.id,
+      root: home.root,
+      documents_dir: home.documentsDir,
+      label: 'repo',
+      display_path: home.root,
+      documents: [{ id: 'requirement-001-root', source_path: 'requirements/requirement-001-root.md' }],
     });
   });
 

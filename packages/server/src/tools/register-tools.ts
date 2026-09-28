@@ -7,6 +7,7 @@ import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
 import type { ResolvedAgentIdentity } from '../core/identity-resolution.js';
 import type { WakeupGrounding } from '../core/types.js';
+import type { WriteProvenance } from '../composition/write-provenance.js';
 import type {
   IntentRegistryPort,
   IntentWriteValidatorPort,
@@ -66,6 +67,8 @@ export interface ToolDeps {
   intentRegistration?: IntentToolRegistration;
   /** Ladder-resolved identity for the request-selected runtime (ADR 0119.1). */
   agentIdentity?: ResolvedAgentIdentity;
+  /** Where writes landed, injected by the host (ADR 0134.1 R4.5). Tools never compute it. */
+  writeProvenance?: WriteProvenance;
 }
 
 function requireIntentRegistration(
@@ -141,6 +144,7 @@ export function registerTools(
     ...(deps?.operationLog ? { operationLog: deps.operationLog } : {}),
     ...(deps?.eventBus ? { eventBus: deps.eventBus } : {}),
     ...(deps?.usageTracker ? { usageTracker: deps.usageTracker } : {}),
+    ...(deps?.writeProvenance ? { writeProvenance: deps.writeProvenance } : {}),
     service,
   });
   registerBacklogForgetTool(

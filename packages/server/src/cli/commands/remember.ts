@@ -2,12 +2,17 @@ import type { Command } from 'commander';
 import { remember } from '../../core/remember.js';
 import { findCollisionCandidatesForMemory } from '../../core/collision-candidates.js';
 import { resolveContext } from '../../core/config.js';
+import type { HomeProvenance } from '../../core/home-provenance.types.js';
 import type { RememberResult } from '../../core/types.js';
 import { parseCommaList } from '../parse-fields.js';
 import { cliRuntimeDependencies, run, withAgentIdentity } from '../runner.js';
+import { formatWrite } from './write-output.js';
 
-function format(result: RememberResult): string {
-  const lines = [`remembered ${result.id} [${result.layer}] at ${result.created_at}`];
+/** A remember result and where the memory document lives (ADR 0134.1 R4.4). */
+type CliRememberResult = RememberResult & Partial<HomeProvenance>;
+
+function format(result: CliRememberResult): string {
+  const lines = [formatWrite(`remembered ${result.id} [${result.layer}] at ${result.created_at}`, result)];
   if (result.supersedes) lines.push(`  supersedes ${result.supersedes} (predecessor expired)`);
   if (result.state_key) lines.push(`  state_key ${result.state_key} (previous holders closed)`);
   if (result.collision_candidates !== undefined) {
@@ -88,7 +93,7 @@ export function registerRemember(program: Command): void {
             ),
           );
         }
-        return result;
+        return { ...result, ...runtime.writeProvenance?.document(result.id) };
       },
       format,
       program.opts().json,

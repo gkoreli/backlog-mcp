@@ -37,6 +37,7 @@ import {
 } from './home-provenance.js';
 import { homedir } from 'node:os';
 import { selectMcpRequestRuntime } from './mcp-request-runtime.js';
+import { createWriteProvenance } from '../composition/write-provenance.js';
 import type { RecentHomesStore } from '../storage/local/recent-homes-store.js';
 import {
   presentGlobalHome,
@@ -207,6 +208,7 @@ function createRequestToolDeps(
     readGrounding: runtime.readGrounding,
     homeReadCoordinator,
     intentRegistration: createIntentRegistration(),
+    writeProvenance: createWriteProvenance(runtime, homedir()),
   };
 }
 

@@ -85,10 +85,11 @@ function createIntentHandler(
           explicitAgentIdentity,
         ),
       });
+      const provenance = options.toolDeps.writeProvenance?.documents(result.ids);
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify(result),
+          text: JSON.stringify({ ...result, ...provenance }),
         }],
       };
     } catch (error) {

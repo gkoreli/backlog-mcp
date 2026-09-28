@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Command } from 'commander';
 import type { BacklogEventType } from '../events/event-bus.js';
@@ -15,6 +16,7 @@ import type {
 } from '../core/home-read-coordinator.types.js';
 import { asAgentActor, envActor } from '../operations/logger.js';
 import { createLocalAppRequestRuntime } from '../composition/local-app-request-runtime.js';
+import { createWriteProvenance } from '../composition/write-provenance.js';
 import { validateHomeSelection } from '../core/backlog-home-selection.js';
 import { resolveGitFamily } from '../storage/local/git-family.js';
 import {
@@ -150,6 +152,7 @@ async function createDocsNativeCliRuntime(
       ? {}
       : { readGrounding: appRuntime.readGrounding }),
     getSourcePath: appRuntime.getSourcePath,
+    writeProvenance: createWriteProvenance(appRuntime, homedir()),
     close: async function closeDocsNativeRuntime(): Promise<void> {
       await localRuntime.stop();
     },

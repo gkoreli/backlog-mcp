@@ -3,17 +3,10 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
-import { createBacklogHome } from '../core/backlog-home.js';
 import { resolveCreateContent } from '../cli/commands/create.js';
-import {
-  formatCreateResult,
-  withCreateProvenance,
-} from '../cli/commands/create-output.js';
-import { projectHomeProvenance } from '../core/home-provenance.js';
+import { formatCreateResult } from '../cli/commands/create-output.js';
 import { readBodyFile, readStdin } from '../cli/body-file.js';
 import { cliProgramName } from '../cli/program-name.js';
-
-const projectHome = createBacklogHome({ kind: 'project', root: '/work/repo' });
 
 describe('CLI create content sources', function describeSources() {
   it('reads --body-file through the reader', async function readsBodyFile() {
@@ -66,28 +59,7 @@ describe('readBodyFile (gh --body-file semantics)', function describeBodyFile() 
   });
 });
 
-describe('CLI create home provenance', function describeProvenance() {
-  it('adds home fields without dropping the core result', function addsFields() {
-    const result = withCreateProvenance(
-      { id: 'TASK-0001', routed_by: 'default' },
-      {
-        home: projectHome,
-        getSourcePath: function getSourcePath() {
-          return '/work/repo/docs/tasks/TASK-0001-x.md';
-        },
-      },
-    );
-    expect(result).toEqual({
-      id: 'TASK-0001',
-      routed_by: 'default',
-      ...projectHomeProvenance(projectHome, homedir(), '/work/repo/docs/tasks/TASK-0001-x.md'),
-    });
-  });
-
-  it('leaves results unchanged when the runtime has no home', function noHome() {
-    expect(withCreateProvenance({ id: 'TASK-0001' }, {})).toEqual({ id: 'TASK-0001' });
-  });
-
+describe('CLI create output', function describeCreateOutput() {
   it('keeps the first line stable and names the project home and file', function formatsProject() {
     const text = formatCreateResult({
       id: 'TASK-0001',

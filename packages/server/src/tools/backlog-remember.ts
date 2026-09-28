@@ -16,6 +16,7 @@ import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import { ValidationError } from '../core/types.js';
 import type { Actor, IOperationLog } from '../core/operation-log.contract.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
+import type { WriteProvenance } from '../composition/write-provenance.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 import {
   AGENT_IDENTITY_INPUT_FIELDS,
@@ -33,6 +34,8 @@ export interface BacklogRememberDeps {
   usageTracker?: MemoryUsageTracker;
   /** Same-home service used only for the post-commit advisory scan. */
   service?: IBacklogService;
+  /** Where the memory document landed (ADR 0134.1 R4.5). */
+  writeProvenance?: WriteProvenance;
 }
 
 export function registerBacklogRememberTool(
@@ -122,7 +125,8 @@ export function registerBacklogRememberTool(
             (params.entity_refs ?? []).filter(r => r !== result.id),
           );
         }
-        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+        const provenance = deps?.writeProvenance?.document(result.id);
+        return { content: [{ type: 'text', text: JSON.stringify({ ...result, ...provenance }, null, 2) }] };
       } catch (e) {
         if (e instanceof ValidationError) {
           return { content: [{ type: 'text', text: JSON.stringify({ error: e.message }) }], isError: true };

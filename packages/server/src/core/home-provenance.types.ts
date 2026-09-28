@@ -18,5 +18,20 @@ export interface HomeProvenance {
   label: string;
   /** Render-ready home-collapsed path, e.g. `~/Documents/x`. */
   display_path: string;
+  /** Document path relative to `documents_dir` (`tasks/TASK-0001-….md`). */
   source_path?: string;
 }
+
+/** One document a write touched, and its path relative to `documents_dir`. */
+export interface WrittenDocument {
+  id: string;
+  source_path?: string;
+}
+
+/**
+ * Provenance for a write about several documents (a compiled intent's `ids`):
+ * the home once, then each document (ADR 0134.1 R4.3).
+ */
+export type WrittenDocumentsProvenance = Omit<HomeProvenance, 'source_path'> & {
+  documents: WrittenDocument[];
+};

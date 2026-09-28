@@ -7,7 +7,6 @@ import { parseFields } from '../parse-fields.js';
 import type { CliRuntime } from '../runner.types.js';
 import {
   formatCreateResult,
-  withCreateProvenance,
   type CliCreateResult,
 } from './create-output.js';
 
@@ -75,7 +74,7 @@ export function registerCreate(program: Command): void {
             runtime.writeContext,
             CLI_CREATE_ATTRIBUTION,
           );
-          return withCreateProvenance(result, runtime);
+          return { ...result, ...runtime.writeProvenance?.document(result.id) };
         },
         formatCreateResult,
         program.opts().json,

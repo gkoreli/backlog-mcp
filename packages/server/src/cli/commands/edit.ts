@@ -2,19 +2,26 @@ import type { Command } from 'commander';
 import { editItem } from '../../core/edit.js';
 import { ValidationError } from '../../core/types.js';
 import type { EditOperation } from '@backlog-mcp/shared';
+import type { HomeProvenance } from '../../core/home-provenance.types.js';
+import type { EditResult } from '../../core/types.js';
 import { cliRuntimeDependencies, run, withAgentIdentity } from '../runner.js';
+import type { CliRuntime } from '../runner.types.js';
+import { formatWrite } from './write-output.js';
 
 const CLI_EDIT_ATTRIBUTION = {
   tool: 'backlog edit',
   mutation: 'resource-edit',
 } as const;
 
-function formatResult(r: { success: boolean; message?: string; error?: string }) {
+/** An edit result, the edited id, and where it lives (ADR 0134.1 R4.4). */
+type CliEditResult = EditResult & { id: string } & Partial<HomeProvenance>;
+
+function formatResult(r: CliEditResult): string {
   if (!r.success) {
     // The CLI error boundary prints this and sets exit code 1 (ADR 0130 R5).
     throw new ValidationError(r.error ?? 'Edit failed');
   }
-  return r.message ?? 'Done';
+  return formatWrite(r.message ?? `Edited ${r.id}`, r);
 }
 
 function editAction(
@@ -25,12 +32,17 @@ function editAction(
   asAgent?: string,
 ) {
   return run(
-    (runtime) => editItem(
-      runtime.service,
-      { id, operation },
-      runtime.writeContext,
-      CLI_EDIT_ATTRIBUTION,
-    ),
+    async function editInHome(runtime: CliRuntime): Promise<CliEditResult> {
+      const result = await editItem(
+        runtime.service,
+        { id, operation },
+        runtime.writeContext,
+        CLI_EDIT_ATTRIBUTION,
+      );
+      return result.success
+        ? { ...result, id, ...runtime.writeProvenance?.document(id) }
+        : { ...result, id };
+    },
     formatResult,
     json,
     withAgentIdentity(cliRuntimeDependencies(program), asAgent),
