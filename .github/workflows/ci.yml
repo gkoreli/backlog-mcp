@@ -4,9 +4,14 @@ on:
   pull_request:
     branches:
       - main
+  # Fixes land directly on main (MEMO-0018), so main is tested on every push,
+  # not only at publish time.
+  push:
+    branches:
+      - main
 
 concurrency:
-  group: ci-${{ github.head_ref }}
+  group: ci-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
