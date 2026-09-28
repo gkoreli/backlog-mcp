@@ -1,7 +1,7 @@
 ---
 title: "0134. Engineering Rules — Layers, Domain Model, Boundaries, and Code Quality"
 date: 2026-09-28
-status: Proposed
+status: "Accepted (goga, 2026-09-28) — Phases 1 and 3 implemented by 0134.1 and shipped in 0.76.0; Phases 2 (partly), 4 and 5 open"
 author: Claude (for goga)
 relates_to:
   - 0090-cli-tool-and-core-extraction.md
@@ -60,7 +60,7 @@ Paths are relative to `packages/server/src/`.
 | **Domain (core)** | `core/` | `@backlog-mcp/shared`, `@backlog-mcp/memory`, `zod`, its own ports | storage, server, cli, tools, Node IO, `process` |
 | **Infrastructure** | `storage/`, `resources/`, `operations/`, `events/`, `memory/`, `auth/` | core (domain types and ports) | server, cli, tools |
 | **Driving adapters** | `cli/`, `tools/` (MCP), `server/` (HTTP/Hono) | core, composition | each other |
-| **Composition** | `node-server.ts`, `dev-entry.ts`, `worker-entry.ts`, `composition/` (new) | everything | — (never imported by core or infrastructure) |
+| **Composition** | `node-server.ts`, `dev-entry.ts`, `worker-entry.ts`, `composition/` | everything | — (never imported by core or infrastructure) |
 
 - **R1.1 Core is pure.** No `node:fs`, `node:os`, `node:child_process`,
   `process.env`, `process.cwd()`, or `console` in `core/`. Anything from the
@@ -77,15 +77,18 @@ Paths are relative to `packages/server/src/`.
   and formats output, following ADR 0090's "MCP wrapper pattern". An adapter
   never imports another adapter. If two adapters need the same runtime, that
   runtime belongs to composition (R1.4). If they need the same logic, it
-  belongs in core (R2.2).
+  belongs in core (R2.2). One dependency is declared rather than forbidden:
+  the HTTP adapter (`server/`) mounts the MCP adapter (`tools/`) because it
+  serves the MCP endpoint. `tools/` never imports `server/` (0134.1 R1.5).
 - **R1.4 One composition per process entry.** Building a runtime (a home, its
   storage, search, memory, operation log, and intent registry) happens in
-  composition, not inside an adapter. Code that the CLI and HTTP both use
-  today, `server/local-app-request-runtime.ts` and
-  `server/local-runtime-request-resolver.ts`, moves to `composition/`. An
-  adapter-specific policy that is part of building the runtime, such as path
-  containment, is passed in by the adapter's composition (R2.6). The shared
-  runtime never decides it.
+  composition, not inside an adapter. The per-home runtime the CLI, MCP and
+  HTTP share lives in `composition/` (moved there by 0134.1 R3). An
+  adapter-specific policy, such as containment of request-supplied paths, is
+  passed in by that adapter and is never decided by the shared runtime
+  (R2.6). A rule that holds for every caller is not transport policy: reading
+  only inside the documents directory (`readLocalFile`) belongs in the shared
+  runtime.
 - **R1.5 Capabilities are injected, not imported.** A runtime-specific
   capability (file reading, source paths, git) is an injected function, so the
   Worker bundle and tests can omit or replace it (ADR 0091).
@@ -209,16 +212,18 @@ Paths are relative to `packages/server/src/`.
 - **R6.1 Unit tests with memfs, no integration tests** (`AGENTS.md`). Every
   change passes `pnpm build && pnpm test` and `pnpm typecheck` before it is
   committed, which is what CI runs (`.github/workflows`).
-- **R6.2 Architecture rules are tests, with a ratchet.** A new
-  `src/__tests__/architecture.test.ts` scans import statements and fails when:
-  - core imports Node IO, `process`, or an outer layer (R1.1, R1.2);
+- **R6.2 Architecture rules are tests, with a ratchet.**
+  `src/__tests__/architecture.test.ts` checks every import, using the
+  TypeScript compiler's import scanner (`helpers/import-graph.ts`) and the
+  rules in `helpers/architecture-rules.ts`. It fails when:
+  - core imports Node IO or an outer layer (R1.1, R1.2);
   - an adapter imports another adapter (R1.3);
-  - infrastructure imports an adapter (R1);
+  - infrastructure imports an adapter or composition (R1);
   - a file is added under `utils/` (R4.3).
 
-  Each check has an allowlist that starts as [Current state](#current-state).
-  The test also fails if an allowlisted violation has been fixed but not
-  removed from the list, so the list can only shrink.
+  Known violations are listed in `KNOWN_VIOLATIONS` (0134.1 §Audit explains
+  each). The test also fails if a listed violation has been fixed but not
+  removed, so the list can only shrink.
 - **R6.3 Invariants and contracts are tested where they are owned.** Core
   invariants go in `core-invariants.test.ts`. A port's contract is tested once
   against every implementation.
@@ -276,21 +281,25 @@ Each phase is its own commit series and leaves the suite green. No phase
 changes behavior. Behavior changes are separate ADRs.
 
 1. **Enforce.** Add `architecture.test.ts` (R6.2) with the allowlists above.
-   From this point, new violations fail CI.
+   From this point, new violations fail the suite. **Done** (0134.1, `3ce5a1e`).
 2. **Own the ports.** Move `IBacklogService` to
    `core/backlog-service.contract.ts`, move the `GitRunner` type to a core
    contract, and move the storage-identity helpers core uses into core
-   (R1.2). Imports change, code doesn't.
-3. **Extract composition.** Move `server/local-app-request-runtime.ts` and
-   `server/local-runtime-request-resolver.ts` to `composition/`. Have
-   `cli/runner.ts` and the HTTP runtime both depend on `composition/`, and
-   have each pass its own transport policy in, such as the source resolver
-   (R1.3, R1.4, R2.6). Move `server/tool-name-reservations.ts` to core, since
-   reserved names are a domain rule.
+   (R1.2). Imports change, code doesn't. **Partly done:** the storage-identity
+   helpers, the storage catalog contract and the operation-log port moved in
+   0134.1 R2. `IBacklogService` (which imports storage and resource types) and
+   `GitRunner` remain.
+3. **Extract composition.** Move the shared runtime to `composition/` and
+   have `cli/runner.ts` and the HTTP runtime both depend on it (R1.3, R1.4,
+   R2.6). Move `server/tool-name-reservations.ts` to core, since reserved
+   names are a domain rule. **Done** (0134.1, `0c129ec`, `3166e1c`). No
+   transport policy had to be passed in: the only one, `resolveSourcePath`,
+   had no consumers and was deleted.
 4. **Purify core.** Replace the IO defaults in `core/backlog-home.ts`,
    `core/config.ts`, and `core/document-discovery.ts` with required injected
    dependencies, wired in composition (R1.1). `core/migrate-docs-native.ts`
-   moves to an infrastructure migration module that calls core.
+   moves to an infrastructure migration module that calls core. Also inject
+   the `BacklogMemoryStore` fallback that `core/wakeup.ts` constructs. **Open.**
 5. **Split by concept, opportunistically.** Split `core/types.ts` into
    satellite `.types.ts` files, and split `server/hono-app.ts` into route
    modules. Do each when the file is next touched for another reason

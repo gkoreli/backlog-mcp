@@ -73,43 +73,62 @@ When running `pnpm dev`:
 
 ## Architecture Principles
 
-- **UI is read-only** — all mutations happen via MCP tools from the LLM
+- **The viewer is a window, not an editor** — entity writes happen through the
+  agent surfaces (MCP intents and the CLI); the viewer reads and manages the
+  daemon (restart, recent homes)
 - **Real-time updates** — SSE pushes changes to the web viewer
-- **MCP-first** — designed for agents, the viewer is a human window into agent work
+- **Agent-first** — MCP and the CLI are both agent surfaces over one core;
+  which one is primary is an open decision (EPIC-0001, TASK-0012)
+- **Binding engineering rules** — layers, ports, and DDD rules are in
+  [ADR 0134](docs/adr/0134-engineering-rules.md) and enforced by
+  `packages/server/src/__tests__/architecture.test.ts`
 
 ## Data Model
 
-5 entity types, all stored as markdown files with YAML frontmatter in a single `tasks/` directory:
+Entity types are **substrates** (ADR 0113): Markdown with YAML frontmatter,
+stored in the selected home's documents directory (`<repo>/docs/` or
+`~/.backlog/docs/`), one folder per substrate. Filenames are `<ID>-<slug>.md`,
+and the slug is frozen at creation (ADR 0129).
 
-| Type | Prefix | Purpose |
-|------|--------|---------|
-| Task | `TASK-0001` | Work items |
-| Epic | `EPIC-0001` | Groups of related tasks |
-| Folder | `FLDR-0001` | Organizational containers |
-| Artifact | `ARTF-0001` | Attached outputs (research, designs) |
-| Milestone | `MLST-0001` | Time-bound targets with due dates |
+| Substrate | Prefix | Folder | Source |
+|---|---|---|---|
+| task | `TASK-` | `tasks/` | built in |
+| epic | `EPIC-` | `epics/` | built in |
+| folder | `FLDR-` | `folders/` | built in |
+| artifact | `ARTF-` | `artifacts/` | built in |
+| milestone | `MLST-` | `milestones/` | built in |
+| cron | `CRON-` | `crons/` | built in |
+| memory | `MEMO-` | `memories/` | built in |
+| adr, requirement, prompt | | `adr/`, `requirements/`, `prompts/` | packaged definitions |
 
-Entities can have `parent_id` (any entity) and `epic_id` (epic membership). References are `{url, title}` objects.
+A project can declare more under `docs/substrates/` (ADR 0113). Entities link
+through `parent_id` and typed references.
 
 ## File Structure
 
+`packages/server/src/`, by ADR 0134 layer:
+
 ```
-packages/server/src/
-├── cli/           # CLI commands (bridge, supervisor, server-manager)
-├── context/       # 5-phase agent context hydration pipeline
-├── events/        # Event bus (SSE real-time updates)
-├── middleware/     # Auth middleware
-├── operations/    # Operation logging middleware
-├── resources/     # MCP resource manager, URI operations
-├── search/        # Orama search, embeddings, scoring, tokenizer
-├── server/        # Fastify HTTP, MCP handler, viewer routes
-├── storage/       # Task storage, backlog service, entity factory
-├── substrates/    # Entity type system backend
-├── tools/         # 7 MCP tools (list, get, create, update, delete, search, context)
-└── utils/         # Logger, paths, date
+core/                   Domain: pure functions, domain types, ports (*.contract.ts)
+  substrates/           Substrate compiler, registry, intent execution, storage identity
+  get-context/          Relational context expansion
+  requirements/         Requirement constraint stubs
+substrate-definitions/  Built-in and packaged substrate declarations (domain data)
+storage/                Infrastructure: docs-native filesystem storage, D1, git probes
+memory/                 Infrastructure: memory store, usage tracking, telemetry
+operations/             Infrastructure: operation journal
+resources/              Infrastructure: resource manager
+events/                 Infrastructure: event bus
+auth/                   Infrastructure: OAuth for the Worker deployment
+composition/            The per-home runtime every adapter shares (ADR 0134.1 R3)
+cli/                    Adapter: the `backlog` CLI, stdio bridge, supervisor
+tools/                  Adapter: MCP tools and compiled substrate intents
+server/                 Adapter: Hono HTTP app, MCP endpoint, viewer routes
+utils/                  Frozen (ADR 0134 R4.3): no new files
+node-server.ts, dev-entry.ts, worker-entry.ts   Process entry points (composition)
 
 packages/viewer/
-├── components/    # 18 web components
+├── components/    # Web components
 ├── services/      # App state, SSE client, markdown, URL state
 ├── utils/         # API client, date formatting
 ├── icons/         # SVG icon exports

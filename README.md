@@ -276,7 +276,7 @@ Sample outputs:
 ```
 $ npx backlog-mcp status
 Server is running on port 3030
-Version: 0.65.0
+Version: 0.76.0
 Data directory: /Users/you/.backlog/docs
 Task count: 451
 Uptime: 3515s
@@ -294,6 +294,26 @@ Server is not running
 The CLI also exposes one-shot retrieval, memory, and document operations over
 the same core. Use `backlog --help` for the current command surface. `status`
 and `stop` inspect and manage the persistent daemon started by the default mode.
+
+Writes say where they landed. `create`, `update`, `edit`, `delete`, and
+`remember` print a second line naming the home and the file, and `--json` adds
+the same `home`, `home_id`, and `source_path` fields the HTTP API returns:
+
+```
+$ backlog create "Investigate slow startup" -F notes.md
+Created TASK-0042
+  project home ~/code/app: docs/tasks/TASK-0042-investigate-slow-startup.md
+```
+
+A body can come from `--content`, from any file you can read with
+`-F/--body-file <file>` (as with `gh --body-file` and `git commit -F`), or
+from stdin with `-F -`:
+
+```bash
+backlog create "Release notes" -F - <<'EOF'
+## What changed
+EOF
+```
 
 `serve` runs the HTTP server in the foreground instead of detached — useful
 for local debugging or running without an MCP client. The daemon binds to

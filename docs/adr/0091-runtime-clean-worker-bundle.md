@@ -4,6 +4,10 @@ date: 2026-03-26
 status: Accepted
 ---
 
+> **2026-09-28:** §1 (`resolveSourcePath` in `ToolDeps`) is retired. ADR 0106.5 R8
+> removed its MCP consumers, and ADR 0134.1 R3.2 deleted it. §2 (`readLocalFile`)
+> and the capability-injection principle stand.
+
 # 0091. Runtime-Clean Worker Bundle — Capability Injection Pattern
 
 ## Problem Statement
