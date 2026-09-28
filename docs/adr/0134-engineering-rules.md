@@ -250,6 +250,10 @@ Paths are relative to `packages/server/src/`.
 
 ## Current state
 
+> **Superseded by [0134.1](0134.1-enforcing-the-engineering-rules.md) §Audit.**
+> This table came from quick greps and undercounts (core has 37 outward
+> imports, not about 20). The allowlist in `architecture.test.ts` is the
+> source of truth.
 Audit of `packages/server/src` at `c460830`. These are the allowlist entries
 for R6.2.
 
