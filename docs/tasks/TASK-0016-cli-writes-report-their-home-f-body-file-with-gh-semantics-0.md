@@ -8,8 +8,13 @@ evidence:
   - >-
     E2E with the built CLI: a /tmp draft via -F, a heredoc via -F -, and
     --content with -F rejected (only one body input).
+  - >-
+    Follow-up fix in 0.76.1 (ad74442): help fell back to backlog-mcp under
+    wrapper-script bins (mise/aube, npm on Windows); the fallback is now
+    backlog. Verified with a shell shim (Usage: backlog) and a symlink (Usage:
+    backlog-mcp).
 created_at: '2026-09-28T22:38:06.954Z'
-updated_at: '2026-09-28T22:38:32.636Z'
+updated_at: '2026-09-28T22:58:00.673Z'
 type: task
 ---
 An agent session couldn't pass a `/tmp` draft to `backlog create --source`: the
