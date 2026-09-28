@@ -111,8 +111,9 @@ describe('CLI program name', function describeProgramName() {
     expect(cliProgramName('/usr/local/bin/backlog-mcp')).toBe('backlog-mcp');
   });
 
-  it('falls back to the package name for direct entry runs', function fallsBack() {
-    expect(cliProgramName('/pkg/dist/cli/index.mjs')).toBe('backlog-mcp');
-    expect(cliProgramName(undefined)).toBe('backlog-mcp');
+  it('falls back to backlog when the bin name is lost (wrapper scripts, direct runs)', function fallsBack() {
+    // mise/aube and npm-on-Windows wrappers exec node on the real entry path.
+    expect(cliProgramName('/opt/mise/.mise/backlog-mcp@0.76.0/node_modules/backlog-mcp/dist/cli/index.mjs')).toBe('backlog');
+    expect(cliProgramName(undefined)).toBe('backlog');
   });
 });

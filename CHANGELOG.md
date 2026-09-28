@@ -13,6 +13,18 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+## [0.76.1] — 2026-09-28
+
+*A small fix: help names the documented `backlog` command even when an
+installer's wrapper script hides the name you typed. The viewer remains at
+0.66.0.*
+
+### Fixed
+- **Help shows `Usage: backlog` under wrapper-script installs.** mise (aube) and
+  npm on Windows install bins as scripts that run `node …/dist/cli/index.mjs`,
+  so the typed name never reaches the CLI and help fell back to `backlog-mcp`.
+  The fallback is now `backlog`, the documented name. Symlinked bins still show
+  the name you typed.
 ## [0.76.0] — 2026-09-28
 
 *This release makes every write say where it landed, over the CLI and MCP
