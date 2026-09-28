@@ -3,7 +3,7 @@ import type { AnyEntity } from '@backlog-mcp/shared';
 import type { UnifiedSearchResult } from '@backlog-mcp/memory/search';
 import { projectHomeProvenance } from '../core/home-provenance.js';
 import type { HomeProvenance } from '../core/home-provenance.types.js';
-import type { AppRequestRuntime } from './app-request-runtime.types.js';
+import type { AppRequestRuntime } from '../composition/app-request-runtime.types.js';
 
 /**
  * Return provenance only for a request-selected docs-native home.

@@ -21,8 +21,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import { createBacklogHome } from '../core/backlog-home.js';
 import { isNorthStarFilename } from '../core/orientation.js';
-import { createLocalAppRequestRuntime } from '../server/local-app-request-runtime.js';
-import { createWakeupGroundingReader } from '../server/wakeup-grounding.js';
+import { createLocalAppRequestRuntime } from '../composition/local-app-request-runtime.js';
+import { createWakeupGroundingReader } from '../composition/wakeup-grounding.js';
 import {
   countCommitsAhead,
   resolveGitFamily,

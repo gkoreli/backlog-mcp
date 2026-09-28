@@ -115,7 +115,6 @@ describe('get --context parity (report 0010 F3)', () => {
       usageTracker: localRuntime.usageTracker,
       operationLogger: localRuntime.operationLogger,
       readIdentity: () => undefined,
-      resolveSourcePath: (sourcePath) => sourcePath,
       close: async () => {},
     };
   });

@@ -11,7 +11,7 @@ import {
   CANDIDATE_FILE_MAX_BYTES,
   createDeskDocumentsReader,
   createEvaluationCandidatesReader,
-} from '../server/desk-grounding.js';
+} from '../composition/desk-grounding.js';
 
 const HOME = { root: '/repo', documentsDir: '/repo/docs' };
 

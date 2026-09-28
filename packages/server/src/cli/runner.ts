@@ -14,8 +14,8 @@ import type {
   HomeReadSelection,
 } from '../core/home-read-coordinator.types.js';
 import { asAgentActor, envActor } from '../operations/logger.js';
-import { createLocalAppRequestRuntime } from '../server/local-app-request-runtime.js';
-import { validateLocalRuntimeSelection } from '../server/local-runtime-request-resolver.js';
+import { createLocalAppRequestRuntime } from '../composition/local-app-request-runtime.js';
+import { validateHomeSelection } from '../core/backlog-home-selection.js';
 import { resolveGitFamily } from '../storage/local/git-family.js';
 import {
   createLocalRuntime,
@@ -64,7 +64,7 @@ async function createDocsNativeCliRuntime(
   const explicitSelection = deps.home === undefined
     && deps.projectRoot === undefined
     ? undefined
-    : validateLocalRuntimeSelection({
+    : validateHomeSelection({
       home: deps.home,
       projectRoot: deps.projectRoot,
     });
@@ -105,11 +105,6 @@ async function createDocsNativeCliRuntime(
   }
 
   const appRuntime = adaptLocalRuntime(localRuntime);
-  const sourceResolver = appRuntime.resolveSourcePath;
-  if (sourceResolver === undefined) {
-    await localRuntime.stop();
-    throw new Error('Docs-native CLI runtime has no source-path resolver');
-  }
   const identityPath = appRuntime.identityPath;
   const visionPath = appRuntime.visionPath;
   const actor = deps.actor?.() ?? envActor();
@@ -155,7 +150,6 @@ async function createDocsNativeCliRuntime(
       ? {}
       : { readGrounding: appRuntime.readGrounding }),
     getSourcePath: appRuntime.getSourcePath,
-    resolveSourcePath: sourceResolver,
     close: async function closeDocsNativeRuntime(): Promise<void> {
       await localRuntime.stop();
     },

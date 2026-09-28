@@ -15,10 +15,8 @@ import {
   createLocalRuntime,
   type LocalRuntime,
 } from '../storage/local/local-runtime.js';
-import {
-  LocalRuntimeRequestResolver,
-  validateLocalRuntimeSelection,
-} from '../server/local-runtime-request-resolver.js';
+import { LocalRuntimeRequestResolver } from '../server/local-runtime-request-resolver.js';
+import { validateHomeSelection } from '../core/backlog-home-selection.js';
 
 class FakeDocsTreeWatcher implements DocsTreeWatcher {
   async subscribe(
@@ -56,13 +54,13 @@ function createResolver(name: string): LocalRuntimeRequestResolver {
   );
 }
 
-describe('validateLocalRuntimeSelection', function describeSelectionValidation() {
+describe('validateHomeSelection', function describeSelectionValidation() {
   it('defaults an unscoped detached-server request to global', function defaultsGlobal() {
-    expect(validateLocalRuntimeSelection()).toEqual({ home: 'global' });
+    expect(validateHomeSelection()).toEqual({ home: 'global' });
   });
 
   it('infers project selection from an explicit project root', function infersProject() {
-    expect(validateLocalRuntimeSelection({
+    expect(validateHomeSelection({
       projectRoot: '/workspace/project',
     })).toEqual({
       home: 'project',
@@ -72,16 +70,16 @@ describe('validateLocalRuntimeSelection', function describeSelectionValidation()
 
   it('rejects ambiguous or contradictory selections', function rejectsInvalidSelection() {
     expect(function selectProjectWithoutRoot() {
-      validateLocalRuntimeSelection({ home: 'project' });
+      validateHomeSelection({ home: 'project' });
     }).toThrow(/requires an explicit project root/);
     expect(function selectGlobalWithRoot() {
-      validateLocalRuntimeSelection({
+      validateHomeSelection({
         home: 'global',
         projectRoot: '/workspace/project',
       });
     }).toThrow(/cannot be combined/);
     expect(function selectUnknownHome() {
-      validateLocalRuntimeSelection({ home: 'elsewhere' });
+      validateHomeSelection({ home: 'elsewhere' });
     }).toThrow(/expected "global" or "project"/);
   });
 });

@@ -9,7 +9,7 @@ import {
   defaultHomeLabel,
   recentHomesManifestPath,
 } from '../storage/local/recent-homes-store.js';
-import { createLocalAppRequestRuntime } from './local-app-request-runtime.js';
+import { createLocalAppRequestRuntime } from '../composition/local-app-request-runtime.js';
 import { LocalRuntimeRequestResolver } from './local-runtime-request-resolver.js';
 import { createNodeApp } from './node-app.js';
 import type {

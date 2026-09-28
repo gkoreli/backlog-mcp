@@ -137,7 +137,6 @@ describe('CLI --as agent attribution (ADR 0119 Slice A)', () => {
         ],
       } as unknown as MemoryComposer,
       readIdentity: () => undefined,
-      resolveSourcePath: (p: string) => p,
       close: async () => {},
     } as unknown as CliRuntime;
 

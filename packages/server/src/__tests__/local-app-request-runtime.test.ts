@@ -18,7 +18,7 @@ import type {
 import { createLocalRuntime } from '../storage/local/local-runtime.js';
 import {
   createLocalAppRequestRuntime,
-} from '../server/local-app-request-runtime.js';
+} from '../composition/local-app-request-runtime.js';
 
 class FakeDocsTreeWatcher implements DocsTreeWatcher {
   async subscribe(
@@ -107,27 +107,19 @@ describe('createLocalAppRequestRuntime', function describeLocalAppRuntime() {
     await runtime.stop();
   });
 
-  it('rejects source paths outside the selected home and symlink escapes', async function scopesSourcePaths() {
-    const runtime = createRuntime('source-path');
+  it('rejects documents-tree reads that escape through a symlink', async function scopesSymlinkEscapes() {
+    const runtime = createRuntime('symlink-escape');
     await runtime.start();
-    const inside = join(runtime.home.root, 'input.md');
-    const outsideDirectory = join(tmpdir(), 'source-path-outside');
+    const outsideDirectory = join(tmpdir(), 'symlink-escape-outside');
     mkdirSync(outsideDirectory, { recursive: true });
-    writeFileSync(inside, 'inside source');
-    writeFileSync(join(outsideDirectory, 'outside.md'), 'outside source');
+    writeFileSync(join(outsideDirectory, 'outside.md'), 'outside');
     symlinkSync(
       outsideDirectory,
-      join(runtime.home.root, 'linked-outside'),
+      join(runtime.home.documentsDir, 'linked-outside'),
     );
     const appRuntime = createLocalAppRequestRuntime(runtime);
 
-    expect(appRuntime.resolveSourcePath?.('input.md')).toBe('inside source');
-    expect(function readOutsideHome() {
-      appRuntime.resolveSourcePath?.(join(outsideDirectory, 'outside.md'));
-    }).toThrow(/inside backlog home/);
-    expect(function readSymlinkEscape() {
-      appRuntime.resolveSourcePath?.('linked-outside/outside.md');
-    }).toThrow(/inside backlog home/);
+    expect(appRuntime.readLocalFile?.('linked-outside/outside.md')).toBeNull();
 
     await runtime.stop();
   });

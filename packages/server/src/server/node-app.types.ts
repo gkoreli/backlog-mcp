@@ -3,7 +3,7 @@ import type { ReleaseStatus } from '../core/installed-version.js';
 import type {
   AppRequestRuntime,
   AppRequestRuntimeResolver,
-} from './app-request-runtime.types.js';
+} from '../composition/app-request-runtime.types.js';
 
 /** Construction options for the Node Hono application graph. */
 export interface CreateNodeAppOptions {

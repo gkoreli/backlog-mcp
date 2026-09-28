@@ -14,7 +14,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createBacklogHome } from '../core/backlog-home.js';
-import { createWakeupGroundingReader } from '../server/wakeup-grounding.js';
+import { createWakeupGroundingReader } from '../composition/wakeup-grounding.js';
 import {
   countCommitsBehind,
   resolveGitFamily,

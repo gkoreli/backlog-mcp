@@ -76,9 +76,6 @@ function createRuntime(): CliRuntime {
     readIdentity: function readIdentity() {
       return undefined;
     },
-    resolveSourcePath: vi.fn(function resolveSourcePath(sourcePath) {
-      return `selected home content: ${sourcePath}`;
-    }),
     close: async function close(): Promise<void> {},
   };
 }
@@ -118,7 +115,6 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
       '/workspace/repo',
     ]);
 
-    expect(runtime.resolveSourcePath).not.toHaveBeenCalled();
     expect(mocks.createEntity).toHaveBeenCalledWith(
       runtime.service,
       expect.objectContaining({
@@ -345,9 +341,6 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
       operationLogger: localRuntime.operationLogger,
       readIdentity: function readIdentity() {
         return undefined;
-      },
-      resolveSourcePath: function resolveSourcePath(sourcePath) {
-        return sourcePath;
       },
       close: async function close(): Promise<void> {
         await localRuntime.stop();

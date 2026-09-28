@@ -29,7 +29,7 @@ import type {
   AppRequestRuntime,
   AppRequestRuntimeResolver,
   AppRequestRuntimeSelection,
-} from './app-request-runtime.types.js';
+} from '../composition/app-request-runtime.types.js';
 import {
   getHomeProvenance,
   withEntityHomeProvenance,

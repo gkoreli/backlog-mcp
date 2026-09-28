@@ -1,3 +1,8 @@
+/**
+ * Adapt one started local runtime into the per-home service bundle every
+ * adapter shares: HTTP, MCP (through `ToolDeps`), and the CLI (ADR 0134.1 R3).
+ * Transport policy stays out of it (ADR 0134 R2.6).
+ */
 import {
   readFileSync,
   realpathSync,
@@ -48,18 +53,6 @@ function createReadLocalFile(runtime: LocalRuntime) {
   };
 }
 
-function createResolveSourcePath(runtime: LocalRuntime) {
-  return function resolveSourcePath(sourcePath: string): string {
-    const contained = containedFile(runtime.home.root, sourcePath);
-    if (contained === undefined) {
-      throw new Error(
-        `Source path must be a file inside backlog home ${runtime.home.root}: ${sourcePath}`,
-      );
-    }
-    return readFileSync(contained, 'utf-8');
-  };
-}
-
 /** Adapt one started local runtime to the dependencies consumed by Hono. */
 export function createLocalAppRequestRuntime(
   runtime: LocalRuntime,
@@ -80,7 +73,6 @@ export function createLocalAppRequestRuntime(
     usageTracker: runtime.usageTracker,
     resourceManager: runtime.resourceManager,
     readLocalFile: createReadLocalFile(runtime),
-    resolveSourcePath: createResolveSourcePath(runtime),
     getSourcePath: function getSourcePath(id) {
       return runtime.storage.getDocumentById(id)?.sourcePath;
     },

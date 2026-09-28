@@ -3,7 +3,7 @@ import {
   BACKLOG_HOME_HEADER,
   BACKLOG_PROJECT_ROOT_HEADER,
 } from '../core/backlog-home.js';
-import type { AppRequestRuntimeSelection } from '../server/app-request-runtime.types.js';
+import type { AppRequestRuntimeSelection } from '../composition/app-request-runtime.types.js';
 import { createApp } from '../server/hono-app.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';

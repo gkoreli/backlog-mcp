@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { LocalEventBus } from '../events/local-event-bus.js';
 import { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import { createOperationLogger } from '../operations/logger.js';
-import type { AppRequestRuntime } from '../server/app-request-runtime.types.js';
+import type { AppRequestRuntime } from '../composition/app-request-runtime.types.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
 import {
@@ -96,9 +96,6 @@ function adaptFakeLocalRuntime(runtime: LocalRuntime): AppRequestRuntime {
     },
     getSourcePath: function getSourcePath(id) {
       return `tasks/${id}.md`;
-    },
-    resolveSourcePath: function resolveProjectSource(sourcePath) {
-      return `project source: ${sourcePath}`;
     },
     identityPath: '/workspace/repo/docs/identity.md',
   };
@@ -203,9 +200,6 @@ describe('direct CLI invocation runtime', function describeCliRuntime() {
     });
     expect(selected.getSourcePath?.('TASK-0001')).toBe(
       'tasks/TASK-0001.md',
-    );
-    expect(selected.resolveSourcePath('input.md')).toBe(
-      'project source: input.md',
     );
     expect(selected.mintMemoryEntry).toBeTypeOf('function');
     expect(selected.usageTracker).toBeInstanceOf(MemoryUsageTracker);

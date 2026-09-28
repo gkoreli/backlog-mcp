@@ -11,7 +11,7 @@ import type { WakeupGrounding, WriteContext } from '../core/types.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import type { OperationLogger } from '../operations/logger.js';
 import type { Actor } from '../core/operation-log.contract.js';
-import type { AppRequestRuntime } from '../server/app-request-runtime.types.js';
+import type { AppRequestRuntime } from '../composition/app-request-runtime.types.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
 
@@ -34,7 +34,6 @@ export interface CliRuntime {
   /** First-impression grounding reader (charter Slices A/B). */
   readGrounding?: () => WakeupGrounding | undefined;
   getSourcePath?: (id: string) => string | undefined;
-  resolveSourcePath: (sourcePath: string) => string;
   close: () => Promise<void>;
 }
 

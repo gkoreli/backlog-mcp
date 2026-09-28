@@ -13,7 +13,7 @@ import type {
   AppRequestRuntime,
   AppRequestRuntimeResolver,
   AppRequestRuntimeSelection,
-} from '../server/app-request-runtime.types.js';
+} from '../composition/app-request-runtime.types.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 
 const SHARED_ID = 'TASK-0001';

@@ -46,7 +46,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import { createBacklogHome, type BacklogHome } from '../core/backlog-home.js';
 import { createLocalRuntime, type LocalRuntime } from '../storage/local/local-runtime.js';
-import { createWakeupGroundingReader } from '../server/wakeup-grounding.js';
+import { createWakeupGroundingReader } from '../composition/wakeup-grounding.js';
 import { registerBacklogWakeupTool } from '../tools/backlog-wakeup.js';
 
 type ToolHandler = (params: Record<string, unknown>) => Promise<{ content: Array<{ text: string }> }>;

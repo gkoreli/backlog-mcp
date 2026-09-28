@@ -111,8 +111,5 @@ export const KNOWN_VIOLATIONS: Readonly<Record<string, readonly string[]>> = {
   'infrastructure-adapter': [
   ],
   'adapter-adapter': [
-    'cli/runner.ts -> ../server/local-app-request-runtime.js',
-    'cli/runner.ts -> ../server/local-runtime-request-resolver.js',
-    'cli/runner.types.ts -> ../server/app-request-runtime.types.js',
   ],
 };
