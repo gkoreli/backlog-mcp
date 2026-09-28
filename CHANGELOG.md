@@ -13,6 +13,12 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+## [0.76.0] — 2026-09-28
+
+*This release makes every write say where it landed, over the CLI and MCP
+alike, so an agent never has to guess which home or file it changed. The
+viewer remains at 0.66.0.*
+
 ### Added
 - **Every write says where it landed.** `update`, `delete`, `edit`, and
   `remember` now print the same second line as `create`, e.g.
