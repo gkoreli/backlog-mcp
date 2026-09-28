@@ -1,10 +1,14 @@
 ---
 id: TASK-0020
 title: Run CI on pushes to main
-status: open
+status: done
 parent_id: EPIC-0002
+evidence:
+  - >-
+    Commit 1b0aa20. First push-triggered CI run 36493718876 on 40e782a: success.
+    memory 4, viewer 17, server 117 test files passed on Node 24.
 created_at: '2026-09-28T22:38:11.453Z'
-updated_at: '2026-09-28T22:38:11.453Z'
+updated_at: '2026-09-28T22:41:19.793Z'
 type: task
 ---
 `ci.yml` ran only on pull requests, but fixes land directly on main
