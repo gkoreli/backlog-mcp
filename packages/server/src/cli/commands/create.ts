@@ -83,13 +83,15 @@ export function withCreateProvenance(
   };
 }
 
+/**
+ * Mention routing only when it chose a parent for you (`in EPIC-0001 via
+ * session`). Nothing chosen (`default` with no parent) is the common case
+ * and prints nothing extra. `--json` still carries `routed_by`.
+ */
 function formatRouting(result: CreateResult): string {
-  if (result.routed_by === undefined) {
-    return result.parent_id === undefined
-      ? `Created ${result.id}`
-      : `Created ${result.id} in ${result.parent_id}`;
-  }
-  return `Created ${result.id} (${result.routed_by} → ${result.parent_id ?? 'unfiled'})`;
+  if (result.parent_id === undefined) return `Created ${result.id}`;
+  const via = result.routed_by === undefined ? '' : ` via ${result.routed_by}`;
+  return `Created ${result.id} in ${result.parent_id}${via}`;
 }
 
 function displaySourcePath(
@@ -109,7 +111,7 @@ function displaySourcePath(
 }
 
 /**
- * The first line is unchanged (`Created ID …`) so scripts that parse it keep
+ * The first line starts with `Created ID` so scripts that parse it keep
  * working. The second line names the home: a project home can be selected
  * implicitly by a conventional `docs/` (ADR 0112 R-2 step 5), so the write
  * says where it landed instead of leaving the caller to guess.

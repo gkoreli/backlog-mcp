@@ -75,7 +75,7 @@ describe('CLI create home provenance', function describeProvenance() {
       source_path: 'tasks/TASK-0001-x.md',
     }, { root: '/work/repo', documentsDir: '/work/repo/docs' });
     expect(text.split('\n')).toEqual([
-      'Created TASK-0001 (default → unfiled)',
+      'Created TASK-0001',
       '  project home /work/repo: docs/tasks/TASK-0001-x.md',
     ]);
   });
@@ -88,6 +88,11 @@ describe('CLI create home provenance', function describeProvenance() {
       source_path: 'tasks/TASK-0004-y.md',
     }, { root: '/work/repo', documentsDir: '/elsewhere/docs' }))
       .toBe('Created TASK-0004\n  project home /work/repo: /elsewhere/docs/tasks/TASK-0004-y.md');
+  });
+
+  it('mentions routing only when it chose a parent', function formatsRouted() {
+    expect(formatCreateResult({ id: 'TASK-0005', parent_id: 'EPIC-0001', routed_by: 'session' }))
+      .toBe('Created TASK-0005 in EPIC-0001 via session');
   });
 
   it('names the global home', function formatsGlobal() {

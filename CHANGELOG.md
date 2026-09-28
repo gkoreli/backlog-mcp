@@ -24,7 +24,10 @@ begins at 0.57.0 — earlier history lives in git.
   the home and the file, e.g. `project home ~/code/app: docs/tasks/TASK-0001-….md`,
   because a project home can be selected just by having a `docs/` folder
   (ADR 0112 R-2). `--json` gains additive `home`, `home_id`, `display_path`,
-  and `source_path` fields (ADR 0112 R-9 provenance). The first line is unchanged.
+  and `source_path` fields (ADR 0112 R-9 provenance).
+- **Quieter create output.** The `(default → unfiled)` suffix is gone. Routing
+  is mentioned only when it picked a parent for you:
+  `Created TASK-0005 in EPIC-0001 via session`. `--json` still has `routed_by`.
 - **Help and usage show the bin you ran** (`backlog` or `backlog-mcp`)
   instead of always `backlog-mcp`.
 
