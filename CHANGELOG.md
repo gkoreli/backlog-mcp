@@ -13,6 +13,21 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+### Added
+- **`backlog create --source -` reads the body from stdin.** Content that lives
+  outside the selected home (e.g. a draft in `/tmp`) can be piped in:
+  `backlog create "Title" --source - < /tmp/draft.md`. File sources stay
+  contained to the home, as before.
+
+### Changed
+- **`backlog create` says where the item landed.** A second output line names
+  the home and the file, e.g. `project home ~/code/app: docs/tasks/TASK-0001-….md`,
+  because a project home can be selected just by having a `docs/` folder
+  (ADR 0112 R-2). `--json` gains additive `home`, `home_id`, `display_path`,
+  and `source_path` fields (ADR 0112 R-9 provenance). The first line is unchanged.
+- **Help and usage show the bin you ran** (`backlog` or `backlog-mcp`)
+  instead of always `backlog-mcp`.
+
 ## [0.74.1] — 2026-09-09
 
 *This release makes managed creation safer and agent-facing contracts clearer:

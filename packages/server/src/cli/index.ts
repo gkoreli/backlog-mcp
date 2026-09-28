@@ -20,9 +20,10 @@ import { registerForget } from './commands/forget.js';
 import { registerConsolidation } from './commands/consolidation.js';
 import { registerContradictions } from './commands/contradictions.js';
 import { registerMigrateDocsNative } from './commands/migrate-docs-native.js';
+import { cliProgramName } from './program-name.js';
 
 const program = new Command()
-  .name('backlog-mcp')
+  .name(cliProgramName(process.argv[1]))
   .description('Task management MCP server')
   .version(paths.getVersion())
   .option('--json', 'Output as JSON')
