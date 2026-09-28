@@ -13,6 +13,12 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+## [0.75.0] — 2026-09-28
+
+*This release makes the CLI tell you where writes land and lets it read content
+from anywhere you can, the way `gh` and `git` do, so agents and scripts stop
+guessing which home they wrote to. The viewer remains at 0.66.0.*
+
 ### Added
 - **`backlog create -F/--body-file <file>` reads the body from any file you
   can read, or from stdin with `-`**, the same convention as
