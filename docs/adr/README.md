@@ -20,6 +20,7 @@ An ADR documents an important architectural decision along with its context and 
 
 ## Active ADRs
 
+- [0134. Engineering rules](./0134-engineering-rules.md) **[Proposed]** - Binding rules for layers and dependency direction, the domain model (ubiquitous language, one write path, transport policy in the transport), boundary contracts, file design, and a ratcheted architecture test. Lists current violations and a phased migration. - 2026-09-28
 - [0133. Atomic document creation](./0133-atomic-document-creation.md) **[Released in 0.74.1]** - One repository creation operation, fresh write authority under a home-local lock, and a separate cached read model. Worktree-family allocation remains open. - 2026-09-08
 - [0132. Preserve intent parents and registry-defined memory provenance](./0132-write-intent-parent-and-memory-provenance.md) **[Released in 0.74.1]** - Fixes supplied-parent routing and validates memory provenance using the selected home's identity declarations. - 2026-09-08
 - [0131. Release Awareness and Self-Restart](./0131-release-awareness-and-self-restart.md) **[Accepted (goga) — shipped 0.74.0]** - System Information compares the running daemon with the install on disk and restarts it through the existing drain-then-handover; mutating control routes accept loopback origins only. - 2026-09-01

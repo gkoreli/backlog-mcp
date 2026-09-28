@@ -79,6 +79,8 @@ vi.mock('../storage/backlog.js', () => ({
 
 ## Code Style
 
+Binding engineering rules (layers, ports, DDD, boundaries, enforcement) are in
+[ADR 0134](docs/adr/0134-engineering-rules.md). The bullets below are a summary.
 - **`index.ts` files are barrel exports only** — never put implementation in `index.ts`
 - **No re-exporting between packages** — import from the source package directly
 - **Minimal code** — only what's needed to solve the problem
