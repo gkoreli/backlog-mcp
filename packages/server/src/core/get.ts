@@ -12,6 +12,8 @@ import { parseDocumentAddress } from './document-address.js';
 import type { RetrievalUsage } from './memory-usage.contract.js';
 import { recordGetUsage } from './get-usage.js';
 
+type DocumentReadCapabilities = Pick<IBacklogService, 'getMarkdown' | 'getResource' | 'getSync' | 'scanSync' | 'searchUnified' | 'listDisclosureRelations'>;
+
 interface GetContextDeps {
   /** Builtin-narrowed deps for the ADR 0114 relational expansion. */
   compose: ComposeContextDeps;
@@ -24,7 +26,7 @@ interface GetContextDeps {
  * Remote services (D1) implement neither getSync nor listSync — context
  * expansion degrades gracefully to none rather than throwing (ADR 0114).
  */
-function contextDeps(service: IBacklogService): GetContextDeps | null {
+function contextDeps(service: DocumentReadCapabilities): GetContextDeps | null {
   const getSync = service.getSync?.bind(service);
   const listSync = service.scanSync?.bind(service);
   if (!getSync || !listSync) return null;
@@ -53,7 +55,7 @@ function contextDeps(service: IBacklogService): GetContextDeps | null {
   };
 }
 
-async function fetchItem(id: string, service: IBacklogService, deps: GetContextDeps | null, depth: number): Promise<GetItem> {
+async function fetchItem(id: string, service: DocumentReadCapabilities, deps: GetContextDeps | null, depth: number): Promise<GetItem> {
   // One address grammar for ids, root-relative paths, and resource URIs
   // (ADR 0129.1): paths ride the same resource lane as their mcp:// form so
   // wakeup's advertised paths open with a plain `get`.
@@ -92,7 +94,7 @@ async function fetchItem(id: string, service: IBacklogService, deps: GetContextD
 }
 
 /** Retrieve entity/resource bodies and optionally record the caller's retrieval usage. */
-export async function getItems(service: IBacklogService, params: GetParams, usage?: RetrievalUsage): Promise<GetResult> {
+export async function getItems(service: DocumentReadCapabilities, params: GetParams, usage?: RetrievalUsage): Promise<GetResult> {
   if (params.ids.length === 0) throw new ValidationError('Required: id');
   const deps = params.context ? contextDeps(service) : null;
   const depth = params.depth ?? 1;

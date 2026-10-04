@@ -373,10 +373,11 @@ export interface WakeupParams {
   }>;
   /**
    * Mint read-side memory metadata through the selected home's store.
-   * Project runtimes inject their local usage overlay; omitted callers use
-   * a frontmatter-backed store over the supplied service.
+   * Project runtimes inject their local usage overlay and accept the shared
+   * observation time; older one-argument projections remain structurally valid.
+   * Omitted callers use frontmatter with the supplied operation time.
    */
-  mintMemoryEntry?: (memory: Memory) => MemoryEntry;
+  mintMemoryEntry?: (memory: Memory, now?: number) => MemoryEntry;
   /**
    * The ladder-resolved ambient agent identity (ADR 0119.1) — plain data
    * injected by the composition (same discipline as readIdentity: the

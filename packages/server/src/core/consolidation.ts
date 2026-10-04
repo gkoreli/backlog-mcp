@@ -16,12 +16,10 @@ import { isMemoryLive } from './memory-validity.js';
  * accumulating their story.
  */
 
-import { readEntityCorpus } from './entity-corpus.js';
+import { readMemoryAnalysisView, type MemoryAnalysisReader } from './memory-analysis.js';
 
-import type { Entity, Memory } from '@backlog-mcp/shared';
-import { EntityType } from '@backlog-mcp/shared';
-import type { IBacklogService } from './backlog-service.contract.js';
-import { findCollisionCandidatePairs } from './collision-candidates.js';
+import type { Memory } from '@backlog-mcp/shared';
+import { collisionPairsInView } from './collision-candidates.js';
 import {
   ValidationError,
   type ConsolidationParams,
@@ -42,10 +40,9 @@ export interface ConsolidationDeps {
   /** Raw lines of memory-usage.jsonl (ADR 0092.9 R-16). Absent → demand 0. */
   readUsageLines?: () => string[];
   /**
-   * Clock (epoch ms). Absent → Date.now(). Injected so age/demand-window
-   * math is testable against frozen fixtures (ADR 0115 R-3).
+   * Observation time (epoch ms), sampled once by the caller (ADR 0136).
    */
-  now?: number;
+  now: number;
 }
 
 /**
@@ -55,9 +52,9 @@ export interface ConsolidationDeps {
  */
 export function demandCounts(
   lines: string[],
-  opts: { windowDays?: number; now?: number } = {},
+  opts: { windowDays?: number; now: number },
 ): Map<string, number> {
-  const now = opts.now ?? Date.now();
+  const now = opts.now;
   const windowMs = (opts.windowDays ?? DEFAULT_DEMAND_WINDOW_DAYS) * MS_PER_DAY;
   const counts = new Map<string, number>();
   for (const line of lines) {
@@ -96,14 +93,14 @@ function bucketKeyOf(m: Memory): string {
 export function bucketEpisodics(
   episodics: Memory[],
   opts: {
-    minCount: number; minAgeDays: number; maxDigests: number; now?: number;
+    minCount: number; minAgeDays: number; maxDigests: number; now: number;
     /** Recall-demand per MEMO- id (ADR 0092.12). Absent → demand 0. */
     demand?: Map<string, number>;
     /** Demand threshold for the age-OR-demand ripeness gate. */
     minDemand?: number;
   },
 ): ConsolidationBundle[] {
-  const now = opts.now ?? Date.now();
+  const now = opts.now;
   const buckets = new Map<string, Memory[]>();
   for (const m of episodics) {
     const key = bucketKeyOf(m);
@@ -167,9 +164,9 @@ export function bucketEpisodics(
  * Read-only; safe to call from any transport.
  */
 export async function consolidationCandidates(
-  service: IBacklogService,
-  params: ConsolidationParams = {},
-  deps: ConsolidationDeps = {},
+  service: MemoryAnalysisReader,
+  params: ConsolidationParams,
+  deps: ConsolidationDeps,
 ): Promise<ConsolidationCandidatesResult> {
   const minCount = params.min_count ?? DEFAULT_MIN_COUNT;
   const minAgeDays = params.min_age_days ?? DEFAULT_MIN_AGE_DAYS;
@@ -180,11 +177,10 @@ export async function consolidationCandidates(
   if (minCount < 1) throw new ValidationError('min_count must be ≥ 1');
   if (minAgeDays < 0) throw new ValidationError('min_age_days must be ≥ 0');
 
-  const now = deps.now ?? Date.now();
+  const now = deps.now;
   const demand = demandCounts(deps.readUsageLines?.() ?? [], { now });
-  const all = await readEntityCorpus(service, { type: EntityType.Memory });
-  const episodics = all
-    .map(e => e as Entity as Memory)
+  const view = await readMemoryAnalysisView(service, now);
+  const episodics = view.memories
     .filter(m => isConsolidatableEpisodic(m, now))
     .filter(m => params.context === undefined || m.parent_id === params.context);
 
@@ -195,9 +191,8 @@ export async function consolidationCandidates(
     .flatMap(function bundleMembers(bundle) { return bundle.member_ids; });
   const collisionCandidates = ripeMemberIds.length === 0
     ? []
-    : (await findCollisionCandidatePairs(service, {
+    : (await collisionPairsInView(service, view, {
         focalIds: ripeMemberIds,
-        now,
       })).pairs;
 
   return {

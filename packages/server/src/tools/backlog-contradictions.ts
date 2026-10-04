@@ -18,6 +18,7 @@ import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 export function registerBacklogContradictionsTool(
   server: McpServer,
   service: IBacklogService,
+  deps?: { clock?: () => number },
 ): void {
   server.registerTool(
     'backlog_contradictions',
@@ -34,10 +35,11 @@ export function registerBacklogContradictionsTool(
         candidates: z.boolean().optional().describe('Return semantic collision candidates instead of structural state_key contradictions.'),
       }),
     },
-    async (params) => {
+    async function analyze(params) {
+      const now = (deps?.clock?.() ?? Date.now());
       const result = params.candidates === true
-        ? await findCollisionCandidatePairs(service)
-        : await detectContradictions(service);
+        ? await findCollisionCandidatePairs(service, { now })
+        : await detectContradictions(service, now);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     },
   );

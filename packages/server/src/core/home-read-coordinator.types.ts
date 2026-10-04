@@ -51,7 +51,7 @@ export interface HomeReadRuntime {
   readVision?: () => string | undefined;
   readGrounding?: WakeupParams['readGrounding'];
   readOperations?: WakeupParams['readOperations'];
-  mintMemoryEntry?: (memory: Memory) => MemoryEntry;
+  mintMemoryEntry?: (memory: Memory, now?: number) => MemoryEntry;
 }
 
 /** Resolve one explicitly selected home runtime for the current request. */

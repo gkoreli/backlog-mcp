@@ -19,7 +19,7 @@ import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
 export function registerBacklogConsolidationTool(
   server: McpServer,
   service: IBacklogService,
-  deps?: ConsolidationDeps,
+  deps?: Partial<ConsolidationDeps> & { clock?: () => number },
 ): void {
   server.registerTool(
     'backlog_consolidation_candidates',
@@ -40,7 +40,8 @@ export function registerBacklogConsolidationTool(
         max_digests: z.number().min(1).optional().describe('Max digest lines per bundle. Default: 10.'),
       }),
     },
-    async (params) => {
+    async function analyze(params) {
+      const now = deps?.now ?? (deps?.clock?.() ?? Date.now());
       try {
         const result = await consolidationCandidates(service, {
           ...(params.min_count !== undefined ? { min_count: params.min_count } : {}),
@@ -49,7 +50,7 @@ export function registerBacklogConsolidationTool(
           ...(params.context !== undefined ? { context: params.context } : {}),
           ...(params.limit !== undefined ? { limit: params.limit } : {}),
           ...(params.max_digests !== undefined ? { max_digests: params.max_digests } : {}),
-        }, deps ?? {});
+        }, { now, readUsageLines: deps?.readUsageLines?.bind(deps) });
         return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       } catch (e) {
         if (e instanceof ValidationError) {

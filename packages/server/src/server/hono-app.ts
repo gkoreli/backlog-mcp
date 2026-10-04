@@ -12,11 +12,10 @@ import matter from 'gray-matter';
 import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { IOperationLog, Actor } from '../core/operation-log.contract.js';
 import type { ToolDeps } from '../tools/index.js';
-import { detectContradictions, contradictsFor } from '../core/contradictions.js';
+import { detectContradictions } from '../core/contradictions.js';
 import { desk } from '../core/desk.js';
-import { findCollisionCandidatePairs, findCollisionCandidatesForMemory } from '../core/collision-candidates.js';
-import { usageSeries, hasUsage } from '../core/usage-series.js';
-import type { AnyEntity, Entity, Memory } from '@backlog-mcp/shared';
+import { findCollisionCandidatePairs } from '../core/collision-candidates.js';
+import { readEntityDetail, projectEntityUsage } from '../core/entity-detail.js';
 import {
   createAuthRuntime,
   registerMcpAuthMiddleware,
@@ -40,11 +39,9 @@ import {
   presentGlobalHome,
   presentProjectHome,
 } from '../core/home-presentation.js';
-import { asBuiltinEntity } from '../core/substrates/index.js';
 import { parseDocumentAddress, resolveDocumentUri } from '../core/document-address.js';
 import type { ReleaseStatus } from '../core/installed-version.js';
 import { isLoopbackOrigin } from './loopback-origin.js';
-import { memoryUsageFieldsFromEntry } from '../memory/memory-entry-usage.js';
 // Note: paths.ts and operations/index.ts are NOT imported here — they pull in
 // Node.js modules (import.meta.url, fs, path) that break the Workers bundle.
 // name/version and the MCP server wrapper are injected via AppDeps.
@@ -120,26 +117,6 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function withMintedMemoryUsage(
-  runtime: AppRequestRuntime,
-  entity: AnyEntity,
-): AnyEntity {
-  const builtin = asBuiltinEntity(entity);
-  if (
-    builtin?.type !== 'memory'
-    || runtime.mintMemoryEntry === undefined
-  ) {
-    return entity;
-  }
-
-  const memory = { ...builtin };
-  delete memory.usage_count;
-  delete memory.last_used_at;
-  const entry = runtime.mintMemoryEntry(builtin);
-  Object.assign(memory, memoryUsageFieldsFromEntry(entry));
-  return memory;
-}
-
 export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   const app = new Hono();
   const staticRuntime = createStaticRequestRuntime(service, deps);
@@ -209,72 +186,30 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     };
     const status = statusMap[filterParam] as any;
 
+    const now = (runtime.clock?.() ?? Date.now());
     const results = await runtime.service.list({ status, query: q || undefined, limit });
     return c.json(results.map(function addProvenance(result) {
       return withEntityHomeProvenance(
         runtime,
-        withMintedMemoryUsage(runtime, result),
+        projectEntityUsage(result, runtime.mintMemoryEntry?.bind(runtime), now),
       );
     }));
   });
 
   // GET /tasks/:id
-  app.get('/tasks/:id', async (c) => {
+  app.get('/tasks/:id', async function readTaskDetail(c) {
     const runtime = await resolveRequestRuntime(c.req);
-    const requestService = runtime.service;
-    const id = c.req.param('id');
-    const task = await requestService.get(id);
-    if (!task) return c.json({ error: 'Not found' }, 404);
-
-    const raw = await requestService.getMarkdown(id);
-    const children = (
-      await requestService.list({ parent_id: id, limit: 1000 })
-    ).map(function addProvenance(child) {
-      return withEntityHomeProvenance(runtime, child);
+    const now = (runtime.clock?.() ?? Date.now());
+    const detail = await readEntityDetail(runtime.service, c.req.param('id'), {
+      now, childLimit: 1000,
+      readUsageLines: runtime.readUsageLines?.bind(runtime),
+      mintMemoryEntry: runtime.mintMemoryEntry?.bind(runtime),
     });
-    let parentTitle: string | undefined;
-    const parentId = typeof task.parent_id === 'string'
-      ? task.parent_id
-      : undefined;
-    if (parentId) {
-      const parent = await requestService.get(parentId);
-      parentTitle = parent?.title;
-    }
-
-    // R-9 visibility (ADR 0092.13): if this is a memory whose state_key has
-    // other live holders, surface them so MetadataCard renders navigable
-    // links + a contradiction chip. Empty/absent for the no-conflict case.
-    let contradicts: string[] | undefined;
-    let collisionCandidates: Awaited<ReturnType<typeof findCollisionCandidatesForMemory>> | undefined;
-    // usage_series (ADR 0092.14): per-day touch counts from the JSONL, for the
-    // viewer sparkline. Node-only (reader injected); omitted if no activity.
-    let usage_series: number[] | undefined;
-    if ((task.type ?? 'task') === 'memory') {
-      const conflicts = await contradictsFor(requestService, task as Entity as Memory);
-      if (conflicts.length > 0) contradicts = conflicts;
-      try {
-        collisionCandidates = await findCollisionCandidatesForMemory(requestService, id);
-      } catch {
-        // Collision review is advisory. Search unavailability must not make
-        // the authoritative memory detail unreadable or claim a clean scan.
-      }
-      if (runtime.readUsageLines) {
-        const series = usageSeries(runtime.readUsageLines(), id);
-        if (hasUsage(series)) usage_series = series;
-      }
-    }
-
+    if (detail === undefined) return c.json({ error: 'Not found' }, 404);
+    const { entity, children, ...analysis } = detail;
     return c.json({
-      ...withEntityHomeProvenance(
-        runtime,
-        withMintedMemoryUsage(runtime, task),
-      ),
-      raw,
-      parentTitle,
-      children,
-      ...(contradicts ? { contradicts } : {}),
-      ...(collisionCandidates === undefined ? {} : { collision_candidates: collisionCandidates }),
-      ...(usage_series ? { usage_series } : {}),
+      ...withEntityHomeProvenance(runtime, entity), ...analysis,
+      children: children.map(function childProvenance(child) { return withEntityHomeProvenance(runtime, child); }),
     });
   });
 
@@ -333,9 +268,10 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   // GET /memory/contradictions — all contradiction sets (ADR 0092.13 R-9)
   app.get('/memory/contradictions', async (c) => {
     const runtime = await resolveRequestRuntime(c.req);
+    const now = (runtime.clock?.() ?? Date.now());
     const result = c.req.query('candidates') === 'true'
-      ? await findCollisionCandidatePairs(runtime.service)
-      : await detectContradictions(runtime.service);
+      ? await findCollisionCandidatePairs(runtime.service, { now })
+      : await detectContradictions(runtime.service, now);
     return c.json(result);
   });
 

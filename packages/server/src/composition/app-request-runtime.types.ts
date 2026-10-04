@@ -37,7 +37,7 @@ export interface AppRequestRuntime {
   scopeRoot?: string;
   eventBus?: EventBus;
   memoryComposer?: MemoryComposer;
-  mintMemoryEntry?: (memory: Memory) => MemoryEntry;
+  mintMemoryEntry?: (memory: Memory, now?: number) => MemoryEntry;
   usageTracker?: MemoryUsageTracker;
   resourceManager?: ResourceManager;
   readLocalFile?: (filePath: string) => string | null;

@@ -28,7 +28,7 @@ describe('complete entity corpus', function describeCompleteCorpus() {
     expect(await service.scan({ type: 'memory' })).toHaveLength(25);
     expect(service.scanSync({ type: 'memory' })).toHaveLength(25);
     expect(await store.size()).toBe(25);
-    expect((await detectContradictions(service)).groups).toHaveLength(1);
+    expect((await detectContradictions(service, Date.now())).groups).toHaveLength(1);
   });
 
   it('forgets an explicitly named older memory beyond the display page', async function forgetsOlderId() {

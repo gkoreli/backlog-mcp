@@ -69,8 +69,8 @@ export function createLocalAppRequestRuntime(
     ...(scopeRoot === undefined ? {} : { scopeRoot }),
     eventBus: runtime.eventBus,
     memoryComposer: runtime.memoryComposer,
-    mintMemoryEntry: function mintMemoryEntry(memory) {
-      return runtime.memoryStore.toMemoryEntry(memory);
+    mintMemoryEntry: function mintMemoryEntry(memory, now) {
+      return runtime.memoryStore.toMemoryEntry(memory, now);
     },
     usageTracker: runtime.usageTracker,
     resourceManager: runtime.resourceManager,

@@ -36,10 +36,10 @@ function touches(event: UsageEvent, id: string): boolean {
 export function usageSeries(
   lines: string[],
   id: string,
-  opts: { windowDays?: number; now?: number } = {},
+  opts: { windowDays?: number; now: number },
 ): number[] {
   const windowDays = opts.windowDays ?? DEFAULT_WINDOW_DAYS;
-  const now = opts.now ?? Date.now();
+  const now = opts.now;
   const buckets = new Array<number>(windowDays).fill(0);
 
   for (const line of lines) {
@@ -55,7 +55,8 @@ export function usageSeries(
     if (Number.isNaN(ts)) continue;
     const dayIndex = Math.floor((now - ts) / MS_PER_DAY); // 0 = most recent day
     if (dayIndex < 0 || dayIndex >= windowDays) continue;
-    buckets[windowDays - 1 - dayIndex]! += 1;
+    const index = windowDays - 1 - dayIndex;
+    buckets[index] = (buckets[index] ?? 0) + 1;
   }
   return buckets;
 }

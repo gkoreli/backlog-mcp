@@ -1,5 +1,5 @@
-import { MemoryComposer } from '@backlog-mcp/memory';
-import { EntityType } from '@backlog-mcp/shared';
+import { MemoryComposer, type MemoryEntry } from '@backlog-mcp/memory';
+import { EntityType, type Memory } from '@backlog-mcp/shared';
 import { Command } from 'commander';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -40,6 +40,7 @@ import { registerCreate } from '../cli/commands/create.js';
 import { registerRecall } from '../cli/commands/recall.js';
 import { registerSearch } from '../cli/commands/search.js';
 import { registerWakeup } from '../cli/commands/wakeup.js';
+import { registerRemember } from '../cli/commands/remember.js';
 import { registerContradictions } from '../cli/commands/contradictions.js';
 import { registerUpdate } from '../cli/commands/update.js';
 
@@ -75,6 +76,34 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
     mocks.run.mockReset();
     mocks.runAcrossHomes.mockReset();
     mocks.createEntity.mockReset();
+  });
+
+  it('passes one remember time through delayed storage and advisory analysis', async function rememberTime() {
+    const now = Date.parse('2026-10-04T00:00:00Z');
+    let clockTime = now;
+    const runtime = createRuntime();
+    const clock = vi.fn(function clock() { return clockTime; });
+    runtime.writeContext.clock = clock;
+    const focal: Memory = { id: 'MEMO-0001', title: 'Cache policy', content: 'Cache policy', type: 'memory', layer: 'semantic', parent_id: 'FLDR-0001', created_at: new Date(now).toISOString(), updated_at: new Date(now).toISOString(), valid_until: new Date(now + 1).toISOString() };
+    const neighbor = { ...focal, id: 'MEMO-0002' };
+    runtime.service.scan = vi.fn(async function scan() { return [focal, neighbor]; });
+    runtime.service.searchUnified = vi.fn(async function search() { return [focal, neighbor].map(item => ({ id: item.id, type: 'memory', item, score: 1 })); });
+    let entered = function unused() {}; let release = function unused() {};
+    const enteredPromise = new Promise<void>(resolve => { entered = resolve; });
+    const waiting = new Promise<void>(resolve => { release = resolve; });
+    const store = vi.spyOn(runtime.memoryComposer, 'store').mockImplementation(async function store(entry: MemoryEntry) {
+      entered(); await waiting; return { ...entry, id: focal.id };
+    });
+    let receipt: unknown;
+    mocks.run.mockImplementation(async function runSelected(handler: (runtime: CliRuntime) => Promise<unknown>) { receipt = await handler(runtime); });
+    const program = new Command().option('--json'); registerRemember(program);
+    const pending = program.parseAsync(['node', 'backlog', 'remember', 'Cache policy', '--title', 'Cache policy', '--context', 'FLDR-0001']);
+    await enteredPromise; clockTime = now + 1; release(); await pending;
+    expect(store.mock.calls[0]?.[0].createdAt).toBe(now);
+    expect(receipt).toMatchObject({ created_at: new Date(now).toISOString(), collision_candidates: [{ id: neighbor.id }] });
+    expect(clock).toHaveBeenCalledOnce(); expect(runtime.service.scan).toHaveBeenCalledOnce();
+    const rows = runtime.operationLogger.read();
+    expect(rows).toHaveLength(1); expect(rows[0]?.ts).toBe(new Date(now).toISOString());
   });
 
   it('selects the workspace resolver for unflagged wakeup', async function selectsWakeupWorkspace() {

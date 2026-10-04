@@ -22,6 +22,12 @@ begins at 0.57.0 — earlier history lives in git.
 
 ### Fixed
 
+- **Memory analysis shares one observation per read.** Detail contradiction and
+  collision review, consolidation bundles and collision pairs use the same
+  complete corpus and supplied time. Delayed reads no longer mix expiry, usage
+  windows and projected age from different times. Advisory failures still preserve
+  authoritative detail without reporting an unavailable analysis as clean.
+
 - **Viewer event streams release subscriptions immediately.** Closing a response
   cancels its heartbeat and abort listener; projection failures end that stream
   without rejecting the committed write that emitted the notification.

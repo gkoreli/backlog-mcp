@@ -25,6 +25,7 @@ import {
 } from './agent-identity-input.js';
 
 export interface BacklogRememberDeps {
+  clock?: () => number;
   substrateRegistry?: RememberDeps['substrateRegistry'];
   memoryComposer?: MemoryComposer;
   actor?: Actor;
@@ -71,7 +72,8 @@ export function registerBacklogRememberTool(
         derived: z.boolean().optional().describe('Mark as inference (consolidator output). Requires non-empty entity_refs citing the sources.'),
       }),
     },
-    async (params) => {
+    async function rememberMemory(params) {
+      const now = deps?.clock?.() ?? Date.now();
       const candidateService = deps?.service;
       // ADR 0119 Slice A: an explicit `as` identity overlays the ambient
       // actor for this one write; absent, the actor is exactly deps.actor.
@@ -96,6 +98,7 @@ export function registerBacklogRememberTool(
             ...(params.derived !== undefined ? { derived: params.derived } : {}),
           },
           {
+            now: function operationTime() { return now; },
             citationUsage: deps?.usageTracker,
             ...(deps?.substrateRegistry ? { substrateRegistry: deps.substrateRegistry } : {}),
             ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
@@ -115,7 +118,7 @@ export function registerBacklogRememberTool(
             ...(candidateService === undefined
               ? {}
               : { findCollisionCandidates: function findCandidates(memoryId) {
-                return findCollisionCandidatesForMemory(candidateService, memoryId);
+                return findCollisionCandidatesForMemory(candidateService, memoryId, { now });
               } }),
           },
         );

@@ -136,7 +136,7 @@ describe('consolidationCandidates (service-backed)', () => {
     expect(scoped.bundles).toHaveLength(1);
     expect(scoped.bundles[0]?.context).toBe('FLDR-0001');
 
-    await expect(consolidationCandidates(svc, { min_count: 0 })).rejects.toThrow(ValidationError);
+    await expect(consolidationCandidates(svc, { min_count: 0 }, { now: NOW })).rejects.toThrow(ValidationError);
   });
 
   it('feeds recall demand from injected usage lines into ripeness (ADR 0092.12)', async () => {

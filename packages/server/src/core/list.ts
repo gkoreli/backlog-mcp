@@ -1,7 +1,7 @@
 import type { IBacklogService } from './backlog-service.contract.js';
 import type { ListParams, ListResult } from './types.js';
 
-export async function listItems(service: IBacklogService, params: ListParams = {}): Promise<ListResult> {
+export async function listItems(service: Pick<IBacklogService, 'list' | 'counts'>, params: ListParams = {}): Promise<ListResult> {
   const { counts: wantCounts, ...filter } = params;
   const tasks = await service.list({ ...filter, ...(filter.type === 'memory' ? {} : { excludeTypes: ['memory'] }) });
   // ADR-0092.3: memories are excluded from generic listing unless explicitly

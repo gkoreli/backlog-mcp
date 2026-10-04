@@ -16,23 +16,19 @@ import { isMemoryLive } from './memory-validity.js';
  * `remember` (supersedes / state_key) or `forget` verbs. This module has
  * no write path — it can show a contradiction, never revise a belief.
  *
- * The fuzzier near-duplicate-embedding detector (R-9's second signal) is
- * deferred (ADR 0092.13 §Deferred) — it needs the search stack and a
- * divergence threshold.
+ * Semantic collision candidates have their own advisory owner (ADR 0120);
+ * they never become structural contradiction verdicts.
  */
 
-import { readEntityCorpus } from './entity-corpus.js';
-
-import type { Entity, Memory } from '@backlog-mcp/shared';
-import { EntityType } from '@backlog-mcp/shared';
-import type { IBacklogService } from './backlog-service.contract.js';
+import type { Memory } from '@backlog-mcp/shared';
+import type { EntityCorpusReadPort } from './entity-corpus.contract.js';
+import { readMemoryAnalysisView } from './memory-analysis.js';
+import { createMemoryAnalysisView, type MemoryAnalysisView } from './memory-analysis-view.js';
 import type {
   ContradictionGroup,
   ContradictionMember,
   ContradictionsResult,
 } from './types.js';
-
-/** A memory is live if it has no expiry, or its expiry is still in the future. */
 
 function toMember(m: Memory): ContradictionMember {
   return {
@@ -40,7 +36,7 @@ function toMember(m: Memory): ContradictionMember {
     title: m.title,
     created_at: m.created_at,
     ...(m.valid_until ? { valid_until: m.valid_until } : {}),
-    entity_refs: m.entity_refs ?? [],
+    entity_refs: [...(m.entity_refs ?? [])],
     ...(m.source ? { source: m.source } : {}),
   };
 }
@@ -53,55 +49,44 @@ function toMember(m: Memory): ContradictionMember {
  * most recent contradiction first, then by key for stability.
  */
 export function groupByStateKey(
-  memories: Memory[],
-  opts: { now?: number } = {},
+  memories: readonly Memory[],
+  opts: { now: number },
 ): ContradictionGroup[] {
-  const now = opts.now ?? Date.now();
-  const byKey = new Map<string, Memory[]>();
-  for (const m of memories) {
-    if (!m.state_key || !isMemoryLive(m, now)) continue;
-    const list = byKey.get(m.state_key);
-    if (list) list.push(m);
-    else byKey.set(m.state_key, [m]);
-  }
+  return contradictionGroups(createMemoryAnalysisView(memories, opts.now));
+}
 
+/** Structural fold over one complete observation, sharing its live-holder index. */
+export function contradictionGroups(view: MemoryAnalysisView): ContradictionGroup[] {
   const groups: ContradictionGroup[] = [];
-  for (const [state_key, members] of byKey) {
+  for (const state_key of view.stateKeys) {
+    const members = view.holders(state_key);
     if (members.length < 2) continue;
-    const sorted = [...members].sort(
-      (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
-    );
-    groups.push({
-      state_key,
-      members: sorted.map(toMember),
-      count: sorted.length,
-      newest_created_at: sorted[0]!.created_at,
+    const sorted = [...members].sort(function newestFirst(a, b) {
+      return Date.parse(b.created_at) - Date.parse(a.created_at);
     });
+    const newest = sorted[0];
+    if (newest === undefined) continue;
+    groups.push({ state_key, members: sorted.map(toMember), count: sorted.length, newest_created_at: newest.created_at });
   }
-
-  groups.sort((a, b) => {
-    const d = Date.parse(b.newest_created_at) - Date.parse(a.newest_created_at);
-    if (d !== 0) return d;
-    return a.state_key.localeCompare(b.state_key);
+  groups.sort(function newestGroupFirst(a, b) {
+    const difference = Date.parse(b.newest_created_at) - Date.parse(a.newest_created_at);
+    return difference !== 0 ? difference : a.state_key.localeCompare(b.state_key);
   });
   return groups;
 }
 
 /**
- * Service edge (mirrors consolidationCandidates, ADR 0092.7): list Memory
- * entities and fold. Read-only, no injected IO — the substrate is the source.
+ * Complete-read orchestration at a supplied observation time; no display-list fallback.
  */
 export async function detectContradictions(
-  service: IBacklogService,
+  reader: Partial<EntityCorpusReadPort>,
+  now: number,
 ): Promise<ContradictionsResult> {
-  const now = Date.now();
-  const memories = (await readEntityCorpus(service, { type: EntityType.Memory }))
-    .map(e => e as Entity as Memory);
-  const live_keyed = memories.filter(m => m.state_key && isMemoryLive(m, now)).length;
-  const groups = groupByStateKey(memories, { now });
+  const view = await readMemoryAnalysisView(reader, now);
+  const groups = contradictionGroups(view);
   return {
     groups,
-    total_live_keyed: live_keyed,
+    total_live_keyed: view.live.filter(function keyed(memory) { return Boolean(memory.state_key); }).length,
     contradiction_count: groups.length,
   };
 }
@@ -112,15 +97,17 @@ export async function detectContradictions(
  * the memory has no key, is expired, or is the sole holder (no conflict).
  */
 export async function contradictsFor(
-  service: IBacklogService,
+  reader: Partial<EntityCorpusReadPort>,
   memory: Memory,
-  now: number = Date.now(),
+  now: number,
 ): Promise<string[]> {
   if (!memory.state_key || !isMemoryLive(memory, now)) return [];
-  const memories = (await readEntityCorpus(service, { type: EntityType.Memory }))
-    .map(e => e as Entity as Memory);
-  return memories
-    .filter(m =>
-      m.id !== memory.id && m.state_key === memory.state_key && isMemoryLive(m, now))
-    .map(m => m.id);
+  return contradictsInView(await readMemoryAnalysisView(reader, now), memory);
+}
+
+/** Detail authority may be newer than the corpus; compare its key against observed holders. */
+export function contradictsInView(view: MemoryAnalysisView, memory: Memory): string[] {
+  if (!memory.state_key || !isMemoryLive(memory, view.now)) return [];
+  return view.holders(memory.state_key).filter(function other(holder) { return holder.id !== memory.id; })
+    .map(function identity(holder) { return holder.id; });
 }

@@ -7,8 +7,8 @@ export interface MemoryUsageSummary { usageCount: number; lastUsedAt?: string }
 
 export function mintMemoryEntry(
   m: Memory,
-  usageSummary?: MemoryUsageSummary,
-  now: number = Date.now(),
+  usageSummary: MemoryUsageSummary | undefined,
+  now: number,
 ): MemoryEntry {
   const validity = memoryValidity(m.valid_until, now);
   const usageCount = usageSummary?.usageCount ?? m.usage_count ?? 0;

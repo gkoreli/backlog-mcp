@@ -1,4 +1,5 @@
 /** Read-side history projection with request-local reference resolution (ADR 0136 R4). */
+import { createEntityReferenceReader } from './entity-references.js';
 import type { IBacklogService } from './backlog-service.contract.js';
 import type { OperationEntry } from './operation-log.contract.js';
 import { extractTargetFilename, normalizeOperationEntry } from './operation-entry.js';
@@ -12,15 +13,7 @@ export interface OperationHistoryEntry extends OperationEntry {
 
 /** Enrich in input order, resolving each distinct entity once for this read only. */
 export async function enrichOperationHistory(reader: Pick<IBacklogService, 'get'>, operations: readonly OperationEntry[]): Promise<OperationHistoryEntry[]> {
-  const references = new Map<string, ReturnType<IBacklogService['get']>>();
-  function resolveReference(id: string) {
-    let pending = references.get(id);
-    if (pending === undefined) {
-      pending = reader.get(id);
-      references.set(id, pending);
-    }
-    return pending;
-  }
+  const resolveReference = createEntityReferenceReader(reader);
   async function enrich(raw: OperationEntry): Promise<OperationHistoryEntry> {
     const operation = normalizeOperationEntry(raw);
     const targetFilename = extractTargetFilename(operation.mutation, operation.params);

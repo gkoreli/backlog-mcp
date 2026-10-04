@@ -7,7 +7,7 @@ function isResource(type: string): boolean {
   return type === 'resource';
 }
 
-export async function searchItems(service: IBacklogService, params: SearchParams): Promise<SearchResult> {
+export async function searchItems(service: Pick<IBacklogService, 'searchUnified' | 'isHybridSearchActive'>, params: SearchParams): Promise<SearchResult> {
   const { query, types, status, parent_id, sort, limit, include_content, include_scores } = params;
 
   if (!query.trim()) throw new ValidationError('Query must not be empty');

@@ -373,3 +373,108 @@ paths, inconsistent-payload cache rebuilding and absence of leftover temporary
 files. The bus was injected; no OS watcher, model download, daemon lifetime or
 user-corpus write is claimed. Temporary fixtures were removed. No dependency, version, publishing or installed CLI change is
 needed. Ambient-clock/read-analysis cleanup remains future work.
+
+### Stage 4 plan — observed memory analysis (2026-10-04)
+
+At saved `b175699` / managed `a98f71e`, contradiction and consolidation folds
+still sampled ambient time, collision analysis rebuilt its ID map for each focal,
+and consolidation reread the memory corpus for nested collisions. Hono's detail
+route independently read references/corpus and sampled analysis/projection time.
+The next bounded phase constructs a request-local memory analysis view from one
+explicit complete corpus and observation time, reuses its references/liveness,
+and moves reusable detail reads into transport-free application orchestration.
+Contradiction, collision, demand and projection policies keep their current wire
+fields, thresholds, ordering, malformed-date/expiry behavior and usage precedence.
+
+Touched analysis/projection functions require supplied time. CLI, MCP and HTTP
+compatibility boundaries sample their clock once and pass it through; composition
+forwards that time to the existing memory store projection. Narrow actual-consumer
+read/search types replace the compatibility facade in touched flows. Structural
+analysis for a live keyed detail requires complete reads; advisory collision
+failure must still preserve authoritative detail for unkeyed/expired memories.
+No bounded-list/search substitute may masquerade as a complete corpus. This view
+is derived data for one selected home/read, not another store or an atomic native
+filesystem snapshot. Wider clocks, routing and facade migration remain future work.
+
+
+Stage 4 implementation: `core/memory-analysis-view.ts` constructs one detached
+memory observation, with a private shared ID map, live-holder index and supplied
+time. Ordinary records/arrays and membership are frozen; supported native dates
+and binary typed arrays are copied without trying to freeze their mutable native
+internals. This keeps unknown native fields lossless and avoids typed-array freeze
+errors. It is not a promise that arbitrary native objects become deeply immutable.
+Recognized analysis inputs and indexes remain stable within the view. The shared
+`isMemoryLive` policy remains authoritative: malformed expiry stays visible/live
+with diagnostics, while an exact valid expiry at observation time is expired.
+Malformed creation retains age zero in the pure entry projection.
+
+`core/memory-analysis.ts` reads the explicit complete corpus once. Contradiction
+folds use the view's holder index; collision candidates resolve ranked hits through
+its references, reuse it across focals, and keep existing eligibility, threshold,
+ranking and tie breaks. Consolidation reuses the same view for nested collisions,
+removing its second scan. Missing/raced ranked references are skipped; search
+payloads do not replace observed authoritative memory payloads. Demand's existing
+inclusive window and future-event behavior remain unchanged.
+
+`core/entity-detail.ts` owns authoritative body/children/parent reads and optional
+same-view memory analysis. `core/entity-references.ts` now owns pending/missing/
+failed reference coalescing for both detail and history, normalizing synchronous
+throws into the same cached rejected-promise contract; its map belongs to each
+invocation/selected reader, with receiver binding preserved. Hono parses input
+and attaches provenance to the existing detail response fields. A live keyed
+memory requires complete structural reads and can fail visibly; unkeyed/expired
+memory authority survives an unavailable advisory corpus/search, with collision
+results omitted rather than falsely reported clean. A successful scan with a
+raced missing focal still returns an empty candidate result. Children remain a
+bounded presentation read and never substitute for the corpus.
+
+Touched pure analysis, entry and usage folds require supplied time. CLI/MCP/HTTP
+boundaries sample one clock for each analysis read and pass it through async
+corpus/search work, usage windows and detail projection. Composition forwards the
+supplied time into the existing usage-overlay store mint. Legacy one-argument
+injected mint callbacks remain structurally compatible but cannot be forced to
+honor a time they ignore. Wakeup also forwards its existing operation time through
+that composed mint; this is no all-core clock migration. Touched list/search/get
+and analysis/detail consumers now request their real read/search capabilities via
+cohesive picks and the existing complete-corpus port, rather than write authority
+from the compatibility facade. Readers and home resolution remain caller-owned.
+
+Stage 4 focused evidence adds parser-realism cases for native binary/date fields;
+frozen ordinary payloads and mutation-detached observations; inclusive demand,
+malformed/exact-boundary validity and age-zero projection; one corpus across
+consolidation/focal reads; missing/raced references; bound readers and failed
+promise coalescing; required versus advisory failures; delayed corpus/search
+across expiry/usage boundaries; cold MCP time sampling; and same-ID homes.
+Architecture guards now reject ambient clocks in the touched analysis/detail,
+reference/history and projection owners. Existing import exception lists stay
+empty. Full workspace build/typecheck and test counts, plus manual verification,
+are recorded after final acceptance below.
+
+A built-module actual Node process used two disposable docs-native homes, actual
+local storage and Orama BM25. Consolidation and detail each scanned once per home,
+with unchanged bundle counts/conflict/collision fields and same-ID provenance
+isolation. Native YAML binary/date payloads and raw Markdown survived. Shared home
+validation rejected a malformed selection; injected unavailable corpus/search
+readers preserved unkeyed authority but rejected required keyed analysis. Runtime
+selection, the watcher and diagnostic logger were injected. No OS watcher, model
+download, user-corpus mutation, global cache or atomic native filesystem snapshot
+is claimed. Disposable fixtures were removed.
+
+Previous write/recovery/lifecycle limits remain unchanged. Wider ambient clocks,
+the remaining compatibility facade and larger Hono/Orama modules remain future
+work. No dependency, version, publication or installed CLI change is needed.
+
+The touched CLI/MCP `remember` drivers also sample one command time and supply a
+constant callback through existing `RememberDeps.now`, reusing that value for
+post-commit collision review. Remember passes its sampled value to the existing
+journal/notification timestamp argument. Delayed-store unit cases for both
+adapters verify one clock call, the entry/receipt timestamp, review eligibility
+across expiry and one journal attempt. The broader memory-store correction clock
+and legacy optional core remember clock remain their existing boundaries; this
+phase does not claim every nested write effect samples the same clock.
+
+Stage 4 final managed-checkout verification: workspace build/typecheck passed;
+server 1,630 tests passed with two existing skips, memory 56 and viewer 163 passed
+(1,849 total). This includes 25 additional failure/time/native-data/reuse cases.
+The rebuilt actual-process disposable-home check passed again after the final
+reference and remember changes. There are no new import exceptions.

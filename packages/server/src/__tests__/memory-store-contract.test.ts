@@ -459,7 +459,7 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     }
 
     // 1. Candidates: one ripe bundle.
-    const before = await consolidationCandidates(service, {});
+    const before = await consolidationCandidates(service, {}, { now: Date.now() });
     expect(before.ripe_count).toBe(1);
     const bundle = before.bundles[0]!;
     expect(bundle.key).toBe('context:FLDR-0001');
@@ -481,7 +481,7 @@ describe('BacklogMemoryStore — R1–R5 contract (ADR 0092.3)', () => {
     expect(retired.forgotten).toBe(3);
 
     // 4. Candidates now empty (retired members self-exclude); knowledge recallable.
-    const after = await consolidationCandidates(service, {});
+    const after = await consolidationCandidates(service, {}, { now: Date.now() });
     expect(after.total_episodic).toBe(0);
     const recalled = await coreRecall({ query: 'SSE flaky fix pattern' }, { memoryComposer: composer });
     expect(recalled.items[0]?.id).toBe(knowledge.id);

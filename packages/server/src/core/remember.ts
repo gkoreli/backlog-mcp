@@ -144,6 +144,7 @@ export async function remember(params: RememberParams, deps: RememberDeps): Prom
       stored.id,
       { title, layer, ...(params.context ? { context: params.context } : {}) },
       { id: stored.id },
+      new Date(now).toISOString(),
     ));
   }
 

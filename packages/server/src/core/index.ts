@@ -1,3 +1,5 @@
+export { readEntityDetail, projectEntityUsage } from './entity-detail.js';
+export type { EntityDetail, EntityDetailReader, EntityDetailObservation } from './entity-detail.js';
 export { listItems } from './list.js';
 export { getItems } from './get.js';
 export { composeContextStubs } from './get-context/index.js';

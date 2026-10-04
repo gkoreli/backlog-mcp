@@ -8,7 +8,8 @@ import { isMemoryLive } from './memory-validity.js';
  * Markdown through `distinct_from`, `supersedes`, `state_key`, or expiry.
  */
 
-import { readEntityCorpus } from './entity-corpus.js';
+import { readMemoryAnalysisView, type MemoryAnalysisReader } from './memory-analysis.js';
+import type { MemoryAnalysisView } from './memory-analysis-view.js';
 import type { Memory } from '@backlog-mcp/shared';
 import { EntityType } from '@backlog-mcp/shared';
 import type { IBacklogService } from './backlog-service.contract.js';
@@ -165,7 +166,7 @@ export function scoreCollisionPair(
   left: Memory,
   right: Memory,
   neighborRank: number,
-  now: number = Date.now(),
+  now: number,
 ): ScoredCollisionPair | undefined {
   if (!Number.isInteger(neighborRank) || neighborRank < 1) {
     throw new RangeError('neighborRank must be a positive integer');
@@ -239,23 +240,13 @@ function compareCandidate(
   );
 }
 
-function memoryCorpus(entities: Awaited<ReturnType<IBacklogService['list']>>): Memory[] {
-  return entities.filter(function isMemory(entity): entity is Memory {
-    return entity.type === EntityType.Memory;
-  });
-}
-
 async function candidatesForFocal(
-  service: IBacklogService,
+  service: Pick<IBacklogService, 'searchUnified'>,
   focal: Memory,
-  corpus: readonly Memory[],
-  now: number,
+  view: MemoryAnalysisView,
 ): Promise<CollisionCandidate[]> {
+  const { memories: corpus, now } = view;
   if (!isMemoryLive(focal, now)) return [];
-
-  const byId = new Map(corpus.map(function indexMemory(memory) {
-    return [memory.id, memory] as const;
-  }));
   const ineligibleCount = corpus.filter(function countIneligible(memory) {
     return !isEligiblePair(focal, memory, now);
   }).length;
@@ -273,7 +264,7 @@ async function candidatesForFocal(
   const seen = new Set<string>();
   let eligibleRank = 0;
   for (const hit of hits) {
-    const memory = byId.get(hit.item.id);
+    const memory = view.get(hit.item.id);
     if (memory === undefined || seen.has(memory.id)) continue;
     seen.add(memory.id);
     if (!isEligiblePair(focal, memory, now)) continue;
@@ -294,16 +285,21 @@ async function candidatesForFocal(
 
 /** Find threshold-clearing candidates for one same-home focal memory. */
 export async function findCollisionCandidatesForMemory(
-  service: IBacklogService,
+  reader: MemoryAnalysisReader,
   focalId: string,
-  options: { now?: number } = {},
+  options: { now: number },
 ): Promise<CollisionCandidate[]> {
-  const now = options.now ?? Date.now();
-  const corpus = memoryCorpus(await readEntityCorpus(service, { type: EntityType.Memory }));
-  const focal = corpus.find(function findFocal(memory) {
-    return memory.id === focalId;
-  });
-  return focal === undefined ? [] : candidatesForFocal(service, focal, corpus, now);
+  return collisionCandidatesInView(reader, await readMemoryAnalysisView(reader, options.now), focalId);
+}
+
+/** Ranked hits are references into this complete observation, never authoritative payloads. */
+export async function collisionCandidatesInView(
+  search: Pick<IBacklogService, 'searchUnified'>,
+  view: MemoryAnalysisView,
+  focalId: string,
+): Promise<CollisionCandidate[]> {
+  const focal = view.get(focalId);
+  return focal === undefined ? [] : candidatesForFocal(search, focal, view);
 }
 
 function comparePairs(
@@ -333,18 +329,24 @@ function compareMostRecentFirst(left: Memory, right: Memory): number {
  * disclose the cap when `total_live_memories` exceeds it.
  */
 export async function findCollisionCandidatePairs(
-  service: IBacklogService,
+  service: MemoryAnalysisReader,
   options: {
     focalIds?: readonly string[];
     focalLimit?: number;
-    now?: number;
-  } = {},
+    now: number;
+  },
 ): Promise<CollisionCandidatesResult> {
-  const now = options.now ?? Date.now();
-  const corpus = memoryCorpus(await readEntityCorpus(service, { type: EntityType.Memory }));
-  const live = corpus.filter(function isLiveMemory(memory) {
-    return isMemoryLive(memory, now);
-  });
+  const view = await readMemoryAnalysisView(service, options.now);
+  return collisionPairsInView(service, view, options);
+}
+
+/** Reuse one complete reference/liveness index for all focal searches. */
+export async function collisionPairsInView(
+  service: Pick<IBacklogService, 'searchUnified'>,
+  view: MemoryAnalysisView,
+  options: { focalIds?: readonly string[]; focalLimit?: number } = {},
+): Promise<CollisionCandidatesResult> {
+  const { live } = view;
   const requested = options.focalIds === undefined
     ? undefined
     : new Set(options.focalIds);
@@ -358,15 +360,12 @@ export async function findCollisionCandidatePairs(
       .sort(compareMostRecentFirst)
       .slice(0, options.focalLimit);
   }
-  const byId = new Map(live.map(function indexMemory(memory) {
-    return [memory.id, memory] as const;
-  }));
   const pairs = new Map<string, CollisionCandidatePair>();
 
   for (const focal of focals) {
-    const candidates = await candidatesForFocal(service, focal, corpus, now);
+    const candidates = await candidatesForFocal(service, focal, view);
     for (const candidate of candidates) {
-      const other = byId.get(candidate.id);
+      const other = view.get(candidate.id);
       if (other === undefined) continue;
       const members = [focal, other].sort(function sortMembers(left, right) {
         return compareBytewise(left.id, right.id);

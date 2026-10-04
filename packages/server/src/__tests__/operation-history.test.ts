@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AnyEntity } from '@backlog-mcp/shared';
 import type { OperationEntry } from '../core/operation-log.contract.js';
+import { createEntityReferenceReader } from '../core/entity-references.js';
 import { enrichOperationHistory } from '../core/operation-history.js';
 import { extractTargetFilename, normalizeOperationEntry } from '../core/operation-entry.js';
 
@@ -52,6 +53,24 @@ describe('operation history read projection', function historyProjection() {
     expect(await enrichOperationHistory({ get }, [input])).toEqual([{ ...input, mutation: 'resource-edit', targetFilename: 'native.md' }]);
     expect(get).not.toHaveBeenCalled();
   });
+  it.each(['async', 'sync'])('coalesces %s reference failures without retrying inside the same read', async function failedCoalescing(mode) {
+    const error = new Error('Selected reader failed');
+    const reader = { get: vi.fn(function get(this: unknown) {
+      expect(this).toBe(reader);
+      if (mode === 'sync') throw error;
+      return Promise.reject(error);
+    }) };
+    const reference = createEntityReferenceReader(reader);
+    const first = reference('REVIEW-1');
+    const repeated = reference('REVIEW-1');
+    expect(first).toBe(repeated);
+    await expect(first).rejects.toBe(error);
+    await expect(repeated).rejects.toBe(error);
+    expect(reader.get).toHaveBeenCalledOnce();
+    await expect(createEntityReferenceReader(reader)('REVIEW-1')).rejects.toBe(error);
+    expect(reader.get).toHaveBeenCalledTimes(2);
+  });
+
   it('surfaces a failed authoritative reference read', async function propagatesReadFailure() {
     const error = new Error('selected home unavailable');
     await expect(enrichOperationHistory({ get: async function unavailable() { throw error; } }, [operation('REVIEW-1')])).rejects.toBe(error);

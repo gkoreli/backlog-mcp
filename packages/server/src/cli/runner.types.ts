@@ -26,7 +26,7 @@ export interface CliRuntime {
   service: IBacklogService;
   writeContext: WriteContext;
   memoryComposer: MemoryComposer;
-  mintMemoryEntry?: (memory: Memory) => MemoryEntry;
+  mintMemoryEntry?: (memory: Memory, now?: number) => MemoryEntry;
   usageTracker?: MemoryUsageTracker;
   operationLogger: OperationLogger;
   readUsageLines?: () => string[];

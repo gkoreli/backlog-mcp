@@ -443,7 +443,7 @@ export async function wakeup(
       // pure list fold — sort is on the raw entity, everything the item
       // surfaces comes off the minted entry.
       .map(function mintKnowledgeMemory(memory) {
-        return mintMemoryEntry(memory as Memory);
+        return mintMemoryEntry(memory as Memory, nowMs);
       })
       .filter(e =>
         (e.layer === 'semantic' || e.layer === 'procedural') &&

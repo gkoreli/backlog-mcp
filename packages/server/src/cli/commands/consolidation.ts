@@ -39,6 +39,7 @@ export function registerConsolidation(program: Command): void {
         ...(opts.context !== undefined ? { context: opts.context } : {}),
         ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
       }, {
+        now: (runtime.writeContext.clock?.() ?? Date.now()),
         ...(runtime.readUsageLines === undefined
           ? {}
           : { readUsageLines: runtime.readUsageLines }),

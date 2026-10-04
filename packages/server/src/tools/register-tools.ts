@@ -55,7 +55,7 @@ export interface ToolDeps {
   scopeRoot?: string;
   eventBus?: { emit: (event: any) => void };
   memoryComposer?: MemoryComposer;
-  mintMemoryEntry?: (memory: Memory) => MemoryEntry;
+  mintMemoryEntry?: (memory: Memory, now?: number) => MemoryEntry;
   readLocalFile?: (filePath: string) => string | null;
   usageTracker?: MemoryUsageTracker;
   identityPath?: string;
@@ -139,6 +139,7 @@ export function registerTools(
       : {}),
   });
   registerBacklogRememberTool(server, {
+    clock: deps?.clock?.bind(deps),
     ...(deps?.substrateRegistry ? { substrateRegistry: deps.substrateRegistry } : {}),
     ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
     ...(deps?.actor ? { actor: deps.actor } : {}),
@@ -155,9 +156,9 @@ export function registerTools(
   registerBacklogConsolidationTool(
     server,
     service,
-    deps?.readUsageLines ? { readUsageLines: deps.readUsageLines } : undefined,
+    { clock: deps?.clock?.bind(deps), readUsageLines: deps?.readUsageLines?.bind(deps) },
   );
-  registerBacklogContradictionsTool(server, service);
+  registerBacklogContradictionsTool(server, service, { clock: deps?.clock?.bind(deps) });
   if (intentRegistration.mode === 'required') {
     registerSubstrateIntents(server, service, {
       intentRegistry: intentRegistration.intentRegistry,

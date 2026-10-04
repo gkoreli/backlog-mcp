@@ -29,7 +29,7 @@ export interface BacklogWakeupDeps {
   visionPath?: string;
   /** First-impression grounding reader (charter Slices A/B). */
   readGrounding?: () => WakeupGrounding | undefined;
-  mintMemoryEntry?: (memory: Memory) => MemoryEntry;
+  mintMemoryEntry?: (memory: Memory, now?: number) => MemoryEntry;
   substrateRegistry?: Pick<ProjectSubstrateRegistry, 'acceptsParent'>;
   homeReadCoordinator?: HomeReadCoordinator;
   /**

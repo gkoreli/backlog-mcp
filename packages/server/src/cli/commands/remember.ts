@@ -46,7 +46,8 @@ export function registerRemember(program: Command): void {
     .option('--derived', 'Mark as inference (consolidator output) — requires --refs')
     .option('--as <agent>', 'Attribute this memory to an agent identity — an AGENT- doc id or declared principal (e.g. aime:granite). Optional per-call override; usually implicit via git config backlog.agent or BACKLOG_AGENT (ADR 0119.1)')
     .action((contentParts: string[], opts) => run(
-      async (runtime) => {
+      async function rememberMemory(runtime) {
+        const now = runtime.writeContext.clock?.() ?? Date.now();
         // ADR 0105: explicit --context wins; else per-repo config / env default.
         const context = resolveContext({
           explicit: opts.context,
@@ -72,6 +73,7 @@ export function registerRemember(program: Command): void {
         {
           ...(runtime.writeContext.substrateRegistry === undefined
             ? {} : { substrateRegistry: runtime.writeContext.substrateRegistry }),
+          now: function operationTime() { return now; },
           memoryComposer: runtime.memoryComposer,
           citationUsage: runtime.usageTracker,
           actorName: runtime.writeContext.actor.name,
@@ -79,7 +81,7 @@ export function registerRemember(program: Command): void {
           // other CLI writes ('backlog create' etc.).
           journal: { context: runtime.writeContext, tool: 'backlog remember' },
           findCollisionCandidates: function findCandidates(memoryId) {
-            return findCollisionCandidatesForMemory(runtime.service, memoryId);
+            return findCollisionCandidatesForMemory(runtime.service, memoryId, { now });
           },
         },
         );

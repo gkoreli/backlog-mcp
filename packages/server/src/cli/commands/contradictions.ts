@@ -48,9 +48,12 @@ export function registerContradictions(program: Command): void {
     .description('Live memories that share a state_key — the R-2 invariant breached, flagged for human adjudication (ADR 0092.13)')
     .option('--candidates', 'List semantic collision candidates instead of structural state_key contradictions')
     .action((opts) => run(
-      (runtime) => opts.candidates === true
-        ? findCollisionCandidatePairs(runtime.service)
-        : detectContradictions(runtime.service),
+      function analyze(runtime) {
+        const now = (runtime.writeContext.clock?.() ?? Date.now());
+        return opts.candidates === true
+          ? findCollisionCandidatePairs(runtime.service, { now })
+          : detectContradictions(runtime.service, now);
+      },
       formatResult,
       program.opts().json,
       cliRuntimeDependencies(program),

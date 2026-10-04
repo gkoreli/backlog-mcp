@@ -105,7 +105,7 @@ describe('detectContradictions (service-backed)', () => {
       mem('MEMO-0003', { state_key: 'solo.key' }),
       { id: 'TASK-0001', type: 'task', title: 't', status: 'open', created_at: '', updated_at: '' } as Entity,
     ]);
-    const result = await detectContradictions(svc);
+    const result = await detectContradictions(svc, NOW);
     expect(result.contradiction_count).toBe(1);
     expect(result.total_live_keyed).toBe(3);
     expect(result.groups[0]?.members).toHaveLength(2);
@@ -116,7 +116,7 @@ describe('detectContradictions (service-backed)', () => {
       mem('MEMO-0001', { state_key: 'a' }),
       mem('MEMO-0002', { state_key: 'b' }),
     ]);
-    const result = await detectContradictions(svc);
+    const result = await detectContradictions(svc, NOW);
     expect(result.contradiction_count).toBe(0);
     expect(result.groups).toEqual([]);
   });
