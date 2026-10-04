@@ -23,6 +23,9 @@ description of the current tree.
 
 ## Evidence and bounded implementation
 
+Server paths below are relative to `packages/server/src/`; paths beginning with
+`memory/src/` are relative to `packages/`.
+
 At `77eefe7` the six-stage refactor had complete corpus reads, exact-byte
 preimages, committed diagnostics, coordinated corrections, injected config and
 discovery reads, and a separate migration executor. Import exception groups
@@ -44,9 +47,11 @@ Three remaining flows justified this iteration:
   request selection, intent registration and telemetry semantics intact.
 - Search projection and filtering mixed policy with Orama lowering. In
   particular, an explicit empty status list rejected exact-ID matches but was
-  omitted from indexed filtering. The next engineering stage gives normalized
-  selection and pure document projection named owners and tests actual Orama
-  parity, without merging corpus/display/query contracts.
+  omitted from indexed filtering. `memory/src/search/search-selection.ts` now
+  constructs a copied/frozen value for both cached predicates and typed Orama
+  lowering. `memory/src/search/search-document.ts` owns declared field projection
+  and embedding inputs. Tests drive actual Orama parity without merging
+  corpus/display/query contracts.
 
 Derived episodic capture also sampled another ambient time and wrote to console
 inside core. Capture now accepts the operation time and returns warnings.
@@ -230,10 +235,9 @@ Review every touched flow with this checklist:
 
 ## Engineering record
 
-The initial stage implements shared home-read composition, history policy and
+Stage 1 (`1b96a2b`) implements shared home-read composition, history policy and
 orchestration, focused MCP/history route ownership, and deterministic derived
-capture diagnostics. The following selection/projection stage and final evidence
-will be recorded here when validated, rather than claimed in advance.
+capture diagnostics.
 
 
 Stage 1 verification: workspace build/typecheck passed; server 1,571 tests passed
@@ -247,3 +251,56 @@ two disposable docs-native homes, actual storage and Hono requests: three histor
 records resolved two distinct IDs per home with correct titles/provenance, and
 missing-home projection failed. Journal query, unused search/catalog and runtime
 resolution were injected; this does not claim an OS watcher or daemon lease test.
+
+
+Stage 2 centralizes normalized selection and pure search projections. Both
+indexed and cached routes consume the same selection value. An explicit empty
+status/type list selects nothing, including entity-only search's `docTypes`.
+Without a positive type selection, explicit exclusions retain the established
+entity-only rule; generic queries also retain memory exclusion even when another
+type is excluded. Positive resource selection overrides that implicit resource
+rule; explicit excluded resources still cannot enter. Direct memory ID navigation
+keeps its existing visibility. Empty parent text retains indexed behavior as no
+containment selection. No schema/index-version or successful wire shape changed.
+
+The Orama service now owns engine lifecycle/retrieval, not field flattening or
+selection precedence. It passes projected fields and typed enum predicates to the
+existing engine/tokenizer/ranking pipeline. Payload, filter representation and
+embedding inputs stay distinct, preserving metadata updates and vector reuse.
+
+Ownership guards now reject process/console access across server core, ambient
+clocks in selected pure policy/capture modules, and effect/Orama imports in the
+pure search value/projection modules. They also check shared/memory package
+import direction. These are explicit checks for those rules, not a proof of
+transitive purity or an exemption for legacy ambient-clock defaults elsewhere.
+The existing dependency allowlists remain empty.
+
+
+Stage 2 verification: workspace build/typecheck passed; server 1,583 tests passed
+with two existing skips, memory 56 and viewer 163 passed (1,802 total). Seven
+real-Orama/memfs cases cover empty/invalid selections, full-text/filter-only/ID/URI
+queries, custom type precedence, parent containment, exclusion intersection,
+explicit resources and memory navigation/default visibility. Seven pure model
+cases cover frozen copies, status tokens, open vocabulary, declared fields and
+payload/filter/embedding separation. Five ownership checks pass alongside the
+existing empty import allowlists.
+
+A built-module actual Node process used a disposable docs-native home and real
+Orama BM25: empty selections returned no matches, explicit resources and direct
+memory navigation worked, generic queries excluded memory, and an injected capture
+outage left a completed task persisted with `memory_capture_failed`. There was
+one capture attempt, one real journal entry and one injected notification, with
+the supplied operation timestamp. The watcher, capture outage, notification and
+diagnostic logger were injected; no OS-watcher, model download or user-corpus
+mutation is claimed. Temporary fixtures were removed. The first diagnostic
+logger append was denied by the filesystem sandbox; the repeated check explicitly
+replaced that diagnostic sink before running, while retaining the real selected
+home journal.
+
+The scoped iteration is complete. Remaining clock defaults in older application
+entrypoints, the compatibility facade and larger Hono/Orama lifecycle modules
+remain incremental work. Prior guarantees stay unchanged: cross-document recovery
+is compensation rather than crash atomicity; native editors do not hold managed
+locks; standard journal append remains best-effort; runtime retirement controls
+admission rather than every outstanding call. D1 remains descoped. No dependency,
+version, publication or installed CLI change was needed.

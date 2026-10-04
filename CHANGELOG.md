@@ -22,6 +22,12 @@ begins at 0.57.0 — earlier history lives in git.
 
 ### Fixed
 
+- **Search honors explicit empty selections consistently.** Empty status/type
+  selections return no matches across exact-ID, full-text and filter-only queries.
+  Caller types override inferred types; exclusions intersect the selection and
+  retain entity-only behavior unless resources are positively selected. Generic
+  searches keep memories excluded even when another type is excluded.
+
 - **Committed writes report episodic capture failures.** Task completion and
   artifact creation keep their successful receipt and add `memory_capture_failed`
   when advisory capture fails. Create/update share one operation time across

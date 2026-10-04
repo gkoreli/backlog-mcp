@@ -1,9 +1,11 @@
-import { matchesSearchSelection } from './search-selection.js';
+/** Orama index lifecycle and retrieval; pure projection/selection have separate owners (ADR 0136). */
+import { entityEmbeddingText, resourceEmbeddingText, projectEntitySearchDocument, projectResourceSearchDocument, searchFieldText, type EntityProjectionSource } from './search-document.js';
+import { createSearchSelection, matchesSearchSelection, type SearchSelection } from './search-selection.js';
 import { isDeepStrictEqual } from 'node:util';
 import { create, getByID, insert, insertMultiple, remove, search, save, load, type Results } from '@orama/orama';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { statusToken, type AnyEntity } from '@backlog-mcp/shared';
+import type { AnyEntity } from '@backlog-mcp/shared';
 import type {
   IndexableEntity,
   Resource,
@@ -26,7 +28,7 @@ import {
   type OramaInstance, type OramaInstanceWithEmbeddings,
   schema, schemaWithEmbeddings,
   INDEX_VERSION, TEXT_PROPERTIES, UNSORTABLE_PROPERTIES, ENUM_FACETS,
-  buildWhereClause,
+  lowerSearchSelection, type OramaWhere,
 } from './orama-schema.js';
 import { rankNormalize, linearFusion, applyCoordinationBonus, applyTemporalDecay, applyExactTitlePin, type ScoredHit } from './scoring.js';
 import {
@@ -47,36 +49,6 @@ export interface OramaSearchOptions {
    * Undefined or ≤0 → decay disabled (current behavior preserved).
    */
   halfLifeDays?: number;
-}
-
-interface NormalizedSearchEntityDocument {
-  entity: AnyEntity;
-  fields: readonly SearchEntityField[];
-}
-
-function textValue(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  if (
-    typeof value === 'string'
-    || typeof value === 'number'
-    || typeof value === 'boolean'
-  ) {
-    return String(value);
-  }
-  if (Array.isArray(value)) {
-    return value.map(textValue).filter(Boolean).join(' ');
-  }
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return '';
-  }
-}
-
-function normalizeDocument(
-  value: IndexableEntity,
-): NormalizedSearchEntityDocument {
-  return { entity: value.entity, fields: value.fields };
 }
 
 /**
@@ -158,88 +130,23 @@ export class OramaSearchService implements SearchService {
 
   // ── Document conversion ─────────────────────────────────────────
 
-  private getTextForEmbedding(document: NormalizedSearchEntityDocument): string {
-    return document.fields
-      .map(function fieldText(field) {
-        return textValue(field.value);
-      })
-      .join(' ')
-      .trim();
-  }
-
-  private taskToDoc(document: NormalizedSearchEntityDocument): OramaDoc {
-    const task = document.entity;
-    const fields = new Map(document.fields.map(function fieldEntry(field) {
-      return [field.name, textValue(field.value)];
-    }));
-    const dedicatedFields = new Set([
-      'title',
-      'content',
-      'evidence',
-      'blocked_reason',
-      'references',
-    ]);
-
-    return {
-      id: task.id,
-      title: fields.get('title') ?? '',
-      content: fields.get('content') ?? '',
-      // Leading-token normalization (BUG-0003): declared workflow states are
-      // freeform ("Accepted (goga, 2026-07-16)") — index the shared token so
-      // `--status accepted` matches. Raw status stays on the cached entity.
-      status: statusToken(task.status) ?? '',
-      type: typeof task.type === 'string' ? task.type : 'task',
-      parent_id: typeof task.parent_id === 'string' ? task.parent_id : '',
-      evidence: fields.get('evidence') ?? '',
-      blocked_reason: fields.get('blocked_reason') ?? '',
-      references: fields.get('references') ?? '',
-      search_text: document.fields
-        .filter(function isGenericSearchField(field) {
-          return !dedicatedFields.has(field.name);
-        })
-        .map(function fieldText(field) {
-          return textValue(field.value);
-        }).join(' '),
-      path: '',  // Tasks don't have paths
-      updated_at: typeof task.updated_at === 'string' ? task.updated_at : '',
-    };
-  }
-
-  private resourceToDoc(resource: Resource): OramaDoc {
-    return {
-      id: resource.id,
-      title: resource.title,
-      content: resource.content,  // Full content for search
-      // Declared frontmatter status joins the index as its leading token
-      // (BUG-0003) so generic resources obey the same --status semantics
-      // as canonical entities. No declared status → never matches a filter.
-      status: statusToken(resource.status) ?? '',
-      type: 'resource',
-      parent_id: '',
-      evidence: '',
-      blocked_reason: '',
-      references: '',
-      search_text: '',
-      path: resource.path,
-      updated_at: '',  // Resources don't have updated_at
-    };
-  }
-
-  private getResourceTextForEmbedding(resource: Resource): string {
-    return `${resource.title} ${resource.content}`.trim();
+  private async embedText(text: string): Promise<number[]> {
+    const embedder = this.embedder;
+    if (embedder === null) throw new Error('Embedding inputs require the initialized embedding capability');
+    return embedder.embed(text);
   }
 
   private async taskToDocWithEmbeddings(
-    task: NormalizedSearchEntityDocument,
+    task: EntityProjectionSource,
   ): Promise<OramaDocWithEmbeddings> {
-    const doc = this.taskToDoc(task);
-    const embeddings = await this.embedder!.embed(this.getTextForEmbedding(task));
+    const doc = projectEntitySearchDocument(task);
+    const embeddings = await this.embedText(entityEmbeddingText(task));
     return { ...doc, embeddings };
   }
 
   private async resourceToDocWithEmbeddings(resource: Resource): Promise<OramaDocWithEmbeddings> {
-    const doc = this.resourceToDoc(resource);
-    const embeddings = await this.embedder!.embed(this.getResourceTextForEmbedding(resource));
+    const doc = projectResourceSearchDocument(resource);
+    const embeddings = await this.embedText(resourceEmbeddingText(resource));
     return { ...doc, embeddings };
   }
 
@@ -327,7 +234,7 @@ export class OramaSearchService implements SearchService {
     this.entityFieldCache.clear();
     this.hasEmbeddingsInIndex = useEmbeddings;
 
-    const documents = tasks.map(normalizeDocument);
+    const documents = tasks;
     for (const document of documents) {
       this.taskCache.set(document.entity.id, document.entity);
       this.entityFieldCache.set(document.entity.id, document.fields);
@@ -341,7 +248,7 @@ export class OramaSearchService implements SearchService {
       }
     } else {
       // Batch insert for BM25-only mode (ADR-0079)
-      const docs = documents.map(document => this.taskToDoc(document));
+      const docs = documents.map(document => projectEntitySearchDocument(document));
       await insertMultiple(this.db as OramaInstance, docs);  // ADR-0083 #1
     }
     this.persistToDisk();
@@ -357,7 +264,7 @@ export class OramaSearchService implements SearchService {
     query: string;
     limit: number;
     boost: Record<string, number>;
-    where?: Record<string, any>;
+    where?: OramaWhere;
   }): Promise<Results<OramaDoc | OramaDocWithEmbeddings>> {
     const { query, limit, boost, where } = params;
     return search(this.db!, {
@@ -378,12 +285,12 @@ export class OramaSearchService implements SearchService {
   private async _executeVectorSearch(params: {
     query: string;
     limit: number;
-    where?: Record<string, any>;
+    where?: OramaWhere;
   }): Promise<Results<OramaDoc | OramaDocWithEmbeddings> | null> {
     const canUseVector = this.hasEmbeddingsInIndex && (await this.ensureEmbeddings());
     if (!canUseVector) return null;
 
-    const queryVector = await this.embedder!.embed(params.query);
+    const queryVector = await this.embedText(params.query);
     return search(this.db as OramaInstanceWithEmbeddings, {
       mode: 'vector',
       vector: { value: queryVector, property: 'embeddings' },
@@ -410,7 +317,7 @@ export class OramaSearchService implements SearchService {
     query: string;
     limit: number;
     boost: Record<string, number>;
-    where?: Record<string, any>;
+    where?: OramaWhere;
   }): Promise<{ hits: Array<{ id: string; score: number }>; bm25Results: Results<OramaDoc | OramaDocWithEmbeddings> }> {
     const { query, limit, boost, where } = params;
 
@@ -472,7 +379,7 @@ export class OramaSearchService implements SearchService {
             || field.name === 'evidence';
         })
         .map(function fieldText(field) {
-          return textValue(field.value);
+          return searchFieldText(field.value);
         }).join(' ');
     }
     const resource = this.resourceCache.get(id);
@@ -560,7 +467,7 @@ export class OramaSearchService implements SearchService {
     const canonicalId = canonicalizeIdQuery(query, this.idIntentSpecs);
     if (canonicalId) {
       const task = this.taskCache.get(canonicalId);
-      if (task) return matchesSearchSelection(task, task.type, options?.filters)
+      if (task) return matchesSearchSelection(task, task.type, createSearchSelection(options?.filters, options?.docTypes, { entityOnly: true }))
         ? [{ id: canonicalId, score: 1.0, task }] : [];
       // Cache miss → fall through to fulltext as a fuzzy safety net.
     }
@@ -569,8 +476,7 @@ export class OramaSearchService implements SearchService {
     // natively in the where clause (ADR-0079) instead of JS post-filtering.
     // ADR-0092.3: memories are excluded from generic search by default —
     // backlog_recall is their dedicated read surface.
-    const where = { ...(buildWhereClause(options?.filters) ?? {}) };
-    if (!where.type) where.type = { nin: ['resource', 'memory'] };
+    const where = lowerSearchSelection(createSearchSelection(options?.filters, options?.docTypes, { entityOnly: true, defaultExcludedTypes: ['memory'] }));
 
     const { hits } = await this._fusedSearch({
       query,
@@ -610,7 +516,7 @@ export class OramaSearchService implements SearchService {
 
     if (intent.type === 'id_lookup' && intent.id) {
       const hit = this._buildIdLookupHit(intent.id, query);
-      if (hit) return matchesSearchSelection(hit.item, hit.type, options?.filters, options?.docTypes) ? [hit] : [];
+      if (hit) return matchesSearchSelection(hit.item, hit.type, createSearchSelection(options?.filters, options?.docTypes)) ? [hit] : [];
       // Fall through to fulltext if the canonical ID isn't in the cache —
       // the user may have typed a near-miss and the existing fusion
       // pipeline (with tolerance) is the correct fallback.
@@ -643,10 +549,8 @@ export class OramaSearchService implements SearchService {
     // Caller-supplied docTypes override any type intent we parsed.
     const mergedDocTypes = options?.docTypes;
 
-    const where = { ...(buildWhereClause(mergedFilters, mergedDocTypes) ?? {}) };
-    // ADR-0092.3: exclude memories from generic search unless explicitly
-    // requested (via docTypes, a type filter, or "memory …" query intent).
-    if (!where.type) where.type = { nin: ['memory'] };
+    const selection = createSearchSelection(mergedFilters, mergedDocTypes, { defaultExcludedTypes: ['memory'] });
+    const where = lowerSearchSelection(selection);
 
     // The query text passed to BM25 is the intent's residual text.
     // For 'filtered' intent with empty residual, we don't run BM25 at all —
@@ -654,7 +558,7 @@ export class OramaSearchService implements SearchService {
     const bm25Query = intent.query;
 
     if (intent.type === 'filtered' && !bm25Query.trim()) {
-      return this._listMatchingFilters(mergedFilters, mergedDocTypes, limit, sortMode);
+      return this._listMatchingFilters(selection, limit);
     }
 
     const { hits } = await this._fusedSearch({
@@ -738,47 +642,34 @@ export class OramaSearchService implements SearchService {
    * ordering — relevance has no meaning when there is no query term.
    */
   private _listMatchingFilters(
-    filters: SearchOptions['filters'],
-    docTypes: SearchableType[] | undefined,
+    selection: SearchSelection,
     limit: number,
-    _sortMode: 'relevant' | 'recent',
   ): Array<{ id: string; score: number; type: SearchableType; item: AnyEntity | Resource; snippet: SearchSnippet }> {
-    const typeFilter = filters?.type;
-
-    const wantsResources = !docTypes || docTypes.includes('resource');
-    const wantsEntities = !docTypes || docTypes.some(t => t !== 'resource');
-
     const out: Array<{ id: string; score: number; type: SearchableType; item: AnyEntity | Resource; snippet: SearchSnippet }> = [];
 
-    if (wantsEntities) {
-      for (const task of this.taskCache.values()) {
-        // ADR-0092.3: memories excluded unless explicitly requested
-        if ((task.type as string) === 'memory' && typeFilter !== 'memory' && !docTypes?.includes('memory')) continue;
-        if (!matchesSearchSelection(task, task.type, filters, docTypes)) continue;
-        out.push({
-          id: task.id,
-          score: 1.0,
-          type: ((task.type || 'task') as SearchableType),
-          item: task,
-          snippet: this.generateEntitySearchSnippet(task.id, task, ''),
-        });
-      }
+    for (const task of this.taskCache.values()) {
+      if (!matchesSearchSelection(task, task.type, selection)) continue;
+      out.push({
+        id: task.id,
+        score: 1.0,
+        type: ((task.type || 'task') as SearchableType),
+        item: task,
+        snippet: this.generateEntitySearchSnippet(task.id, task, ''),
+      });
     }
 
     // Resources have no substrate type or parent to filter, but they may
     // declare a frontmatter status (BUG-0003) — a status filter keeps the
     // resources whose declared status token matches, fail-closed otherwise.
-    if (wantsResources) {
-      for (const resource of this.resourceCache.values()) {
-        if (!matchesSearchSelection(resource, 'resource', filters, docTypes)) continue;
-        out.push({
-          id: resource.id,
-          score: 1.0,
-          type: 'resource',
-          item: resource,
-          snippet: generateResourceSnippet(resource, ''),
-        });
-      }
+    for (const resource of this.resourceCache.values()) {
+      if (!matchesSearchSelection(resource, 'resource', selection)) continue;
+      out.push({
+        id: resource.id,
+        score: 1.0,
+        type: 'resource',
+        item: resource,
+        snippet: generateResourceSnippet(resource, ''),
+      });
     }
 
     // Sort: most-recently-updated first, then by id for stability.
@@ -844,18 +735,14 @@ export class OramaSearchService implements SearchService {
   async reconcile(currentTasks: IndexableEntity[]): Promise<{ added: number; removed: number; updated: number }> {
     if (!this.db) return { added: 0, removed: 0, updated: 0 };
 
-    const documents = currentTasks.map(normalizeDocument);
+    const documents = currentTasks;
     const currentIds = new Set(documents.map(document => document.entity.id));
     const cachedIds = new Set(this.taskCache.keys());
     let added = 0, removed = 0, updated = 0;
 
     for (const document of documents) {
       if (!cachedIds.has(document.entity.id)) {
-        await this.addDocument({
-          kind: 'entity-document',
-          entity: document.entity,
-          fields: document.fields,
-        });
+        await this.addDocument(document);
         added++;
       }
     }
@@ -880,11 +767,7 @@ export class OramaSearchService implements SearchService {
             || !isDeepStrictEqual(cachedFields, currentFields)
           )
         ) {
-          await this.updateDocument({
-            kind: 'entity-document',
-            entity: document.entity,
-            fields: document.fields,
-          });
+          await this.updateDocument(document);
           updated++;
         }
       }
@@ -948,7 +831,7 @@ export class OramaSearchService implements SearchService {
 
   async addDocument(task: IndexableEntity): Promise<void> {
     if (!this.db) return;
-    const document = normalizeDocument(task);
+    const document = task;
     const entity = document.entity;
     const previous = this.taskCache.get(entity.id);
     const previousFields = this.entityFieldCache.get(entity.id);
@@ -960,7 +843,7 @@ export class OramaSearchService implements SearchService {
         const doc = await this.taskToDocWithEmbeddings(document);
         await insert(this.db as OramaInstanceWithEmbeddings, doc);
       } else {
-        await insert(this.db as OramaInstance, this.taskToDoc(document));
+        await insert(this.db as OramaInstance, projectEntitySearchDocument(document));
       }
     } catch (e: any) {
       if (previous) {
@@ -1003,14 +886,14 @@ export class OramaSearchService implements SearchService {
     // ADR-0083 #2: atomic remove → insert. If the insert fails (e.g.
     // embedding service error), restore the previous document so the index
     // and taskCache don't drift apart.
-    const document = normalizeDocument(task);
+    const document = task;
     const entity = document.entity;
     const prev = this.taskCache.get(entity.id);
     const prevFields = this.entityFieldCache.get(entity.id);
     const previousIndexed = getByID(this.db as OramaInstanceWithEmbeddings, entity.id);
     if (prev !== undefined && isDeepStrictEqual(
-      this.taskToDoc({ entity: prev, fields: prevFields ?? [] }),
-      this.taskToDoc(document),
+      projectEntitySearchDocument({ entity: prev, fields: prevFields ?? [] }),
+      projectEntitySearchDocument(document),
     )) {
       // Payload-only edits must be visible, but have no index/embedding work.
       this.taskCache.set(entity.id, entity);
@@ -1019,7 +902,7 @@ export class OramaSearchService implements SearchService {
       return;
     }
     const unchangedEmbeddingText = prev !== undefined
-      && this.getTextForEmbedding({ entity: prev, fields: prevFields ?? [] }) === this.getTextForEmbedding(document);
+      && entityEmbeddingText({ entity: prev, fields: prevFields ?? [] }) === entityEmbeddingText(document);
     await this.removeDocument(entity.id);
     this.taskCache.set(entity.id, entity);
     this.entityFieldCache.set(entity.id, document.fields);
@@ -1027,11 +910,11 @@ export class OramaSearchService implements SearchService {
     try {
       if (this.hasEmbeddingsInIndex && (await this.ensureEmbeddings())) {
         const doc = unchangedEmbeddingText && previousIndexed?.embeddings !== undefined
-          ? { ...this.taskToDoc(document), embeddings: previousIndexed.embeddings }
+          ? { ...projectEntitySearchDocument(document), embeddings: previousIndexed.embeddings }
           : await this.taskToDocWithEmbeddings(document);
         await insert(this.db as OramaInstanceWithEmbeddings, doc);
       } else {
-        await insert(this.db as OramaInstance, this.taskToDoc(document));
+        await insert(this.db as OramaInstance, projectEntitySearchDocument(document));
       }
     } catch (err) {
       if (prev) {
@@ -1041,7 +924,7 @@ export class OramaSearchService implements SearchService {
         };
         this.taskCache.set(entity.id, prev);
         this.entityFieldCache.set(entity.id, restored.fields);
-        try { await insert(this.db as OramaInstance, previousIndexed ?? this.taskToDoc(restored)); } catch { /* index unrecoverable for this doc */ }
+        try { await insert(this.db as OramaInstance, previousIndexed ?? projectEntitySearchDocument(restored)); } catch { /* index unrecoverable for this doc */ }
       } else {
         this.taskCache.delete(entity.id);
         this.entityFieldCache.delete(entity.id);
@@ -1079,14 +962,14 @@ export class OramaSearchService implements SearchService {
       }
     } else {
       // Batch insert for BM25-only mode (ADR-0079)
-      const docs = resources.map(r => this.resourceToDoc(r));
+      const docs = resources.map(r => projectResourceSearchDocument(r));
       try {
         await insertMultiple(this.db as OramaInstance, docs);  // ADR-0083 #1
       } catch {
         // Fallback to individual inserts if batch fails (e.g. duplicates)
         for (const resource of resources) {
           try {
-            await insert(this.db as OramaInstance, this.resourceToDoc(resource));  // ADR-0083 #1
+            await insert(this.db as OramaInstance, projectResourceSearchDocument(resource));  // ADR-0083 #1
           } catch (e: any) {
             if (e?.code === 'DOCUMENT_ALREADY_EXISTS') {
               await this.updateResource(resource);
@@ -1107,7 +990,7 @@ export class OramaSearchService implements SearchService {
         const doc = await this.resourceToDocWithEmbeddings(resource);
         await insert(this.db as OramaInstanceWithEmbeddings, doc);
       } else {
-        await insert(this.db as OramaInstance, this.resourceToDoc(resource));
+        await insert(this.db as OramaInstance, projectResourceSearchDocument(resource));
       }
     } catch (e: any) {
       if (e?.code === 'DOCUMENT_ALREADY_EXISTS') {
@@ -1143,12 +1026,12 @@ export class OramaSearchService implements SearchService {
         const doc = await this.resourceToDocWithEmbeddings(resource);
         await insert(this.db as OramaInstanceWithEmbeddings, doc);
       } else {
-        await insert(this.db as OramaInstance, this.resourceToDoc(resource));
+        await insert(this.db as OramaInstance, projectResourceSearchDocument(resource));
       }
     } catch (err) {
       if (prev) {
         this.resourceCache.set(resource.id, prev);
-        try { await insert(this.db as OramaInstance, this.resourceToDoc(prev)); } catch { /* index unrecoverable for this doc */ }
+        try { await insert(this.db as OramaInstance, projectResourceSearchDocument(prev)); } catch { /* index unrecoverable for this doc */ }
       } else {
         this.resourceCache.delete(resource.id);
       }

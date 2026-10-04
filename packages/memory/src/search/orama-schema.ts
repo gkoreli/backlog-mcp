@@ -1,23 +1,12 @@
-import { statusToken } from '@backlog-mcp/shared';
+/** Orama schema and lowering of backend-independent selection (ADR 0136). */
+import type { SearchDocumentProjection } from './search-document.js';
+import { createSearchSelection, type SearchSelection } from './search-selection.js';
 import type { SearchOptions } from './types.js';
 import { EMBEDDING_DIMENSIONS } from './embedding-service.js';
 
 // ── Orama document types ────────────────────────────────────────────
 
-export type OramaDoc = {
-  id: string;
-  title: string;
-  content: string;
-  status: string;
-  type: string;
-  parent_id: string;
-  evidence: string;
-  blocked_reason: string;
-  references: string;
-  search_text: string;
-  path: string;
-  updated_at: string;  // ADR-0080: for native sortBy
-};
+export type OramaDoc = SearchDocumentProjection;
 
 export type OramaDocWithEmbeddings = OramaDoc & {
   embeddings: number[];
@@ -89,26 +78,23 @@ export const ENUM_FACETS = { status: {}, type: {}, parent_id: {} } as const;
  * parameter, while `filters.type` may come from parsed query intent. Same for
  * `parent_id` is the canonical containment filter.
  */
-export function buildWhereClause(filters?: SearchOptions['filters'], docTypes?: import('./types.js').SearchableType[]): Record<string, any> | undefined {
-  const where: Record<string, any> = {};
-  if (filters?.status?.length) {
-    // Declared statuses index as their leading token (BUG-0003), so the
-    // filter values normalize through the same shared rule. Values that
-    // don't tokenize match nothing (fail-closed, like the wakeup seams).
-    where.status = {
-      in: filters.status
-        .map(value => statusToken(value))
-        .filter((token): token is string => token !== undefined),
-    };
-  }
-  const selectedTypes = docTypes !== undefined ? docTypes : filters?.type ? [filters.type] : undefined;
-  if (selectedTypes !== undefined) {
-    where.type = { in: selectedTypes.filter(function isEligible(type) {
-      return !filters?.excludeTypes?.includes(type);
-    }) };
-  } else if (filters?.excludeTypes?.length) {
-    where.type = { nin: [...filters.excludeTypes, 'resource'] };
-  }
-  if (filters?.parent_id) where.parent_id = { eq: filters.parent_id };
+export function buildWhereClause(filters?: SearchOptions['filters'], docTypes?: import('./types.js').SearchableType[]): OramaWhere | undefined {
+  return lowerSearchSelection(createSearchSelection(filters, docTypes));
+}
+
+/** Only enum predicates produced by the selection adapter; no engine-specific `any`. */
+export interface OramaWhere {
+  status?: { in: string[] };
+  type?: { in: string[] } | { nin: string[] } | { eq: string };
+  parent_id?: { eq: string };
+}
+
+/** Lower the constructed value without re-deciding precedence/default policy. */
+export function lowerSearchSelection(selection: SearchSelection): OramaWhere | undefined {
+  const where: OramaWhere = {};
+  if (selection.statuses !== undefined) where.status = { in: [...selection.statuses] };
+  if (selection.types.mode === 'only') where.type = { in: [...selection.types.values] };
+  else if (selection.types.values.length > 0) where.type = { nin: [...selection.types.values] };
+  if (selection.parentId !== undefined) where.parent_id = { eq: selection.parentId };
   return Object.keys(where).length > 0 ? where : undefined;
 }
