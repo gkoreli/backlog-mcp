@@ -458,10 +458,14 @@ global work. This narrows R-2, R-8 and R-9 for **CLI wakeup only**:
   and `--home global`. Invalid explicit roots fail before runtime creation.
 - Other CLI commands, MCP, and bridge resolution keep the preceding rules.
 
-The adapter supplies filesystem probes to the workspace selection function in
-core and passes an explicit project selection to the existing runtime. This
-changes home selection only; briefing composition and its wire budget remain
-the same.
+The CLI selects the workspace resolver for single-home wakeup; the runner
+resolves one canonical home before constructing its runtime. Both caller-default
+and workspace selection live in `core/backlog-home.ts`, sharing boundary
+discovery, configuration and home construction through `BacklogHomeDeps`.
+`storage/local/backlog-home.ts` supplies filesystem probes and process defaults;
+the home core has no implicit filesystem or process dependencies. Typed workspace errors
+carry selection reasons, and the CLI supplies recovery flags. This changes home
+selection only; briefing composition and its wire budget remain the same.
 
 ### R-10 — Project Markdown is authoritative; Loro is derived there or global-only
 

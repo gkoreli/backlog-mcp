@@ -1,4 +1,4 @@
-import { resolveBacklogHome } from '../core/backlog-home.js';
+import { resolveBacklogHome } from '../storage/local/backlog-home.js';
 import { createLocalRuntime } from '../storage/local/local-runtime.js';
 import { LocalRuntimeRegistry } from '../storage/local/local-runtime-registry.js';
 import { resolveLegacyDataRoot } from '../utils/legacy-data-root.js';

@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import matter from 'gray-matter';
 import { EntityType, type Entity } from '@backlog-mcp/shared';
 import { describe, expect, it } from 'vitest';
-import { createBacklogHome } from '../core/backlog-home.js';
+import { createBacklogHome } from '../storage/local/backlog-home.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';
 import {
   createBuiltinSubstrateRegistrations,

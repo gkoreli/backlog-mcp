@@ -1,8 +1,6 @@
 import type { Command } from 'commander';
-import {
-  BacklogHomeResolutionError,
-  resolveBacklogHome,
-} from '../../core/backlog-home.js';
+import { BacklogHomeResolutionError } from '../../core/backlog-home.js';
+import { resolveBacklogHome } from '../../storage/local/backlog-home.js';
 import {
   migrateDocsNative,
   type DocsNativeMigrationReport,

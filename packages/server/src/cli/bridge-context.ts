@@ -1,8 +1,5 @@
-import {
-  BACKLOG_HOME_HEADER,
-  BACKLOG_PROJECT_ROOT_HEADER,
-  resolveBacklogHome,
-} from '../core/backlog-home.js';
+import { BACKLOG_HOME_HEADER, BACKLOG_PROJECT_ROOT_HEADER } from '../core/backlog-home.js';
+import { resolveBacklogHome } from '../storage/local/backlog-home.js';
 import type {
   BridgeHomeContext,
   ResolveBridgeHomeContextParams,

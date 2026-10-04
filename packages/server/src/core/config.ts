@@ -3,14 +3,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import {
   dirname,
-  isAbsolute,
   join,
-  relative,
   resolve,
-  sep,
 } from 'node:path';
 import { z } from 'zod';
 import type { BacklogHome } from './backlog-home.types.js';
+import { isPathWithin } from './path-containment.js';
 
 export const CONFIG_DIR = '.backlog';
 export const CONFIG_FILE = 'config.json';
@@ -43,16 +41,6 @@ const realFs: ConfigFsDeps = {
   exists: existsSync,
   read: (path) => readFileSync(path, 'utf-8'),
 };
-
-function isPathWithin(root: string, candidate: string): boolean {
-  const relativePath = relative(root, candidate);
-  return relativePath === ''
-    || (
-      relativePath !== '..'
-      && !relativePath.startsWith(`..${sep}`)
-      && !isAbsolute(relativePath)
-    );
-}
 
 /**
  * Find the nearest `.backlog/` without crossing the nearest VCS boundary

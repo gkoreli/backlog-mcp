@@ -5,7 +5,7 @@ import { resolveContext } from '../../core/config.js';
 import type { WakeupParams, WakeupResult } from '../../core/types.js';
 import type { CrossHomeWakeupResult } from '../../core/home-read-coordinator.types.js';
 import { ambientAgentIdentity } from '../../storage/local/agent-identity.js';
-import { wakeupRuntimeDependencies } from '../wakeup-runtime-dependencies.js';
+import { resolveWorkspaceHome } from '../../storage/local/backlog-home.js';
 import {
   cliRuntimeDependencies,
   run,
@@ -192,7 +192,7 @@ export function registerWakeup(program: Command): void {
     .option('--max-constraints <n>', 'Max requirement constraint stubs (0 disables)', parseInt)
     .option('--evidence-chars <n>', 'Max chars of evidence per completion', parseInt)
     .action((opts) => {
-      const deps = wakeupRuntimeDependencies(cliRuntimeDependencies(program));
+      const deps = cliRuntimeDependencies(program);
       // The attribution ladder resolves once per CLI process (ADR 0119.1);
       // absent stays absent — the params key is simply not set.
       const agentIdentity = ambientAgentIdentity();
@@ -245,7 +245,7 @@ export function registerWakeup(program: Command): void {
             },
             formatWakeupBriefing,
             program.opts().json,
-            deps,
+            { ...deps, resolveHome: resolveWorkspaceHome },
           );
     });
 }

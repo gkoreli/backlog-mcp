@@ -1,23 +1,23 @@
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
-import { homedir } from 'node:os';
 import {
-  basename,
   dirname,
   isAbsolute,
   join,
-  relative,
   resolve,
-  sep,
 } from 'node:path';
 import type {
   BacklogHome,
   BacklogHomeDeps,
-  BacklogHomeSelector,
   CreateBacklogHomeParams,
   DiscoverProjectRootParams,
   ResolveBacklogHomeParams,
 } from './backlog-home.types.js';
 import { loadRepoConfig, type RepoConfig } from './config.js';
+import { BacklogHomeResolutionError, WorkspaceHomeResolutionError } from './backlog-home.errors.js';
+import { parseHomeSelector, validateHomeSelection } from './backlog-home-selection.js';
+import { isPathWithin } from './path-containment.js';
+
+export { BacklogHomeResolutionError } from './backlog-home.errors.js';
+export { isPathWithin } from './path-containment.js';
 
 export const BACKLOG_HOME_ENV_VAR = 'BACKLOG_HOME';
 export const BACKLOG_PROJECT_ROOT_ENV_VAR = 'BACKLOG_PROJECT_ROOT';
@@ -27,55 +27,9 @@ export const BACKLOG_CONTROL_DIR = '.backlog';
 export const BACKLOG_DOCUMENTS_DIR = 'docs';
 export const VCS_MARKER = '.git';
 
-const realDeps: BacklogHomeDeps = {
-  exists: existsSync,
-  read: (path) => readFileSync(path, 'utf-8'),
-  canonicalize: canonicalizeRealPath,
-  homeDir: homedir,
-};
-
-/**
- * Merge caller overrides over the real filesystem dependencies. Family
- * resolution (LATTICE W1) arrives here as an injected probe — core never
- * shells out; compositions wire the git-plumbing resolver from the local
- * layer, and its absence simply means no family awareness.
- */
-function mergeDeps(deps: Partial<BacklogHomeDeps> | undefined): BacklogHomeDeps {
-  return deps === undefined ? realDeps : { ...realDeps, ...deps };
-}
-
 interface ProjectContext {
   projectRoot?: string;
   config: RepoConfig;
-}
-
-/** Error raised when an explicitly selected home cannot be resolved safely. */
-export class BacklogHomeResolutionError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'BacklogHomeResolutionError';
-  }
-}
-
-/**
- * Canonicalize a path through its nearest existing ancestor.
- *
- * The final documents or control directory may not exist yet, while an
- * existing symlinked ancestor still needs to resolve to its physical path.
- */
-function canonicalizeRealPath(path: string): string {
-  const absolutePath = resolve(path);
-  const missingSegments: string[] = [];
-  let existingPath = absolutePath;
-
-  while (!existsSync(existingPath)) {
-    const parent = dirname(existingPath);
-    if (parent === existingPath) return absolutePath;
-    missingSegments.unshift(basename(existingPath));
-    existingPath = parent;
-  }
-
-  return resolve(realpathSync(existingPath), ...missingSegments);
 }
 
 function clean(value: string | undefined): string | undefined {
@@ -102,15 +56,6 @@ function resolveHomeChild(
   }
 
   return canonicalPath;
-}
-
-function normalizeSelector(value: string | undefined): BacklogHomeSelector | undefined {
-  const selector = clean(value);
-  if (selector === undefined) return undefined;
-  if (selector === 'global' || selector === 'project') return selector;
-  throw new BacklogHomeResolutionError(
-    `Invalid backlog home "${selector}"; expected "global" or "project"`,
-  );
 }
 
 function walkUp(startDir: string, stopDir: string | undefined): string[] {
@@ -175,7 +120,7 @@ function resolveProjectContext(
   params: ResolveBacklogHomeParams,
   deps: BacklogHomeDeps,
 ): ProjectContext {
-  const startDir = deps.canonicalize(clean(params.cwd) ?? process.cwd());
+  const startDir = deps.canonicalize(params.cwd);
   const selectedStopDir = clean(params.stopDir);
   const stopDir = selectedStopDir === undefined
     ? undefined
@@ -183,8 +128,7 @@ function resolveProjectContext(
   const projectRoot = discoverProjectRoot({
     startDir,
     stopDir,
-    deps,
-  });
+  }, deps);
   const config = loadRepoConfig(startDir, {
     exists: deps.exists,
     read: deps.read,
@@ -257,28 +201,12 @@ function requireProjectHome(
 }
 
 /**
- * Return whether `candidate` is the same path as `root` or a descendant of it.
- *
- * Callers should pass canonical absolute paths when symlink containment matters.
- */
-export function isPathWithin(root: string, candidate: string): boolean {
-  const relativePath = relative(root, candidate);
-  return relativePath === ''
-    || (
-      relativePath !== '..'
-      && !relativePath.startsWith(`..${sep}`)
-      && !isAbsolute(relativePath)
-    );
-}
-
-/**
  * Construct a canonical home and reject documents/control paths outside it.
  */
 export function createBacklogHome(
   params: CreateBacklogHomeParams,
-  partialDeps?: Partial<BacklogHomeDeps>,
+  deps: BacklogHomeDeps,
 ): BacklogHome {
-  const deps = mergeDeps(partialDeps);
   const root = deps.canonicalize(params.root);
   const documentsDir = resolveHomeChild(
     root,
@@ -320,8 +248,8 @@ export function createBacklogHome(
  */
 export function discoverProjectRoot(
   params: DiscoverProjectRootParams,
+  deps: BacklogHomeDeps,
 ): string | undefined {
-  const deps = mergeDeps(params.deps);
   const startDir = deps.canonicalize(params.startDir);
   const selectedStopDir = clean(params.stopDir);
   const stopDir = selectedStopDir !== undefined
@@ -338,12 +266,12 @@ export function discoverProjectRoot(
  * discovered project docs, then the user-global home.
  */
 export function resolveBacklogHome(
-  params: ResolveBacklogHomeParams = {},
+  params: ResolveBacklogHomeParams,
+  deps: BacklogHomeDeps,
 ): BacklogHome {
-  const deps = mergeDeps(params.deps);
-  const explicitSelector = normalizeSelector(params.home);
+  const explicitSelector = parseHomeSelector(params.home);
   const explicitProjectRoot = clean(params.projectRoot);
-  const env = params.env ?? process.env;
+  const env = params.env;
   const envProjectRoot = clean(env[BACKLOG_PROJECT_ROOT_ENV_VAR]);
 
   if (explicitSelector === 'global') return createGlobalHome(params, deps);
@@ -358,7 +286,7 @@ export function resolveBacklogHome(
     return createSelectedProjectHome(explicitProjectRoot, params, deps);
   }
 
-  const envSelector = normalizeSelector(env[BACKLOG_HOME_ENV_VAR]);
+  const envSelector = parseHomeSelector(env[BACKLOG_HOME_ENV_VAR]);
 
   if (envSelector === 'global') return createGlobalHome(params, deps);
   if (envSelector === 'project') {
@@ -369,7 +297,7 @@ export function resolveBacklogHome(
   }
 
   const context = resolveProjectContext(params, deps);
-  const configSelector = normalizeSelector(context.config.home);
+  const configSelector = parseHomeSelector(context.config.home);
   if (configSelector === 'global') return createGlobalHome(params, deps);
   if (configSelector === 'project') {
     if (context.projectRoot === undefined) {
@@ -397,4 +325,33 @@ export function resolveBacklogHome(
 
   return discoverDocumentsHome(params, deps, context)
     ?? createGlobalHome(params, deps);
+}
+
+/**
+ * Resolve a workspace-only home without consulting inherited home/root defaults.
+ * Explicit global selection is supported; cross-home fan-out belongs to callers.
+ */
+export function resolveWorkspaceHome(
+  params: ResolveBacklogHomeParams,
+  deps: BacklogHomeDeps,
+): BacklogHome {
+  const selector = parseHomeSelector(params.home);
+  if (selector === 'global') {
+    validateHomeSelection(params);
+    return createGlobalHome(params, deps);
+  }
+  if (params.projectRoot !== undefined && !params.projectRoot.trim()) {
+    throw new WorkspaceHomeResolutionError('invalid-root');
+  }
+  const root = clean(params.projectRoot) ?? discoverProjectRoot({
+    startDir: params.cwd,
+    stopDir: params.stopDir,
+  }, deps);
+  if (root === undefined) {
+    throw new WorkspaceHomeResolutionError('missing-boundary');
+  }
+  if (!deps.isDirectory(root)) {
+    throw new WorkspaceHomeResolutionError('invalid-root', root);
+  }
+  return createSelectedProjectHome(root, params, deps);
 }

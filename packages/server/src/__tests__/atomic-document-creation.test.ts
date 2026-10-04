@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
-import { createBacklogHome } from '../core/backlog-home.js';
+import { createBacklogHome } from '../storage/local/backlog-home.js';
 import { createEntity } from '../core/create.js';
 import { remember } from '../core/remember.js';
 import { createLocalRuntime } from '../storage/local/local-runtime.js';

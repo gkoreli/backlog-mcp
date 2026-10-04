@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { Entity } from '@backlog-mcp/shared';
 import { describe, expect, it } from 'vitest';
-import { createBacklogHome } from '../core/backlog-home.js';
+import { createBacklogHome } from '../storage/local/backlog-home.js';
 import type {
   DocsTreeReconcileCallback,
   DocsTreeWatcher,

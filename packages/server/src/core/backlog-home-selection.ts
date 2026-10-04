@@ -3,7 +3,7 @@
  * Pure: it never consults a process's cwd or environment, so every adapter
  * (HTTP headers, CLI flags) gets the same answer (ADR 0134.1 R3.3).
  */
-import { BacklogHomeResolutionError } from './backlog-home.js';
+import { BacklogHomeResolutionError } from './backlog-home.errors.js';
 import type { BacklogHomeSelector } from './backlog-home.types.js';
 import type {
   HomeSelectionRequest,
@@ -15,7 +15,8 @@ function clean(value: string | undefined): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-function parseHomeSelector(value: string | undefined): BacklogHomeSelector | undefined {
+/** Parse the shared single-home vocabulary; whitespace means no selection. */
+export function parseHomeSelector(value: string | undefined): BacklogHomeSelector | undefined {
   const selected = clean(value);
   if (selected === undefined) return undefined;
   if (selected === 'global' || selected === 'project') return selected;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createBacklogHome } from '../core/backlog-home.js';
+import { createBacklogHome } from '../storage/local/backlog-home.js';
 import { projectHomeProvenance } from '../core/home-provenance.js';
 
 describe('projectHomeProvenance', function describeProjection() {

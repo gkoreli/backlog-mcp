@@ -1,5 +1,5 @@
 /** Per-request home runtime selection for the detached HTTP server (ADR 0112 R-2). */
-import { resolveBacklogHome } from '../core/backlog-home.js';
+import { resolveBacklogHome } from '../storage/local/backlog-home.js';
 import { validateHomeSelection } from '../core/backlog-home-selection.js';
 import type { HomeSelectionRequest } from '../core/backlog-home-selection.types.js';
 import { resolveGitFamily } from '../storage/local/git-family.js';

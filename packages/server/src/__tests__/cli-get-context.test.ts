@@ -12,7 +12,8 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EntityType } from '@backlog-mcp/shared';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { createBacklogHome, type BacklogHome } from '../core/backlog-home.js';
+import type { BacklogHome } from '../core/backlog-home.types.js';
+import { createBacklogHome } from '../storage/local/backlog-home.js';
 import { buildEntity } from '../storage/entity-factory.js';
 import { createLocalRuntime, type LocalRuntime } from '../storage/local/local-runtime.js';
 import {

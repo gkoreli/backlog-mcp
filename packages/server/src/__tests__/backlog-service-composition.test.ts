@@ -13,7 +13,7 @@ import {
   type SubstrateType,
 } from '@backlog-mcp/shared';
 import { describe, expect, it } from 'vitest';
-import { createBacklogHome } from '../core/backlog-home.js';
+import { createBacklogHome } from '../storage/local/backlog-home.js';
 import {
   createBuiltinSubstrateRegistrations,
   loadProjectSubstrateDefinitions,

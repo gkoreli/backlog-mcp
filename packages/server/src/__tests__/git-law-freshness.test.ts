@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
-import { createBacklogHome } from '../core/backlog-home.js';
+import { createBacklogHome } from '../storage/local/backlog-home.js';
 import { isNorthStarFilename } from '../core/orientation.js';
 import { createLocalAppRequestRuntime } from '../composition/local-app-request-runtime.js';
 import { createWakeupGroundingReader } from '../composition/wakeup-grounding.js';

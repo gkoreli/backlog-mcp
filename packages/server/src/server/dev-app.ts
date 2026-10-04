@@ -1,4 +1,4 @@
-import { resolveBacklogHome } from '../core/backlog-home.js';
+import { resolveBacklogHome } from '../storage/local/backlog-home.js';
 import { resolveGitFamily } from '../storage/local/git-family.js';
 import { createLocalRuntime } from '../storage/local/local-runtime.js';
 import { LocalRuntimeRegistry } from '../storage/local/local-runtime-registry.js';

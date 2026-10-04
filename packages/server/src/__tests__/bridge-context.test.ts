@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  statSync,
 } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -16,6 +17,7 @@ import type { BacklogHomeDeps } from '../core/backlog-home.types.js';
 function pathDeps(homeDir = '/users/quartz'): BacklogHomeDeps {
   return {
     exists: existsSync,
+    isDirectory: (path) => statSync(path).isDirectory(),
     read: (path) => readFileSync(path, 'utf-8'),
     canonicalize: resolve,
     homeDir: () => homeDir,

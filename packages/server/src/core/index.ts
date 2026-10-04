@@ -67,6 +67,7 @@ export {
   discoverProjectRoot,
   isPathWithin,
   resolveBacklogHome,
+  resolveWorkspaceHome,
 } from './backlog-home.js';
 export type {
   BacklogHome,

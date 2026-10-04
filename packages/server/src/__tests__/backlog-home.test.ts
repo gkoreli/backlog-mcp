@@ -2,23 +2,20 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import {
-  BacklogHomeResolutionError,
-  createBacklogHome,
-  discoverProjectRoot,
-  isPathWithin,
-  resolveBacklogHome,
-} from '../core/backlog-home.js';
+import { BacklogHomeResolutionError, isPathWithin } from '../core/backlog-home.js';
+import { createBacklogHome, discoverProjectRoot, resolveBacklogHome } from '../storage/local/backlog-home.js';
 import type { BacklogHomeDeps } from '../core/backlog-home.types.js';
 
 function pathDeps(homeDir = '/users/quartz'): BacklogHomeDeps {
   return {
     exists: existsSync,
+    isDirectory: (path) => statSync(path).isDirectory(),
     read: (path) => readFileSync(path, 'utf-8'),
     canonicalize: resolve,
     homeDir: () => homeDir,

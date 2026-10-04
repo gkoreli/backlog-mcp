@@ -80,8 +80,6 @@ export const FROZEN_UTILS: readonly string[] = [
  */
 export const KNOWN_VIOLATIONS: Readonly<Record<string, readonly string[]>> = {
   'core-io': [
-    'core/backlog-home.ts -> node:fs',
-    'core/backlog-home.ts -> node:os',
     'core/config.ts -> node:fs',
     'core/document-discovery.ts -> node:fs',
     'core/migrate-docs-native.ts -> node:fs',

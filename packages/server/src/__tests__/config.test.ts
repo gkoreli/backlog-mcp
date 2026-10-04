@@ -7,7 +7,7 @@ import {
   loadRepoConfig,
   resolveContext,
 } from '../core/config.js';
-import { createBacklogHome } from '../core/backlog-home.js';
+import { createBacklogHome } from '../storage/local/backlog-home.js';
 
 function writeConfig(
   root: string,

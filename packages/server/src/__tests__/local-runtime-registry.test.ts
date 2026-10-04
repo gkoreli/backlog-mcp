@@ -2,7 +2,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import { describe, expect, it, vi } from 'vitest';
-import { createBacklogHome } from '../core/backlog-home.js';
+import { createBacklogHome } from '../storage/local/backlog-home.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';
 import type {
   DocsTreeReconcileCallback,

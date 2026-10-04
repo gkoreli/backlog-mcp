@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { reportCliFailure } from '../cli/cli-failure.js';
+import { WorkspaceHomeResolutionError } from '../core/backlog-home.errors.js';
 import { SubstrateWriteError } from '../core/substrates/substrate-write-error.js';
 import { NotFoundError, ValidationError } from '../core/types.js';
 
@@ -45,5 +46,16 @@ describe('reportCliFailure (ADR 0130 R5)', function describeCliFailure() {
     expect(exitSpy).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(1);
     exitSpy.mockRestore();
+  });
+
+  it('adds actionable CLI hints to typed workspace failures', function reportsWorkspaceFailures() {
+    const io = { error: vi.fn() };
+    reportCliFailure(new WorkspaceHomeResolutionError('missing-boundary'), io);
+    reportCliFailure(new WorkspaceHomeResolutionError('invalid-root', '/missing'), io);
+    expect(io.error.mock.calls).toEqual([
+      ['No project boundary found for wakeup; run inside a project, pass --project-root <path>, or explicitly select --home global'],
+      ['Project root must be an existing directory: /missing; pass --project-root <path>'],
+    ]);
+    expect(process.exitCode).toBe(1);
   });
 });

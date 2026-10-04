@@ -12,7 +12,7 @@ import matter from 'gray-matter';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { Entity, Memory } from '@backlog-mcp/shared';
 import { describe, expect, it, vi } from 'vitest';
-import { createBacklogHome } from '../core/backlog-home.js';
+import { createBacklogHome } from '../storage/local/backlog-home.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';
 import { createEntity as createEntityCore } from '../core/create.js';
 import { editItem } from '../core/edit.js';

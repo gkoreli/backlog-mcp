@@ -36,6 +36,7 @@ export type BacklogHomeSelector = 'global' | 'project';
 /** Injectable path and filesystem operations used by home resolution. */
 export interface BacklogHomeDeps {
   exists: (path: string) => boolean;
+  isDirectory: (path: string) => boolean;
   read: (path: string) => string;
   canonicalize: (path: string) => string;
   homeDir: () => string;
@@ -61,20 +62,16 @@ export interface CreateBacklogHomeParams {
 export interface DiscoverProjectRootParams {
   startDir: string;
   stopDir?: string;
-  /** Partial overrides merge over the real filesystem dependencies. */
-  deps?: Partial<BacklogHomeDeps>;
 }
 
 /** Inputs for resolving the active backlog home for one caller. */
 export interface ResolveBacklogHomeParams {
   home?: BacklogHomeSelector;
   projectRoot?: string;
-  cwd?: string;
+  cwd: string;
   stopDir?: string;
-  env?: Readonly<Record<string, string | undefined>>;
+  env: Readonly<Record<string, string | undefined>>;
   globalRoot?: string;
   documentsDir?: string;
   controlDir?: string;
-  /** Partial overrides merge over the real filesystem dependencies. */
-  deps?: Partial<BacklogHomeDeps>;
 }

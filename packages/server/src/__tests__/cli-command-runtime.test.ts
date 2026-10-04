@@ -6,12 +6,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import matter from 'gray-matter';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createBacklogHome } from '../core/backlog-home.js';
+import { createBacklogHome } from '../storage/local/backlog-home.js';
 import { createOperationLogger } from '../operations/logger.js';
 import { buildEntity } from '../storage/entity-factory.js';
 import { createLocalRuntime } from '../storage/local/local-runtime.js';
 import type { IBacklogService } from '../storage/backlog-service.contract.js';
 import type { CliRuntime } from '../cli/runner.types.js';
+import { resolveWorkspaceHome } from '../storage/local/backlog-home.js';
 
 const mocks = vi.hoisted(function createMocks() {
   return {
@@ -75,21 +76,12 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
     mocks.createEntity.mockReset();
   });
 
-  it('passes an explicit workspace selection for unflagged wakeup', async function selectsWakeupWorkspace() {
-    const root = '/cli-wakeup-workspace';
-    mkdirSync(`${root}/.git`, { recursive: true });
-    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
-    try {
-      const program = new Command().option('--json');
-      registerWakeup(program);
-      await program.parseAsync(['node', 'backlog', 'wakeup']);
-      expect(mocks.run.mock.calls[0]?.[3]).toEqual({
-        home: 'project', projectRoot: root,
-      });
-      expect(mocks.runAcrossHomes).not.toHaveBeenCalled();
-    } finally {
-      cwd.mockRestore();
-    }
+  it('selects the workspace resolver for unflagged wakeup', async function selectsWakeupWorkspace() {
+    const program = new Command().option('--json');
+    registerWakeup(program);
+    await program.parseAsync(['node', 'backlog', 'wakeup']);
+    expect(mocks.run.mock.calls[0]?.[3]).toEqual({ resolveHome: resolveWorkspaceHome });
+    expect(mocks.runAcrossHomes).not.toHaveBeenCalled();
   });
 
   it('rejects malformed wakeup home flags before starting a runtime', async function rejectsInvalidWakeupHome() {

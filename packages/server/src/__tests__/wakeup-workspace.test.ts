@@ -1,7 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { wakeupRuntimeDependencies } from '../cli/wakeup-runtime-dependencies.js';
-import { resolveBacklogHome } from '../core/backlog-home.js';
+import { resolveWorkspaceHome } from '../storage/local/backlog-home.js';
 
 function project(root: string): void {
   mkdirSync(`${root}/.git`, { recursive: true });
@@ -12,10 +11,9 @@ describe('CLI wakeup workspace selection', function describeWorkspaceSelection()
     const cwd = '/wakeup-workspace/empty';
     project(cwd);
     const env = { BACKLOG_HOME: 'global', BACKLOG_PROJECT_ROOT: '/other-project' };
-    const selected = wakeupRuntimeDependencies({ cwd, env });
+    const selected = resolveWorkspaceHome({ cwd, env });
 
-    expect(selected).toEqual({ cwd, env, home: 'project', projectRoot: cwd });
-    expect(resolveBacklogHome({ ...selected, home: 'project' })).toMatchObject({
+    expect(selected).toMatchObject({
       kind: 'project', root: cwd, documentsDir: `${cwd}/docs`,
     });
   });
@@ -29,10 +27,9 @@ describe('CLI wakeup workspace selection', function describeWorkspaceSelection()
     }));
     const cwd = `${root}/packages/app/src`;
     mkdirSync(cwd, { recursive: true });
-    const selected = wakeupRuntimeDependencies({ cwd });
+    const selected = resolveWorkspaceHome({ cwd });
 
-    expect(selected.projectRoot).toBe(root);
-    expect(resolveBacklogHome({ ...selected, home: 'project' })).toMatchObject({
+    expect(selected).toMatchObject({
       kind: 'project', root, documentsDir: `${root}/notes`,
     });
   });
@@ -42,39 +39,38 @@ describe('CLI wakeup workspace selection', function describeWorkspaceSelection()
     const root = '/wakeup-workspace/outer/nested';
     project(root);
     mkdirSync(`${root}/src`, { recursive: true });
-    expect(wakeupRuntimeDependencies({ cwd: `${root}/src` }).projectRoot).toBe(root);
+    expect(resolveWorkspaceHome({ cwd: `${root}/src` }).root).toBe(root);
   });
 
   it('accepts a linked-worktree marker file without requiring docs', function selectsWorktree() {
     const root = '/wakeup-workspace/linked';
     mkdirSync(root, { recursive: true });
     writeFileSync(`${root}/.git`, 'gitdir: /family/.git/worktrees/linked');
-    expect(wakeupRuntimeDependencies({ cwd: root }).projectRoot).toBe(root);
+    expect(resolveWorkspaceHome({ cwd: root }).root).toBe(root);
   });
 
   it('accepts an explicit existing directory outside a discoverable project', function selectsExplicitRoot() {
     const projectRoot = '/wakeup-workspace/explicit';
     mkdirSync(projectRoot, { recursive: true });
-    const selected = wakeupRuntimeDependencies({
+    const selected = resolveWorkspaceHome({
       cwd: '/outside', projectRoot, env: { BACKLOG_HOME: 'global' },
     });
-    expect(selected).toMatchObject({ home: 'project', projectRoot });
+    expect(selected).toMatchObject({ kind: 'project', root: projectRoot });
   });
 
-  it('retains explicitly selected global and all workflows', function preservesExplicitHomes() {
-    for (const home of ['global', 'all'] as const) {
-      const deps = { home, cwd: '/outside', env: { BACKLOG_HOME: 'project' } };
-      expect(wakeupRuntimeDependencies(deps)).toBe(deps);
-    }
+  it('retains explicitly selected global workflow', function preservesExplicitGlobal() {
+    expect(resolveWorkspaceHome({
+      home: 'global', cwd: '/outside', env: { BACKLOG_HOME: 'project' },
+    })).toMatchObject({ kind: 'global' });
   });
 
   it('requires a project boundary instead of falling back to global or an environment root', function rejectsNoBoundary() {
     expect(function selectOutside() {
-      wakeupRuntimeDependencies({
+      resolveWorkspaceHome({
         cwd: '/wakeup-workspace/outside',
         env: { BACKLOG_HOME: 'global', BACKLOG_PROJECT_ROOT: '/somewhere' },
       });
-    }).toThrow('pass --project-root <path>, or explicitly select --home global');
+    }).toThrow('No project boundary found');
   });
 
   it.each(['', '   ', '/wakeup-workspace/missing', '/wakeup-workspace/file', 'bad\0root'])(
@@ -82,7 +78,7 @@ describe('CLI wakeup workspace selection', function describeWorkspaceSelection()
       mkdirSync('/wakeup-workspace', { recursive: true });
       writeFileSync('/wakeup-workspace/file', 'not a directory');
       expect(function selectInvalid() {
-        wakeupRuntimeDependencies({ cwd: '/outside', projectRoot });
+        resolveWorkspaceHome({ cwd: '/outside', projectRoot });
       }).toThrow('Project root must be an existing directory');
     },
   );
@@ -93,9 +89,8 @@ describe('CLI wakeup workspace selection', function describeWorkspaceSelection()
     writeFileSync(`${root}/.backlog/config.json`, JSON.stringify({
       home: 'global', documentsDir: '../outside',
     }));
-    const selected = wakeupRuntimeDependencies({ cwd: root });
     expect(function resolveEscapingHome() {
-      resolveBacklogHome({ ...selected, home: 'project' });
+      resolveWorkspaceHome({ cwd: root });
     }).toThrow('Backlog home path escapes its root');
   });
 });

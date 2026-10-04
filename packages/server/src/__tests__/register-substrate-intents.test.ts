@@ -17,7 +17,7 @@ import {
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
 import { RESERVED_TOOL_NAMES } from '../core/substrates/tool-name-reservations.js';
 import { registerTools } from '../tools/index.js';
-import { createBacklogHome } from '../core/backlog-home.js';
+import { createBacklogHome } from '../storage/local/backlog-home.js';
 import { createWriteProvenance } from '../composition/write-provenance.js';
 
 type ToolResult = {

@@ -3,10 +3,8 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Command } from 'commander';
 import type { BacklogEventType } from '../events/event-bus.js';
-import {
-  BacklogHomeResolutionError,
-  resolveBacklogHome,
-} from '../core/backlog-home.js';
+import { BacklogHomeResolutionError } from '../core/backlog-home.js';
+import { resolveBacklogHome } from '../storage/local/backlog-home.js';
 import { createHomeReadCoordinator } from '../core/home-read-coordinator.js';
 import type {
   HomeReadCoordinator,
@@ -30,6 +28,8 @@ import {
   recentHomesManifestPath,
 } from '../storage/local/recent-homes-store.js';
 import { resolveContext } from '../core/config.js';
+import type { LocalHomeResolutionParams } from '../storage/local/backlog-home.types.js';
+import type { BacklogHome } from '../core/backlog-home.types.js';
 import type {
   CliRunnerDependencies,
   CliRuntime,
@@ -54,6 +54,18 @@ function isBacklogEventType(type: string): type is BacklogEventType {
     || type === 'resource_changed';
 }
 
+/** Existing direct-command validation and caller-default precedence. */
+function resolveCliHome(params: LocalHomeResolutionParams): BacklogHome {
+  const selection = params.home === undefined && params.projectRoot === undefined
+    ? undefined
+    : validateHomeSelection(params);
+  return resolveBacklogHome({
+    ...params,
+    home: selection?.home,
+    projectRoot: selection?.projectRoot,
+  });
+}
+
 async function createDocsNativeCliRuntime(
   deps: CliRunnerDependencies,
 ): Promise<CliRuntime> {
@@ -63,16 +75,10 @@ async function createDocsNativeCliRuntime(
     );
   }
   const env = deps.env ?? process.env;
-  const explicitSelection = deps.home === undefined
-    && deps.projectRoot === undefined
-    ? undefined
-    : validateHomeSelection({
-      home: deps.home,
-      projectRoot: deps.projectRoot,
-    });
-  const home = resolveBacklogHome({
-    home: explicitSelection?.home,
-    projectRoot: explicitSelection?.projectRoot,
+  const resolveHome = deps.resolveHome ?? resolveCliHome;
+  const home = resolveHome({
+    home: deps.home,
+    projectRoot: deps.projectRoot,
     cwd: deps.cwd ?? process.cwd(),
     env,
     // Family awareness (LATTICE W1): a CLI run inside a linked worktree

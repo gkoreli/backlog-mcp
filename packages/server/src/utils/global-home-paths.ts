@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { resolveBacklogHome } from '../core/backlog-home.js';
+import { resolveBacklogHome } from '../storage/local/backlog-home.js';
 
 /** Resolve a path inside the canonical global home's private state plane. */
 export function globalStatePath(...segments: string[]): string {

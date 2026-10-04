@@ -11,10 +11,7 @@ import { join } from 'node:path';
 import matter from 'gray-matter';
 import type { Entity } from '@backlog-mcp/shared';
 import { describe, expect, it } from 'vitest';
-import {
-  createBacklogHome,
-  resolveBacklogHome,
-} from '../core/backlog-home.js';
+import { createBacklogHome, resolveBacklogHome } from '../storage/local/backlog-home.js';
 import {
   assertDocsNativeMigrationComplete,
   DocsNativeMigrationError,

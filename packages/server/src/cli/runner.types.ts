@@ -7,6 +7,7 @@ import type {
   BacklogHome,
   BacklogHomeSelector,
 } from '../core/backlog-home.types.js';
+import type { LocalHomeResolutionParams } from '../storage/local/backlog-home.types.js';
 import type { WakeupGrounding, WriteContext } from '../core/types.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import type { OperationLogger } from '../operations/logger.js';
@@ -46,6 +47,8 @@ export interface CliRunnerDependencies {
   cwd?: string;
   home?: CliHomeSelector;
   projectRoot?: string;
+  /** Invocation-specific selection; runtime construction consumes one resolved home. */
+  resolveHome?: (params: LocalHomeResolutionParams) => BacklogHome;
   actor?: () => Actor;
   createLocalRuntime?: (home: BacklogHome) => LocalRuntime;
   adaptLocalRuntime?: (runtime: LocalRuntime) => AppRequestRuntime;
