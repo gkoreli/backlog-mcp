@@ -6,10 +6,10 @@ import type { WriteWarning } from '@backlog-mcp/shared';
  */
 
 import type { WriteContext } from './types.js';
-import type { Mutation, MutationAttribution, OperationEntry } from './operation-log.contract.js';
+import type { Mutation, MutationAttribution, MutationNotice, OperationEntry } from './operation-log.contract.js';
 
 /** Mutation class → SSE event type. Semantic tool names remain payload data. */
-const MUTATION_EVENT_MAP: Record<Mutation, string> = {
+const MUTATION_EVENT_MAP: Record<Mutation, MutationNotice['type']> = {
   create: 'task_created',
   update: 'task_changed',
   delete: 'task_deleted',

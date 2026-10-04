@@ -1,13 +1,12 @@
-import type { OramaSearchService } from '@backlog-mcp/memory/search';
+import type { BacklogSearchPort, BacklogResourceCatalogPort } from './backlog-projection.contract.js';
 import type { CompiledDisclosureRelation, CompiledSubstrateWakeupDisclosure, SubstrateType, SubstrateWorkflowDefinition } from '@backlog-mcp/shared';
-import type { ResourceManager } from '../../resources/manager.js';
 import type { StorageAdapter } from '../storage-adapter.js';
 
 /** Runtime-owned dependencies composed by one local backlog service. */
 export interface BacklogServiceDependencies {
   storage: StorageAdapter;
-  search: OramaSearchService;
-  resourceManager: ResourceManager;
+  search: BacklogSearchPort;
+  resourceManager: BacklogResourceCatalogPort;
   getSearchFields?: (type: SubstrateType) => readonly string[] | undefined;
   allocateId?: (type: SubstrateType, currentMaxId: number) => string;
   /** Registry-derived reads (0113 C.2) — injected like getSearchFields. */

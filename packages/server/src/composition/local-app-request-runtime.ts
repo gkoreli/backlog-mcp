@@ -1,3 +1,4 @@
+import { requireLocalManagedRepository } from './local-service-capabilities.js';
 /**
  * Adapt one started local runtime into the per-home service bundle every
  * adapter shares: HTTP, MCP (through `ToolDeps`), and the CLI (ADR 0134.1 R3).
@@ -57,6 +58,7 @@ function createReadLocalFile(runtime: LocalRuntime) {
 export function createLocalAppRequestRuntime(
   runtime: LocalRuntime,
 ): AppRequestRuntime {
+  requireLocalManagedRepository(runtime.service);
   const scopeRoot = resolveContext({ home: runtime.home, env: {} });
   return {
     home: runtime.home,

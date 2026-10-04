@@ -10,7 +10,7 @@ import type {
   DocsTreeWatcherErrorCallback,
   DocsTreeWatcherSubscription,
 } from '../storage/local/docs-tree-watcher.contract.js';
-import { LocalRuntimeRegistry } from '../storage/local/local-runtime-registry.js';
+import { LocalRuntimeRegistry, LocalRuntimeDrainingError, LocalRuntimeConfigurationError } from '../storage/local/local-runtime-registry.js';
 import {
   createLocalRuntime,
   type LocalRuntime,
@@ -224,4 +224,85 @@ describe('LocalRuntimeRegistry', function describeLocalRuntimeRegistry() {
     expect(await registry.close(middle)).toBe(false);
     expect(await registry.close(zeta)).toBe(false);
   });
+  it('rejects get during close, shares retirement, and admits a replacement only afterwards', async function guardsRetirement() {
+    const home = createHome('drain-one');
+    const gate = createGate();
+    const factory = vi.fn(function create(home: BacklogHome) { return createTestRuntime(home, new FakeDocsTreeWatcher()); });
+    const registry = new LocalRuntimeRegistry(factory);
+    const old = await registry.get(home);
+    const stop = old.stop.bind(old);
+    const stopping = vi.spyOn(old, 'stop').mockImplementation(async function deferredStop() { await gate.wait(); await stop(); });
+    const firstClose = registry.close(home);
+    const secondClose = registry.close(home);
+    expect(firstClose).toBe(secondClose);
+    await expect(registry.get(home)).rejects.toBeInstanceOf(LocalRuntimeDrainingError);
+    expect(factory).toHaveBeenCalledTimes(1);
+    const independent = await registry.get(createHome('drain-independent'));
+    expect(independent).not.toBe(old);
+    gate.open();
+    await firstClose;
+    expect(stopping).toHaveBeenCalledTimes(1);
+    expect(await registry.get(home)).not.toBe(old);
+    await registry.closeAll();
+  });
+
+  it('rejects all admission while closeAll drains and attempts other roots after a stop failure', async function guardsAllRetirement() {
+    const registry = new LocalRuntimeRegistry(function create(home) { return createTestRuntime(home, new FakeDocsTreeWatcher()); });
+    const alpha = createHome('all-alpha');
+    const beta = createHome('all-beta');
+    const gate = createGate();
+    const first = await registry.get(alpha);
+    const second = await registry.get(beta);
+    const stop = vi.spyOn(first, 'stop').mockImplementationOnce(async function deferredFailure() { await gate.wait(); throw new Error('stop failed'); });
+    const stopSecond = vi.spyOn(second, 'stop');
+    const closing = registry.closeAll();
+    expect(registry.closeAll()).toBe(closing);
+    await expect(registry.get(createHome('new-during-drain'))).rejects.toBeInstanceOf(LocalRuntimeDrainingError);
+    gate.open();
+    await expect(closing).rejects.toThrow('stop failed');
+    expect(stopSecond).toHaveBeenCalledTimes(1);
+    await expect(registry.get(alpha)).rejects.toBeInstanceOf(LocalRuntimeDrainingError);
+    await registry.close(alpha); // Retry the actual stop before admitting another graph.
+    expect(stop).toHaveBeenCalledTimes(2);
+    expect(await registry.get(alpha)).not.toBe(first);
+    await registry.closeAll();
+  });
+
+  it('rejects incompatible document/control descriptors for the same root', async function validatesDescriptor() {
+    const home = createHome('descriptor');
+    const factory = vi.fn(function create(home: BacklogHome) { return createTestRuntime(home, new FakeDocsTreeWatcher()); });
+    const registry = new LocalRuntimeRegistry(factory);
+    const runtime = await registry.get(home);
+    for (const changed of [{ ...home, documentsDir: join(home.root, 'other-docs') }, { ...home, controlDir: join(home.root, '.other-control') }]) {
+      await expect(registry.get(changed)).rejects.toBeInstanceOf(LocalRuntimeConfigurationError);
+    }
+    expect(factory).toHaveBeenCalledTimes(1);
+    expect(await registry.get({ ...home })).toBe(runtime);
+    await registry.closeAll();
+  });
+
+  it('rejects changed family facts for a cached worktree instead of serving stale grounding', async function familyDescriptor() {
+    const home = { ...createHome('family-descriptor'), family: { root: '/family', name: 'project', branch: 'feature', defaultBranch: 'main' } };
+    const registry = new LocalRuntimeRegistry(function create(home) { return createTestRuntime(home, new FakeDocsTreeWatcher()); });
+    const original = await registry.get(home);
+    await expect(registry.get({ ...home, family: { ...home.family, branch: 'another-branch' } })).rejects.toBeInstanceOf(LocalRuntimeConfigurationError);
+    await expect(registry.get({ ...home, family: { ...home.family, defaultBranch: 'develop' } })).rejects.toBeInstanceOf(LocalRuntimeConfigurationError);
+    expect(await registry.get({ ...home, family: { ...home.family } })).toBe(original);
+    await registry.closeAll();
+  });
+
+  it('retains a watcher subscription when unsubscribe fails so retirement can retry', async function retriesUnsubscribe() {
+    const home = createHome('unsubscribe-retry');
+    let failed = false;
+    const watcher = new FakeDocsTreeWatcher({ onUnsubscribe: function failOnce() { if (!failed) { failed = true; throw new Error('unsubscribe failed'); } } });
+    const runtime = createTestRuntime(home, watcher);
+    const registry = new LocalRuntimeRegistry(function create() { return runtime; });
+    await registry.get(home);
+    await expect(registry.close(home)).rejects.toThrow('unsubscribe failed');
+    await expect(registry.get(home)).rejects.toBeInstanceOf(LocalRuntimeDrainingError);
+    expect(watcher.unsubscribeCount).toBe(1);
+    await registry.close(home);
+    expect(watcher.unsubscribeCount).toBe(2);
+  });
+
 });

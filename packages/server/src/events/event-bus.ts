@@ -1,3 +1,4 @@
+import type { MutationNotice } from '../core/operation-log.contract.js';
 /**
  * EventBus interface and event types for real-time viewer updates.
  *
@@ -6,15 +7,10 @@
  * for cloud deployment without changing consumers.
  */
 
-export type BacklogEventType = 'task_changed' | 'task_created' | 'task_deleted' | 'resource_changed';
+export type BacklogEventType = MutationNotice['type'];
 
-export interface BacklogEvent {
+export interface BacklogEvent extends MutationNotice {
   seq: number;
-  type: BacklogEventType;
-  id: string;
-  tool: string;
-  actor: string;
-  ts: string;
 }
 
 export type BacklogEventCallback = (event: BacklogEvent) => void;

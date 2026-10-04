@@ -148,6 +148,7 @@ export class LocalRuntime {
   private reconciliation: Promise<void> | undefined;
   private reconcilePending = false;
   private started = false;
+  private stopPromise: Promise<void> | undefined;
 
   constructor(
     readonly home: BacklogHome,
@@ -169,6 +170,7 @@ export class LocalRuntime {
 
   /** Subscribe before the initial full reconciliation so startup changes queue. */
   async start(): Promise<void> {
+    if (this.stopPromise !== undefined) throw new Error('Local runtime is stopping');
     if (this.started) return;
     if (this.startPromise !== undefined) {
       await this.startPromise;
@@ -212,16 +214,23 @@ export class LocalRuntime {
 
   /** Stop watching and flush this home's derived search cache. */
   async stop(): Promise<void> {
+    this.stopPromise ??= this.stopOnce();
+    const pending = this.stopPromise;
+    try { await pending; }
+    finally { if (this.stopPromise === pending) this.stopPromise = undefined; }
+  }
+
+  private async stopOnce(): Promise<void> {
     if (this.startPromise !== undefined) {
       await this.startPromise;
     }
 
     const subscription = this.subscription;
-    this.subscription = undefined;
-    this.started = false;
     if (subscription !== undefined) {
       await subscription.unsubscribe();
+      if (this.subscription === subscription) this.subscription = undefined;
     }
+    this.started = false;
     if (this.reconciliation !== undefined) {
       await this.reconciliation;
     }

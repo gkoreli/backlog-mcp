@@ -16,6 +16,15 @@ export interface MutationAttribution {
   mutation: Mutation;
 }
 
+/** Commit notification consumed by writes and implemented by live event transports. */
+export interface MutationNotice {
+  type: 'task_changed' | 'task_created' | 'task_deleted' | 'resource_changed';
+  id: string;
+  tool: string;
+  actor: string;
+  ts: string;
+}
+
 export interface OperationEntry {
   ts: string;
   tool: string;

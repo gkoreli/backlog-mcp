@@ -1,5 +1,5 @@
 import { nextEntityId, type AnyEntity } from '@backlog-mcp/shared';
-import type { IBacklogService } from './backlog-service.contract.js';
+import type { EntityCreationRepository } from './entity-repository.contract.js';
 import type { EntityDraft } from './entity-creation.contract.js';
 import { isBuiltinSubstrateType } from './substrates/index.js';
 import { ValidationError } from './types.js';
@@ -7,12 +7,12 @@ import { normalizeWriteError } from './write-errors.js';
 import type { Committed } from './entity-mutation.contract.js';
 
 /** Prefer atomic repository creation; retain explicit-ID compatibility for constrained adapters. */
-export async function persistNewEntity(service: IBacklogService, draft: EntityDraft): Promise<AnyEntity> {
+export async function persistNewEntity(service: EntityCreationRepository, draft: EntityDraft): Promise<AnyEntity> {
   return (await persistNewEntityCommitted(service, draft)).value;
 }
 
 /** Creation receipt preserves derived-effect warnings without polluting Markdown. */
-export async function persistNewEntityCommitted(service: IBacklogService, draft: EntityDraft): Promise<Committed<AnyEntity>> {
+export async function persistNewEntityCommitted(service: EntityCreationRepository, draft: EntityDraft): Promise<Committed<AnyEntity>> {
   try {
     if (service.createCommitted !== undefined) return await service.createCommitted(draft);
     if (service.create !== undefined) return { value: await service.create(draft) };
@@ -24,7 +24,7 @@ export async function persistNewEntityCommitted(service: IBacklogService, draft:
 }
 
 async function allocateBuiltinId(
-  service: IBacklogService,
+  service: EntityCreationRepository,
   type: string,
 ): Promise<string> {
   if (!isBuiltinSubstrateType(type)) {
@@ -34,7 +34,7 @@ async function allocateBuiltinId(
 }
 
 async function allocateEntityId(
-  service: IBacklogService,
+  service: EntityCreationRepository,
   type: string,
 ): Promise<string> {
   if (service.allocateId === undefined) {

@@ -1,3 +1,4 @@
+import { managedWriteDependencies } from '../composition/managed-write-context.js';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import matter from 'gray-matter';
@@ -188,16 +189,11 @@ function createRequestToolDeps(
     };
   }
   return {
-    actor: runtime.home === undefined ? deps?.actor : runtime.actor,
+    ...managedWriteDependencies({ ...runtime, actor: runtime.home === undefined ? deps?.actor : runtime.actor }),
     agentIdentity: runtime.home === undefined
       ? deps?.agentIdentity
       : runtime.agentIdentity,
-    operationLog: runtime.operationLog,
     operationLogger: runtime.operationLogger,
-    substrateRegistry: runtime.substrateRegistry,
-    scopeRoot: runtime.scopeRoot,
-    eventBus: runtime.eventBus,
-    memoryComposer: runtime.memoryComposer,
     mintMemoryEntry: runtime.mintMemoryEntry,
     usageTracker: runtime.usageTracker,
     resourceManager: runtime.resourceManager,

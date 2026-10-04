@@ -5,7 +5,7 @@ import {
   getSubstrate,
   type SubstrateDefinition,
 } from '@backlog-mcp/shared';
-import type { IBacklogService } from './backlog-service.contract.js';
+import type { EntityCreateRoutingRepository } from './entity-repository.contract.js';
 import { shouldCaptureArtifact } from './memory-capture-rules.js';
 import { captureArtifact } from './memory-capture.js';
 import {
@@ -50,7 +50,7 @@ function entityRefs(params: CreateEntityParams): string[] {
 }
 
 async function referencedContainer(
-  service: IBacklogService,
+  service: EntityCreateRoutingRepository,
   params: CreateEntityParams,
 ): Promise<string | undefined> {
   const referencedId = entityRefs(params)[0];
@@ -83,7 +83,7 @@ async function recentOperations(ctx: WriteContext) {
  * Zod defaults while declarative substrates retain their own strict schema.
  */
 export async function createEntity(
-  service: IBacklogService,
+  service: EntityCreateRoutingRepository,
   params: CreateEntityParams,
   ctx: WriteContext,
   attribution: MutationAttribution,

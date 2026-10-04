@@ -1,3 +1,4 @@
+import { createManagedWriteContext } from '../composition/managed-write-context.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -121,7 +122,7 @@ async function createDocsNativeCliRuntime(
   return {
     home,
     service: appRuntime.service,
-    writeContext: {
+    writeContext: createManagedWriteContext({
       actor,
       operationLog: localRuntime.operationLogger,
       substrateRegistry: localRuntime.substrateRegistry,
@@ -138,7 +139,7 @@ async function createDocsNativeCliRuntime(
         },
       },
       memoryComposer: localRuntime.memoryComposer,
-    },
+    }),
     memoryComposer: localRuntime.memoryComposer,
     mintMemoryEntry: appRuntime.mintMemoryEntry,
     usageTracker: appRuntime.usageTracker,

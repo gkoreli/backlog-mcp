@@ -1,3 +1,5 @@
+import type { BacklogSearchPort } from './backlog-projection.contract.js';
+import { isDocumentStorageAdapter, listIndexableResources, entityIndexSnapshot } from './backlog-projection.js';
 import type { WriteWarning } from '@backlog-mcp/shared';
 /** Local repository façade and ordered derived-search reconciliation. */
 import type { Committed, EntityPreimage, StorageDeleteOptions } from '../../core/entity-mutation.contract.js';
@@ -13,11 +15,9 @@ import {
   type SubstrateType,
 } from '@backlog-mcp/shared';
 import type {
-  DocumentStorageAdapter,
   StorageAdapter,
 } from '../storage-adapter.js';
 import {
-  OramaSearchService,
   type SearchableType,
   type UnifiedSearchResult,
 } from '@backlog-mcp/memory/search';
@@ -36,40 +36,6 @@ import type {
   SearchReconciliationStats,
 } from './backlog-service.types.js';
 
-function isDocumentStorageAdapter(
-  storageAdapter: StorageAdapter,
-): storageAdapter is DocumentStorageAdapter {
-  return 'iterateDocuments' in storageAdapter
-    && typeof storageAdapter.iterateDocuments === 'function';
-}
-
-/**
- * Typed entity Markdown is indexed through the entity collection. Excluding
- * its source path here prevents one document from appearing again as a
- * generic resource in docs-native homes.
- */
-function listIndexableResources(
-  storageAdapter: StorageAdapter,
-  manager: BacklogServiceDependencies['resourceManager'],
-) {
-  const resources = manager.list();
-  if (!isDocumentStorageAdapter(storageAdapter)) return resources;
-
-  // Entity source paths are documents-dir-relative; resource paths are
-  // root-relative — align through the manager's scan prefix.
-  const scanPrefix = manager.scanPrefix;
-  const entitySourcePaths = new Set(Array.from(
-    storageAdapter.iterateDocuments(),
-  ).map(function getCompiledSourcePath(document) {
-    return scanPrefix === ''
-      ? document.sourcePath
-      : `${scanPrefix}/${document.sourcePath}`;
-  }));
-  return resources.filter(function isGenericResource(resource) {
-    return !entitySourcePaths.has(resource.path);
-  });
-}
-
 function hasChanges(stats: SearchReconciliationStats): boolean {
   return stats.added + stats.removed + stats.updated > 0;
 }
@@ -83,7 +49,7 @@ function hasChanges(stats: SearchReconciliationStats): boolean {
  */
 export class BacklogService implements IBacklogService {
   private readonly storage: StorageAdapter;
-  private readonly search: OramaSearchService;
+  private readonly search: BacklogSearchPort;
   private readonly resourceManager: BacklogServiceDependencies['resourceManager'];
   private readonly getSearchFields: BacklogServiceDependencies['getSearchFields'];
   readonly listDisclosureRelations: NonNullable<BacklogServiceDependencies['listDisclosureRelations']> | undefined;
@@ -161,18 +127,13 @@ export class BacklogService implements IBacklogService {
       this.storage.invalidate?.();
     }
     this.resourceManager.invalidate();
-    const allEntities = Array.from(this.storage.iterateEntities()).flatMap(
-      (entity) => {
-        const document = createSearchEntityDocument(entity, this.getSearchFields);
-        return document === undefined ? [] : [document];
-      },
-    );
+    const allEntities = entityIndexSnapshot(this.storage, this.getSearchFields);
     if (!this.searchReady) {
       await this.search.index(allEntities);
     }
     const entityStats = await this.search.reconcile(allEntities);
     if (hasChanges(entityStats)) {
-      logger.info('Search index reconciled', entityStats);
+      logger.info('Search index reconciled', { ...entityStats });
     }
 
     const resources = listIndexableResources(
@@ -181,7 +142,7 @@ export class BacklogService implements IBacklogService {
     );
     const resourceStats = await this.search.reconcileResources(resources);
     if (hasChanges(resourceStats)) {
-      logger.info('Resource search index reconciled', resourceStats);
+      logger.info('Resource search index reconciled', { ...resourceStats });
     }
 
     this.searchReady = true;
@@ -416,7 +377,7 @@ export class BacklogService implements IBacklogService {
   }
 
   /** Failure leaves the authoritative commit acknowledged and forces read repair. */
-  private async indexCommittedWrite(operation: (search: OramaSearchService) => Promise<void>): Promise<WriteWarning[]> {
+  private async indexCommittedWrite(operation: (search: BacklogSearchPort) => Promise<void>): Promise<WriteWarning[]> {
     try {
       this.resourceManager.invalidate();
       await this.enqueueSearchOperation(() => operation(this.search));

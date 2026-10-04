@@ -7,7 +7,7 @@ import { isMemoryLive, memoryValidity } from '../core/memory-validity.js';
  *
  * Memories are `memory`-substrate entities (MEMO- ids). This adapter
  * implements the ADR 0092 plugin interface (`store`/`recall`/`forget`/`size`)
- * over `IBacklogService`, which means memories inherit everything entities
+ * over `MemoryRepository`, which means memories inherit everything entities
  * get: markdown durability (R1), hybrid-search ranking via searchUnified
  * (R2/R3), native filtering (R4), viewer rendering, operation-log presence,
  * and SSE reactivity — instead of a parallel storage stack.
@@ -31,7 +31,7 @@ import { readEntityCorpus } from '../core/entity-corpus.js';
 
 import { EntityType, MemorySchema, isValidEntityId, type Entity, type Memory } from '@backlog-mcp/shared';
 import type { MemoryStore, MemoryEntry, MemoryLayer, RecallQuery, MemoryResult, ForgetFilter } from '@backlog-mcp/memory';
-import type { IBacklogService } from '../core/backlog-service.contract.js';
+import type { MemoryRepository } from './backlog-memory-store.contract.js';
 import type {
   MemoryUsageSummaryStore,
 } from './memory-usage.contract.js';
@@ -53,7 +53,7 @@ export class BacklogMemoryStore implements MemoryStore {
    * yet when the composer module loads).
    */
   constructor(
-    private readonly getService: () => IBacklogService,
+    private readonly getService: () => MemoryRepository,
     private readonly usageSummaryStore?: MemoryUsageSummaryStore,
     private readonly now: () => number = Date.now,
   ) {}
@@ -110,7 +110,7 @@ export class BacklogMemoryStore implements MemoryStore {
     return committed.warnings?.length ? { ...stored, writeWarnings: committed.warnings } : stored;
   }
 
-  private correctMemory(service: IBacklogService, memory: Omit<Memory, 'id'>, now: number) {
+  private correctMemory(service: MemoryRepository, memory: Omit<Memory, 'id'>, now: number) {
     if (service.correctMemory === undefined) {
       throw new Error('Memory correction requires a home-coordinated correction capability');
     }

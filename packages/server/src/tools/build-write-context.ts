@@ -1,3 +1,4 @@
+import { createManagedWriteContext } from '../composition/managed-write-context.js';
 /**
  * Helper: build a per-request WriteContext from ToolDeps.
  *
@@ -17,24 +18,8 @@ export function buildWriteContext(
   deps: ToolDeps | undefined,
   explicitAgentIdentity?: string,
 ): WriteContext {
-  if (!deps?.actor || !deps?.operationLog) {
-    throw new Error(
-      'buildWriteContext: tool deps missing actor or operationLog — ' +
-      'check hono-app / node-server / worker-entry bootstrap wiring'
-    );
-  }
-  const actor = withExplicitAgentIdentity(
-    deps.actor,
-    explicitAgentIdentity,
-  ) ?? deps.actor;
-  return {
-    actor,
-    operationLog: deps.operationLog,
-    ...(deps.substrateRegistry
-      ? { substrateRegistry: deps.substrateRegistry }
-      : {}),
-    ...(deps.scopeRoot ? { scopeRoot: deps.scopeRoot } : {}),
-    ...(deps.eventBus ? { eventBus: deps.eventBus } : {}),
-    ...(deps.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
-  };
+  return createManagedWriteContext(deps === undefined ? undefined : {
+    ...deps,
+    actor: withExplicitAgentIdentity(deps.actor, explicitAgentIdentity),
+  });
 }

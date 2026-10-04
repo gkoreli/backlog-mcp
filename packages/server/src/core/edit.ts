@@ -2,7 +2,7 @@
 import { readEntityForWrite, saveEntityCommitted, withWriteWarnings } from './entity-mutation.js';
 import { EntityWriteConflictError } from './entity-mutation.contract.js';
 import { stampUpdatePostimage } from './update.js';
-import type { IBacklogService } from './backlog-service.contract.js';
+import type { EntityUpdateRepository } from './entity-repository.contract.js';
 import type { Operation } from '@backlog-mcp/shared';
 import { applyOperation } from './text-operations.js';
 import {
@@ -22,7 +22,7 @@ import { recordMutation } from './operation-log.js';
  * and are NOT logged — they didn't change state. See ADR 0094.
  */
 export async function editItem(
-  service: IBacklogService,
+  service: EntityUpdateRepository,
   params: EditParams,
   ctx: WriteContext,
   attribution: MutationAttribution,

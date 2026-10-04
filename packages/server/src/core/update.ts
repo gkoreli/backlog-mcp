@@ -3,7 +3,7 @@ import { normalizeWriteError } from './write-errors.js';
 import { readEntityForWrite, saveEntityCommitted, withWriteWarnings } from './entity-mutation.js';
 import type { Committed, EntityPreimage } from './entity-mutation.contract.js';
 import type { AnyEntity } from '@backlog-mcp/shared';
-import type { IBacklogService } from './backlog-service.contract.js';
+import type { EntityUpdateRepository } from './entity-repository.contract.js';
 import { shouldCaptureCompletion } from './memory-capture-rules.js';
 import { captureCompletion } from './memory-capture.js';
 import {
@@ -71,7 +71,7 @@ export function stampUpdatePostimage(
  * historical `null`-means-delete behavior.
  */
 export async function updateEntityPostimage(
-  service: IBacklogService,
+  service: EntityUpdateRepository,
   current: AnyEntity,
   postimage: AnyEntity,
   effectiveChanges: Record<string, unknown>,
@@ -117,7 +117,7 @@ export async function updateEntityPostimage(
 
 /** Merge an update and let the active registry perform the canonical write. */
 export async function updateEntity(
-  service: IBacklogService,
+  service: EntityUpdateRepository,
   params: UpdateEntityParams,
   ctx: WriteContext,
   attribution: MutationAttribution,

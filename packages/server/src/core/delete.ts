@@ -1,5 +1,5 @@
 import { withWriteWarnings } from './entity-mutation.js';
-import type { IBacklogService } from './backlog-service.contract.js';
+import type { EntityDeletionRepository } from './entity-repository.contract.js';
 import type {
   DeleteParams,
   DeleteResult,
@@ -17,7 +17,7 @@ import { recordMutation } from './operation-log.js';
  * occurred (`deleted === true`). Mutations, not activity — see ADR 0094.
  */
 export async function deleteItem(
-  service: IBacklogService,
+  service: EntityDeletionRepository,
   params: DeleteParams,
   ctx: WriteContext,
   attribution: MutationAttribution,

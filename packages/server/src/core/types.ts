@@ -1,3 +1,4 @@
+import type { MutationNotice } from './operation-log.contract.js';
 import type { MutationReceipt } from './entity-mutation.contract.js';
 /**
  * Core function types — transport-agnostic.
@@ -67,13 +68,7 @@ export interface WriteContext {
   >;
   /** Selected home's configured default container. */
   scopeRoot?: string;
-  eventBus?: { emit: (event: {
-    type: string;
-    id: string;
-    tool: string;
-    actor: string;
-    ts: string;
-  }) => void };
+  eventBus?: { emit: (event: MutationNotice) => void };
   /**
    * Optional episodic memory composer. When present, core write functions
    * capture significant events (task completions, artifact creations) as

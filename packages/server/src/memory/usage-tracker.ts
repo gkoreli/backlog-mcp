@@ -21,7 +21,7 @@ import { readEntityForWrite, saveEntityCommitted } from '../core/entity-mutation
  */
 
 import type { Memory, Entity } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../core/backlog-service.contract.js';
+import type { EntityUpdateRepository } from '../core/entity-repository.contract.js';
 import type { MemoryUsageSummaryStore } from './memory-usage.contract.js';
 import type { RetrievalTelemetry } from './retrieval-telemetry.js';
 
@@ -38,7 +38,7 @@ export function extractMemoCitations(text: string): string[] {
 }
 
 export interface UsageTrackerDeps {
-  getService: () => IBacklogService;
+  getService: () => EntityUpdateRepository;
   /** Append one line to the usage JSONL. Omit to disable the audit log. */
   appendLine?: (line: string) => void;
   /** Project-home summary overlay. Omit to keep global frontmatter writes. */

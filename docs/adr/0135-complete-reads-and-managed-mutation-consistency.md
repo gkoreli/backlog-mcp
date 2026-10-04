@@ -147,3 +147,28 @@ These are invariant failures, not reasons for a new domain framework.
   an adversarial control/state symlink was rejected without creating a lock in
   its target. Search callbacks were mocked in that process check; recovery and
   real Orama repair were unit-tested over memfs.
+
+- Stage E narrows actual core create/update/body/delete consumers, and replaces
+  concrete search/catalog dependencies with local consumer-owned projection ports.
+  Entity/resource snapshot projection is a separate module preserving typed-source
+  exclusion and quarantine visibility. Writable local composition checks complete
+  corpus, sync context, committed mutation and correction capabilities explicitly.
+  Constrained runtime compatibility remains in the facade.
+- CLI and MCP use one composition-owned managed-write constructor. HTTP maps only
+  that capability group; explicit-agent overlays, request-selected identity, CLI
+  environment context and event filtering remain at their original boundaries.
+  The commit-notice shape is owned by core and consumed by the live event adapter.
+- Runtime registry rejects get during per-root retirement or all-home draining,
+  shares concurrent closes, and only admits replacements after stop succeeds.
+  Failed stops retain the root guard and can be retried; failed unsubscribe retains
+  its subscription for that retry. Descriptor checks include kind/identity,
+  document/control paths and family facts. This controls graph admission, not a
+  lease that waits for arbitrary calls already issued by consumers.
+- Stage E capability/lifecycle verification: workspace build/typecheck passed;
+  server 1,552 / 2 existing skips, memory 49 and viewer 163 tests passed. Minimal
+  typed write fakes, actor overlays, incomplete local graphs, close/get/closeAll
+  interleavings, unsubscribe retry and changed family descriptors are covered.
+  A built-module actual-process check constructed real temporary runtime graphs
+  with Orama BM25 and an injected gated watcher: incompatible configuration and
+  draining admission were rejected, then one replacement started after retirement.
+  Both subscriptions stopped. This was not an OS-watcher or HTTP request test.
