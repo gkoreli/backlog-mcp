@@ -53,6 +53,11 @@ is pure or that every runtime path has been exercised.
 
 ## Remaining work, in priority order
 
+Further end-to-end invariant and DDD assessment is recorded in
+[report 0019](0019-ddd-flow-assessment-2026-10-03.md). Its complete-read,
+conflict-aware mutation and committed-write findings deepen this sampled audit;
+the historical fixes and follow-ups below remain intact.
+
 1. **High — global capabilities bypass import enforcement.**
    `core/config.tryLoad` logs through `console.error`; `resolveContext` reads
    `process.env` and `process.cwd` when inputs are absent. Config also supplies
