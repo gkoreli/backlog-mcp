@@ -13,6 +13,13 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+### Changed
+
+- **Contributor agents load detailed guidance on demand.** A compact
+  `AGENTS.md` keeps essential constraints and points to seven task-specific
+  guides in `docs/guides/`. The former root `CLAUDE.md` and `DEVELOPMENT.md`
+  entry points were removed.
+
 ### Fixed
 - **CLI `wakeup` stays in the current workspace even before `docs/` exists.**
   Inherited `BACKLOG_HOME`, `BACKLOG_PROJECT_ROOT`, and repository `home`
