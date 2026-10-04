@@ -827,7 +827,7 @@ export interface RememberParams {
   source?: string;
 }
 
-export interface RememberResult {
+export interface RememberResult extends MutationReceipt {
   id: string;
   layer: MemoryLayer;
   created_at: string;

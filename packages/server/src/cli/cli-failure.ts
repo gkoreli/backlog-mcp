@@ -1,3 +1,4 @@
+import { MemoryCorrectionError } from '../core/memory-correction.contract.js';
 import { EntityWriteConflictError } from '../core/entity-mutation.contract.js';
 import { SubstrateWriteError } from '../core/substrates/substrate-write-error.js';
 import { WorkspaceHomeResolutionError } from '../core/backlog-home.errors.js';
@@ -15,6 +16,7 @@ export interface CliFailureIo {
  */
 function isDomainError(error: unknown): error is Error {
   return error instanceof NotFoundError
+    || error instanceof MemoryCorrectionError
     || error instanceof EntityWriteConflictError
     || error instanceof ValidationError
     || error instanceof SubstrateWriteError;

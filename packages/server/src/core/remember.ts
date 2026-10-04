@@ -1,3 +1,4 @@
+import { withWriteWarnings } from './entity-mutation.js';
 /**
  * Remember — the explicit memory write verb (ADR 0092.3 Phase C).
  *
@@ -36,6 +37,8 @@ export interface RememberDeps {
   substrateRegistry?: Pick<ProjectSubstrateRegistry, 'listSubstrates'>;
   /** Actor name recorded as source when params.source is absent. */
   actorName?: string;
+  /** One operation clock, sampled once before building the entry. */
+  now?: () => number;
   /**
    * Intent-level journal seam (EXP-1 B-4 / ADR 0094): every successful
    * remember emits exactly ONE actor-attributed operation row carrying the
@@ -103,7 +106,7 @@ export async function remember(params: RememberParams, deps: RememberDeps): Prom
     );
   }
 
-  const now = Date.now();
+  const now = deps.now?.() ?? Date.now();
   const layer = params.layer ?? 'semantic';
 
   const entry: MemoryEntry = {
@@ -131,15 +134,17 @@ export async function remember(params: RememberParams, deps: RememberDeps): Prom
 
   // Journal the intent exactly once, only after the write is durable
   // (B-4): the row carries the minted resource id and the caller's actor.
-  // A throw above this line means no write happened and no row appears.
+  // Failed corrections can report partial recovery with affected IDs. Only a
+  // completed intent owns this create row; diagnostics do not replay the write.
+  const warnings = [...(stored.writeWarnings ?? [])];
   if (deps.journal !== undefined) {
-    recordMutation(
+    warnings.push(...recordMutation(
       deps.journal.context,
       { tool: deps.journal.tool, mutation: 'create' },
       stored.id,
       { title, layer, ...(params.context ? { context: params.context } : {}) },
       { id: stored.id },
-    );
+    ));
   }
 
   // The memory is durable before this best-effort read. A failed or absent
@@ -163,12 +168,12 @@ export async function remember(params: RememberParams, deps: RememberDeps): Prom
     );
   }
 
-  return {
+  return withWriteWarnings({
     id: stored.id,
     layer: stored.layer,
     created_at: new Date(stored.createdAt).toISOString(),
     ...(params.supersedes ? { supersedes: params.supersedes } : {}),
     ...(params.state_key ? { state_key: params.state_key } : {}),
     ...(collisionCandidates === undefined ? {} : { collision_candidates: collisionCandidates }),
-  };
+  }, warnings);
 }

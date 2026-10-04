@@ -1,3 +1,4 @@
+import { readEntityForWrite, saveEntityCommitted } from '../core/entity-mutation.js';
 /**
  * Memory usage tracker (ADR 0092.9 R-13/R-14/R-16).
  *
@@ -123,9 +124,10 @@ export class MemoryUsageTracker {
   private async bump(id: string): Promise<void> {
     try {
       const service = this.deps.getService();
-      const entity = await service.get(id);
-      if (!entity || (entity.type as string) !== 'memory') return;
-      const m = entity as Memory;
+      const now = this.now();
+      const preimage = await readEntityForWrite(service, id);
+      if (preimage === undefined || preimage.entity.type !== 'memory') return;
+      const m = preimage.entity as Memory;
       const summaryStore = this.deps.summaryStore;
       const summary = summaryStore?.get(id);
 
@@ -137,10 +139,10 @@ export class MemoryUsageTracker {
         : summary?.lastUsedAt;
       const newCount = Math.min(currentCount + 1, COUNT_CAP);
       const lastFlushed = lastUsedAt ? Date.parse(lastUsedAt) : NaN;
-      const stale = Number.isNaN(lastFlushed) || this.now() - lastFlushed > STALE_FLUSH_MS;
+      const stale = Number.isNaN(lastFlushed) || now - lastFlushed > STALE_FLUSH_MS;
 
       if (FLUSH_BUCKETS.has(newCount) || stale) {
-        const nowIso = new Date(this.now()).toISOString();
+        const nowIso = new Date(now).toISOString();
         if (summaryStore !== undefined) {
           summaryStore.set(id, {
             usageCount: newCount,
@@ -148,7 +150,7 @@ export class MemoryUsageTracker {
           });
           return;
         }
-        await service.save({ ...m, usage_count: newCount, last_used_at: nowIso, updated_at: nowIso } as Entity);
+        await saveEntityCommitted(service, { ...m, usage_count: newCount, last_used_at: nowIso, updated_at: nowIso } as Entity, { expected: preimage });
       }
     } catch { /* derived signal — never propagate */ }
   }

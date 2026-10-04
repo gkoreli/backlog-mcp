@@ -1,9 +1,11 @@
+import type { WriteWarning } from '@backlog-mcp/shared';
 /** Local repository façade and ordered derived-search reconciliation. */
-import type { Committed, EntityPreimage, WriteWarning } from '../../core/entity-mutation.contract.js';
+import type { Committed, EntityPreimage, StorageDeleteOptions } from '../../core/entity-mutation.contract.js';
 import { selectEntityCorpus } from '../../core/entity-corpus.js';
 import type { EntityCorpusFilter } from '../../core/entity-corpus.contract.js';
 import type { ClaimQuarantine, StorageSaveOptions } from '../../core/backlog-service.contract.js';
 import {
+  type Memory,
   EntityType,
   nextEntityId,
   type AnyEntity,
@@ -337,6 +339,35 @@ export class BacklogService implements IBacklogService {
     return this.indexCreatedEntity(entity);
   }
 
+  /** One home-locked correction; derived indexing acknowledges the whole committed plan. */
+  async correctMemory(draft: Omit<Memory, 'id'>, now: number): Promise<Committed<Memory>> {
+    const storage = this.storage;
+    if (storage.correctMemory === undefined) throw new Error('Memory correction capability is unavailable');
+    let result: { value: Memory; changed: Memory[] };
+    try {
+      result = await retryDocumentWrite(function correct() {
+        if (storage.correctMemory === undefined) throw new Error('Memory correction capability disappeared');
+        return storage.correctMemory(draft, now);
+      });
+    } catch (error) {
+      // Recovery can itself fail: force derived reads to reconcile authoritative state.
+      this.searchReady = false;
+      try { this.resourceManager.invalidate(); } catch { /* preserve correction failure details */ }
+      throw error;
+    }
+    const service = this;
+    const warnings = await this.indexCommittedWrite(async function indexCorrection(search) {
+      for (const entity of result.changed) {
+        const document = createSearchEntityDocument(entity, service.getSearchFields);
+        if (document !== undefined) {
+          if (entity.id === result.value.id) await search.addDocument(document);
+          else await search.updateDocument(document);
+        }
+      }
+    });
+    return warnings.length === 0 ? { value: result.value } : { value: result.value, warnings };
+  }
+
   private async indexCreatedEntity(entity: AnyEntity): Promise<Committed<AnyEntity>> {
     const service = this;
     const warnings = await this.indexCommittedWrite(function addIndex(search) {
@@ -372,13 +403,13 @@ export class BacklogService implements IBacklogService {
     return warnings.length === 0 ? { value: entity, preimage } : { value: entity, preimage, warnings };
   }
 
-  async delete(id: string): Promise<boolean> {
-    return (await this.deleteCommitted(id)).value;
+  async delete(id: string, options?: StorageDeleteOptions): Promise<boolean> {
+    return (await this.deleteCommitted(id, options)).value;
   }
 
-  async deleteCommitted(id: string): Promise<Committed<boolean>> {
+  async deleteCommitted(id: string, options?: StorageDeleteOptions): Promise<Committed<boolean>> {
     const storage = this.storage;
-    const deleted = await retryDocumentWrite(function remove() { return storage.delete(id); });
+    const deleted = await retryDocumentWrite(function remove() { return storage.delete(id, options); });
     if (!deleted) return { value: false };
     const warnings = await this.indexCommittedWrite(function removeIndex(search) { return search.removeDocument(id); });
     return warnings.length === 0 ? { value: true } : { value: true, warnings };

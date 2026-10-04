@@ -1,3 +1,4 @@
+import type { WriteWarning } from '@backlog-mcp/shared';
 // ============================================================================
 // Memory Entry — what gets stored
 // ============================================================================
@@ -26,6 +27,8 @@ export interface MemoryEntry {
   createdAt: number;
   /** When this memory expires (epoch ms), undefined = never */
   expiresAt?: number;
+  /** Transient committed-write diagnostics; stores must not persist these as metadata. */
+  writeWarnings?: WriteWarning[];
   /** Arbitrary metadata */
   metadata?: Record<string, unknown>;
 }

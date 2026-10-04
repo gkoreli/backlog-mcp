@@ -85,7 +85,6 @@ export const KNOWN_VIOLATIONS: Readonly<Record<string, readonly string[]>> = {
     'core/migrate-docs-native.ts -> node:fs',
   ],
   'core-outward': [
-    'core/wakeup.ts -> ../memory/backlog-memory-store.js',
   ],
   'infrastructure-adapter': [
   ],

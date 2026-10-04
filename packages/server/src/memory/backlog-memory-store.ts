@@ -1,3 +1,6 @@
+import { readEntityForWrite, saveEntityCommitted } from '../core/entity-mutation.js';
+import { mintMemoryEntry } from '../core/memory-entry.js';
+import { isMemoryLive, memoryValidity } from '../core/memory-validity.js';
 /**
  * BacklogMemoryStore — the default MemoryStore, backed by the backlog itself
  * (ADR 0092.3 Part 3).
@@ -30,13 +33,11 @@ import { EntityType, MemorySchema, isValidEntityId, type Entity, type Memory } f
 import type { MemoryStore, MemoryEntry, MemoryLayer, RecallQuery, MemoryResult, ForgetFilter } from '@backlog-mcp/memory';
 import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type {
-  MemoryUsageSummary,
   MemoryUsageSummaryStore,
 } from './memory-usage.contract.js';
 import { usageFactor } from './usage-signal.js';
-import { persistNewEntity } from '../core/persist-new-entity.js';
+import { persistNewEntityCommitted } from '../core/persist-new-entity.js';
 import {
-  memoryEntryUsageMetadata,
   memoryUsageFieldsFromEntry,
 } from './memory-entry-usage.js';
 
@@ -54,6 +55,7 @@ export class BacklogMemoryStore implements MemoryStore {
   constructor(
     private readonly getService: () => IBacklogService,
     private readonly usageSummaryStore?: MemoryUsageSummaryStore,
+    private readonly now: () => number = Date.now,
   ) {}
 
   async store(entry: MemoryEntry): Promise<MemoryEntry> {
@@ -61,7 +63,8 @@ export class BacklogMemoryStore implements MemoryStore {
       throw new Error(`BacklogMemoryStore does not persist layer '${entry.layer}' — register a session store for transient memory`);
     }
     const service = this.getService();
-    const nowIso = new Date(entry.createdAt || Date.now()).toISOString();
+    const now = this.now();
+    const nowIso = new Date(Number.isFinite(entry.createdAt) ? entry.createdAt : now).toISOString();
 
     const meta = entry.metadata ?? {};
     const entityRefs = Array.isArray(meta.entity_refs)
@@ -87,7 +90,7 @@ export class BacklogMemoryStore implements MemoryStore {
       ...(entry.context && isValidEntityId(entry.context) ? { parent_id: entry.context } : {}),
       ...(entityRefs && entityRefs.length > 0 ? { entity_refs: entityRefs } : {}),
       ...(tags.length > 0 ? { tags } : {}),
-      ...(entry.expiresAt ? { valid_until: new Date(entry.expiresAt).toISOString() } : {}),
+      ...(entry.expiresAt !== undefined ? { valid_until: new Date(entry.expiresAt).toISOString() } : {}),
       ...(memoryKind ? { kind: memoryKind } : {}),
       ...(stateKey ? { state_key: stateKey } : {}),
       ...(supersedes ? { supersedes } : {}),
@@ -100,38 +103,23 @@ export class BacklogMemoryStore implements MemoryStore {
       updated_at: nowIso,
     });
 
-    // ADR-0092.5 R-1/R-2 closing semantics — ADD-only, never destructive:
-    //  - supersedes: soft-expire the named predecessor (lineage on the new record).
-    //  - state_key: soft-expire every other live holder of the same key.
-    if (supersedes) {
-      await this.expireMemory(supersedes, nowIso);
-    }
-    if (stateKey) {
-      const all = await readEntityCorpus(service, { type: EntityType.Memory });
-      for (const m of all) {
-        const prev = m as Memory;
-        if (prev.state_key !== stateKey) continue;
-        if (prev.valid_until && Date.parse(prev.valid_until) <= Date.now()) continue;
-        await service.save({ ...prev, valid_until: nowIso, updated_at: nowIso } as Entity);
-      }
-    }
-
-    const stored = await persistNewEntity(service, memory);
-    return this.toMemoryEntry(MemorySchema.parse(stored));
+    const committed = supersedes || stateKey
+      ? await this.correctMemory(service, memory, now)
+      : await persistNewEntityCommitted(service, memory);
+    const stored = this.toMemoryEntry(MemorySchema.parse(committed.value), now);
+    return committed.warnings?.length ? { ...stored, writeWarnings: committed.warnings } : stored;
   }
 
-  /** Soft-expire a memory by id (no-op if missing, not a memory, or already expired). */
-  private async expireMemory(id: string, nowIso: string): Promise<void> {
-    const service = this.getService();
-    const existing = await service.get(id);
-    if (!existing || (existing.type as string) !== 'memory') return;
-    const m = existing as Memory;
-    if (m.valid_until && Date.parse(m.valid_until) <= Date.now()) return;
-    await service.save({ ...m, valid_until: nowIso, updated_at: nowIso } as Entity);
+  private correctMemory(service: IBacklogService, memory: Omit<Memory, 'id'>, now: number) {
+    if (service.correctMemory === undefined) {
+      throw new Error('Memory correction requires a home-coordinated correction capability');
+    }
+    return service.correctMemory(memory, now);
   }
 
   async recall(query: RecallQuery): Promise<MemoryResult[]> {
     const service = this.getService();
+    const now = this.now();
     const limit = query.limit ?? 10;
     const wantedLayers: MemoryLayer[] = (query.layers ?? [...PERSISTED_LAYERS]).filter(l => l !== 'session');
     if (wantedLayers.length === 0) return [];
@@ -143,7 +131,6 @@ export class BacklogMemoryStore implements MemoryStore {
       limit: Math.max(limit * 3, 30),
     });
 
-    const now = Date.now();
     const results: MemoryResult[] = [];
     for (const hit of candidates) {
       const m = hit.item as Memory;
@@ -152,12 +139,12 @@ export class BacklogMemoryStore implements MemoryStore {
       if (!wantedLayers.includes(layer)) continue;
       if (query.context && m.parent_id !== query.context) continue;
       if (query.tags && !query.tags.some(t => m.tags?.includes(t))) continue;
-      if (m.valid_until && Date.parse(m.valid_until) <= now) continue;
+      if (!isMemoryLive(m, now)) continue;
 
       // Bounded usage multiplier (ADR 0092.9 R-15): reorders, never hides.
       // Applied over the full filtered candidate set BEFORE truncation so
       // the multiplier has room to reorder (Mem0's widened-pool lesson).
-      const entry = this.toMemoryEntry(m);
+      const entry = this.toMemoryEntry(m, now);
       results.push({
         entry,
         score: hit.score * usageFactor(usageSummaryFromEntry(entry), now),
@@ -170,13 +157,15 @@ export class BacklogMemoryStore implements MemoryStore {
   async forget(filter: ForgetFilter): Promise<number> {
     const service = this.getService();
     const memories = await readEntityCorpus(service, { type: EntityType.Memory });
-    const now = Date.now();
+    const now = this.now();
     const nowIso = new Date(now).toISOString();
     let count = 0;
 
     for (const entity of memories) {
-      const m = entity as Memory;
-      const expiresAt = m.valid_until ? Date.parse(m.valid_until) : undefined;
+      const preimage = await readEntityForWrite(service, entity.id);
+      if (preimage === undefined || preimage.entity.type !== 'memory') continue;
+      const m = preimage.entity as Memory;
+      const { expiresAt } = memoryValidity(m.valid_until, now);
       const createdAt = Date.parse(m.created_at);
 
       // OR semantics across criteria — mirrors InMemoryStore.forget.
@@ -191,10 +180,13 @@ export class BacklogMemoryStore implements MemoryStore {
 
       if (filter.expired && expiresAt !== undefined && expiresAt <= now) {
         // GC path: already-expired memories are hard-deleted.
-        if (await service.delete(m.id)) count++;
-      } else if (!expiresAt || expiresAt > now) {
+        const committed = service.deleteCommitted === undefined
+          ? { value: await service.delete(m.id, { expected: preimage }) }
+          : await service.deleteCommitted(m.id, { expected: preimage });
+        if (committed.value) count++;
+      } else if (isMemoryLive(m, now)) {
         // Soft forget: expire now. Viewer keeps the record; recall drops it.
-        await service.save({ ...m, valid_until: nowIso, updated_at: nowIso } as Entity);
+        await saveEntityCommitted(service, { ...m, valid_until: nowIso, updated_at: nowIso } as Entity, { expected: preimage });
         count++;
       }
     }
@@ -203,11 +195,8 @@ export class BacklogMemoryStore implements MemoryStore {
 
   async size(): Promise<number> {
     const memories = await readEntityCorpus(this.getService(), { type: EntityType.Memory });
-    const now = Date.now();
-    return memories.filter(m => {
-      const vu = (m as Memory).valid_until;
-      return !vu || Date.parse(vu) > now;
-    }).length;
+    const now = this.now();
+    return memories.filter(function live(memory) { return isMemoryLive(memory as Memory, now); }).length;
   }
 
   /**
@@ -217,11 +206,11 @@ export class BacklogMemoryStore implements MemoryStore {
    * committed usage frontmatter even when old files still carry it; a missing
    * overlay checkpoint means zero uses. Global stores keep frontmatter.
    */
-  toMemoryEntry(memory: Memory): MemoryEntry {
+  toMemoryEntry(memory: Memory, now: number = this.now()): MemoryEntry {
     const usageSummary = this.usageSummaryStore === undefined
       ? undefined
       : this.usageSummaryStore.get(memory.id) ?? { usageCount: 0 };
-    return mintMemoryEntry(memory, usageSummary);
+    return mintMemoryEntry(memory, usageSummary, now);
   }
 }
 
@@ -233,40 +222,5 @@ function usageSummaryFromEntry(entry: MemoryEntry): {
   return {
     created_at: new Date(entry.createdAt).toISOString(),
     ...memoryUsageFieldsFromEntry(entry),
-  };
-}
-
-function mintMemoryEntry(
-  m: Memory,
-  usageSummary?: MemoryUsageSummary,
-): MemoryEntry {
-  const usageCount = usageSummary?.usageCount ?? m.usage_count ?? 0;
-  const lastUsedAt = usageSummary === undefined
-    ? m.last_used_at
-    : usageSummary.lastUsedAt;
-  return {
-    id: m.id,
-    title: m.title,
-    content: m.content,
-    layer: (m.layer ?? 'episodic') as MemoryLayer,
-    source: m.source ?? 'unknown',
-    ...(m.parent_id ? { context: m.parent_id } : {}),
-    ...(m.tags ? { tags: [...m.tags] } : {}),
-    // Corrupt created_at reads as "now" (age 0) — the single malformed-date
-    // policy for all read surfaces; never epoch, which would grant a broken
-    // record ~56 years of "age".
-    createdAt: Number.isNaN(Date.parse(m.created_at)) ? Date.now() : Date.parse(m.created_at),
-    ...(m.valid_until ? { expiresAt: Date.parse(m.valid_until) } : {}),
-    metadata: {
-      ...(m.entity_refs?.[0] ? { entity_id: m.entity_refs[0] } : {}),
-      ...(m.entity_refs ? { entity_refs: [...m.entity_refs] } : {}),
-      ...(m.supersedes ? { supersedes: m.supersedes } : {}),
-      ...(m.state_key ? { state_key: m.state_key } : {}),
-      ...(m.kind ? { memory_kind: m.kind } : {}),
-      ...(m.occurred_at ? { occurred_at: m.occurred_at } : {}),
-      ...(m.derived === true ? { derived: true } : {}),
-      ...memoryEntryUsageMetadata(usageCount, lastUsedAt),
-      ...(m.tags?.includes('completion') ? { kind: 'completion' } : m.tags?.includes('artifact') ? { kind: 'artifact' } : {}),
-    },
   };
 }

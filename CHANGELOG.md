@@ -21,6 +21,7 @@ begins at 0.57.0 — earlier history lives in git.
   entry points were removed.
 
 ### Fixed
+- Memory corrections now validate complete successor/closure plans under the home lock, restore original Markdown on publication failure, and report partial recovery IDs. Managed Markdown publication preserves permissions and avoids truncating existing files on failed writes. Remember receipts retain committed-write diagnostics; memory expiry reads share one lossless malformed-date policy.
 - **Managed edits detect conflicting document changes.** Local update, body edit
   and compiled intents compare exact Markdown revisions under the home write
   lock; conflicts instruct callers to reread. Committed writes remain successful

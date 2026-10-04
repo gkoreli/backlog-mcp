@@ -28,7 +28,7 @@ import type { Entity, Memory, RuntimeEntity, SubstrateWorkflowDefinition } from 
 import type { MemoryEntry } from '@backlog-mcp/memory';
 import { EntityType, getSubstrate, isValidEntityId, parseEntityId } from '@backlog-mcp/shared';
 import type { IBacklogService } from './backlog-service.contract.js';
-import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
+import { mintMemoryEntry as mintFrontmatterEntry } from './memory-entry.js';
 import { loadAgentAttributionIndex } from './agent-attribution.js';
 import { asBuiltinEntity } from './substrates/index.js';
 import { markdownTitle } from './orientation.js';
@@ -431,12 +431,9 @@ export async function wakeup(
         const builtin = asBuiltinEntity(entity);
         return builtin?.type === EntityType.Memory ? [builtin] : [];
       });
-    const fallbackStore = new BacklogMemoryStore(function getWakeupService() {
-      return service;
-    });
     const mintMemoryEntry = params.mintMemoryEntry
       ?? function mintFrontmatterMemory(memory: Memory): MemoryEntry {
-        return fallbackStore.toMemoryEntry(memory);
+        return mintFrontmatterEntry(memory, undefined, nowMs);
       };
     const now = nowMs;
     knowledge = memories

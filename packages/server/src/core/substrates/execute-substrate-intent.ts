@@ -1,5 +1,6 @@
+import type { WriteWarning } from '@backlog-mcp/shared';
 import { readEntityForWrite, saveEntityCommitted, withWriteWarnings } from '../entity-mutation.js';
-import type { EntityPreimage, WriteWarning } from '../entity-mutation.contract.js';
+import type { EntityPreimage } from '../entity-mutation.contract.js';
 import type {
   AnyEntity,
   CompiledFieldBinding,

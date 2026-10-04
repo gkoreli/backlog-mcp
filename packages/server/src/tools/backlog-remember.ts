@@ -1,3 +1,4 @@
+import { MemoryCorrectionError } from '../core/memory-correction.contract.js';
 /**
  * backlog_remember — the explicit memory write verb (ADR 0092.3 Phase C).
  *
@@ -121,6 +122,9 @@ export function registerBacklogRememberTool(
         const provenance = deps?.writeProvenance?.document(result.id);
         return { content: [{ type: 'text', text: JSON.stringify({ ...result, ...provenance }, null, 2) }] };
       } catch (e) {
+        if (e instanceof MemoryCorrectionError) {
+          return { content: [{ type: 'text', text: JSON.stringify({ error: e.message, code: e.outcome, ids: e.affectedIds, unrecovered_ids: e.unrecoveredIds }) }], isError: true };
+        }
         if (e instanceof ValidationError) {
           return { content: [{ type: 'text', text: JSON.stringify({ error: e.message }) }], isError: true };
         }

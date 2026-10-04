@@ -1,3 +1,4 @@
+import { isMemoryLive } from './memory-validity.js';
 /**
  * Semantic collision candidates (ADR 0120).
  *
@@ -54,11 +55,6 @@ function roundSix(value: number): number {
   return Number(value.toFixed(6));
 }
 
-function isLive(memory: Memory, now: number): boolean {
-  if (!memory.valid_until) return true;
-  const expiry = Date.parse(memory.valid_until);
-  return Number.isNaN(expiry) || expiry > now;
-}
 
 function hasSharedValue(
   left: readonly string[] | undefined,
@@ -91,7 +87,7 @@ function explicitContext(memory: Memory): string | undefined {
 
 function isEligiblePair(left: Memory, right: Memory, now: number): boolean {
   if (left.id === right.id) return false;
-  if (!isLive(left, now) || !isLive(right, now)) return false;
+  if (!isMemoryLive(left, now) || !isMemoryLive(right, now)) return false;
   if (isDismissed(left, right)) return false;
   const leftContext = explicitContext(left);
   const rightContext = explicitContext(right);
@@ -255,7 +251,7 @@ async function candidatesForFocal(
   corpus: readonly Memory[],
   now: number,
 ): Promise<CollisionCandidate[]> {
-  if (!isLive(focal, now)) return [];
+  if (!isMemoryLive(focal, now)) return [];
 
   const byId = new Map(corpus.map(function indexMemory(memory) {
     return [memory.id, memory] as const;
@@ -347,7 +343,7 @@ export async function findCollisionCandidatePairs(
   const now = options.now ?? Date.now();
   const corpus = memoryCorpus(await readEntityCorpus(service, { type: EntityType.Memory }));
   const live = corpus.filter(function isLiveMemory(memory) {
-    return isLive(memory, now);
+    return isMemoryLive(memory, now);
   });
   const requested = options.focalIds === undefined
     ? undefined

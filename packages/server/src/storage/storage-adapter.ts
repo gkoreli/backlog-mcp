@@ -1,5 +1,6 @@
 import type { ClaimQuarantine, StorageSaveOptions, ListFilter as BacklogListFilter } from '../core/backlog-service.contract.js';
 import type {
+  Memory,
   AnyEntity,
   Entity,
   EntityType,
@@ -8,7 +9,7 @@ import type {
 } from '@backlog-mcp/shared';
 import type { DocumentIdentity } from '../core/document-identity.types.js';
 import type { EntityDraft } from '../core/entity-creation.contract.js';
-import type { EntityPreimage } from '../core/entity-mutation.contract.js';
+import type { EntityPreimage, StorageDeleteOptions } from '../core/entity-mutation.contract.js';
 
 /** Local synchronous listing accepts the repository filters except search queries. */
 export type ListFilter = Omit<BacklogListFilter, 'query'>;
@@ -28,6 +29,7 @@ export interface AsyncListFilter {
 export interface StorageAdapter {
   /** Allocate and insert under the storage write boundary when supported. */
   create?(draft: EntityDraft): AnyEntity;
+  correctMemory?(draft: Omit<Memory, 'id'>, now: number): { value: Memory; changed: Memory[] };
   get(id: string): AnyEntity | undefined;
   getMarkdown(id: string): string | null;
   list(filter?: ListFilter): AnyEntity[];
@@ -35,7 +37,7 @@ export interface StorageAdapter {
   save(entity: AnyEntity, options?: StorageSaveOptions): AnyEntity;
   getForWrite?(id: string): EntityPreimage | undefined;
   saveVersioned?(entity: AnyEntity, options?: StorageSaveOptions): EntityPreimage;
-  delete(id: string): boolean;
+  delete(id: string, options?: StorageDeleteOptions): boolean;
   counts(): {
     total_tasks: number;
     total_epics: number;

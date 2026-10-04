@@ -115,3 +115,5 @@ export type {
   JsonValue,
   SubstrateRelationCardinality,
 } from './substrates/substrate-intent.types.js';
+
+export type { WriteWarning } from './write-warning.js';

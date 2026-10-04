@@ -1,5 +1,5 @@
 /** Managed commit and preimage contracts (ADR 0135 R2/R3). */
-import type { AnyEntity } from '@backlog-mcp/shared';
+import type { AnyEntity, WriteWarning } from '@backlog-mcp/shared';
 import type { EntityDraft } from './entity-creation.contract.js';
 
 export interface EntityPreimage {
@@ -13,10 +13,7 @@ export interface StorageSaveOptions {
   expected?: EntityPreimage;
 }
 
-export interface WriteWarning {
-  code: 'index_repair_pending' | 'journal_append_failed' | 'notification_failed';
-  message: string;
-}
+export interface StorageDeleteOptions { expected?: EntityPreimage }
 
 export interface MutationReceipt {
   warnings?: WriteWarning[];
@@ -32,7 +29,7 @@ export interface EntityMutationPort {
   getForWrite(id: string): Promise<EntityPreimage | undefined>;
   saveCommitted(entity: AnyEntity, options?: StorageSaveOptions): Promise<Committed<AnyEntity>>;
   createCommitted(draft: EntityDraft): Promise<Committed<AnyEntity>>;
-  deleteCommitted(id: string): Promise<Committed<boolean>>;
+  deleteCommitted(id: string, options?: StorageDeleteOptions): Promise<Committed<boolean>>;
 }
 
 export class EntityWriteConflictError extends Error {

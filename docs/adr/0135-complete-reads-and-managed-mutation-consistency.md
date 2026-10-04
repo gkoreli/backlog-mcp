@@ -106,3 +106,44 @@ These are invariant failures, not reasons for a new domain framework.
   exactly one committed, one reported conflict, and only one journal attempt was
   made. Search/resource work was mocked in that process check; no full CLI race
   or universal native-editor transaction is claimed.
+
+- Stage D coordinates correction through a narrow local capability. Its pure plan
+  selects every live predecessor from the fresh locked corpus; all identities,
+  schemas, paths and canonical-adoption requirements are checked before effects.
+  Closures publish first, the successor last. Failure restores original Markdown
+  bytes only while they still match this operation's postimage; a typed error
+  distinguishes restored failure from partial recovery and identifies affected
+  and unrecovered IDs. Adapters without the capability fail visibly for corrections.
+  This is cooperating-writer consistency plus guarded compensation, not a crash
+  transaction across files or universal coordination with native editors.
+- Managed Markdown uses complete temporary files and atomic rename for updates,
+  exclusive hard-link publication for creation, and best-effort temporary cleanup.
+  Existing permission bits are restored before publication, including bits normally
+  masked by umask. Failed publication leaves original bytes intact. Search recovery
+  reconciles a partially recovered correction; successful corrections report index
+  diagnostics through MemoryStore/Composer/remember and journal exactly once.
+- A named temporal projection makes absent/null/empty expiry unbounded, valid
+  expiry at or before the operation time expired, and malformed native expiry
+  live and diagnosable. No NaN expiry leaks into MemoryEntry. Store operations
+  sample one injectable clock; pure entry minting owns the created-date fallback.
+  Recall/counts/contradictions/collisions/consolidation share validity. Wakeup
+  consumes the pure projection instead of constructing an infrastructure store;
+  its fixed architecture violation is removed.
+- Parent independent Stage C check also used newly built modules and a disposable
+  actual-filesystem home: concurrent core updates produced one success/conflict
+  and one journal; throwing indexing and journal callbacks retained committed
+  Markdown with the corresponding warnings. Derived callbacks were mocked.
+- Soft forgetting, expired-memory GC and legacy global usage-frontmatter updates
+  carry the same exact-byte preimages. A native correction between selection and
+  save/delete rejects the mutation; usage keeps its best-effort conflict policy.
+  Project usage overlays remain separate from committed memory documents.
+- Stage D verification: workspace build/typecheck passed; server 1,544 / 2 existing
+  skips, memory 49 and viewer 163 tests passed. Seventeen new memfs cases cover
+  complete/simultaneous corrections, validation, failed closures/successor,
+  exact-byte and guarded recovery, receipt diagnostics, permissions, stale memory
+  writers and missing/null/invalid/boundary expiry. Two actual Node processes
+  over a disposable home produced distinct successors, retained 27 history
+  records and left exactly one live holder. Existing 0664 permissions survived;
+  an adversarial control/state symlink was rejected without creating a lock in
+  its target. Search callbacks were mocked in that process check; recovery and
+  real Orama repair were unit-tested over memfs.

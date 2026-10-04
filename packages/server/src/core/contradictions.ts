@@ -1,3 +1,4 @@
+import { isMemoryLive } from './memory-validity.js';
 /**
  * Contradiction detection — R-9 of the agentic memory initiative
  * (ADR 0092.13, implementing ADR 0092.5 R-9).
@@ -32,11 +33,6 @@ import type {
 } from './types.js';
 
 /** A memory is live if it has no expiry, or its expiry is still in the future. */
-function isLive(m: Memory, now: number): boolean {
-  if (!m.valid_until) return true;
-  const ts = Date.parse(m.valid_until);
-  return Number.isNaN(ts) || ts > now;
-}
 
 function toMember(m: Memory): ContradictionMember {
   return {
@@ -63,7 +59,7 @@ export function groupByStateKey(
   const now = opts.now ?? Date.now();
   const byKey = new Map<string, Memory[]>();
   for (const m of memories) {
-    if (!m.state_key || !isLive(m, now)) continue;
+    if (!m.state_key || !isMemoryLive(m, now)) continue;
     const list = byKey.get(m.state_key);
     if (list) list.push(m);
     else byKey.set(m.state_key, [m]);
@@ -101,7 +97,7 @@ export async function detectContradictions(
   const now = Date.now();
   const memories = (await readEntityCorpus(service, { type: EntityType.Memory }))
     .map(e => e as Entity as Memory);
-  const live_keyed = memories.filter(m => m.state_key && isLive(m, now)).length;
+  const live_keyed = memories.filter(m => m.state_key && isMemoryLive(m, now)).length;
   const groups = groupByStateKey(memories, { now });
   return {
     groups,
@@ -120,11 +116,11 @@ export async function contradictsFor(
   memory: Memory,
   now: number = Date.now(),
 ): Promise<string[]> {
-  if (!memory.state_key || !isLive(memory, now)) return [];
+  if (!memory.state_key || !isMemoryLive(memory, now)) return [];
   const memories = (await readEntityCorpus(service, { type: EntityType.Memory }))
     .map(e => e as Entity as Memory);
   return memories
     .filter(m =>
-      m.id !== memory.id && m.state_key === memory.state_key && isLive(m, now))
+      m.id !== memory.id && m.state_key === memory.state_key && isMemoryLive(m, now))
     .map(m => m.id);
 }

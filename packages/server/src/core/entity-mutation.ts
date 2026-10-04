@@ -1,7 +1,8 @@
+import type { WriteWarning } from '@backlog-mcp/shared';
 /** Shared managed-write mechanics; adapters retain semantic receipt formatting. */
 import type { AnyEntity } from '@backlog-mcp/shared';
 import type { IBacklogService } from './backlog-service.contract.js';
-import type { Committed, EntityPreimage, MutationReceipt, StorageSaveOptions, WriteWarning } from './entity-mutation.contract.js';
+import type { Committed, EntityPreimage, MutationReceipt, StorageSaveOptions } from './entity-mutation.contract.js';
 
 /** Prefer the local exact-document preimage; legacy ports retain semantic checks. */
 export async function readEntityForWrite(

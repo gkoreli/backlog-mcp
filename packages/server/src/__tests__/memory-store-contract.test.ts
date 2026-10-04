@@ -1,3 +1,4 @@
+import { planMemoryCorrection } from '../core/memory-correction.js';
 /**
  * BacklogMemoryStore — the R1–R5 recall-correctness contract (ADR 0092.3).
  *
@@ -23,6 +24,7 @@ import {
   EntityType,
   parseEntityNum,
   type Entity,
+  MemorySchema,
   type Memory,
 } from '@backlog-mcp/shared';
 import { MemoryComposer, type MemoryEntry } from '@backlog-mcp/memory';
@@ -51,6 +53,13 @@ const CREATE_ATTRIBUTION = {
 function fakeService(): IBacklogService {
   const store = new Map<string, Entity>();
   return {
+    async correctMemory(draft, now) {
+      const memory = MemorySchema.parse({ ...draft, id: `MEMO-${String((await this.getMaxId(EntityType.Memory)) + 1).padStart(4, '0')}` });
+      const plan = planMemoryCorrection(memory, [...store.values()].filter(function isMemory(entity) { return entity.type === 'memory'; }) as Memory[], now);
+      for (const closure of plan.closures) store.set(closure.after.id, closure.after);
+      store.set(memory.id, memory);
+      return { value: memory };
+    },
     async get(id) { return store.get(id); },
     async getMarkdown() { return null; },
     async scan(filter) {

@@ -1,19 +1,23 @@
+import { planMemoryCorrection } from '../../core/memory-correction.js';
+import { executeMemoryCorrection, type PreparedDocumentWrite } from './memory-correction.js';
+import { writeMarkdownFile } from './markdown-write.js';
 /** Authoritative docs-native writes, revision checks and home-local locking. */
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
-import { EntityWriteConflictError, type EntityPreimage } from '../../core/entity-mutation.contract.js';
+import { EntityWriteConflictError, type EntityPreimage, type StorageDeleteOptions } from '../../core/entity-mutation.contract.js';
 import { matchesEntityFilter } from '../../core/entity-corpus.js';
 import type { ClaimQuarantine, StorageSaveOptions } from '../../core/backlog-service.contract.js';
 import {
   existsSync,
   mkdirSync,
   unlinkSync,
-  writeFileSync,
 } from 'node:fs';
 import { dirname, posix, resolve } from 'node:path';
 import { paths } from '../../utils/paths.js';
 import matter from 'gray-matter';
 import {
+  MemorySchema,
+  type Memory,
   EntityType,
   type AnyEntity,
   type SubstrateType,
@@ -229,11 +233,11 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     return { absolutePath, sourcePath: normalizedSourcePath };
   }
 
-  private write(
+  private prepareWrite(
     candidate: AnyEntity,
     sourcePath: string,
     exclusive: boolean,
-  ): EntityPreimage {
+  ): PreparedDocumentWrite {
     const validation = this.registry.validateWrite(candidate);
     if (!validation.ok) {
       throw new SubstrateWriteError(candidate.type, validation.issues);
@@ -252,16 +256,16 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     }
     const target = this.resolveClaimedPath(sourcePath, claim);
     validateWriteIdentity(entity, target.sourcePath, claim);
-    mkdirSync(dirname(target.absolutePath), { recursive: true });
-    const markdown = serializeEntity(entity);
-    writeFileSync(
-      target.absolutePath,
-      markdown,
-      exclusive ? { flag: 'wx' } : undefined,
-    );
+    return { entity, absolutePath: target.absolutePath, markdown: serializeEntity(entity), exclusive };
+  }
+
+  private write(candidate: AnyEntity, sourcePath: string, exclusive: boolean): EntityPreimage {
+    const prepared = this.prepareWrite(candidate, sourcePath, exclusive);
+    mkdirSync(dirname(prepared.absolutePath), { recursive: true });
+    writeMarkdownFile(prepared.absolutePath, prepared.markdown, exclusive);
     // The disk changed; the derived read model is now stale (ADR 0127 R2).
     this.invalidate();
-    return { entity, revision: documentRevision(markdown) };
+    return { entity: prepared.entity, revision: documentRevision(prepared.markdown) };
   }
 
   getDocumentById(id: string): StoredEntityDocument | undefined {
@@ -334,6 +338,34 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     });
   }
 
+  /** Allocate, validate the complete plan, execute and recover under one home lock. */
+  correctMemory(draft: Omit<Memory, 'id'>, now: number): { value: Memory; changed: Memory[] } {
+    const storage = this;
+    return this.mutate(function correct() {
+      const successor = MemorySchema.parse({ ...draft, id: nextStorageDocumentId(storage.registry, 'memory', storage.getMaxId('memory')) });
+      const corpus = storage.documents().flatMap(function memories(document) {
+        return document.entity.type === 'memory' ? [MemorySchema.parse(document.entity)] : [];
+      });
+      const plan = planMemoryCorrection(successor, corpus, now);
+      const closures = plan.closures.map(function prepareClosure(closure) {
+        const existing = storage.getDocumentById(closure.before.id);
+        if (existing === undefined || !hasCanonicalFrontmatter(existing, storage.registry)) {
+          throw new Error(`Canonical adoption requires separate explicit consent: ${closure.before.id}`);
+        }
+        return { beforeMarkdown: existing.markdown, after: storage.prepareWrite(closure.after, existing.sourcePath, false) };
+      });
+      const prepared = storage.prepareWrite(plan.successor, storage.newDocumentSourcePath(plan.successor), true);
+      const validatedSuccessor = { ...prepared, entity: MemorySchema.parse(prepared.entity) };
+      // Directory preparation can fail, but happens before any document mutation.
+      for (const write of [...closures.map(function after(closure) { return closure.after; }), prepared]) {
+        mkdirSync(dirname(write.absolutePath), { recursive: true });
+      }
+      try {
+        return { value: validatedSuccessor.entity, changed: executeMemoryCorrection({ successor: validatedSuccessor, closures }) };
+      } finally { storage.invalidate(); }
+    });
+  }
+
   /**
    * The docs-relative path a brand-new document is written to: the claim's
    * folder, the id's path key, and a title-derived slug (ADR 0129 R2). The
@@ -371,15 +403,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
 
   private saveCurrent(entity: AnyEntity, options?: StorageSaveOptions): EntityPreimage {
     const existing = this.getDocumentById(entity.id);
-    if (options?.expected !== undefined) {
-      const expected = options.expected;
-      if (existing === undefined || expected.entity.id !== entity.id
-        || (expected.revision === undefined
-          ? !isDeepStrictEqual(existing.entity, expected.entity)
-          : documentRevision(existing.markdown) !== expected.revision)) {
-        throw new EntityWriteConflictError(entity.id);
-      }
-    }
+    assertExpectedDocument(entity.id, existing, options?.expected);
     if (
       existing !== undefined
       && options?.canonicalAdoption !== true
@@ -394,13 +418,14 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     return this.write(entity, sourcePath, false);
   }
 
-  delete(id: string): boolean {
+  delete(id: string, options?: StorageDeleteOptions): boolean {
     const storage = this;
-    return this.mutate(function deleteDocument() { return storage.deleteCurrent(id); });
+    return this.mutate(function deleteDocument() { return storage.deleteCurrent(id, options); });
   }
 
-  private deleteCurrent(id: string): boolean {
+  private deleteCurrent(id: string, options?: StorageDeleteOptions): boolean {
     const document = this.getDocumentById(id);
+    assertExpectedDocument(id, document, options?.expected);
     if (document === undefined) return false;
 
     unlinkSync(resolve(
@@ -454,4 +479,15 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
 /** Opaque exact-byte revision; timestamps are not concurrency tokens. */
 function documentRevision(markdown: string): string {
   return createHash('sha256').update(markdown).digest('hex');
+}
+
+/** Used for both guarded saves and GC deletion inside the fresh home lock. */
+function assertExpectedDocument(id: string, current: StoredEntityDocument | undefined, expected?: EntityPreimage): void {
+  if (expected === undefined) return;
+  if (current === undefined || expected.entity.id !== id
+    || (expected.revision === undefined
+      ? !isDeepStrictEqual(current.entity, expected.entity)
+      : documentRevision(current.markdown) !== expected.revision)) {
+    throw new EntityWriteConflictError(id);
+  }
 }

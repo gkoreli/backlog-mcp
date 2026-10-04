@@ -1,9 +1,9 @@
+import type { WriteWarning } from '@backlog-mcp/shared';
 /**
  * One semantic journal append attempt and live notification after commit.
  * ADR 0117 makes the local journal best-effort, not crash-atomic with Markdown.
  * ADR 0135 R3 returns known sink failures as committed-write diagnostics.
  */
-import type { WriteWarning } from './entity-mutation.contract.js';
 
 import type { WriteContext } from './types.js';
 import type { Mutation, MutationAttribution, OperationEntry } from './operation-log.contract.js';

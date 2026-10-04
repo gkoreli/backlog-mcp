@@ -1,3 +1,4 @@
+import { isMemoryLive } from './memory-validity.js';
 /**
  * Consolidation candidates — Phase D of the agentic memory initiative
  * (ADR 0092.7, implementing ADR 0092.5 R-10).
@@ -77,7 +78,7 @@ export function demandCounts(
 function isConsolidatableEpisodic(m: Memory, now: number): boolean {
   if ((m.layer ?? 'episodic') !== 'episodic') return false;
   if (m.derived === true) return false;                               // inference is not re-consolidated
-  if (m.valid_until && Date.parse(m.valid_until) <= now) return false; // retired/expired
+  if (!isMemoryLive(m, now)) return false; // retired/expired
   return true;
 }
 
