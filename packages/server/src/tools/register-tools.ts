@@ -43,6 +43,7 @@ export type IntentToolRegistration =
 
 /** Per-request dependencies for the static and registry-declared MCP tools. */
 export interface ToolDeps {
+  clock?: () => number;
   resourceManager?: any;
   operationLogger?: any;
   actor?: Actor;

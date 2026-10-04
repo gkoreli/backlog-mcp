@@ -27,8 +27,8 @@ export function recordMutation(
   resourceId: string,
   params: Record<string, unknown>,
   result: unknown,
+  ts: string = new Date().toISOString(),
 ): WriteWarning[] {
-  const ts = new Date().toISOString();
 
   const entry: OperationEntry = {
     ts,

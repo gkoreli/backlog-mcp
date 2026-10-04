@@ -1,9 +1,9 @@
 /**
- * Integration tests for memory capture (ADR 0092.2 Phase 3a).
+ * Unit tests for memory capture (ADR 0092.2 Phase 3a).
  *
  * Verifies that `updateEntity` and `createEntity` emit `layer: 'episodic'`
  * memories into the composer on the expected transitions, carry the
- * right actor attribution, and silently drop on failures.
+ * right actor attribution, and report advisory failures after commit.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
@@ -292,5 +292,53 @@ describe('memory entry builders', () => {
     const entry = buildCompletionEntry(e, { type: 'user', name: 'g' }, NOW);
     expect(entry.metadata?.usageCount).toBe(0);
     expect(entry.expiresAt).toBeUndefined();
+  });
+});
+
+
+describe('capture operation time and committed diagnostics', function captureContract() {
+  it('shares one operation time across update, capture, journal and event', async function operationTime() {
+    const composer = new MemoryComposer();
+    const store = new InMemoryStore();
+    composer.register('episodic', store);
+    const ctx = makeCtx(composer);
+    const clock = vi.fn(function operationClock() { return 1790985600000; });
+    const append = vi.fn();
+    const emit = vi.fn();
+    ctx.clock = clock;
+    ctx.operationLog.append = append;
+    ctx.eventBus = { emit };
+    const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'Timed completion' })]);
+    await updateEntity(svc, { id: 'TASK-0001', status: 'done' }, ctx);
+    const timestamp = new Date(1790985600000).toISOString();
+    expect((await svc.get('TASK-0001'))?.updated_at).toBe(timestamp);
+    const captured = await store.recall({ query: 'Timed' });
+    expect(captured[0]?.entry.createdAt).toBe(1790985600000);
+    expect(append).toHaveBeenCalledTimes(1);
+    expect(append).toHaveBeenCalledWith(expect.objectContaining({ ts: timestamp }));
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ ts: timestamp }));
+    expect(clock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a created artifact committed and reports a capture failure once', async function committedFailure() {
+    const composer = new MemoryComposer();
+    const capture = vi.spyOn(composer, 'store').mockRejectedValue(new Error('capture sink unavailable'));
+    const ctx = makeCtx(composer);
+    ctx.clock = vi.fn(function clock() { return 1790985600000; });
+    const append = vi.fn();
+    const emit = vi.fn();
+    ctx.operationLog.append = append;
+    ctx.eventBus = { emit };
+    const svc = mockService();
+    const result = await createEntity(svc, { type: 'artifact', title: 'Published evidence', parent_id: 'TASK-0001' }, ctx);
+    expect((await svc.get(result.id))?.title).toBe('Published evidence');
+    expect(result.warnings).toEqual([{ code: 'memory_capture_failed', message: 'Markdown committed; episodic memory capture failed.' }]);
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect(capture).toHaveBeenCalledWith(expect.objectContaining({ createdAt: 1790985600000 }));
+    expect(append).toHaveBeenCalledTimes(1);
+    expect(append).toHaveBeenCalledWith(expect.objectContaining({ result: expect.objectContaining({ warnings: result.warnings }) }));
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(ctx.clock).toHaveBeenCalledTimes(1);
   });
 });

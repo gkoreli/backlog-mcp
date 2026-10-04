@@ -24,6 +24,7 @@ import type {
 
 /** Runtime-owned services selected for one transport request. */
 export interface AppRequestRuntime {
+  clock?: () => number;
   home?: BacklogHome;
   service: IBacklogService;
   /** Runtime-home-resolved write actor for a request-selected local home. */

@@ -61,6 +61,8 @@ export type { MemoryEntry, MemoryResult, RecallQuery, MemoryLayer } from '@backl
 export interface WriteContext {
   actor: Actor;
   operationLog: IOperationLog;
+  /** Operation clock; create/update sample once for stamping, capture and journal. */
+  clock?: () => number;
   /** Active project declarations for intake policy and provenance identity. */
   substrateRegistry?: Pick<
     ProjectSubstrateRegistry,

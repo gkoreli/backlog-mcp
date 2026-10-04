@@ -88,6 +88,8 @@ export async function createEntity(
   ctx: WriteContext,
   attribution: MutationAttribution,
 ): Promise<CreateResult> {
+  const now = ctx.clock?.() ?? Date.now();
+  const timestamp = new Date(now).toISOString();
   const {
     title,
     content,
@@ -124,7 +126,7 @@ export async function createEntity(
     ...(referenceParentId === undefined ? {} : { referenceParentId }),
     operations,
     actor: ctx.actor,
-    now: new Date().toISOString(),
+    now: timestamp,
   });
   if (route.parentRequired) {
     throw new ValidationError(`${type} requires an explicit parent_id`);
@@ -142,9 +144,8 @@ export async function createEntity(
   candidate.title = title;
 
   if (isBuiltinSubstrateType(type)) {
-    const now = new Date().toISOString();
-    candidate.created_at = now;
-    candidate.updated_at = now;
+    candidate.created_at = timestamp;
+    candidate.updated_at = timestamp;
   }
 
   let committed;
@@ -156,16 +157,16 @@ export async function createEntity(
 
   const stored = committed.value;
   const builtin = asBuiltinEntity(stored);
-  if (ctx.memoryComposer && builtin !== undefined && shouldCaptureArtifact(builtin)) {
-    await captureArtifact(ctx.memoryComposer, builtin, ctx.actor);
-  }
+  const captureWarnings = ctx.memoryComposer && builtin !== undefined && shouldCaptureArtifact(builtin)
+    ? await captureArtifact(ctx.memoryComposer, builtin, ctx.actor, now)
+    : [];
 
-  const result: CreateResult = {
+  const result: CreateResult = withWriteWarnings({
     id: stored.id,
     ...(committed.warnings === undefined ? {} : { warnings: committed.warnings }),
     ...(route.parentId === undefined ? {} : { parent_id: route.parentId }),
     ...(route.routedBy === undefined ? {} : { routed_by: route.routedBy }),
-  };
+  }, captureWarnings);
   const effectiveParams = route.parentId === undefined
     || params.parent_id !== undefined
     ? params
@@ -176,6 +177,7 @@ export async function createEntity(
     stored.id,
     effectiveParams as unknown as Record<string, unknown>,
     result,
+    timestamp,
   );
   return withWriteWarnings(result, warnings);
 }

@@ -14,6 +14,7 @@ export function createManagedWriteContext(deps: ManagedWriteDependencies | undef
 /** Pick only write capabilities from a runtime; presence is enforced when constructing a write. */
 export function managedWriteDependencies(deps: ManagedWriteDependencies): ManagedWriteDependencies {
   return {
+    ...(deps.clock === undefined ? {} : { clock: deps.clock }),
     ...(deps.actor === undefined ? {} : { actor: deps.actor }),
     ...(deps.operationLog === undefined ? {} : { operationLog: deps.operationLog }),
     ...(deps.substrateRegistry === undefined ? {} : { substrateRegistry: deps.substrateRegistry }),

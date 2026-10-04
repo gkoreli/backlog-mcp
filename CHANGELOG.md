@@ -22,6 +22,14 @@ begins at 0.57.0 — earlier history lives in git.
 
 ### Fixed
 
+- **Committed writes report episodic capture failures.** Task completion and
+  artifact creation keep their successful receipt and add `memory_capture_failed`
+  when advisory capture fails. Create/update share one operation time across
+  stamping, capture, journal and live notification.
+- **History enrichment reads each reference once per request.** Repeated targets
+  and parent references share an in-flight read within the selected home;
+  unknown historical tools and existing response fields remain intact.
+
 - **Migration checks the boundary between planning and execution.** Replaced
   source symlinks, destination escapes and changed canonical roots are rejected
   before source deletion; stale bytes and occupied targets retain their existing

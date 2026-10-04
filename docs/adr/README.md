@@ -2,6 +2,10 @@
 
 This directory contains Architecture Decision Records (ADRs) for backlog-mcp.
 
+Current architecture conventions: [0134 — layers and engineering rules](0134-engineering-rules.md),
+[0135 — complete reads and managed mutation consistency](0135-complete-reads-and-managed-mutation-consistency.md),
+and [0136 — domain ownership and application patterns](0136-domain-ownership-and-application-patterns.md).
+
 ADRs preserve the contracts and assumptions at the time of a decision. For
 current invocation, use the selected tool's full schema or CLI `--help`, with
 [README examples](../../README.md#mcp-tools) as orientation. In particular,

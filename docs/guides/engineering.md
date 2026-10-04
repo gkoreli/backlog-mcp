@@ -5,7 +5,10 @@ These are active contributor instructions, reached from [AGENTS.md](../../AGENTS
 
 The summaries below aid navigation; [ADR 0134](../adr/0134-engineering-rules.md)
 and its [enforcement record](../adr/0134.1-enforcing-the-engineering-rules.md)
-remain the authority for engineering rules. The file naming convention below
+remain the authority for engineering rules. [ADR 0136](../adr/0136-domain-ownership-and-application-patterns.md)
+extends them with binding domain ownership, application patterns and a review
+checklist; [ADR 0135](../adr/0135-complete-reads-and-managed-mutation-consistency.md)
+owns complete reads and managed mutation guarantees. The file naming convention below
 is maintained here; there is no ADR 0109 file.
 
 ## Code Style

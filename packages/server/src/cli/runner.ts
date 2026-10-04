@@ -1,3 +1,4 @@
+import { createHomeReadRuntime } from '../composition/home-read-runtime.js';
 import { createManagedWriteContext } from '../composition/managed-write-context.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -233,30 +234,6 @@ export function withAgentIdentity(
   };
 }
 
-function toHomeReadRuntime(runtime: CliRuntime): HomeReadRuntime {
-  const home = runtime.home;
-  if (home === undefined) {
-    throw new Error('Cross-home CLI reads require a docs-native runtime');
-  }
-  return {
-    home,
-    service: runtime.service,
-    memoryComposer: runtime.memoryComposer,
-    usageTracker: runtime.usageTracker,
-    getSourcePath: runtime.getSourcePath,
-    readIdentity: runtime.readIdentity,
-    acceptsParent: function acceptsParent(type) {
-      return runtime.writeContext.substrateRegistry?.acceptsParent(type) === true;
-    },
-    ...(runtime.readVision === undefined ? {} : { readVision: runtime.readVision }),
-    ...(runtime.readGrounding === undefined ? {} : { readGrounding: runtime.readGrounding }),
-    readOperations: function readOperations(options) {
-      return runtime.operationLogger.read(options);
-    },
-    mintMemoryEntry: runtime.mintMemoryEntry,
-  };
-}
-
 function printResult<R>(
   value: R,
   format: (result: R) => string,
@@ -335,7 +312,7 @@ export async function runAcrossHomes<R>(
         : {}),
     });
     acquired.push(runtime);
-    return toHomeReadRuntime(runtime);
+    return createHomeReadRuntime({ ...runtime, substrateRegistry: runtime.writeContext.substrateRegistry });
   }
   const coordinator = createHomeReadCoordinator({ resolveRuntime });
   const activeProjectRoot = projectRoot

@@ -10,12 +10,12 @@
  *    canonical reference back to the backlog; `content` is a short
  *    human-scannable summary. Callers who want the full story follow
  *    the pointer to the live entity.
- *  - Errors are caught and logged; they don't propagate into the caller.
+ *  - Failures become committed-write diagnostics; they don't reject the caller.
  *    The user's mutation already succeeded — capturing failure is a
  *    derived side effect, not a first-class outcome.
  */
 
-import type { Entity } from '@backlog-mcp/shared';
+import type { Entity, WriteWarning } from '@backlog-mcp/shared';
 import type { MemoryComposer, MemoryEntry } from '@backlog-mcp/memory';
 import type { Actor } from './operation-log.contract.js';
 
@@ -72,30 +72,31 @@ export function buildArtifactEntry(entity: Entity, actor: Actor, now: number): M
   };
 }
 
-/**
- * Capture a completion memory. Safe to call even if the composer has no
- * `episodic` store registered — we log and swallow.
- */
-export async function captureCompletion(
-  composer: MemoryComposer,
-  entity: Entity,
-  actor: Actor,
-): Promise<void> {
+async function captureEntry(composer: Pick<MemoryComposer, 'store'>, entry: MemoryEntry): Promise<WriteWarning[]> {
   try {
-    await composer.store(buildCompletionEntry(entity, actor, Date.now()));
-  } catch (err) {
-    console.error('[memory] capture-completion failed', { id: entity.id, err });
+    const stored = await composer.store(entry);
+    return [...(stored.writeWarnings ?? [])];
+  } catch {
+    return [{ code: 'memory_capture_failed', message: 'Markdown committed; episodic memory capture failed.' }];
   }
 }
 
-export async function captureArtifact(
-  composer: MemoryComposer,
+/** Completion capture uses the operation time and returns advisory diagnostics (ADR 0136 R5). */
+export async function captureCompletion(
+  composer: Pick<MemoryComposer, 'store'>,
   entity: Entity,
   actor: Actor,
-): Promise<void> {
-  try {
-    await composer.store(buildArtifactEntry(entity, actor, Date.now()));
-  } catch (err) {
-    console.error('[memory] capture-artifact failed', { id: entity.id, err });
-  }
+  now: number,
+): Promise<WriteWarning[]> {
+  return captureEntry(composer, buildCompletionEntry(entity, actor, now));
+}
+
+/** Artifact capture shares the same post-commit failure contract (ADR 0136 R5). */
+export async function captureArtifact(
+  composer: Pick<MemoryComposer, 'store'>,
+  entity: Entity,
+  actor: Actor,
+  now: number,
+): Promise<WriteWarning[]> {
+  return captureEntry(composer, buildArtifactEntry(entity, actor, now));
 }

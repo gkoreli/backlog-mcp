@@ -79,11 +79,13 @@ export async function updateEntityPostimage(
   attribution: MutationAttribution,
   preimage: EntityPreimage = { entity: current },
 ): Promise<UpdateResult> {
+  const now = ctx.clock?.() ?? Date.now();
+  const timestamp = new Date(now).toISOString();
   delete effectiveChanges.id;
   delete effectiveChanges.type;
   delete effectiveChanges.created_at;
   delete effectiveChanges.updated_at;
-  const merged = stampUpdatePostimage(current, postimage);
+  const merged = stampUpdatePostimage(current, postimage, { updatedAt: timestamp });
 
   let committed: Committed<AnyEntity>;
   try {
@@ -95,22 +97,24 @@ export async function updateEntityPostimage(
   const stored = committed.value;
   const before = asBuiltinEntity(current);
   const after = asBuiltinEntity(stored);
+  let captureWarnings: Awaited<ReturnType<typeof captureCompletion>> = [];
   if (
     ctx.memoryComposer
     && before !== undefined
     && after !== undefined
     && shouldCaptureCompletion(before, after)
   ) {
-    await captureCompletion(ctx.memoryComposer, after, ctx.actor);
+    captureWarnings = await captureCompletion(ctx.memoryComposer, after, ctx.actor, now);
   }
 
-  const result: UpdateResult = withWriteWarnings({ id: stored.id }, committed.warnings);
+  const result: UpdateResult = withWriteWarnings({ id: stored.id }, [...(committed.warnings ?? []), ...captureWarnings]);
   const warnings = recordMutation(
     ctx,
     attribution,
     stored.id,
     { id: stored.id, ...effectiveChanges },
     result,
+    timestamp,
   );
   return withWriteWarnings(result, warnings);
 }

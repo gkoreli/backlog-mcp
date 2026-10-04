@@ -1,8 +1,8 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { extractTargetFilename } from '../operations/resource-id.js';
-import { inferLegacyMutation } from '../operations/mutation.js';
+import { extractTargetFilename } from '../core/operation-entry.js';
+import { inferLegacyMutation } from '../core/operation-entry.js';
 import { OperationStorage } from '../operations/storage.js';
 
 function createStorage(testName: string): OperationStorage {

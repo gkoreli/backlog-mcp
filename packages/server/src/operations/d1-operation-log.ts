@@ -5,7 +5,7 @@
  */
 
 import type { OperationEntry, OperationFilter, IOperationLog } from '../core/operation-log.contract.js';
-import { normalizeOperationEntry } from './mutation.js';
+import { normalizeOperationEntry } from '../core/operation-entry.js';
 
 // Minimal D1 API surface typed here to enable generic calls without
 // requiring @cloudflare/workers-types at Node.js compile time.

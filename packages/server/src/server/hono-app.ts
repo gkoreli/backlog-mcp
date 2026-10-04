@@ -1,23 +1,20 @@
-import { managedWriteDependencies } from '../composition/managed-write-context.js';
+/** HTTP application assembly; routes consume request-selected capabilities (ADR 0136). */
+import { registerMcpRoute } from './mcp-route.js';
+import { selectAppRequestRuntime, type RequestSelectionSource } from './request-selection.js';
+export { selectAppRequestRuntime } from './request-selection.js';
+import { registerOperationRoutes } from './operation-routes.js';
+import { createSelectedHomeReadCoordinator } from '../composition/home-read-runtime.js';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import matter from 'gray-matter';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { IOperationLog, Actor } from '../core/operation-log.contract.js';
-import { extractTargetFilename } from '../operations/resource-id.js';
-import { normalizeOperationEntry } from '../operations/mutation.js';
-import { registerTools, type ToolDeps } from '../tools/index.js';
+import type { ToolDeps } from '../tools/index.js';
 import { detectContradictions, contradictsFor } from '../core/contradictions.js';
 import { desk } from '../core/desk.js';
 import { findCollisionCandidatePairs, findCollisionCandidatesForMemory } from '../core/collision-candidates.js';
 import { usageSeries, hasUsage } from '../core/usage-series.js';
 import type { AnyEntity, Entity, Memory } from '@backlog-mcp/shared';
-import {
-  BACKLOG_HOME_HEADER,
-  BACKLOG_PROJECT_ROOT_HEADER,
-} from '../core/backlog-home.js';
 import type { BacklogEventCallback } from '../events/event-bus.js';
 import {
   createAuthRuntime,
@@ -37,26 +34,16 @@ import {
   withSearchHomeProvenance,
 } from './home-provenance.js';
 import { homedir } from 'node:os';
-import { selectMcpRequestRuntime } from './mcp-request-runtime.js';
-import { createWriteProvenance } from '../composition/write-provenance.js';
 import type { RecentHomesStore } from '../storage/local/recent-homes-store.js';
 import {
   presentGlobalHome,
   presentProjectHome,
 } from '../core/home-presentation.js';
 import { asBuiltinEntity } from '../core/substrates/index.js';
-import { createHomeReadCoordinator } from '../core/home-read-coordinator.js';
-import type {
-  HomeReadCoordinator,
-  HomeReadRuntime,
-  HomeReadRuntimeSelection,
-} from '../core/home-read-coordinator.types.js';
 import { parseDocumentAddress, resolveDocumentUri } from '../core/document-address.js';
 import type { ReleaseStatus } from '../core/installed-version.js';
 import { isLoopbackOrigin } from './loopback-origin.js';
 import { memoryUsageFieldsFromEntry } from '../memory/memory-entry-usage.js';
-import { withRequestTelemetrySession } from '../memory/retrieval-telemetry.js';
-import type { SubstrateIntentQuarantineDiagnostic } from '../tools/register-substrate-intents.types.js';
 // Note: paths.ts and operations/index.ts are NOT imported here — they pull in
 // Node.js modules (import.meta.url, fs, path) that break the Workers bundle.
 // name/version and the MCP server wrapper are injected via AppDeps.
@@ -106,37 +93,13 @@ export interface AppDeps extends ToolDeps {
   requestRestart?: () => void;
 }
 
-interface RequestSelectionSource {
-  header(name: string): string | undefined;
-  query(name: string): string | undefined;
-}
-
-/**
- * Read explicit caller context from one HTTP request.
- *
- * Headers are the bridge/server contract and therefore win over viewer query
- * parameters. Missing values remain missing; server cwd and process env are
- * deliberately not request-selection inputs.
- */
-export function selectAppRequestRuntime(
-  request: RequestSelectionSource,
-): AppRequestRuntimeSelection {
-  const home = request.header(BACKLOG_HOME_HEADER) ?? request.query('home');
-  const projectRoot = request.header(BACKLOG_PROJECT_ROOT_HEADER)
-    ?? request.query('project_root');
-
-  return {
-    ...(home === undefined ? {} : { home }),
-    ...(projectRoot === undefined ? {} : { projectRoot }),
-  };
-}
-
 function createStaticRequestRuntime(
   service: IBacklogService,
   deps: AppDeps | undefined,
 ): AppRequestRuntime {
   return {
     service,
+    clock: deps?.clock,
     operationLog: deps?.operationLog,
     operationLogger: deps?.operationLogger,
     eventBus: deps?.eventBus,
@@ -152,149 +115,8 @@ function createStaticRequestRuntime(
   };
 }
 
-function createRequestToolDeps(
-  runtime: AppRequestRuntime,
-  deps: AppDeps | undefined,
-  homeReadCoordinator?: HomeReadCoordinator,
-  reportIntentQuarantine?: (
-    diagnostic: SubstrateIntentQuarantineDiagnostic,
-  ) => void,
-): ToolDeps {
-  function createIntentRegistration(): NonNullable<ToolDeps['intentRegistration']> {
-    if (runtime.intentRegistrationMode === 'unavailable') {
-      return {
-        mode: 'unavailable' as const,
-        reason: 'constrained-runtime' as const,
-      };
-    }
-    if (runtime.intentRegistrationMode !== 'required') {
-      throw new Error('Runtime has no explicit intent registration mode');
-    }
-    const intentRegistry = runtime.intentRegistry;
-    const intentWriteValidator = runtime.intentWriteValidator;
-    if (
-      intentRegistry === undefined
-      || intentWriteValidator === undefined
-      || reportIntentQuarantine === undefined
-    ) {
-      throw new Error(
-        'Writable local runtime has incomplete intent registration dependencies',
-      );
-    }
-    return {
-      mode: 'required',
-      intentRegistry,
-      intentWriteValidator,
-      reportIntentQuarantine,
-    };
-  }
-  return {
-    ...managedWriteDependencies({ ...runtime, actor: runtime.home === undefined ? deps?.actor : runtime.actor }),
-    agentIdentity: runtime.home === undefined
-      ? deps?.agentIdentity
-      : runtime.agentIdentity,
-    operationLogger: runtime.operationLogger,
-    mintMemoryEntry: runtime.mintMemoryEntry,
-    usageTracker: runtime.usageTracker,
-    resourceManager: runtime.resourceManager,
-    readLocalFile: runtime.readLocalFile,
-    readUsageLines: runtime.readUsageLines,
-    identityPath: runtime.identityPath,
-    visionPath: runtime.visionPath,
-    readGrounding: runtime.readGrounding,
-    homeReadCoordinator,
-    intentRegistration: createIntentRegistration(),
-    writeProvenance: createWriteProvenance(runtime, homedir()),
-  };
-}
-
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function toHomeReadRuntime(runtime: AppRequestRuntime): HomeReadRuntime {
-  const home = runtime.home;
-  if (home === undefined) {
-    throw new Error('Cross-home reads require a docs-native local runtime');
-  }
-
-  const readLocalFile = runtime.readLocalFile;
-  const identityPath = runtime.identityPath;
-  const readIdentity = readLocalFile === undefined
-    || identityPath === undefined
-    ? undefined
-    : function readRuntimeIdentity(): string | undefined {
-      const raw = readLocalFile(identityPath);
-      return raw?.trim() || undefined;
-    };
-  const visionPath = runtime.visionPath;
-  const readVision = readLocalFile === undefined
-    || visionPath === undefined
-    ? undefined
-    : function readRuntimeVision(): string | undefined {
-      const raw = readLocalFile(visionPath);
-      return raw?.trim() || undefined;
-    };
-  const operationLogger = runtime.operationLogger;
-  const readOperations = operationLogger === undefined
-    ? undefined
-    : function readRuntimeOperations(options: { limit?: number }) {
-      return operationLogger.read(options);
-    };
-
-  return {
-    home,
-    service: runtime.service,
-    memoryComposer: runtime.memoryComposer,
-    usageTracker: runtime.usageTracker,
-    getSourcePath: runtime.getSourcePath,
-    readIdentity,
-    ...(runtime.substrateRegistry === undefined
-      ? {}
-      : {
-          acceptsParent: function acceptsParent(type: string): boolean {
-            return runtime.substrateRegistry?.acceptsParent(type) === true;
-          },
-        }),
-    readVision,
-    ...(runtime.readGrounding === undefined
-      ? {}
-      : { readGrounding: runtime.readGrounding }),
-    readOperations,
-    mintMemoryEntry: runtime.mintMemoryEntry,
-  };
-}
-
-function createRequestHomeReadCoordinator(
-  resolveRuntime: (
-    selection: AppRequestRuntimeSelection,
-  ) => Promise<AppRequestRuntime>,
-  projectRoot?: string,
-): HomeReadCoordinator {
-  async function resolveHomeReadRuntime(
-    selection: HomeReadRuntimeSelection,
-  ): Promise<HomeReadRuntime> {
-    return toHomeReadRuntime(await resolveRuntime(selection));
-  }
-
-  const coordinator = createHomeReadCoordinator({
-    resolveRuntime: resolveHomeReadRuntime,
-  });
-  const inheritedSelection = projectRoot === undefined
-    ? undefined
-    : { projectRoot };
-
-  return {
-    search: function searchAcrossRequestHomes(params, selection) {
-      return coordinator.search(params, selection ?? inheritedSelection);
-    },
-    recall: function recallAcrossRequestHomes(params, selection) {
-      return coordinator.recall(params, selection ?? inheritedSelection);
-    },
-    wakeup: function wakeupAcrossRequestHomes(params, selection) {
-      return coordinator.wakeup(params, selection ?? inheritedSelection);
-    },
-  };
 }
 
 function withMintedMemoryUsage(
@@ -320,20 +142,6 @@ function withMintedMemoryUsage(
 export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   const app = new Hono();
   const staticRuntime = createStaticRequestRuntime(service, deps);
-  const reportedIntentQuarantines = new Set<string>();
-  function reportIntentQuarantine(
-    diagnostic: SubstrateIntentQuarantineDiagnostic,
-  ): void {
-    const key = JSON.stringify(diagnostic);
-    if (reportedIntentQuarantines.has(key)) return;
-    reportedIntentQuarantines.add(key);
-    const data = { ...diagnostic };
-    if (deps?.logError !== undefined) {
-      deps.logError('Substrate intent quarantined', data);
-      return;
-    }
-    console.error('Substrate intent quarantined', data);
-  }
   async function resolveSelectedRuntime(
     selection: AppRequestRuntimeSelection,
   ): Promise<AppRequestRuntime> {
@@ -375,70 +183,13 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   // Version
   app.get('/version', (c) => c.json(deps?.version ?? '0.0.0'));
 
-  // MCP endpoint — WebStandardStreamableHTTPServerTransport works on Node.js + Workers
-  app.all('/mcp', async (c) => {
-    const selection = await selectMcpRequestRuntime(
-      c.req.raw,
-      selectAppRequestRuntime(c.req),
-    );
-    // Cross-home tools resolve both homes inside the allSettled coordinator.
-    // The static shell is sufficient for tool registration and prevents an
-    // unhealthy project or global runtime from aborting the request early.
-    const runtime = selection.home === 'all'
-      ? staticRuntime
-      : await resolveSelectedRuntime(selection);
-    const server = new McpServer({ name: deps?.name ?? 'backlog-mcp', version: deps?.version ?? '0.0.0' });
-    // ToolDeps carries write-boundary wiring; core builds WriteContext
-    // per-write using these pieces. See ADR 0094.
-    const homeReadCoordinator = deps?.resolveRuntime === undefined
-      ? undefined
-      : createRequestHomeReadCoordinator(
-          resolveSelectedRuntime,
-          selection.projectRoot,
-        );
-    const toolDeps = createRequestToolDeps(
-      runtime,
-      deps,
-      homeReadCoordinator,
-      reportIntentQuarantine,
-    );
-    registerTools(server, runtime.service, toolDeps);
-    if (runtime.resourceManager) {
-      runtime.resourceManager.registerResource(server);
-    }
-
-    const transport = new WebStandardStreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-      enableJsonResponse: true,
-    });
-    try {
-      // Stateless transport = stateless telemetry session (review 0001):
-      // this endpoint builds a fresh server per request, so each request
-      // also handles inside its own minted telemetry session — two
-      // independent HTTP requests must never share one. BACKLOG_SESSION
-      // still overrides inside the scope; CLI processes are untouched.
-      return await withRequestTelemetrySession(async function handleInSession() {
-        await server.connect(transport);
-        return transport.handleRequest(c.req.raw);
-      });
-    } catch (err) {
-      // Without this, a throwing tool handler propagates out unlogged and
-      // the bridge only sees a dropped socket ("mcp-remote lost connection").
-      const error = err instanceof Error ? err : new Error(String(err));
-      deps?.logError?.('MCP request failed', {
-        method: c.req.method,
-        message: error.message,
-        stack: error.stack,
-      });
-      return c.json(
-        {
-          jsonrpc: '2.0',
-          error: { code: -32603, message: `Internal error: ${error.message}` },
-          id: null,
-        },
-        500,
-      );
-    }
+  registerMcpRoute(app, {
+    staticRuntime,
+    resolveRuntime: deps?.resolveRuntime,
+    defaults: deps,
+    name: deps?.name,
+    version: deps?.version,
+    logError: deps?.logError,
   });
 
   // ── Viewer REST API ─────────────────────────────────────────────────────────
@@ -539,7 +290,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     // machinery the MCP search tool uses; the coordinator resolves exactly
     // global + the supplied project root — never a workspace scan (R-2/R-9).
     if (selection.home === 'all' && deps?.resolveRuntime !== undefined) {
-      const coordinator = createRequestHomeReadCoordinator(
+      const coordinator = createSelectedHomeReadCoordinator(
         resolveSelectedRuntime,
         selection.projectRoot,
       );
@@ -680,100 +431,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
     return c.json({ removed: recentHomes.forget(root) });
   });
 
-  // ── Operations ──────────────────────────────────────────────────────────────
-
-  // GET /operations/count/:taskId  (must be before /operations)
-  app.get('/operations/count/:taskId', async (c) => {
-    const runtime = await resolveRequestRuntime(c.req);
-    if (!runtime.operationLog) {
-      return c.json({
-        count: 0,
-        ...getHomeProvenance(runtime),
-      });
-    }
-    const count = await runtime.operationLog.countForTask(c.req.param('taskId'));
-    return c.json({
-      count,
-      ...getHomeProvenance(
-        runtime,
-        runtime.getSourcePath?.(c.req.param('taskId')),
-      ),
-    });
-  });
-
-  // GET /operations — works identically for local and cloud via IOperationLog
-  app.get('/operations', async (c) => {
-    const runtime = await resolveRequestRuntime(c.req);
-    const operationLog = runtime.operationLog;
-    const requestService = runtime.service;
-    if (!operationLog) return c.json([]);
-
-    const limit = parseInt(c.req.query('limit') ?? '50', 10);
-    const taskFilter = c.req.query('task');
-    const date = c.req.query('date');
-    const tz = c.req.query('tz');
-
-    const operations = await operationLog.query({
-      limit: date ? 1000 : limit,
-      taskId: taskFilter || undefined,
-      date: date || undefined,
-      tzOffset: tz != null ? parseInt(tz) : undefined,
-    });
-
-    // Enrich with task/epic titles via the service (same for local and cloud)
-    const taskCache = new Map<string, { title?: string; epicId?: string }>();
-    const epicCache = new Map<string, string | undefined>();
-
-    const enriched = await Promise.all(operations.map(async (rawOperation) => {
-      const op = normalizeOperationEntry(rawOperation);
-      const id = op.resourceId;
-      if (!id) {
-        const targetFilename = extractTargetFilename(op.mutation, op.params);
-        return {
-          ...op,
-          ...(targetFilename ? { targetFilename } : {}),
-          ...getHomeProvenance(runtime),
-        };
-      }
-
-      if (!taskCache.has(id)) {
-        const entity = await requestService.get(id);
-        taskCache.set(id, {
-          title: entity?.title,
-          epicId: typeof entity?.parent_id === 'string'
-            ? entity.parent_id
-            : undefined,
-        });
-      }
-      const cached = taskCache.get(id);
-      if (cached === undefined) {
-        return {
-          ...op,
-          ...getHomeProvenance(runtime, runtime.getSourcePath?.(id)),
-        };
-      }
-
-      let epicTitle: string | undefined;
-      if (cached.epicId) {
-        if (!epicCache.has(cached.epicId)) {
-          const epic = await requestService.get(cached.epicId);
-          epicCache.set(cached.epicId, epic?.title);
-        }
-        epicTitle = epicCache.get(cached.epicId);
-      }
-
-      return {
-        ...op,
-        resourceTitle: cached.title,
-        epicId: cached.epicId,
-        epicTitle,
-        targetFilename: extractTargetFilename(op.mutation, op.params),
-        ...getHomeProvenance(runtime, runtime.getSourcePath?.(id)),
-      };
-    }));
-
-    return c.json(enriched);
-  });
+  registerOperationRoutes(app, resolveRequestRuntime);
 
   // ── SSE events ──────────────────────────────────────────────────────────────
   app.get('/events', async (c) => {
