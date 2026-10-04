@@ -6,7 +6,7 @@ import {
 import type { BacklogHome } from '../core/backlog-home.types.js';
 import type { AppRequestRuntime } from '../composition/app-request-runtime.types.js';
 import { createApp } from '../server/hono-app.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 
 const PROJECT_ROOT = '/workspace/address';
 const PROJECT_HEADERS = {

@@ -33,7 +33,7 @@ import { ValidationError } from '../core/types.js';
 import type {
   IBacklogService,
   ListFilter,
-} from '../storage/backlog-service.contract.js';
+} from '../core/backlog-service.contract.js';
 
 const NOW = '2026-07-16T12:00:00.000Z';
 

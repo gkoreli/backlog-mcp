@@ -9,7 +9,7 @@ import type { BacklogHome } from '../core/backlog-home.types.js';
 import type { IOperationLog, OperationEntry } from '../core/operation-log.contract.js';
 import type { AppRequestRuntime } from '../composition/app-request-runtime.types.js';
 import { createApp } from '../server/hono-app.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 
 const PROJECT_ROOT = '/workspace/provenance';
 const PROJECT_HEADERS = {

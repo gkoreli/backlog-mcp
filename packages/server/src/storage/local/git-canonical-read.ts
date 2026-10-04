@@ -21,7 +21,8 @@
  * ref, or a path absent from the commit returns undefined, never throws.
  */
 
-import { runGitCommand, type GitRunner } from './git-runner.js';
+import { runGitCommand } from './git-runner.js';
+import type { GitRunner } from '../../core/git-runner.contract.js';
 
 /** One committed file, read at a pinned commit. */
 export interface CanonicalFileRead {

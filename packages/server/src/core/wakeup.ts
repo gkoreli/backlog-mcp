@@ -25,7 +25,7 @@
 import type { Entity, Memory, RuntimeEntity, SubstrateWorkflowDefinition } from '@backlog-mcp/shared';
 import type { MemoryEntry } from '@backlog-mcp/memory';
 import { EntityType, getSubstrate, isValidEntityId, parseEntityId } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from './backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import { loadAgentAttributionIndex } from './agent-attribution.js';
 import { asBuiltinEntity } from './substrates/index.js';

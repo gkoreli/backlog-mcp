@@ -21,7 +21,7 @@
 
 import { MemoryComposer } from '@backlog-mcp/memory';
 import { BacklogMemoryStore } from './backlog-memory-store.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 
 export function createDefaultComposer(
   getService: () => IBacklogService,

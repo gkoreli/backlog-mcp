@@ -1,4 +1,4 @@
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from './backlog-service.contract.js';
 
 /**
  * The one way to name a document (ADR 0129.1).

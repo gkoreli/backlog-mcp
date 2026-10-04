@@ -3,7 +3,7 @@ import {
   type SubstrateDefinition,
 } from '@backlog-mcp/shared';
 import { ZodError } from 'zod';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from './backlog-service.contract.js';
 import { shouldCaptureArtifact } from './memory-capture-rules.js';
 import { captureArtifact } from './memory-capture.js';
 import {

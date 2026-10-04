@@ -33,7 +33,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { readCanonicalFile } from './git-canonical-read.js';
-import { runGitCommand, type GitRunner } from './git-runner.js';
+import { runGitCommand } from './git-runner.js';
+import type { GitRunner } from '../../core/git-runner.contract.js';
 
 const FULL_SHA_PATTERN = /^[0-9a-f]{40,64}$/;
 

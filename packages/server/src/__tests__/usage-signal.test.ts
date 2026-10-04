@@ -8,7 +8,7 @@ import type { Entity } from '@backlog-mcp/shared';
 import { usageFactor, USAGE_FLOOR, USAGE_CEIL } from '../memory/usage-signal.js';
 import { MemoryUsageOverlay } from '../memory/memory-usage-overlay.js';
 import { MemoryUsageTracker, extractMemoCitations } from '../memory/usage-tracker.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 
 const NOW = Date.parse('2026-06-10T00:00:00.000Z');
 const DAY = 24 * 60 * 60 * 1000;

@@ -14,7 +14,7 @@ import type {
   AppRequestRuntimeResolver,
   AppRequestRuntimeSelection,
 } from '../composition/app-request-runtime.types.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 
 const SHARED_ID = 'TASK-0001';
 

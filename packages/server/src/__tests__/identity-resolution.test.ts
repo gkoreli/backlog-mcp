@@ -20,7 +20,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Entity } from '@backlog-mcp/shared';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import {
   probeAgentIdentityGitRungs,
   resolveAgentIdentity,
@@ -30,7 +30,8 @@ import {
   ambientAgentIdentity,
   resetAmbientAgentIdentityCacheForTests,
 } from '../storage/local/agent-identity.js';
-import { runGitCommand, type GitRunner } from '../storage/local/git-runner.js';
+import { runGitCommand } from '../storage/local/git-runner.js';
+import type { GitRunner } from '../core/git-runner.contract.js';
 import { envActor } from '../operations/logger.js';
 import { wakeup } from '../core/wakeup.js';
 import { serializeBriefing } from '../core/wakeup-wire.js';

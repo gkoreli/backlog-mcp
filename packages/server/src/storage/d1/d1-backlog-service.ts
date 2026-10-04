@@ -18,7 +18,7 @@ import {
   type SubstrateType,
 } from '@backlog-mcp/shared';
 import { D1Storage } from './d1-storage.js';
-import type { IBacklogService } from '../backlog-service.contract.js';
+import type { IBacklogService } from '../../core/backlog-service.contract.js';
 
 export class D1BacklogService implements IBacklogService {
   private storage: D1Storage;

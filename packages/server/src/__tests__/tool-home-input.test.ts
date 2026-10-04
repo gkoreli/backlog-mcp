@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import { registerBacklogListTool } from '../tools/backlog-list.js';
 import { registerBacklogRecallTool } from '../tools/backlog-recall.js';
 import { registerBacklogSearchTool } from '../tools/backlog-search.js';

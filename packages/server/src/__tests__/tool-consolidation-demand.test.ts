@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Entity } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import { registerBacklogConsolidationTool } from '../tools/backlog-consolidation.js';
 
 type ToolHandler = (params: Record<string, unknown>) => Promise<{ content: Array<{ text: string }> }>;

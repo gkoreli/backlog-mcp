@@ -18,7 +18,8 @@ import {
 } from '../../core/identity-resolution.js';
 import { realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { runGitCommand, type GitRunner } from './git-runner.js';
+import { runGitCommand } from './git-runner.js';
+import type { GitRunner } from '../../core/git-runner.contract.js';
 
 const cachedGitRungsByDirectory = new Map<string, AgentIdentityGitRungs>();
 

@@ -14,7 +14,7 @@ import {
   type EvaluationSummary,
   type QueryEvaluation,
 } from '../../../memory/src/search/evaluation.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import { searchDocument, searchDocuments } from './helpers/search-document.js';
 import {

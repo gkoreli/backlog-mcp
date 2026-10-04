@@ -44,6 +44,36 @@ describe('core/remember', () => {
     expect(await store.size()).toBe(1);
   });
 
+  it('records citations after storage and advisory scanning, excluding its own minted id', async function citationFeedback() {
+    const originalStore = composer.store.bind(composer);
+    vi.spyOn(composer, 'store').mockImplementation(async function mint(entry) {
+      return originalStore({ ...entry, id: 'MEMO-0002' });
+    });
+    const order: string[] = [];
+    const recordCitations = vi.fn(async function citations() {
+      expect(await store.size()).toBe(1);
+      order.push('citations');
+    });
+    const result = await remember({
+      title: 'Lesson', content: 'See MEMO-0001', entity_refs: ['MEMO-0001', 'MEMO-0002'],
+    }, {
+      memoryComposer: composer,
+      citationUsage: { recordCitations },
+      findCollisionCandidates: async function scan() { order.push('scan'); return []; },
+    });
+    expect(result.id).toBe('MEMO-0002');
+    expect(order).toEqual(['scan', 'citations']);
+    expect(recordCitations).toHaveBeenCalledWith(['See MEMO-0001'], ['MEMO-0001']);
+  });
+
+  it('does not record citations for a rejected write', async function noFailedWriteFeedback() {
+    const recordCitations = vi.fn();
+    await expect(remember({ title: '', content: 'MEMO-0001' }, {
+      memoryComposer: composer, citationUsage: { recordCitations },
+    })).rejects.toThrow(ValidationError);
+    expect(recordCitations).not.toHaveBeenCalled();
+  });
+
   it('respects an explicit layer and passes source through', async () => {
     await remember(
       { content: 'Release = typecheck → test → tag → publish', title: 'Release steps', layer: 'procedural', source: 'goga' },

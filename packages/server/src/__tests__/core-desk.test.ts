@@ -5,7 +5,7 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import type { AnyEntity } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import {
   DESK_BUDGET,
   DESK_COLLISION_FOCAL_LIMIT,

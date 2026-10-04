@@ -13,7 +13,7 @@
  * - edit: returns { success: false, error } for operation failures (expected, not exceptional)
  */
 import { describe, it, expect, vi } from 'vitest';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import {
   EntityType,
   EntitySchema,

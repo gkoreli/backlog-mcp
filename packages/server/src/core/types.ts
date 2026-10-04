@@ -21,7 +21,7 @@ import type {
   MemoryEntry,
   MemoryLayer,
 } from '@backlog-mcp/memory';
-import type { ResourceContent } from '../resources/manager.js';
+import type { ResourceContent } from './resource-content.contract.js';
 import type { ResolvedAgentIdentity } from './identity-resolution.js';
 import type {
   Actor,

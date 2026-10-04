@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AppRequestRuntime } from '../composition/app-request-runtime.types.js';
 import { createApp } from '../server/hono-app.js';
 import { isLoopbackOrigin } from '../server/loopback-origin.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 
 function createService(): IBacklogService {
   const unsupported = vi.fn(async function unsupported() { throw new Error('not exercised'); });

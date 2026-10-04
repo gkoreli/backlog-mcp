@@ -27,7 +27,7 @@ import {
 } from '@backlog-mcp/shared';
 import { MemoryComposer, type MemoryEntry } from '@backlog-mcp/memory';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import { createDefaultComposer } from '../memory/bootstrap.js';
 import type {

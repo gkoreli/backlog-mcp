@@ -67,10 +67,8 @@ Settle on **suffix-based naming where files are tightly related**, by role:
 - **Shared contracts/interfaces** (an interface implemented by several modules and
   consumed widely) → name by the *contract*, not an implementation:
   `<name>.contract.ts`. Example: `IBacklogService` in
-  `backlog-service.contract.ts` (implemented by local + D1 services, imported by
-  ~70 files, tests included). A port lives with its consumer (ADR 0134 R1.2): this one still
-  sits in `storage/` and is a known violation that moves to `core/` in ADR 0134
-  Phase 2.
+  `core/backlog-service.contract.ts` (implemented by local + D1 services).
+  A port lives with its consumer (ADR 0134 R1.2).
 - **Tightly-coupled siblings in general** share a base name and differ only by
   suffix (`.types.ts`, `.contract.ts`, `.test.ts`) so they sort adjacently and the
   relationship is obvious.

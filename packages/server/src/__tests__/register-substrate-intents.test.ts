@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import type { OperationEntry } from '../core/operation-log.contract.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import { registerSubstrateIntents } from '../tools/register-substrate-intents.js';
 import type { SubstrateIntentQuarantineDiagnostic } from '../tools/register-substrate-intents.types.js';
 import {

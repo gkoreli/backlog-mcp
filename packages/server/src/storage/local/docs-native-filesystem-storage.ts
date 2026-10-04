@@ -1,3 +1,4 @@
+import type { ClaimQuarantine, StorageSaveOptions } from '../../core/backlog-service.contract.js';
 import {
   existsSync,
   mkdirSync,
@@ -27,10 +28,8 @@ import {
   type ProjectSubstrateRegistry,
 } from '../../core/substrates/index.js';
 import type {
-  ClaimQuarantine,
   DocumentStorageAdapter,
   ListFilter,
-  StorageSaveOptions,
   StoredEntityDocument,
 } from '../storage-adapter.js';
 import {

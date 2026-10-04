@@ -6,7 +6,7 @@ import { LocalEventBus } from '../events/local-event-bus.js';
 import { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import { createOperationLogger } from '../operations/logger.js';
 import type { AppRequestRuntime } from '../composition/app-request-runtime.types.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
 import {
   cliRuntimeDependencies,

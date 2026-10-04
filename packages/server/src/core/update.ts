@@ -1,6 +1,6 @@
 import { ZodError } from 'zod';
 import type { AnyEntity } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from './backlog-service.contract.js';
 import { shouldCaptureCompletion } from './memory-capture-rules.js';
 import { captureCompletion } from './memory-capture.js';
 import {

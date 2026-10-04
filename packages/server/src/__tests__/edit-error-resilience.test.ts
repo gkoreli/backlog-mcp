@@ -8,7 +8,7 @@ import {
   type WriteContext,
 } from '../core/types.js';
 import type { Entity } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 
 const RESOURCE_EDIT_ATTRIBUTION = {
   tool: 'write_resource',

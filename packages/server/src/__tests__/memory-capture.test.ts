@@ -13,7 +13,7 @@ import {
   type Entity,
 } from '@backlog-mcp/shared';
 import { MemoryComposer, InMemoryStore } from '@backlog-mcp/memory';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import { updateEntity as updateEntityCore } from '../core/update.js';
 import { createEntity as createEntityCore } from '../core/create.js';
 import type {

@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Entity } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { OperationEntry } from '../core/operation-log.contract.js';
 import { registerBacklogDeleteTool } from '../tools/backlog-delete.js';
 import { registerWriteResourceTool } from '../tools/backlog-write-resource.js';

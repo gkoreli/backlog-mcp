@@ -20,7 +20,7 @@
  * output. Identity is OPTIONAL, modular, never forced (PROMPT 0003).
  */
 
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from './backlog-service.contract.js';
 import type { RecallItem } from './types.js';
 
 /** The Agent substrate's registry type key (docs/substrates/agent.json). */

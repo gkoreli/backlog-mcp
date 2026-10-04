@@ -18,6 +18,7 @@ import { isValidEntityId, parseEntityId, EntityType } from '@backlog-mcp/shared'
 import type { MemoryComposer, MemoryEntry } from '@backlog-mcp/memory';
 import { recordMutation } from './operation-log.js';
 import { normalizeMemoryRefs } from './normalize-memory-refs.js';
+import type { CitationUsage } from './memory-usage.contract.js';
 import type { ProjectSubstrateRegistry } from './substrates/project-substrate-registry.js';
 import {
   ValidationError,
@@ -28,6 +29,8 @@ import {
 } from './types.js';
 
 export interface RememberDeps {
+  /** Citation feedback after durable storage and the advisory scan. */
+  citationUsage?: CitationUsage;
   memoryComposer?: MemoryComposer;
   /** Identity vocabulary from the selected home; absent retains built-in validation. */
   substrateRegistry?: Pick<ProjectSubstrateRegistry, 'listSubstrates'>;
@@ -149,6 +152,15 @@ export async function remember(params: RememberParams, deps: RememberDeps): Prom
     } catch {
       // Advisory scan failures must never fail or roll back a remembered fact.
     }
+  }
+
+  if (deps.citationUsage !== undefined) {
+    await deps.citationUsage.recordCitations(
+      [params.content],
+      (params.entity_refs ?? []).filter(function excludeCreatedMemory(ref) {
+        return ref !== stored.id;
+      }),
+    );
   }
 
   return {

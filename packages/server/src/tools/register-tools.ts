@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MemoryComposer, MemoryEntry } from '@backlog-mcp/memory';
 import type { Memory } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { Actor, IOperationLog } from '../core/operation-log.contract.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';

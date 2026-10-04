@@ -1,3 +1,4 @@
+import type { ClaimQuarantine, StorageSaveOptions } from '../../core/backlog-service.contract.js';
 import {
   EntityType,
   nextEntityId,
@@ -6,9 +7,7 @@ import {
   type SubstrateType,
 } from '@backlog-mcp/shared';
 import type {
-  ClaimQuarantine,
   DocumentStorageAdapter,
-  StorageSaveOptions,
   StorageAdapter,
 } from '../storage-adapter.js';
 import {
@@ -23,7 +22,8 @@ import {
   createSearchEntityDocument,
   isBuiltinSubstrateType,
 } from '../../core/substrates/index.js';
-import type { IBacklogService } from '../backlog-service.contract.js';
+import type { ResourceContent } from '../../core/resource-content.contract.js';
+import type { IBacklogService } from '../../core/backlog-service.contract.js';
 import type {
   BacklogReconciliationResult,
   BacklogServiceDependencies,
@@ -280,7 +280,7 @@ export class BacklogService implements IBacklogService {
    * Read a resource by MCP URI. Returns the resource content or undefined.
    * This provides read access to resources for MCP tools (ADR-0073).
    */
-  getResource(uri: string): { content: string; frontmatter?: Record<string, any>; mimeType: string } | undefined {
+  getResource(uri: string): ResourceContent | undefined {
     try {
       return this.resourceManager.read(uri);
     } catch {

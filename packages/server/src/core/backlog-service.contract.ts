@@ -1,12 +1,4 @@
-/**
- * backlog-service.contract.ts — the IBacklogService contract.
- *
- * A shared contract implemented by both BacklogService (local/filesystem
- * singleton) and D1BacklogService (cloud/per-request), consumed widely across
- * core, tools, memory, and server layers. Named `*.contract.ts` per the file
- * naming convention (ADR 0106.3 §D): shared contracts implemented by many and
- * consumed widely.
- */
+/** Consumer-owned entity repository and search port (ADR 0134 R1.2). */
 import type {
   AnyEntity,
   CompiledDisclosureRelation,
@@ -15,9 +7,20 @@ import type {
   SubstrateWorkflowDefinition,
 } from '@backlog-mcp/shared';
 import type { UnifiedSearchResult, SearchableType } from '@backlog-mcp/memory/search';
-import type { ResourceContent } from '../resources/manager.js';
-import type { ClaimQuarantine, StorageSaveOptions } from './storage-adapter.js';
-import type { EntityCreationPort } from '../core/entity-creation.contract.js';
+import type { ResourceContent } from './resource-content.contract.js';
+import type { EntityCreationPort } from './entity-creation.contract.js';
+
+/** Explicit authority to canonicalize an external document during a managed write. */
+export interface StorageSaveOptions {
+  canonicalAdoption?: true;
+}
+
+/** A claimed document that failed compilation; retained as a lossless resource. */
+export interface ClaimQuarantine {
+  type: string;
+  sourcePath: string;
+  reason: string;
+}
 
 export interface ListFilter {
   status?: string[];

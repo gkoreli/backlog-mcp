@@ -29,7 +29,7 @@
  * yields absent rungs, never an error.
  */
 
-import type { GitRunner } from '../storage/local/git-runner.js';
+import type { GitRunner } from './git-runner.contract.js';
 
 /**
  * The winning rung, in the exact disclosure vocabulary of ADR 0119.1 R2:

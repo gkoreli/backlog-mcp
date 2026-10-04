@@ -10,7 +10,7 @@
 import { Command } from 'commander';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import type { MemoryComposer } from '@backlog-mcp/memory';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { CliRuntime } from '../cli/runner.types.js';
 
 const mocks = vi.hoisted(function createMocks() {

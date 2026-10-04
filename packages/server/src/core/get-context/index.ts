@@ -10,3 +10,4 @@ export type { SemanticEnrichmentDeps, SemanticEnrichmentResult } from './semanti
 export type { ContextStub, ContextStubs, ContextEntity, ContextResource, Fidelity } from './types.js';
 export { traverseTypedRelations } from './typed-relations.js';
 export type { TypedRelationDeps } from './typed-relations.js';
+export { listContextGroups } from './context-groups.js';

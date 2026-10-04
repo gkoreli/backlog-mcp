@@ -10,7 +10,7 @@ import type { OperationLogger } from '../operations/logger.js';
 import type { Actor, IOperationLog } from '../core/operation-log.contract.js';
 import type { ResolvedAgentIdentity } from '../core/identity-resolution.js';
 import type { ResourceManager } from '../resources/manager.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { ProjectSubstrateRegistry } from '../core/substrates/project-substrate-registry.js';
 import type {
   IntentRegistryPort,

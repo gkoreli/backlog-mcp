@@ -20,7 +20,7 @@
  */
 
 import type { Memory, Entity } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { MemoryUsageSummaryStore } from './memory-usage.contract.js';
 import type { RetrievalTelemetry } from './retrieval-telemetry.js';
 

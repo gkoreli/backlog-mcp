@@ -25,7 +25,8 @@
 
 import { basename, dirname } from 'node:path';
 import type { BacklogHomeFamily } from '../../core/backlog-home.types.js';
-import { runGitCommand, type GitRunner } from './git-runner.js';
+import { runGitCommand } from './git-runner.js';
+import type { GitRunner } from '../../core/git-runner.contract.js';
 
 /** Local default-branch fallbacks when origin/HEAD is not configured. */
 const DEFAULT_BRANCH_CANDIDATES = ['main', 'master'] as const;

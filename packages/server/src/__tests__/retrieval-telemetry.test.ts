@@ -23,7 +23,7 @@ import {
   ambientAgentIdentity,
   resetAmbientAgentIdentityCacheForTests,
 } from '../storage/local/agent-identity.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import {
   RetrievalTelemetry,
   TELEMETRY_SINK_MAX_BYTES,

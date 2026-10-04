@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { getItems } from '../../core/get.js';
-import type { ContextStub, ContextStubs } from '../../core/get-context/index.js';
-import type { GetItem, GetResult } from '../../core/types.js';
+import { listContextGroups, type ContextStub, type ContextStubs } from '../../core/get-context/index.js';
+import type { GetResult } from '../../core/types.js';
 import { cliRuntimeDependencies, run } from '../runner.js';
 
 function formatStub(stub: ContextStub): string {
@@ -19,22 +19,8 @@ function formatStub(stub: ContextStub): string {
 function formatContext(context: ContextStubs): string {
   const sections: string[] = ['── context: relational stubs (hydrate with get) ──'];
   if (context.parent) sections.push(`parent:\n${formatStub(context.parent)}`);
-  const groups: Array<[string, ContextStub[] | undefined]> = [
-    ['children', context.children],
-    ['siblings', context.siblings],
-    ['references', context.references],
-    ['referenced_by', context.referenced_by],
-    ['related', context.related],
-    ['ancestors', context.ancestors],
-    ['descendants', context.descendants],
-  ];
-  for (const [role, stubs] of groups) {
-    if (stubs?.length) sections.push(`${role} (${stubs.length}):\n${stubs.map(formatStub).join('\n')}`);
-  }
-  // Typed relations (ADR 0113.1 R-3) — declared frontmatter edges
-  // (respects/violates/spawned/…), forward and computed-reverse.
-  for (const [role, stubs] of Object.entries(context.relations ?? {})) {
-    if (stubs.length) sections.push(`${role} (${stubs.length}):\n${stubs.map(formatStub).join('\n')}`);
+  for (const [role, stubs] of listContextGroups(context)) {
+    sections.push(`${role} (${stubs.length}):\n${stubs.map(formatStub).join('\n')}`);
   }
   return sections.join('\n\n');
 }
@@ -47,13 +33,6 @@ function format(result: GetResult): string {
   }).join('\n\n');
 }
 
-/** Entity-id items only — resource-path and not-found gets are never expansions. */
-function expandedEntityIds(items: GetItem[]): string[] {
-  return items
-    .filter(item => item.content !== null && item.resource === undefined)
-    .map(item => item.id);
-}
-
 export function registerGet(program: Command): void {
   program
     .command('get <ids...>')
@@ -64,19 +43,7 @@ export function registerGet(program: Command): void {
         const result = await getItems(runtime.service, {
           ids,
           ...(opts.context === true ? { context: true } : {}),
-        });
-        if (runtime.usageTracker !== undefined) {
-          // Stub→expand strong usage signal (ADR 0092.9 R-14).
-          for (const item of result.items) {
-            if (item.id.startsWith('MEMO-') && item.content !== null) {
-              await runtime.usageTracker.recordExpand(item.id);
-            }
-          }
-          // Tier-1 expand telemetry — the neighborhood act (report 0010 F3).
-          if (opts.context === true) {
-            runtime.usageTracker.recordContextExpand(expandedEntityIds(result.items));
-          }
-        }
+        }, runtime.usageTracker);
         return result;
       },
       format,

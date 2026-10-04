@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import type { Entity } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../backlog-service.contract.js';
 import { getItems } from '../get.js';
 
 function makeEntity(id: string, overrides: Partial<Entity> = {}): Entity {

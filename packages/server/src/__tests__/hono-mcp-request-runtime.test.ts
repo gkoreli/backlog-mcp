@@ -5,7 +5,7 @@ import {
 } from '../core/backlog-home.js';
 import type { AppRequestRuntimeSelection } from '../composition/app-request-runtime.types.js';
 import { createApp } from '../server/hono-app.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';
 import { RetrievalTelemetry } from '../memory/retrieval-telemetry.js';
 import { MemoryUsageTracker } from '../memory/usage-tracker.js';

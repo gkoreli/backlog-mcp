@@ -29,7 +29,7 @@
  */
 
 import type { RuntimeEntity } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from './backlog-service.contract.js';
 import {
   COLLISION_PRIORITY_THRESHOLD,
   compareBytewise,

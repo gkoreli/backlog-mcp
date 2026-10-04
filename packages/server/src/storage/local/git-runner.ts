@@ -11,14 +11,9 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import type { GitRunner } from '../../core/git-runner.contract.js';
 
 const MAX_GIT_OUTPUT_BYTES = 32 * 1024 * 1024;
-
-/** One git subprocess: raw stdout on success, undefined on any failure. */
-export type GitRunner = (
-  cwd: string,
-  args: readonly string[],
-) => string | undefined;
 
 /** The real subprocess-backed runner (fail-open, never throws). */
 export const runGitCommand: GitRunner = function runGitCommand(cwd, args) {

@@ -1,5 +1,5 @@
 import type { CompiledSubstrateIntent } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../backlog-service.contract.js';
 import type { WriteContext } from '../types.js';
 import type { IntentWriteValidatorPort } from './intent-registry.contract.js';
 

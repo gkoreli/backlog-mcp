@@ -1,6 +1,7 @@
+import { listContextGroups } from '../core/get-context/index.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import { getItems, type GetItem, type ContextStub, type ContextStubs } from '../core/index.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import { BACKLOG_HOME_INPUT_FIELDS } from './home-input.js';
@@ -25,22 +26,8 @@ function formatStub(stub: ContextStub): string {
 function formatContext(context: ContextStubs): string {
   const sections: string[] = ['## Context — relational stubs (hydrate with backlog_get)'];
   if (context.parent) sections.push(`parent:\n${formatStub(context.parent)}`);
-  const groups: Array<[string, ContextStub[] | undefined]> = [
-    ['children', context.children],
-    ['siblings', context.siblings],
-    ['references', context.references],
-    ['referenced_by', context.referenced_by],
-    ['related', context.related],
-    ['ancestors', context.ancestors],
-    ['descendants', context.descendants],
-  ];
-  for (const [role, stubs] of groups) {
-    if (stubs?.length) sections.push(`${role} (${stubs.length}):\n${stubs.map(formatStub).join('\n')}`);
-  }
-  // Typed relations (ADR 0113.1 R-3) — declared frontmatter edges
-  // (respects/violates/spawned/…), forward and computed-reverse.
-  for (const [role, stubs] of Object.entries(context.relations ?? {})) {
-    if (stubs.length) sections.push(`${role} (${stubs.length}):\n${stubs.map(formatStub).join('\n')}`);
+  for (const [role, stubs] of listContextGroups(context)) {
+    sections.push(`${role} (${stubs.length}):\n${stubs.map(formatStub).join('\n')}`);
   }
   return sections.join('\n\n');
 }
@@ -78,26 +65,7 @@ export function registerBacklogGetTool(server: McpServer, service: IBacklogServi
         ids,
         ...(context !== undefined ? { context } : {}),
         ...(depth !== undefined ? { depth } : {}),
-      });
-      // Stub→expand is the strong usage signal (ADR 0092.9 R-14): an agent
-      // fetching a MEMO- body chose that memory after seeing the stub menu.
-      if (deps?.usageTracker) {
-        for (const item of result.items) {
-          if (item.id.startsWith('MEMO-') && item.content !== null) {
-            await deps.usageTracker.recordExpand(item.id);
-          }
-        }
-        // Tier-1 expand telemetry — the neighborhood act (report 0010 F3):
-        // entity-id gets with context:true only; resource-path and plain
-        // gets are reads, not expansions.
-        if (context === true) {
-          deps.usageTracker.recordContextExpand(
-            result.items
-              .filter(item => item.content !== null && item.resource === undefined)
-              .map(item => item.id),
-          );
-        }
-      }
+      }, deps?.usageTracker);
       const text = result.items.map(formatItem).join('\n\n---\n\n');
       return { content: [{ type: 'text', text }] };
     }

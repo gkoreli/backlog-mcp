@@ -73,6 +73,7 @@ export function registerRemember(program: Command): void {
           ...(runtime.writeContext.substrateRegistry === undefined
             ? {} : { substrateRegistry: runtime.writeContext.substrateRegistry }),
           memoryComposer: runtime.memoryComposer,
+          citationUsage: runtime.usageTracker,
           actorName: runtime.writeContext.actor.name,
           // Intent journal (EXP-1 B-4) — same attribution style as the
           // other CLI writes ('backlog create' etc.).
@@ -82,17 +83,6 @@ export function registerRemember(program: Command): void {
           },
         },
         );
-        // Citation signal (ADR 0092.9 R-14): cited MEMO- ids were useful.
-        if (runtime.usageTracker !== undefined) {
-          await runtime.usageTracker.recordCitations(
-            [contentParts.join(' ')],
-            (refs ?? []).filter(
-              function excludeCreatedMemory(ref) {
-                return ref !== result.id;
-              },
-            ),
-          );
-        }
         return { ...result, ...runtime.writeProvenance?.document(result.id) };
       },
       format,

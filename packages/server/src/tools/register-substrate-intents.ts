@@ -4,7 +4,7 @@ import {
   executeSubstrateIntent,
   SubstrateIntentExecutionError,
 } from '../core/substrates/index.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import { buildWriteContext } from './build-write-context.js';
 import type {
   RegisterSubstrateIntentsOptions,

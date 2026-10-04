@@ -3,7 +3,6 @@ import {
   basename,
   dirname,
   extname,
-  isAbsolute,
   join,
   relative,
   resolve,
@@ -13,15 +12,9 @@ import matter from 'gray-matter';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Resource } from '@backlog-mcp/memory/search';
 import { discoverDocuments } from '../core/document-discovery.js';
+import { isPathWithin } from '../core/path-containment.js';
 import { isOrientationRootFilename } from '../core/orientation.js';
-
-export interface ResourceContent {
-  content: string;
-  frontmatter?: Record<string, any>;
-  /** Labeled parse diagnostic when frontmatter exists but cannot compile. */
-  frontmatterError?: string;
-  mimeType: string;
-}
+import type { ResourceContent } from '../core/resource-content.contract.js';
 
 /**
  * Extract title from markdown content.
@@ -54,19 +47,9 @@ function normalizeRelativePath(rootDir: string, filePath: string): string {
   return relative(rootDir, filePath).split(sep).join('/');
 }
 
-function isPathContained(rootDir: string, filePath: string): boolean {
-  const relativePath = relative(rootDir, filePath);
-  return relativePath === ''
-    || (
-      relativePath !== '..'
-      && !relativePath.startsWith(`..${sep}`)
-      && !isAbsolute(relativePath)
-    );
-}
-
 function isCanonicalPathContained(rootDir: string, filePath: string): boolean {
   try {
-    return isPathContained(realpathSync(rootDir), realpathSync(filePath));
+    return isPathWithin(realpathSync(rootDir), realpathSync(filePath));
   } catch {
     return false;
   }
@@ -220,7 +203,7 @@ export class ResourceManager {
    */
   private isAddressablePath(filePath: string): boolean {
     if (this.scanDir === this.rootDir) return true;
-    if (isPathContained(this.scanDir, filePath)) return true;
+    if (isPathWithin(this.scanDir, filePath)) return true;
     return dirname(filePath) === this.rootDir
       && isOrientationRootFilename(basename(filePath));
   }
@@ -257,7 +240,7 @@ export class ResourceManager {
     }
 
     const filePath = resolve(this.rootDir, `.${decodedPath}`);
-    if (!isPathContained(this.rootDir, filePath)) {
+    if (!isPathWithin(this.rootDir, filePath)) {
       throw new Error(`Path traversal not allowed: ${uri}`);
     }
     if (!this.isAddressablePath(filePath)) {
@@ -332,7 +315,7 @@ export class ResourceManager {
    */
   toUri(filePath: string): string | null {
     const absolutePath = resolve(filePath);
-    if (!isPathContained(this.rootDir, absolutePath)) {
+    if (!isPathWithin(this.rootDir, absolutePath)) {
       return null;
     }
     if (!this.isAddressablePath(absolutePath)) {

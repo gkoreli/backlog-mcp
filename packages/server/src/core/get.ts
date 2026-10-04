@@ -1,4 +1,4 @@
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from './backlog-service.contract.js';
 import { ValidationError, type GetParams, type GetResult, type GetItem } from './types.js';
 import {
   composeContextStubs,
@@ -9,6 +9,8 @@ import {
 } from './get-context/index.js';
 import { asBuiltinEntity } from './substrates/index.js';
 import { parseDocumentAddress } from './document-address.js';
+import type { RetrievalUsage } from './memory-usage.contract.js';
+import { recordGetUsage } from './get-usage.js';
 
 interface GetContextDeps {
   /** Builtin-narrowed deps for the ADR 0114 relational expansion. */
@@ -89,10 +91,12 @@ async function fetchItem(id: string, service: IBacklogService, deps: GetContextD
   return item;
 }
 
-export async function getItems(service: IBacklogService, params: GetParams): Promise<GetResult> {
+/** Retrieve entity/resource bodies and optionally record the caller's retrieval usage. */
+export async function getItems(service: IBacklogService, params: GetParams, usage?: RetrievalUsage): Promise<GetResult> {
   if (params.ids.length === 0) throw new ValidationError('Required: id');
   const deps = params.context ? contextDeps(service) : null;
   const depth = params.depth ?? 1;
   const items = await Promise.all(params.ids.map((id) => fetchItem(id, service, deps, depth)));
+  if (usage !== undefined) await recordGetUsage(items, params.context, usage);
   return { items };
 }

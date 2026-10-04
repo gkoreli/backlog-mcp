@@ -10,7 +10,7 @@ import { createBacklogHome } from '../storage/local/backlog-home.js';
 import { createOperationLogger } from '../operations/logger.js';
 import { buildEntity } from '../storage/entity-factory.js';
 import { createLocalRuntime } from '../storage/local/local-runtime.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { CliRuntime } from '../cli/runner.types.js';
 import { resolveWorkspaceHome } from '../storage/local/backlog-home.js';
 

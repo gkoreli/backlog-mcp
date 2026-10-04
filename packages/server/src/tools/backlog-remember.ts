@@ -12,7 +12,7 @@ import type { MemoryComposer } from '@backlog-mcp/memory';
 import { z } from 'zod';
 import { remember, type RememberDeps } from '../core/remember.js';
 import { findCollisionCandidatesForMemory } from '../core/collision-candidates.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import { ValidationError } from '../core/types.js';
 import type { Actor, IOperationLog } from '../core/operation-log.contract.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
@@ -95,6 +95,7 @@ export function registerBacklogRememberTool(
             ...(params.derived !== undefined ? { derived: params.derived } : {}),
           },
           {
+            citationUsage: deps?.usageTracker,
             ...(deps?.substrateRegistry ? { substrateRegistry: deps.substrateRegistry } : {}),
             ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
             ...(actor?.name ? { actorName: actor.name } : {}),
@@ -117,14 +118,6 @@ export function registerBacklogRememberTool(
               } }),
           },
         );
-        // Citation signal (R-14): MEMO- ids referenced by the new memory's
-        // content or entity_refs were evidently useful — bump them.
-        if (deps?.usageTracker) {
-          await deps.usageTracker.recordCitations(
-            [params.content],
-            (params.entity_refs ?? []).filter(r => r !== result.id),
-          );
-        }
         const provenance = deps?.writeProvenance?.document(result.id);
         return { content: [{ type: 'text', text: JSON.stringify({ ...result, ...provenance }, null, 2) }] };
       } catch (e) {

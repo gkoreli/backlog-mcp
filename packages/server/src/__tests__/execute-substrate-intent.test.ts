@@ -11,7 +11,7 @@ import {
   type IntentWriteValidatorPort,
 } from '../core/substrates/index.js';
 import { ValidationError, type WriteContext } from '../core/types.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import { BuiltinSubstrateStorageCatalog } from '../storage/local/builtin-substrate-storage-catalog.js';
 
 const NOW = '2026-07-16T12:00:00.000Z';

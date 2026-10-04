@@ -1,4 +1,4 @@
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from './backlog-service.contract.js';
 import type { Operation } from '@backlog-mcp/shared';
 import { applyOperation } from './text-operations.js';
 import {

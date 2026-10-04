@@ -14,7 +14,7 @@ import type { OperationLogger } from '../operations/logger.js';
 import type { Actor } from '../core/operation-log.contract.js';
 import type { AppRequestRuntime } from '../composition/app-request-runtime.types.js';
 import type { WriteProvenance } from '../composition/write-provenance.js';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
 
 /** CLI-only selector; `all` is accepted by the three bounded read commands. */

@@ -1,3 +1,4 @@
+import type { ClaimQuarantine, StorageSaveOptions, ListFilter as BacklogListFilter } from '../core/backlog-service.contract.js';
 import type {
   AnyEntity,
   Entity,
@@ -8,17 +9,8 @@ import type {
 import type { DocumentIdentity } from '../core/document-identity.types.js';
 import type { EntityDraft } from '../core/entity-creation.contract.js';
 
-export interface ListFilter {
-  status?: string[];
-  type?: SubstrateType;
-  parent_id?: string;
-  limit?: number;
-}
-
-/** Explicit authority for a managed write to canonicalize an external document. */
-export interface StorageSaveOptions {
-  canonicalAdoption?: true;
-}
+/** Local synchronous listing accepts the repository filters except search queries. */
+export type ListFilter = Omit<BacklogListFilter, 'query'>;
 
 /** Closed satellite filter retained by the descoped D1 adapter. */
 export interface AsyncListFilter {
@@ -59,17 +51,6 @@ export interface StoredEntityDocument {
   sourcePath: string;
   identity: DocumentIdentity;
   markdown: string;
-}
-
-/**
- * A document a substrate claimed but could not compile (EXP-1 B-3). It stays
- * readable as a generic lossless resource; this record makes the downgrade
- * visible so read surfaces never imply the typed disclosure is complete.
- */
-export interface ClaimQuarantine {
-  type: string;
-  sourcePath: string;
-  reason: string;
 }
 
 /** Local storage contract for path-addressed, docs-native entity documents. */

@@ -16,7 +16,7 @@ import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import { MemoryComposer } from '@backlog-mcp/memory';
 import type { Entity, Memory } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from '../core/backlog-service.contract.js';
 import { BacklogMemoryStore } from '../memory/backlog-memory-store.js';
 import { recall } from '../core/recall.js';
 import { searchDocuments } from './helpers/search-document.js';

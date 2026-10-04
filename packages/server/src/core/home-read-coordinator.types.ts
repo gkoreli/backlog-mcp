@@ -3,7 +3,7 @@ import type {
   MemoryEntry,
 } from '@backlog-mcp/memory';
 import type { Memory } from '@backlog-mcp/shared';
-import type { IBacklogService } from '../storage/backlog-service.contract.js';
+import type { IBacklogService } from './backlog-service.contract.js';
 import type { BacklogHome } from './backlog-home.types.js';
 import type {
   RecallItem,
