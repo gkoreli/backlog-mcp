@@ -28,18 +28,6 @@ vi.mock('../cli/runner.js', async function mockRunner(importOriginal) {
     ...actual,
     run: mocks.run,
     runAcrossHomes: mocks.runAcrossHomes,
-    cliRuntimeDependencies(program: Command) {
-      const options = program.opts<{
-        home?: 'global' | 'project' | 'all';
-        projectRoot?: string;
-      }>();
-      return {
-        ...(options.home === undefined ? {} : { home: options.home }),
-        ...(options.projectRoot === undefined
-          ? {}
-          : { projectRoot: options.projectRoot }),
-      };
-    },
   };
 });
 
@@ -85,6 +73,32 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
     mocks.run.mockReset();
     mocks.runAcrossHomes.mockReset();
     mocks.createEntity.mockReset();
+  });
+
+  it('passes an explicit workspace selection for unflagged wakeup', async function selectsWakeupWorkspace() {
+    const root = '/cli-wakeup-workspace';
+    mkdirSync(`${root}/.git`, { recursive: true });
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+    try {
+      const program = new Command().option('--json');
+      registerWakeup(program);
+      await program.parseAsync(['node', 'backlog', 'wakeup']);
+      expect(mocks.run.mock.calls[0]?.[3]).toEqual({
+        home: 'project', projectRoot: root,
+      });
+      expect(mocks.runAcrossHomes).not.toHaveBeenCalled();
+    } finally {
+      cwd.mockRestore();
+    }
+  });
+
+  it('rejects malformed wakeup home flags before starting a runtime', async function rejectsInvalidWakeupHome() {
+    const program = new Command().option('--home <home>');
+    registerWakeup(program);
+    await expect(program.parseAsync(['node', 'backlog', '--home', 'elsewhere', 'wakeup']))
+      .rejects.toThrow('expected "global", "project", or "all"');
+    expect(mocks.run).not.toHaveBeenCalled();
+    expect(mocks.runAcrossHomes).not.toHaveBeenCalled();
   });
 
   it('routes create body-file reads and writes through the selected bundle', async function routesCreate() {

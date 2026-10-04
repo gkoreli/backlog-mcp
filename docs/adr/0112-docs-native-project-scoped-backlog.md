@@ -440,6 +440,29 @@ With a discoverable project documents home:
   is an error, never "project wins" or "global wins" by accident.
 - Writes reject `home: all`.
 
+### CLI wakeup workspace selection amendment (2026-10-03)
+
+Goga approved making CLI wakeup local to the current workspace and global
+retrieval explicit after a fresh repository without `docs/` returned unrelated
+global work. This narrows R-2, R-8 and R-9 for **CLI wakeup only**:
+
+- Explicit `--home global` and `--home all` retain their existing workflows.
+- Otherwise, `--project-root` selects an existing directory; without it,
+  the nearest `.backlog/` or `.git` boundary from cwd selects the project,
+  even before its documents directory exists. Linked worktrees and nested
+  invocation use the same bounded discovery.
+- `BACKLOG_HOME`, `BACKLOG_PROJECT_ROOT`, and repository `home` defaults do
+  not select or redirect this briefing. Documents-directory configuration
+  and entity context still apply within the selected home.
+- No project boundary means an actionable error naming `--project-root`
+  and `--home global`. Invalid explicit roots fail before runtime creation.
+- Other CLI commands, MCP, and bridge resolution keep the preceding rules.
+
+The adapter supplies filesystem probes to the workspace selection function in
+core and passes an explicit project selection to the existing runtime. This
+changes home selection only; briefing composition and its wire budget remain
+the same.
+
 ### R-10 — Project Markdown is authoritative; Loro is derived there or global-only
 
 ADR 0107 is Proposed and conflicts with this decision where it makes a binary

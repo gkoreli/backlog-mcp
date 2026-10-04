@@ -51,6 +51,17 @@ pnpm --filter @backlog-mcp/viewer test  # Viewer tests only
 
 ### CLI
 
+`backlog wakeup` selects the nearest `.backlog/` or `.git` project boundary
+from the working directory, including subdirectories and projects without
+`docs/` yet. `--project-root <path>` selects an existing project directory
+explicitly. For this command, `BACKLOG_HOME`, `BACKLOG_PROJECT_ROOT`, and
+repository `home` settings do not select the home; documents-directory and
+entity-context settings still apply inside the selected project.
+Use `backlog --home global wakeup` for global work, or `--home all` for the
+existing cross-home workflow. Outside a project, select a root or global
+explicitly. Other CLI commands and the MCP bridge keep their existing home
+resolution rules. See [ADR 0112](../adr/0112-docs-native-project-scoped-backlog.md#cli-wakeup-workspace-selection-amendment-2026-10-03).
+
 ```bash
 backlog-mcp              # stdio MCP server (default, for MCP clients)
 backlog-mcp serve        # HTTP server with web viewer

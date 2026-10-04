@@ -425,6 +425,12 @@ BACKLOG_PROJECT_ROOT=/path     # Optional explicit project root
 BACKLOG_CONTEXT=FLDR-0001      # Optional entity context inside the home
 ```
 
+CLI `wakeup` uses the current project's nearest `.backlog/` or `.git` boundary,
+even without `docs/`, and ignores the home/root environment defaults above.
+Use `--project-root <path>` to select a project explicitly, `--home global`
+for global work, or `--home all` for cross-home orientation. Outside a project,
+an explicit selection is required. Other commands retain their existing defaults.
+
 Create a `.env` file for local development — see `.env.example`.
 
 ### Agent identity (the attribution ladder)

@@ -13,6 +13,14 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+### Fixed
+- **CLI `wakeup` stays in the current workspace even before `docs/` exists.**
+  Inherited `BACKLOG_HOME`, `BACKLOG_PROJECT_ROOT`, and repository `home`
+  defaults no longer redirect this briefing. Use `--home global` or
+  `--home all` explicitly for other homes, or `--project-root <path>` to select
+  a project. Outside a project boundary, wakeup gives an actionable error
+  instead of silently returning global work.
+
 ## [0.76.1] — 2026-09-28
 
 *A small fix: help names the documented `backlog` command even when an

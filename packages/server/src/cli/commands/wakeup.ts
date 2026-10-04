@@ -5,6 +5,7 @@ import { resolveContext } from '../../core/config.js';
 import type { WakeupParams, WakeupResult } from '../../core/types.js';
 import type { CrossHomeWakeupResult } from '../../core/home-read-coordinator.types.js';
 import { ambientAgentIdentity } from '../../storage/local/agent-identity.js';
+import { wakeupRuntimeDependencies } from '../wakeup-runtime-dependencies.js';
 import {
   cliRuntimeDependencies,
   run,
@@ -182,7 +183,7 @@ function formatAcrossHomes(result: CrossHomeWakeupResult): string {
 export function registerWakeup(program: Command): void {
   program
     .command('wakeup')
-    .description('Session-start briefing (active tasks, epics, recent completions, activity)')
+    .description('Workspace-local session briefing (--home global/all explicitly selects other homes)')
     .option('--scope <id>', 'Scope to a container entity (folder/milestone/epic)')
     .option('--operation <id>', 'Focus the briefing on one live operation document (its declared projection becomes the centerpiece; non-focal sections yield budget)')
     .option('--max-completions <n>', 'Max recent completions', parseInt)
@@ -191,7 +192,7 @@ export function registerWakeup(program: Command): void {
     .option('--max-constraints <n>', 'Max requirement constraint stubs (0 disables)', parseInt)
     .option('--evidence-chars <n>', 'Max chars of evidence per completion', parseInt)
     .action((opts) => {
-      const deps = cliRuntimeDependencies(program);
+      const deps = wakeupRuntimeDependencies(cliRuntimeDependencies(program));
       // The attribution ladder resolves once per CLI process (ADR 0119.1);
       // absent stays absent — the params key is simply not set.
       const agentIdentity = ambientAgentIdentity();
