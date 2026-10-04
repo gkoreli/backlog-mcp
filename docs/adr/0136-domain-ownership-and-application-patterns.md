@@ -304,3 +304,72 @@ is compensation rather than crash atomicity; native editors do not hold managed
 locks; standard journal append remains best-effort; runtime retirement controls
 admission rather than every outstanding call. D1 remains descoped. No dependency,
 version, publication or installed CLI change was needed.
+
+
+### Stage 3 — derived lifetimes (2026-10-04)
+
+The next bounded plan followed two observed ownership gaps at `1a21390`:
+`hono-app.ts` released its event subscription only on abort, so cancelling the
+response body leaked a subscriber and heartbeat; `orama-search-service.ts` loaded
+and rebuilt active database/maps in place, leaving mixed state after failure and
+resource payloads detached from a fresh database. The plan extracts the stream
+lifetime and cache format/I/O owners, stages complete index state, and guards
+publication against mutations/builds crossing asynchronous work. Search ranking,
+cache version, selected-home policy and source Markdown remain unchanged.
+
+`server/event-stream.ts` owns admission and one idempotent retirement for its
+subscription, abort listener and heartbeat. Body cancellation, abort, already
+aborted requests, setup/projection/serialization failures retire that stream.
+Callback failures do not escape through the event bus into semantic writes.
+`server/event-routes.ts` selects the runtime and attaches that home's provenance;
+`AppDeps.eventBus` now uses the existing event-bus contract. An injected failing
+unsubscribe is attempted once, with remaining callbacks inert; this does not
+promise removal from an arbitrarily broken injected bus. SSE keeps its existing
+framing and heartbeat-only behavior, with no replay or bounded backpressure policy.
+
+`memory/src/search/search-index-snapshot.ts` owns the unchanged versioned format,
+leaving custom entity vocabulary and payloads open. `search-index-cache.ts` owns
+best-effort debounce and selected-path I/O. A unique sibling temporary file is
+renamed after complete serialization/write; injected write/rename failure retains
+previous complete bytes and attempts temporary cleanup. This is cache-file
+replacement, not crash durability, fsync or multi-document atomicity. PathResolver
+still owns path selection; the cache only creates its supplied path's directory.
+
+Orama now publishes one database, entity/field/resource maps and embedding-schema
+flag after successful load/build. Loaded candidates check document count and IDs,
+filter metadata and declared projections against cached payloads, and require
+finite embedding vectors of the declared dimension when that schema is flagged. Missing legacy
+field maps keep format compatibility and permit only metadata checks. Orama owns
+its inverted-index internals: arbitrary same-shaped internal corruption is not
+fully validated here. Malformed or observably inconsistent caches become misses
+and rebuild from supplied authoritative documents. Valid retained resources are
+inserted into fresh databases rather than surviving only as detached payloads.
+
+An admitted incremental mutation invalidates builds at entry and completion;
+build admission/publication rejects while mutations are in flight. A later build
+publication also invalidates older candidates. Superseded candidates throw the
+named error and require reconciliation from current authoritative data. Failure
+leaves the previous active state intact. Each query captures its database and
+projection-map references through retrieval, fusion and snippet assembly, so
+rebuild publication cannot mix index generations. Incremental mutations still
+modify those maps in place; this is no snapshot-isolation claim for arbitrary
+parallel incremental mutations or queries. Managed application mutation ordering
+remains ADR 0135's boundary, and cache-first loading still requires reconciliation
+to refresh native edits.
+
+Focused unit evidence: actual Web streams/fake event buses and timers cover frame
+compatibility, selected-home same-ID isolation, cancel/abort/early-abort and
+setup/projection/serialization/release failures. Real Orama with memfs and mocked
+embeddings covers resource rebuilds, malformed and inconsistent loaded cache,
+open custom/prototype-shaped IDs, partial build failure, queries crossing rebuild,
+mutations crossing builds in both admission orders, overlapping builds, and
+write/rename failures with debounce retirement. Workspace build/typecheck and all 1,824 tests passed: server 1,605 with two
+existing skips, memory 56 and viewer 163. Architecture import allowlists remain
+empty. A built-module actual Node process exercised `/events` with a real Request,
+ReadableStream reader cancellation and later abort: one subscription, one release
+and zero remaining listeners. The same process used real Orama BM25 and disposable
+temporary cache directories to confirm retained resources, separate same-ID cache
+paths, inconsistent-payload cache rebuilding and absence of leftover temporary
+files. The bus was injected; no OS watcher, model download, daemon lifetime or
+user-corpus write is claimed. Temporary fixtures were removed. No dependency, version, publishing or installed CLI change is
+needed. Ambient-clock/read-analysis cleanup remains future work.

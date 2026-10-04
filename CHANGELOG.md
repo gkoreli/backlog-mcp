@@ -22,6 +22,14 @@ begins at 0.57.0 — earlier history lives in git.
 
 ### Fixed
 
+- **Viewer event streams release subscriptions immediately.** Closing a response
+  cancels its heartbeat and abort listener; projection failures end that stream
+  without rejecting the committed write that emitted the notification.
+- **Search rebuilds publish a coherent index.** Failed builds retain the active
+  database and payloads, retained resources remain searchable, and delayed builds
+  cannot overwrite newer mutations. Malformed or inconsistent cache documents
+  rebuild from authoritative data; failed cache writes retain the previous file.
+
 - **Search honors explicit empty selections consistently.** Empty status/type
   selections return no matches across exact-ID, full-text and filter-only queries.
   Caller types override inferred types; exclusions intersect the selection and

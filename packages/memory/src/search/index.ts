@@ -15,7 +15,7 @@ export type {
 } from './types.js';
 
 // Orama implementation
-export { OramaSearchService, type OramaSearchOptions } from './orama-search-service.js';
+export { OramaSearchService, SearchIndexBuildSupersededError, type OramaSearchOptions } from './orama-search-service.js';
 
 // Orama schema + helpers
 export { schema, schemaWithEmbeddings, INDEX_VERSION, TEXT_PROPERTIES, UNSORTABLE_PROPERTIES, ENUM_FACETS, buildWhereClause, type OramaDoc, type OramaDocWithEmbeddings, type OramaInstance, type OramaInstanceWithEmbeddings } from './orama-schema.js';

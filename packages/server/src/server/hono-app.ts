@@ -1,8 +1,10 @@
+import type { EventBus } from '../events/event-bus.js';
 /** HTTP application assembly; routes consume request-selected capabilities (ADR 0136). */
 import { registerMcpRoute } from './mcp-route.js';
 import { selectAppRequestRuntime, type RequestSelectionSource } from './request-selection.js';
 export { selectAppRequestRuntime } from './request-selection.js';
 import { registerOperationRoutes } from './operation-routes.js';
+import { registerEventRoutes } from './event-routes.js';
 import { createSelectedHomeReadCoordinator } from '../composition/home-read-runtime.js';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -15,7 +17,6 @@ import { desk } from '../core/desk.js';
 import { findCollisionCandidatePairs, findCollisionCandidatesForMemory } from '../core/collision-candidates.js';
 import { usageSeries, hasUsage } from '../core/usage-series.js';
 import type { AnyEntity, Entity, Memory } from '@backlog-mcp/shared';
-import type { BacklogEventCallback } from '../events/event-bus.js';
 import {
   createAuthRuntime,
   registerMcpAuthMiddleware,
@@ -80,7 +81,7 @@ export interface AppDeps extends ToolDeps {
   actor?: Actor;
   // Node.js-only
   staticMiddleware?: any;  // result of serveStatic({ root: '...' }) from @hono/node-server/serve-static
-  eventBus?: any;          // for SSE push
+  eventBus?: EventBus;          // for SSE push
   readLocalFile?: (filePath: string) => string | null;  // injected by node-server.ts; absent in Worker
   readUsageLines?: () => string[];  // memory-usage.jsonl reader (ADR 0092.14); Node-only, absent in Worker
   db?: any;                // cloud: D1 database — used for mode detection only
@@ -433,59 +434,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
   registerOperationRoutes(app, resolveRequestRuntime);
 
-  // ── SSE events ──────────────────────────────────────────────────────────────
-  app.get('/events', async (c) => {
-    const runtime = await resolveRequestRuntime(c.req);
-    const eventBus = runtime.eventBus;
-    if (eventBus) {
-      // Node.js: live push via eventBus
-      const { readable, writable } = new TransformStream();
-      const writer = writable.getWriter();
-      const enc = new TextEncoder();
-
-      writer.write(enc.encode(': connected\n\n'));
-
-      const onEvent: BacklogEventCallback = function onEvent(event) {
-        const payload = {
-          ...event,
-          ...getHomeProvenance(runtime, runtime.getSourcePath?.(event.id)),
-        };
-        writer.write(
-          enc.encode(`id: ${event.seq}\ndata: ${JSON.stringify(payload)}\n\n`),
-        ).catch(() => {});
-      };
-      eventBus.subscribe(onEvent);
-
-      const heartbeat = setInterval(() => {
-        writer.write(enc.encode(': heartbeat\n\n')).catch(() => clearInterval(heartbeat));
-      }, 30000);
-
-      // Cleanup when client disconnects
-      c.req.raw.signal.addEventListener('abort', () => {
-        clearInterval(heartbeat);
-        eventBus.unsubscribe(onEvent);
-        writer.close().catch(() => {});
-      });
-
-      return new Response(readable, {
-        headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
-      });
-    }
-
-    // Cloud/stateless: heartbeat only
-    const stream = new ReadableStream({
-      start(controller) {
-        const enc = new TextEncoder();
-        controller.enqueue(enc.encode(': connected\n\n'));
-        const id = setInterval(() => {
-          try { controller.enqueue(enc.encode(': heartbeat\n\n')); } catch { clearInterval(id); }
-        }, 30000);
-      },
-    });
-    return new Response(stream, {
-      headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
-    });
-  });
+  registerEventRoutes(app, resolveRequestRuntime);
 
   // ── Node.js-only routes (filesystem) ────────────────────────────────────────
   const hasRequestResources = deps?.resourceManager !== undefined
