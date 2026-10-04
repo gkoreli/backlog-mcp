@@ -1,7 +1,15 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { homedir } from 'node:os';
 import { join, sep } from 'node:path';
-import { paths } from '../utils/paths.js';
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { PathResolver, RuntimeEnvironment, paths } from '../utils/paths.js';
+
+const { resolvePackage } = vi.hoisted(function packageResolutionStub() {
+  return { resolvePackage: vi.fn() };
+});
+vi.mock('node:module', function moduleResolution() {
+  return { createRequire: function createRequire() { return { resolve: resolvePackage }; } };
+});
 
 describe('PathResolver tilde & path resolution', () => {
   const originalNodeEnv = process.env.NODE_ENV;
@@ -74,5 +82,49 @@ describe('PathResolver tilde & path resolution', () => {
       expect(freshPaths.viewerDist).toBe(join(freshPaths.distRoot, 'viewer'));
       expect(freshPaths.viewerDist.endsWith(`${sep}src${sep}viewer`)).toBe(false);
     });
+  });
+
+  it.each(['src', 'dist'])('keeps package roots under ancestor src directories (%s mode)', function nestedSourceName(mode) {
+    const root = '/fixtures/src/parent/package';
+    const actual = PathResolver.resolveRuntimePaths(`${root}/${mode}/utils`, RuntimeEnvironment.Production);
+    expect(actual).toEqual({ projectRoot: root, distRoot: `${root}/dist`, viewerDist: `${root}/dist/viewer` });
+    expect(PathResolver.resolveRuntimePaths(`${root}/${mode}/utils`, RuntimeEnvironment.Development).viewerDist)
+      .toBe('/fixtures/src/parent/viewer/dist');
+  });
+
+  it('resolves invocation-specific user bases and home directories without caching them', function callerPaths() {
+    expect(paths.resolveUserPath('notes/file.md', '/caller/a')).toBe('/caller/a/notes/file.md');
+    expect(paths.resolveUserPath('notes/file.md', '/caller/b')).toBe('/caller/b/notes/file.md');
+    expect(paths.resolveUserPath('~/notes/file.md', '/caller/a', '/user/first')).toBe('/user/first/notes/file.md');
+    expect(paths.resolveUserPath('~/notes/file.md', '/caller/b', '/user/second')).toBe('/user/second/notes/file.md');
+    expect(paths.resolveUserPath('~someone/notes', '/caller/a', '/user/first')).toBe('/caller/a/~someone/notes');
+    expect(paths.resolveUserPath('/absolute/file', '/caller/a')).toBe('/absolute/file');
+  });
+
+  it('canonicalizes existing symlink ancestors while preserving a missing suffix', function missingCanonicalSuffix() {
+    mkdirSync('/resolver-canonical/physical', { recursive: true });
+    symlinkSync('/resolver-canonical/physical', '/resolver-canonical/link', 'dir');
+    expect(paths.canonicalizeThroughExistingAncestor('/resolver-canonical/link/new/deep/document.md'))
+      .toBe('/resolver-canonical/physical/new/deep/document.md');
+    expect(paths.canonicalizeThroughExistingAncestor('/resolver-canonical/physical'))
+      .toBe('/resolver-canonical/physical');
+    expect(paths.canonicalizeExistingPath('/resolver-canonical/link')).toBe('/resolver-canonical/physical');
+    expect(function strictMissingFile() {
+      paths.canonicalizeExistingPath('/resolver-canonical/link/new/deep/document.md');
+    }).toThrow();
+  });
+
+  it('resolves binaries from package metadata rather than a node_modules layout', function metadataBinary() {
+    const root = '/virtual-store/remote-package';
+    mkdirSync(root, { recursive: true });
+    const metadata = `${root}/package.json`;
+    resolvePackage.mockReturnValue(metadata);
+    writeFileSync(metadata, JSON.stringify({ bin: { 'mcp-remote': 'dist/proxy.js' } }));
+    expect(paths.getBinPath('mcp-remote')).toBe(`${root}/dist/proxy.js`);
+    expect(resolvePackage).toHaveBeenCalledWith('mcp-remote/package.json');
+    writeFileSync(metadata, JSON.stringify({ bin: 'bin/start.js' }));
+    expect(paths.getBinPath('mcp-remote')).toBe(`${root}/bin/start.js`);
+    writeFileSync(metadata, JSON.stringify({ bin: { other: 'bin/other.js' } }));
+    expect(function absentBinary() { paths.getBinPath('mcp-remote'); }).toThrow("no bin entry for 'mcp-remote'");
   });
 });

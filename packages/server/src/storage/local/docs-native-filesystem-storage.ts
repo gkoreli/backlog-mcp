@@ -2,11 +2,11 @@ import type { ClaimQuarantine, StorageSaveOptions } from '../../core/backlog-ser
 import {
   existsSync,
   mkdirSync,
-  realpathSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { basename, dirname, posix, resolve } from 'node:path';
+import { dirname, posix, resolve } from 'node:path';
+import { paths } from '../../utils/paths.js';
 import matter from 'gray-matter';
 import {
   EntityType,
@@ -81,20 +81,6 @@ function normalizeWritableSourcePath(sourcePath: string): string {
     throw new Error(`Invalid document source path: ${sourcePath}`);
   }
   return normalized;
-}
-
-function canonicalizeThroughExistingAncestor(path: string): string {
-  const missingSegments: string[] = [];
-  let existingPath = path;
-
-  while (!existsSync(existingPath)) {
-    const parentPath = dirname(existingPath);
-    if (parentPath === existingPath) return resolve(path);
-    missingSegments.unshift(basename(existingPath));
-    existingPath = parentPath;
-  }
-
-  return resolve(realpathSync(existingPath), ...missingSegments);
 }
 
 function validateWriteIdentity(
@@ -219,13 +205,13 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
         `Document source path must remain under ${claim.folder}: ${sourcePath}`,
       );
     }
-    const canonicalDocumentsDir = canonicalizeThroughExistingAncestor(
+    const canonicalDocumentsDir = paths.canonicalizeThroughExistingAncestor(
       this.home.documentsDir,
     );
-    const canonicalHomeRoot = canonicalizeThroughExistingAncestor(
+    const canonicalHomeRoot = paths.canonicalizeThroughExistingAncestor(
       this.home.root,
     );
-    const canonicalTarget = canonicalizeThroughExistingAncestor(absolutePath);
+    const canonicalTarget = paths.canonicalizeThroughExistingAncestor(absolutePath);
     if (
       !isPathWithin(canonicalHomeRoot, canonicalDocumentsDir)
       || !isPathWithin(canonicalDocumentsDir, canonicalTarget)

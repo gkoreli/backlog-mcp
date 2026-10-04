@@ -1,4 +1,5 @@
-import { closeSync, lstatSync, mkdirSync, openSync, realpathSync, unlinkSync } from 'node:fs';
+import { closeSync, lstatSync, mkdirSync, openSync, unlinkSync } from 'node:fs';
+import { paths } from '../../utils/paths.js';
 import { join, relative, resolve, sep } from 'node:path';
 import { isPathWithin } from '../../core/backlog-home.js';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
@@ -21,7 +22,7 @@ function lockDirectory(home: BacklogHome): string {
   if (!isPathWithin(root, directory)) {
     throw new Error('Document write lock must remain inside the selected home');
   }
-  let current = realpathSync(root);
+  let current = paths.canonicalizeExistingPath(root);
   // Create and inspect each component before descending, never following a
   // control/state symlink into another home's coordination namespace.
   for (const segment of relative(root, directory).split(sep)) {

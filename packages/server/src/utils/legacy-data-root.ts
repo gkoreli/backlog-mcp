@@ -1,4 +1,3 @@
-import { isAbsolute, resolve } from 'node:path';
 import { paths } from './paths.js';
 
 /**
@@ -12,8 +11,5 @@ export function resolveLegacyDataRoot(
 ): string | undefined {
   const configured = env.BACKLOG_DATA_DIR?.trim();
   if (!configured) return undefined;
-  const expanded = paths.expandTilde(configured);
-  return isAbsolute(expanded)
-    ? resolve(expanded)
-    : resolve(paths.projectRoot, expanded);
+  return paths.resolveUserPath(configured, paths.projectRoot);
 }

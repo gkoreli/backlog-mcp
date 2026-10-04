@@ -5,7 +5,6 @@
  */
 import {
   readFileSync,
-  realpathSync,
   statSync,
 } from 'node:fs';
 import {
@@ -14,6 +13,7 @@ import {
   resolve,
 } from 'node:path';
 import { isPathWithin } from '../core/backlog-home.js';
+import { paths } from '../utils/paths.js';
 import { resolveContext } from '../core/config.js';
 import { REQUIREMENT_TYPE } from '../core/requirements/constraint-stub.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
@@ -37,8 +37,8 @@ function containedFile(
       : resolve(root, requestedPath);
     if (!isPathWithin(root, candidate)) return undefined;
 
-    const canonicalRoot = realpathSync(root);
-    const canonicalFile = realpathSync(candidate);
+    const canonicalRoot = paths.canonicalizeExistingPath(root);
+    const canonicalFile = paths.canonicalizeExistingPath(candidate);
     if (!isPathWithin(canonicalRoot, canonicalFile)) return undefined;
     return statSync(canonicalFile).isFile() ? canonicalFile : undefined;
   } catch {

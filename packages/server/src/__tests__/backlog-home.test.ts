@@ -9,7 +9,8 @@ import {
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BacklogHomeResolutionError, isPathWithin } from '../core/backlog-home.js';
-import { createBacklogHome, discoverProjectRoot, resolveBacklogHome } from '../storage/local/backlog-home.js';
+import { createBacklogHome, discoverProjectRoot, resolveBacklogHome, resolveWorkspaceHome } from '../storage/local/backlog-home.js';
+import { paths } from '../utils/paths.js';
 import type { BacklogHomeDeps } from '../core/backlog-home.types.js';
 
 function pathDeps(homeDir = '/users/quartz'): BacklogHomeDeps {
@@ -34,6 +35,36 @@ function writeRepoConfig(
 }
 
 describe('backlog home construction', () => {
+  it('keeps relative and tilde caller homes independent of the package singleton', async function independentCallerHomes() {
+    mkdirSync('/resolver-homes/a/repo', { recursive: true });
+    mkdirSync('/resolver-homes/b/repo', { recursive: true });
+    const packageRoot = paths.projectRoot;
+    const homes = await Promise.all([
+      Promise.resolve().then(function firstCaller() {
+        return resolveWorkspaceHome({ cwd: '/resolver-homes/a', projectRoot: ' repo ', env: {} });
+      }),
+      Promise.resolve().then(function secondCaller() {
+        return resolveWorkspaceHome({ cwd: '/resolver-homes/b', projectRoot: '~/repo', env: {}, deps: { homeDir: function callerHome() { return '/resolver-homes/b'; } } });
+      }),
+    ]);
+    expect(homes.map(function root(home) { return home.root; })).toEqual(['/resolver-homes/a/repo', '/resolver-homes/b/repo']);
+    expect(homes.map(function docs(home) { return home.documentsDir; })).toEqual(['/resolver-homes/a/repo/docs', '/resolver-homes/b/repo/docs']);
+    expect(paths.projectRoot).toBe(packageRoot);
+    expect(Object.keys(paths)).not.toContain('home');
+    expect(resolveBacklogHome({
+      cwd: '/resolver-homes/a', env: { BACKLOG_HOME: 'project', BACKLOG_PROJECT_ROOT: ' repo ' },
+    }).root).toBe('/resolver-homes/a/repo');
+  });
+
+  it('rejects a missing documents suffix beneath a symlink escaping the selected home', function missingSymlinkEscape() {
+    mkdirSync('/resolver-home-escape/project', { recursive: true });
+    mkdirSync('/resolver-home-escape/outside', { recursive: true });
+    symlinkSync('/resolver-home-escape/outside', '/resolver-home-escape/project/link', 'dir');
+    expect(function constructEscapedHome() {
+      createBacklogHome({ kind: 'project', root: '/resolver-home-escape/project', documentsDir: 'link/new/docs' });
+    }).toThrow(BacklogHomeResolutionError);
+  });
+
   it('creates the default global home shape', () => {
     expect(resolveBacklogHome({
       cwd: '/outside-project',

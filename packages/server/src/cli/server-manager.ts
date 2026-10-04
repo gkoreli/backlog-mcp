@@ -72,7 +72,7 @@ export function spawnDetachedServer(command: string, args: readonly string[], po
 }
 
 async function spawnServer(port: number): Promise<void> {
-  spawnDetachedServer(process.execPath, [join(paths.distRoot, 'node-server.mjs')], port);
+  spawnDetachedServer(process.execPath, [paths.fromDist('node-server.mjs')], port);
 }
 
 async function shutdownServer(port: number): Promise<void> {

@@ -21,6 +21,10 @@ begins at 0.57.0 — earlier history lives in git.
   entry points were removed.
 
 ### Fixed
+- **Package paths work beneath an ancestor directory named `src`.** Runtime
+  roots now follow the resolver module's location instead of the first `src`
+  segment. Local home roots also use PathResolver's tilde expansion and resolve
+  relative roots against the supplied caller directory.
 - **CLI `wakeup` stays in the current workspace even before `docs/` exists.**
   Inherited `BACKLOG_HOME`, `BACKLOG_PROJECT_ROOT`, and repository `home`
   defaults no longer redirect this briefing. Use `--home global` or

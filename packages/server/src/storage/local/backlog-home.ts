@@ -1,6 +1,6 @@
-import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, dirname, resolve } from 'node:path';
+import { paths } from '../../utils/paths.js';
 import {
   createBacklogHome as constructHome,
   discoverProjectRoot as discoverRoot,
@@ -15,20 +15,6 @@ import type {
 } from '../../core/backlog-home.types.js';
 import type { LocalHomeResolutionParams, LocalProjectRootParams } from './backlog-home.types.js';
 
-/** Resolve existing symlinks even when the final documents/control path is new. */
-function canonicalize(path: string): string {
-  const absolutePath = resolve(path);
-  const missingSegments: string[] = [];
-  let existingPath = absolutePath;
-  while (!existsSync(existingPath)) {
-    const parent = dirname(existingPath);
-    if (parent === existingPath) return absolutePath;
-    missingSegments.unshift(basename(existingPath));
-    existingPath = parent;
-  }
-  return resolve(realpathSync(existingPath), ...missingSegments);
-}
-
 function read(path: string): string {
   return readFileSync(path, 'utf-8');
 }
@@ -42,7 +28,9 @@ function isDirectory(path: string): boolean {
 }
 
 const filesystem: BacklogHomeDeps = {
-  exists: existsSync, read, canonicalize, isDirectory, homeDir: homedir,
+  exists: existsSync, read,
+  canonicalize: paths.canonicalizeThroughExistingAncestor.bind(paths),
+  isDirectory, homeDir: homedir,
 };
 
 function dependencies(overrides?: Partial<BacklogHomeDeps>): BacklogHomeDeps {
@@ -51,7 +39,23 @@ function dependencies(overrides?: Partial<BacklogHomeDeps>): BacklogHomeDeps {
 
 function callerParams(params: LocalHomeResolutionParams): ResolveBacklogHomeParams {
   const { deps: _deps, ...caller } = params;
-  return { ...caller, cwd: params.cwd?.trim() || process.cwd(), env: params.env ?? process.env };
+  const userHome = (params.deps?.homeDir ?? homedir)();
+  const cwd = paths.resolveUserPath(params.cwd?.trim() || process.cwd(), process.cwd(), userHome);
+  function userPath(value: string | undefined): string | undefined {
+    // Preserve blank explicit roots for the domain's actionable validation.
+    return value === undefined || value.trim() === ''
+      ? value
+      : paths.resolveUserPath(value.trim(), cwd, userHome);
+  }
+  const env = params.env ?? process.env;
+  const envProjectRoot = userPath(env.BACKLOG_PROJECT_ROOT);
+  return {
+    ...caller, cwd,
+    projectRoot: userPath(params.projectRoot),
+    globalRoot: userPath(params.globalRoot),
+    stopDir: userPath(params.stopDir),
+    env: envProjectRoot === undefined ? env : { ...env, BACKLOG_PROJECT_ROOT: envProjectRoot },
+  };
 }
 
 /** Construct a canonical local home using the shared filesystem implementation. */
@@ -59,12 +63,20 @@ export function createBacklogHome(
   params: CreateBacklogHomeParams,
   overrides?: Partial<BacklogHomeDeps>,
 ): BacklogHome {
-  return constructHome(params, dependencies(overrides));
+  return constructHome({
+    ...params,
+    root: paths.resolveUserPath(params.root, process.cwd(), (overrides?.homeDir ?? homedir)()),
+  }, dependencies(overrides));
 }
 
 /** Discover a local project boundary through the domain's bounded walk. */
 export function discoverProjectRoot(params: LocalProjectRootParams): string | undefined {
-  return discoverRoot(params, dependencies(params.deps));
+  const userHome = (params.deps?.homeDir ?? homedir)();
+  return discoverRoot({
+    startDir: paths.resolveUserPath(params.startDir, process.cwd(), userHome),
+    stopDir: params.stopDir === undefined
+      ? undefined : paths.resolveUserPath(params.stopDir, process.cwd(), userHome),
+  }, dependencies(params.deps));
 }
 
 /** Resolve caller defaults for existing CLI, bridge and server workflows. */

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { serve } from '@hono/node-server';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { paths } from './utils/paths.js';
 import { getServerVersion, shutdownServer, spawnDetachedServer } from './cli/server-manager.js';
 import { readInstalledVersion, releaseStatus } from './core/installed-version.js';
@@ -50,8 +49,8 @@ async function startServer(): Promise<void> {
   // Release awareness + self-restart (ADR 0131). The install on disk is
   // re-read per request so a release or rebuild that landed after start is
   // seen; the handover relaunches this install's own entry point.
-  const serverEntry = join(paths.distRoot, 'node-server.mjs');
-  const packageJsonPath = join(paths.projectRoot, 'package.json');
+  const serverEntry = paths.fromDist('node-server.mjs');
+  const packageJsonPath = paths.fromRoot('package.json');
   function readReleaseStatus() {
     return releaseStatus(
       paths.getVersion(),

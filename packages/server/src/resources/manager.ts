@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import {
   basename,
   dirname,
@@ -15,6 +15,7 @@ import { discoverDocuments } from '../core/document-discovery.js';
 import { isPathWithin } from '../core/path-containment.js';
 import { isOrientationRootFilename } from '../core/orientation.js';
 import type { ResourceContent } from '../core/resource-content.contract.js';
+import { paths } from '../utils/paths.js';
 
 /**
  * Extract title from markdown content.
@@ -49,7 +50,7 @@ function normalizeRelativePath(rootDir: string, filePath: string): string {
 
 function isCanonicalPathContained(rootDir: string, filePath: string): boolean {
   try {
-    return isPathWithin(realpathSync(rootDir), realpathSync(filePath));
+    return isPathWithin(paths.canonicalizeExistingPath(rootDir), paths.canonicalizeExistingPath(filePath));
   } catch {
     return false;
   }

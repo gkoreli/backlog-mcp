@@ -149,6 +149,78 @@ is pure or that every runtime path has been exercised.
   substrates versus a constrained closed async satellite. No consolidation or
   capability reduction is justified by superficial CRUD similarity.
 
+## PathResolver correction after maintainer review
+
+The initial audit missed the existing `utils/paths.PathResolver` and its purpose
+in [ADR 0026](../adr/0026-build-system-modernization.md). The home refactor added
+an existing-ancestor canonicalizer in `storage/local/backlog-home` while
+`docs-native-filesystem-storage` already had the same algorithm. This was
+unjustified duplication. The broad audit's path-predicate cleanup alone did not
+address it.
+
+- **Ownership corrected:** the existing PathResolver retains its established
+  `utils/paths` source/import location for this bounded correction and
+  compatibility. It owns package/dist/viewer/bin resolution,
+  tilde expansion, user-path normalization, strict canonical lookup, and
+  canonicalization through the closest existing ancestor. No replacement path
+  service or mutable workspace singleton was added. `projectRoot` retains its
+  public name and means **the installed server package root**, not the caller's
+  workspace. Existing `fromRoot`, `fromDist`, `getBinPath`, and one-argument
+  user-path methods remain supported.
+- **Mechanics centralized:** home/storage's repeated ancestor walk now calls
+  `PathResolver.canonicalizeThroughExistingAncestor`. The home adapter injects
+  that function into `BacklogHomeDeps`; core never imports PathResolver or its
+  IO singleton. ResourceManager, the contained local-file reader, write-lock
+  root resolution, and agent-identity directory lookup use the strict
+  `canonicalizeExistingPath` operation. Package launch/restart paths use
+  `fromDist`/`fromRoot`; legacy data-root resolution uses `resolveUserPath` with
+  the package root as its explicit base, preserving that retired contract.
+- **Actual package bug fixed:** `resolvePaths` previously selected the first
+  `/src/` substring anywhere in the resolver's location. An ancestor named
+  `src` could produce the wrong package root even for built output. Runtime
+  resolution now follows the module's immediate `src/utils` or `dist/utils`
+  location, in both production and development modes.
+- **Caller paths remain per-call:** `resolveUserPath` accepts an explicit base
+  and user-home directory. Local home roots expand `~` and resolve relative
+  selections against that call's supplied cwd; environment selections are
+  copied, never mutated. Blank roots still reach existing domain validation.
+  Home policy, config choice, boundary discovery and containment remain core
+  operations over injected ports. This honors the ambient-singleton warning
+  in ADR 0105 and immutable per-request homes in ADR 0112 simultaneously.
+- **Distinct policies preserved:** resource reads require complete existing
+  paths and enforce the scan directory plus orientation-file surface; local
+  file reads are documents-directory-only. Missing-path canonicalization does
+  not grant file access. The write lock still rejects symlink components with
+  `lstat` as it creates/descends into state directories. Document identities,
+  POSIX source keys, URI grammar and pure lexical containment are domain
+  operations, not installed-package paths; their `node:path` calculations do
+  not need an IO singleton.
+- **Remaining IO-boundary work stated explicitly:** discovery and migration
+  still have known real-filesystem defaults inside core. Migration's
+  `canonicalizeMigrationPath` repeats the ancestor algorithm over its injected
+  filesystem snapshot; it has not been silently relabelled as different
+  semantics. Sharing it with the IO resolver requires extracting those
+  defaults and wiring a canonicalization port while preserving current
+  partial-filesystem overrides, preflight and rollback. That belongs to the
+  migration phase above; importing PathResolver into core would add a new
+  outward violation. Source-path joining and guarded rollback are not removed
+  merely to route every `join` through the singleton.
+
+The package-root and local user-root corrections have an Unreleased changelog
+entry. This continuation adds no architecture allowlist exceptions and keeps
+the resolver's established source/import location instead of renaming it.
+
+Continuation validation: server 1,513 passed / 2 existing skips, memory 49
+passed, viewer 157 passed. Final caller-path trimming was checked with 105
+focused unit tests. Server build/typecheck passed. Actual-process checks passed
+for package metadata/bin lookup, relocated source/built resolver locations in
+both environments, missing suffixes through symlink ancestors, strict missing
+file rejection, escaping documents symlinks, and same-process home independence.
+Concurrent CLI processes passed for relative and literal-tilde roots; the
+existing 21 workspace/scope/worktree isolation cases also passed. Manual writes
+were confined to temporary fixtures and derived caches; installed packages and
+versions were not changed.
+
 ## Validation and limits
 
 - Workspace unit suites: server 1,506 passed / 2 pre-existing skips, memory 49
@@ -163,8 +235,9 @@ is pure or that every runtime path has been exercised.
 - Server build/typecheck passed. Architecture rules now retain three core IO
   imports and one outward import (`wakeup` → concrete memory store). They still
   do not enforce direct global capability access or transitive package IO.
-- This cleanup changes no schema, Markdown layout, ranking rule or transport
-  formatting. No version bump or user-facing changelog entry is warranted for
-  it. Existing Unreleased entries remain intact.
+- The initial contract/retrieval cleanup changes no schema, Markdown layout,
+  ranking rule or transport formatting and needs no user-facing changelog entry.
+  The subsequent package/user-path fixes are recorded under Unreleased. No
+  version bump is part of either slice.
 - Follow-ups above are prioritized evidence, not an approved blanket rewrite.
   Keep local functionality as the acceptance target; no D1 parity work is owed.

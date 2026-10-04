@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 
@@ -13,8 +13,10 @@ export enum RuntimeEnvironment {
 }
 
 /**
- * Centralized path resolution for the entire application.
- * All file paths and directory references should go through this singleton.
+ * Centralized runtime/package paths and reusable local path mechanics.
+ * The singleton's projectRoot is the installed package root, never a caller's
+ * workspace. User path bases and home selection are supplied per invocation;
+ * this resolver never stores an active BacklogHome (ADRs 0026, 0105, 0112).
  */
 export class PathResolver {
   private static instance: PathResolver;
@@ -32,14 +34,14 @@ export class PathResolver {
   public readonly viewerDist: string;
   
   /** Parsed package.json metadata */
-  public readonly packageJson: { name: string; version: string; [key: string]: any };
+  public readonly packageJson: { name: string; version: string; [key: string]: unknown };
   
   private constructor() {
     const currentFile = fileURLToPath(import.meta.url);
     const currentDir = dirname(currentFile);
     
     this.environment = this.detectEnvironment();
-    const paths = this.resolvePaths(currentDir, this.environment);
+    const paths = PathResolver.resolveRuntimePaths(currentDir, this.environment);
     
     this.projectRoot = paths.projectRoot;
     this.distRoot = paths.distRoot;
@@ -75,19 +77,43 @@ export class PathResolver {
    * Only a leading `~` or `~/` is expanded; `~user/...` is left untouched
    * (homedir() can't resolve another user's home anyway).
    */
-  public expandTilde(path: string): string {
-    if (path === '~') return homedir();
-    if (path.startsWith('~/')) return join(homedir(), path.slice(2));
+  public expandTilde(path: string, userHome: string = homedir()): string {
+    if (path === '~') return userHome;
+    if (path.startsWith('~/')) return join(userHome, path.slice(2));
     return path;
   }
 
   /**
    * Resolve a user-supplied path to an absolute path: expand a leading `~`,
-   * then resolve relative paths against the CWD.
+   * then resolve relative paths against the supplied base (default: live CWD).
    * @example paths.resolveUserPath('~/notes.md') → '/home/user/notes.md'
    */
-  public resolveUserPath(path: string): string {
-    return resolve(this.expandTilde(path));
+  public resolveUserPath(path: string, baseDir: string = process.cwd(), userHome: string = homedir()): string {
+    return resolve(baseDir, this.expandTilde(path, userHome));
+  }
+
+  /** Strict canonical lookup: the complete path must exist; IO failures propagate. */
+  public canonicalizeExistingPath(path: string): string {
+    return realpathSync(path);
+  }
+
+  /**
+   * Canonicalize existing ancestors of a possibly new local path. Missing
+   * suffixes are appended after realpath; failures from an existing ancestor
+   * propagate. This is not an existence check, tilde expansion or containment
+   * policy. Strict reads and lock-directory validation keep their own checks.
+   */
+  public canonicalizeThroughExistingAncestor(path: string): string {
+    const absolutePath = resolve(path);
+    const missingSegments: string[] = [];
+    let existingPath = absolutePath;
+    while (!existsSync(existingPath)) {
+      const parent = dirname(existingPath);
+      if (parent === existingPath) return absolutePath;
+      missingSegments.unshift(basename(existingPath));
+      existingPath = parent;
+    }
+    return resolve(this.canonicalizeExistingPath(existingPath), ...missingSegments);
   }
   
   /**
@@ -157,28 +183,21 @@ export class PathResolver {
   }
   
   /**
-   * Resolve all paths based on current directory and environment
-   * @param currentDir - Directory where this file is located
-   * @param environment - Current runtime environment
-   * @returns Object containing all resolved paths
-   */
-  /**
    * Resolve all directory paths based on current location and environment
    * @param currentDir - Directory containing this file (src/utils or dist/utils)
    * @param environment - Current runtime environment
    * @returns Resolved paths for project root, dist, and viewer
    */
-  private resolvePaths(currentDir: string, environment: RuntimeEnvironment): {
+  public static resolveRuntimePaths(currentDir: string, environment: RuntimeEnvironment): {
     projectRoot: string;
     distRoot: string;
     viewerDist: string;
   } {
-    const isRunningFromSource = currentDir.includes('/src/');
+    const projectRoot = dirname(dirname(currentDir));
+    const isRunningFromSource = basename(dirname(currentDir)) === 'src';
 
     if (isRunningFromSource) {
       // Source mode via Vite SSR: this file is at packages/server/src/utils/paths.ts.
-      const srcIndex = currentDir.indexOf('/src/');
-      const projectRoot = currentDir.substring(0, srcIndex);
       const distRoot = join(projectRoot, 'dist');
       const viewerDist = environment === RuntimeEnvironment.Development
         ? join(projectRoot, '../viewer/dist')
@@ -189,7 +208,6 @@ export class PathResolver {
     // Production OR built CLI with NODE_ENV=development:
     // this file is at dist/utils/paths.mjs — go up two levels to reach project root
     const distRoot = dirname(currentDir);
-    const projectRoot = dirname(distRoot);
     const viewerDist = environment === RuntimeEnvironment.Development
       ? join(projectRoot, '../viewer/dist')
       : join(distRoot, 'viewer');

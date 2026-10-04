@@ -16,8 +16,7 @@ import {
   type AgentIdentityGitRungs,
   type ResolvedAgentIdentity,
 } from '../../core/identity-resolution.js';
-import { realpathSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { paths } from '../../utils/paths.js';
 import { runGitCommand } from './git-runner.js';
 import type { GitRunner } from '../../core/git-runner.contract.js';
 
@@ -25,11 +24,11 @@ const cachedGitRungsByDirectory = new Map<string, AgentIdentityGitRungs>();
 
 function canonicalIdentityDirectory(cwd: string): string {
   try {
-    return realpathSync(cwd);
+    return paths.canonicalizeExistingPath(cwd);
   } catch {
     // A missing/non-readable directory is still a valid fail-open probe:
     // normalize its spelling so repeated failures share one cache entry.
-    return resolve(cwd);
+    return paths.resolveUserPath(cwd);
   }
 }
 

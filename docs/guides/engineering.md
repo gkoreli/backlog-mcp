@@ -52,6 +52,15 @@ Shared logic that two adapters need goes in `core/`. A shared runtime piece
 goes in `composition/`. Transport policy (path containment, loopback-only
 routes) stays in its own adapter (ADR 0134 R2.6).
 
+Use the existing `utils/paths.PathResolver` for package/dist/viewer/bin paths
+and reusable local path mechanics (tilde/user paths and canonicalization).
+Its `projectRoot` is the installed package root. Caller workspace/home choices
+remain per-call core data, with resolver capabilities injected through ports;
+do not add mutable active-home state to the singleton or import it into core.
+Keep strict existing-path reads distinct from missing-ancestor canonicalization
+and keep containment/lock policy at the owning boundary. See the
+[repository audit correction](../reports/0018-repository-architecture-audit-2026-10-03.md#pathresolver-correction-after-maintainer-review).
+
 ### File naming convention
 
 This convention was labelled "ADR 0109"; there is no ADR file. This section is the source.
