@@ -247,3 +247,55 @@ describe('home-selector', () => {
     expect(app.projectRoot.value).toBeNull();
   });
 });
+
+describe('home-selector request ownership', function describeRequestOwnership() {
+  it('discards late status success and failure from a previous selection', async function ignoresPreviousHome() {
+    const pending: Array<(response: { ok: boolean; json: () => Promise<unknown> }) => void> = [];
+    vi.stubGlobal('fetch', vi.fn(function fetchHome(url: string) {
+      if (url.includes('/api/homes')) return Promise.resolve({ ok: true, json: async function homes() { return homesPayload; } });
+      return new Promise(function defer(resolve) { pending.push(resolve); });
+    }));
+    app.setHomeSelection({ home: 'project', projectRoot: '/old' });
+    const el = mount();
+    app.setHomeSelection({ home: 'project', projectRoot: '/new' });
+    flushEffects();
+    pending[1]?.({ ok: true, json: async function newStatus() { return projectStatus('/new', 'new'); } });
+    await settle();
+    expect(el.querySelector('.home-label')?.textContent).toBe('new');
+    pending[0]?.({ ok: true, json: async function oldStatus() { return projectStatus('/old', 'old'); } });
+    await settle();
+    expect(el.querySelector('.home-label')?.textContent).toBe('new');
+    app.setHomeSelection({ home: 'project', projectRoot: '/failed-old' });
+    flushEffects();
+    expect(el.querySelector('.home-label')?.textContent).not.toBe('new');
+    app.setHomeSelection({ home: 'project', projectRoot: '/latest' });
+    flushEffects();
+    pending[3]?.({ ok: true, json: async function latestStatus() { return projectStatus('/latest', 'latest'); } });
+    await settle();
+    pending[2]?.({ ok: false, json: async function failedStatus() { return {}; } });
+    await settle();
+    expect(el.querySelector('.home-label')?.textContent).toBe('latest');
+  });
+});
+
+describe('home-selector manifest cleanup', function describeManifestCleanup() {
+  it('does not refresh after a pending forget finishes on a disposed component', async function cancelsDisposedForget() {
+    let completeDelete: ((response: { ok: boolean }) => void) | undefined;
+    homesPayload = { homes: [globalEntry(), projectEntry('/old', 'old', 'b')] };
+    const fetcher = vi.fn(function fetchHomes(url: string, options?: { method?: string }) {
+      if (options?.method === 'DELETE') return new Promise<{ ok: boolean }>(function pendingDelete(resolve) { completeDelete = resolve; });
+      return Promise.resolve({ ok: true, json: async function payload() { return url.includes('/api/homes') ? homesPayload : globalStatus; } });
+    });
+    vi.stubGlobal('fetch', fetcher);
+    const element = mount();
+    await settle();
+    (element.querySelector('.home-badge') as HTMLElement).click();
+    flushEffects();
+    (element.querySelector('.home-forget') as HTMLElement).click();
+    const before = fetcher.mock.calls.length;
+    element.remove();
+    completeDelete?.({ ok: true });
+    await settle();
+    expect(fetcher).toHaveBeenCalledTimes(before);
+  });
+});

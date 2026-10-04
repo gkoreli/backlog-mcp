@@ -16,7 +16,7 @@
  * The project the URL currently carries is always included even if the
  * manifest fetch has not landed yet.
  */
-import { signal, computed, component, html, effect, inject, each, when } from '@nisli/core';
+import { signal, computed, component, html, effect, onCleanup, inject, each, when } from '@nisli/core';
 import { AppState } from '../services/app-state.js';
 import {
   buildApiUrl,
@@ -31,17 +31,29 @@ export const HomeSelector = component('home-selector', () => {
   const provenance = signal<Partial<HomeProvenance> | undefined>(undefined);
   const recentHomes = signal<RecentHome[]>([]);
   const open = signal(false);
+  let statusGeneration = 0;
+  let homesGeneration = 0;
+  let disposed = false;
+  onCleanup(function invalidateRequests() {
+    disposed = true;
+    statusGeneration++;
+    homesGeneration++;
+  });
 
   // Recent-homes manifest (ADR 0128): the switcher's project entries. Fetched
   // on mount and whenever the active home changes (a fresh switch may have
   // just registered a new project). Failure leaves the list empty — the URL's
   // own project (below) still renders, so the chrome never regresses.
-  effect(() => {
+  async function refreshRecentHomes(): Promise<void> {
+    const generation = ++homesGeneration;
+    const homes = await fetchRecentHomes();
+    if (!disposed && generation === homesGeneration) recentHomes.value = homes;
+  }
+
+  effect(function refreshSelectedHomes() {
     // Re-run on home switches so a newly-declared project appears promptly.
     void app.requestHomeSelection.value;
-    void (async () => {
-      recentHomes.value = await fetchRecentHomes();
-    })();
+    void refreshRecentHomes();
   });
 
   // Server truth, refreshed per home switch. Failure leaves the badge on the
@@ -49,13 +61,16 @@ export const HomeSelector = component('home-selector', () => {
   // (label, display_path) are server-computed; this component renders them.
   effect(() => {
     const selection = app.requestHomeSelection.value;
-    void (async () => {
+    const generation = ++statusGeneration;
+    provenance.value = undefined;
+    void (async function loadProvenance() {
       try {
         const res = await fetch(buildApiUrl('/api/status', {}, selection));
+        if (!res.ok) throw new Error('Home status unavailable');
         const status = await res.json() as Partial<HomeProvenance>;
-        provenance.value = status.home ? status : undefined;
+        if (!disposed && generation === statusGeneration) provenance.value = status.home ? status : undefined;
       } catch {
-        provenance.value = undefined;
+        if (!disposed && generation === statusGeneration) provenance.value = undefined;
       }
     })();
   });
@@ -140,7 +155,7 @@ export const HomeSelector = component('home-selector', () => {
     // Don't let the click bubble to the row's pick handler.
     e.stopPropagation();
     await forgetRecentHome(root);
-    recentHomes.value = await fetchRecentHomes();
+    if (!disposed) await refreshRecentHomes();
   };
   const onKeydown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') closeMenu();

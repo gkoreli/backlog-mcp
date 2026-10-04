@@ -1,7 +1,9 @@
-import { create, insert, insertMultiple, remove, search, save, load, type Results } from '@orama/orama';
+import { matchesSearchSelection } from './search-selection.js';
+import { isDeepStrictEqual } from 'node:util';
+import { create, getByID, insert, insertMultiple, remove, search, save, load, type Results } from '@orama/orama';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { matchesDeclaredStatus, statusToken, type AnyEntity } from '@backlog-mcp/shared';
+import { statusToken, type AnyEntity } from '@backlog-mcp/shared';
 import type {
   IndexableEntity,
   Resource,
@@ -558,7 +560,8 @@ export class OramaSearchService implements SearchService {
     const canonicalId = canonicalizeIdQuery(query, this.idIntentSpecs);
     if (canonicalId) {
       const task = this.taskCache.get(canonicalId);
-      if (task) return [{ id: canonicalId, score: 1.0, task }];
+      if (task) return matchesSearchSelection(task, task.type, options?.filters)
+        ? [{ id: canonicalId, score: 1.0, task }] : [];
       // Cache miss → fall through to fulltext as a fuzzy safety net.
     }
 
@@ -607,7 +610,7 @@ export class OramaSearchService implements SearchService {
 
     if (intent.type === 'id_lookup' && intent.id) {
       const hit = this._buildIdLookupHit(intent.id, query);
-      if (hit) return [hit];
+      if (hit) return matchesSearchSelection(hit.item, hit.type, options?.filters, options?.docTypes) ? [hit] : [];
       // Fall through to fulltext if the canonical ID isn't in the cache —
       // the user may have typed a near-miss and the existing fusion
       // pipeline (with tolerance) is the correct fallback.
@@ -740,9 +743,7 @@ export class OramaSearchService implements SearchService {
     limit: number,
     _sortMode: 'relevant' | 'recent',
   ): Array<{ id: string; score: number; type: SearchableType; item: AnyEntity | Resource; snippet: SearchSnippet }> {
-    const statusFilter = filters?.status;
     const typeFilter = filters?.type;
-    const epicFilter = filters?.parent_id;
 
     const wantsResources = !docTypes || docTypes.includes('resource');
     const wantsEntities = !docTypes || docTypes.some(t => t !== 'resource');
@@ -753,11 +754,7 @@ export class OramaSearchService implements SearchService {
       for (const task of this.taskCache.values()) {
         // ADR-0092.3: memories excluded unless explicitly requested
         if ((task.type as string) === 'memory' && typeFilter !== 'memory' && !docTypes?.includes('memory')) continue;
-        // Same leading-token status comparison as wakeup/list (BUG-0003).
-        if (statusFilter && !statusFilter.some(declared => matchesDeclaredStatus(task.status, declared))) continue;
-        if (typeFilter && (task.type || 'task') !== typeFilter) continue;
-        if (docTypes && !docTypes.includes(((task.type || 'task') as SearchableType))) continue;
-        if (epicFilter && task.parent_id !== epicFilter) continue;
+        if (!matchesSearchSelection(task, task.type, filters, docTypes)) continue;
         out.push({
           id: task.id,
           score: 1.0,
@@ -771,9 +768,9 @@ export class OramaSearchService implements SearchService {
     // Resources have no substrate type or parent to filter, but they may
     // declare a frontmatter status (BUG-0003) — a status filter keeps the
     // resources whose declared status token matches, fail-closed otherwise.
-    if (wantsResources && !typeFilter && !epicFilter) {
+    if (wantsResources) {
       for (const resource of this.resourceCache.values()) {
-        if (statusFilter && !statusFilter.some(declared => matchesDeclaredStatus(resource.status, declared))) continue;
+        if (!matchesSearchSelection(resource, 'resource', filters, docTypes)) continue;
         out.push({
           id: resource.id,
           score: 1.0,
@@ -879,8 +876,8 @@ export class OramaSearchService implements SearchService {
         if (
           cached
           && (
-            cached.updated_at !== entity.updated_at
-            || JSON.stringify(cachedFields) !== JSON.stringify(currentFields)
+            !isDeepStrictEqual(cached, entity)
+            || !isDeepStrictEqual(cachedFields, currentFields)
           )
         ) {
           await this.updateDocument({
@@ -1010,13 +1007,28 @@ export class OramaSearchService implements SearchService {
     const entity = document.entity;
     const prev = this.taskCache.get(entity.id);
     const prevFields = this.entityFieldCache.get(entity.id);
+    const previousIndexed = getByID(this.db as OramaInstanceWithEmbeddings, entity.id);
+    if (prev !== undefined && isDeepStrictEqual(
+      this.taskToDoc({ entity: prev, fields: prevFields ?? [] }),
+      this.taskToDoc(document),
+    )) {
+      // Payload-only edits must be visible, but have no index/embedding work.
+      this.taskCache.set(entity.id, entity);
+      this.entityFieldCache.set(entity.id, document.fields);
+      this.scheduleSave();
+      return;
+    }
+    const unchangedEmbeddingText = prev !== undefined
+      && this.getTextForEmbedding({ entity: prev, fields: prevFields ?? [] }) === this.getTextForEmbedding(document);
     await this.removeDocument(entity.id);
     this.taskCache.set(entity.id, entity);
     this.entityFieldCache.set(entity.id, document.fields);
 
     try {
       if (this.hasEmbeddingsInIndex && (await this.ensureEmbeddings())) {
-        const doc = await this.taskToDocWithEmbeddings(document);
+        const doc = unchangedEmbeddingText && previousIndexed?.embeddings !== undefined
+          ? { ...this.taskToDoc(document), embeddings: previousIndexed.embeddings }
+          : await this.taskToDocWithEmbeddings(document);
         await insert(this.db as OramaInstanceWithEmbeddings, doc);
       } else {
         await insert(this.db as OramaInstance, this.taskToDoc(document));
@@ -1029,7 +1041,7 @@ export class OramaSearchService implements SearchService {
         };
         this.taskCache.set(entity.id, prev);
         this.entityFieldCache.set(entity.id, restored.fields);
-        try { await insert(this.db as OramaInstance, this.taskToDoc(restored)); } catch { /* index unrecoverable for this doc */ }
+        try { await insert(this.db as OramaInstance, previousIndexed ?? this.taskToDoc(restored)); } catch { /* index unrecoverable for this doc */ }
       } else {
         this.taskCache.delete(entity.id);
         this.entityFieldCache.delete(entity.id);

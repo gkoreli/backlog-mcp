@@ -14,7 +14,7 @@
  * from @orama/highlight. See ADR 0011 Gap 1 / ADR 0012 / ADR 0071.
  */
 import { signal, computed, effect, component, html, when, each, inject, query, onMount, onCleanup, untrack } from '@nisli/core';
-import { Highlight } from '@orama/highlight';
+import { escapeHtml, highlightSearchText, presentSearchSnippet, type SearchEntity, type SearchResource as Resource, type UnifiedSearchResult } from '../search/search-result.js';
 import {
   buildApiUrl,
   getProvenanceSelection,
@@ -30,24 +30,9 @@ import { TaskBadge } from './task-badge.js';
 
 // ── Types ────────────────────────────────────────────────────────────
 
-const highlighter = new Highlight({ CSSClass: 'spotlight-match' });
-
-interface Resource extends Partial<HomeProvenance> {
-  id: string;
-  path: string;
-  title: string;
-  content: string;
-}
-
-interface UnifiedSearchResult extends Partial<HomeProvenance> {
-  item: Task | Resource;
-  score: number;
-  type: 'task' | 'epic' | 'resource';
-}
-
 interface SearchResult extends Partial<HomeProvenance> {
-  item: Task | Resource;
-  type: 'task' | 'epic' | 'resource';
+  item: SearchEntity | Resource;
+  type: string;
   snippet: { field: string; html: string; matchedFields: string[] };
   score: number;
 }
@@ -56,73 +41,8 @@ type SortMode = 'relevant' | 'recent';
 type TypeFilter = 'all' | 'task' | 'epic' | 'resource';
 type DefaultTab = 'searches' | 'activity';
 
-function isResource(item: Task | Resource): item is Resource {
+function isResource(item: SearchEntity | Resource): item is Resource {
   return 'path' in item && 'content' in item;
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function generateTaskSnippet(task: Task, q: string): SearchResult['snippet'] {
-  const fields: { name: string; value: string }[] = [
-    { name: 'title', value: task.title },
-    { name: 'content', value: task.content || '' },
-    { name: 'evidence', value: (task.evidence || []).join(' ') },
-    { name: 'blocked_reason', value: (task.blocked_reason || []).join(' ') },
-    { name: 'references', value: (task.references || []).map(r => `${r.title || ''} ${r.url}`).join(' ') },
-  ];
-
-  const matchedFields: string[] = [];
-  let firstMatchField = '';
-  let firstMatchHtml = '';
-
-  for (const { name, value } of fields) {
-    if (!value) continue;
-    const result = highlighter.highlight(value, q);
-    if (result.positions.length > 0) {
-      matchedFields.push(name);
-      if (!firstMatchField) {
-        firstMatchField = name;
-        firstMatchHtml = result.trim(100);
-      }
-    }
-  }
-
-  if (!firstMatchField) {
-    return { field: 'title', html: escapeHtml(task.title), matchedFields: [] };
-  }
-  return { field: firstMatchField, html: firstMatchHtml, matchedFields };
-}
-
-function generateResourceSnippet(resource: Resource, q: string): SearchResult['snippet'] {
-  const fields: { name: string; value: string }[] = [
-    { name: 'title', value: resource.title },
-    { name: 'content', value: resource.content },
-  ];
-
-  const matchedFields: string[] = [];
-  let firstMatchField = '';
-  let firstMatchHtml = '';
-
-  for (const { name, value } of fields) {
-    if (!value) continue;
-    const result = highlighter.highlight(value, q);
-    if (result.positions.length > 0) {
-      matchedFields.push(name);
-      if (!firstMatchField) {
-        firstMatchField = name;
-        firstMatchHtml = result.trim(100);
-      }
-    }
-  }
-
-  if (!firstMatchField) {
-    return { field: 'title', html: escapeHtml(resource.title), matchedFields: [] };
-  }
-  return { field: firstMatchField, html: firstMatchHtml, matchedFields };
 }
 
 function formatMatchedFields(fields: string[]): string {
@@ -233,9 +153,7 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
       if (generation !== searchGeneration) return;
 
       results.value = apiResults.map(r => {
-        const snippet = isResource(r.item)
-          ? generateResourceSnippet(r.item, q)
-          : generateTaskSnippet(r.item, q);
+        const snippet = presentSearchSnippet(r, q);
         return {
           item: r.item,
           type: r.type,
@@ -331,7 +249,7 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
 
   function selectItem(
     id: string,
-    type: 'task' | 'epic' | 'resource',
+    type: string,
     selection: HomeSelection | undefined,
   ) {
     app.setHomeSelection(selection);
@@ -358,16 +276,16 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
       });
       selectItem(resource.id, 'resource', selection);
     } else {
-      const task = r.item as Task;
+      const task = r.item as SearchEntity;
       const type = task.type || (task.id.startsWith('EPIC-') ? 'epic' : 'task');
       const selection = getProvenanceSelection(r) ?? app.homeSelection.value;
       recentSearchesService.add({
         id: task.id,
         title: task.title,
-        type: type as 'task' | 'epic',
+        type: type,
         selection,
       });
-      selectItem(task.id, type as 'task' | 'epic', selection);
+      selectItem(task.id, type, selection);
     }
   }
 
@@ -389,11 +307,11 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
           getProvenanceSelection(resource) ?? app.homeSelection.value,
         );
       } else {
-        const task = result.item as Task;
+        const task = result.item as SearchEntity;
         const type = task.type || (task.id.startsWith('EPIC-') ? 'epic' : 'task');
         selectItem(
           task.id,
-          type as 'task' | 'epic',
+          type,
           getProvenanceSelection(task) ?? app.homeSelection.value,
         );
       }
@@ -499,7 +417,7 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
   // Search results list (rendered when hasQuery)
   const searchResultsList = each(
     results,
-    (r) => isResource(r.item) ? (r.item as Resource).id : (r.item as Task).id,
+    (r) => isResource(r.item) ? (r.item as Resource).id : (r.item as SearchEntity).id,
     (result, index) => {
       const r = computed(() => result.value);
       const isSelected = computed(() => index.value === selectedIndex.value);
@@ -510,8 +428,8 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
       const highlightedTitle = computed(() => {
         const rv = r.value;
         const q = queryText.value;
-        if (!q || q.length < 2) return isResource(rv.item) ? (rv.item as Resource).title : (rv.item as Task).title;
-        return highlighter.highlight(isResource(rv.item) ? (rv.item as Resource).title : (rv.item as Task).title, q).HTML;
+        if (!q || q.length < 2) return escapeHtml(rv.item.title);
+        return highlightSearchText(rv.item.title, q);
       });
       const snippetHtml = computed(() => r.value.snippet.html);
 
@@ -539,7 +457,7 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
           `;
         }
         // Task or Epic
-        const task = rv.item as Task;
+        const task = rv.item as SearchEntity;
         const type = task.type || (task.id.startsWith('EPIC-') ? 'epic' : 'task');
         const status = task.status || 'open';
         const matchInfo = formatMatchedFields(rv.snippet.matchedFields);
@@ -608,7 +526,7 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
   // Recent activity tab items
   const recentActivityItems = each(
     recentActivity,
-    (r) => (r.item as Task).id,
+    (r) => (r.item as SearchEntity).id,
     (result, index) => {
       const isSelected = computed(() => index.value === selectedIndex.value);
       const itemClass = computed(() => `spotlight-tab-item ${isSelected.value ? 'selected' : ''}`);
@@ -624,7 +542,7 @@ export const SpotlightSearch = component('spotlight-search', (_props, host) => {
         const type = t.type || (t.id.startsWith('EPIC-') ? 'epic' : 'task');
         selectItem(
           t.id,
-          type as 'task' | 'epic',
+          type,
           getProvenanceSelection(t) ?? app.homeSelection.value,
         );
       };

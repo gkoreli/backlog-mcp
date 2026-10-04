@@ -101,7 +101,7 @@ export function buildWhereClause(filters?: SearchOptions['filters'], docTypes?: 
         .filter((token): token is string => token !== undefined),
     };
   }
-  const selectedTypes = docTypes?.length ? docTypes : filters?.type ? [filters.type] : undefined;
+  const selectedTypes = docTypes !== undefined ? docTypes : filters?.type ? [filters.type] : undefined;
   if (selectedTypes !== undefined) {
     where.type = { in: selectedTypes.filter(function isEligible(type) {
       return !filters?.excludeTypes?.includes(type);

@@ -69,3 +69,16 @@ These are invariant failures, not reasons for a new domain framework.
   25, display size 20, oldest-ID forget count 1 and remaining live size 24.
   Search was unused and mocked in that manual check; unit query parity used the
   real Orama implementation over memfs. No user corpus or installed package changed.
+- Stage B refreshes complete search payloads, filter metadata and persisted caches
+  independently of embedding text. Metadata updates reuse the stored vector;
+  payload-only changes skip index reconstruction. Explicit selection also applies
+  to exact-ID/filter-only fast paths. Spotlight consumes server snippets and open
+  type keys; escaped highlighter positions protect both titles and snippets.
+  HomeSelector's status/manifest/forget refreshes share generation/disposal guards.
+- Stage B verification: workspace build/typecheck passed; server 1,521 / 2 existing
+  skips, memory 49 and viewer 163 tests passed, including native edits with unchanged
+  timestamps, mocked embeddings, cache reload, actual Spotlight rendering and
+  reversed home responses/disposed forgetting. A built-module temporary-cache
+  check passed metadata filtering, exact-ID payload freshness and cache reload.
+  Stage A's older-task fixture now assigns timestamps after factory construction
+  and explicitly proves it falls outside the raw default page before eligibility.

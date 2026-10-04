@@ -9,7 +9,7 @@ const MAX_ITEMS = 15;
 export interface RecentSearchItem {
   id: string;
   title: string;
-  type: 'task' | 'epic' | 'resource';
+  type: string;
   home_id: string;
   selection?: HomeSelection;
   timestamp: number;
@@ -81,7 +81,7 @@ function isRecentSearchItem(value: unknown): value is RecentSearchItem {
   return selectionValid
     && typeof item.id === 'string'
     && typeof item.title === 'string'
-    && (item.type === 'task' || item.type === 'epic' || item.type === 'resource')
+    && (typeof item.type === 'string' && item.type.length > 0)
     && typeof item.home_id === 'string'
     && typeof item.timestamp === 'number';
 }

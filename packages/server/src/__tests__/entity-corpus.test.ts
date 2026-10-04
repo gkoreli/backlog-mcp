@@ -12,13 +12,11 @@ import { readEntityCorpus, CorpusReadUnavailableError } from '../core/entity-cor
 function memoryCorpus(name: string) {
   const runtime = localHome(name);
   for (let index = 1; index <= 25; index++) {
-    runtime.storage.add(buildEntity({
+    runtime.storage.add({ ...buildEntity({
       id: `MEMO-${String(index).padStart(4, '0')}`, type: 'memory',
       title: `Memory ${index}`, content: 'Corpus needle', layer: 'semantic',
-      created_at: `2026-01-${String(index).padStart(2, '0')}T00:00:00.000Z`,
-      updated_at: `2026-01-${String(index).padStart(2, '0')}T00:00:00.000Z`,
       ...(index <= 2 ? { state_key: 'database.primary' } : {}),
-    }));
+    }), created_at: `2026-01-${String(index).padStart(2, '0')}T00:00:00.000Z`, updated_at: `2026-01-${String(index).padStart(2, '0')}T00:00:00.000Z` });
   }
   return { ...runtime, store: new BacklogMemoryStore(function getService() { return runtime.service; }) };
 }
@@ -51,7 +49,8 @@ describe('complete entity corpus', function describeCompleteCorpus() {
 
   it('selects visible work before limiting both browse and query lists', async function listsEligibleWork() {
     const { storage, service } = memoryCorpus('eligible-page');
-    storage.add(buildEntity({ id: 'TASK-0001', title: 'Corpus needle work', updated_at: '2025-01-01T00:00:00.000Z' }));
+    storage.add({ ...buildEntity({ id: 'TASK-0001', title: 'Corpus needle work' }), updated_at: '2025-01-01T00:00:00.000Z' });
+    expect((await service.list()).every(function isMemory(entity) { return entity.type === 'memory'; })).toBe(true);
     expect((await listItems(service)).tasks.map(function id(item) { return item.id; })).toEqual(['TASK-0001']);
     expect((await listItems(service, { query: 'corpus', limit: 1 })).tasks[0]?.id).toBe('TASK-0001');
     expect((await listItems(service, { type: 'memory' })).tasks).toHaveLength(20);

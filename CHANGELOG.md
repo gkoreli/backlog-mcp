@@ -21,6 +21,12 @@ begins at 0.57.0 — earlier history lives in git.
   entry points were removed.
 
 ### Fixed
+- **Native metadata edits refresh search filters and result payloads.**
+  Changes are detected even when searchable text and timestamps stay unchanged;
+  metadata-only updates reuse embeddings. Explicit filters also apply to exact-ID
+  navigation. Spotlight shows server snippets for custom substrate fields with
+  escaped highlighting, and late home-status responses cannot replace the
+  currently selected home's badge.
 - **Memory correction, forgetting and analysis read the full local corpus.**
   Older memories and descendants beyond the default 20-result display page are
   included. Generic work listing excludes memories before pagination, so newer
