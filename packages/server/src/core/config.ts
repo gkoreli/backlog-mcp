@@ -1,6 +1,5 @@
 /** Per-repository caller defaults discovered from `.backlog/`. */
 
-import { existsSync, readFileSync } from 'node:fs';
 import {
   dirname,
   join,
@@ -31,16 +30,19 @@ export const RepoConfigSchema = z.looseObject({
 
 export type RepoConfig = z.infer<typeof RepoConfigSchema>;
 
-/** Injectable filesystem surface — defaults to real fs, overridable in tests. */
+/** Injectable filesystem surface — required by the domain policy. */
+export interface ConfigReadIssue {
+  path: string;
+  kind: 'invalid' | 'unreadable';
+  message: string;
+  cause?: unknown;
+}
+
 export interface ConfigFsDeps {
+  reportIssue?: (issue: ConfigReadIssue) => void;
   exists: (path: string) => boolean;
   read: (path: string) => string;
 }
-
-const realFs: ConfigFsDeps = {
-  exists: existsSync,
-  read: (path) => readFileSync(path, 'utf-8'),
-};
 
 /**
  * Find the nearest `.backlog/` without crossing the nearest VCS boundary
@@ -48,7 +50,7 @@ const realFs: ConfigFsDeps = {
  */
 export function findConfigDir(
   startDir: string,
-  deps: ConfigFsDeps = realFs,
+  deps: ConfigFsDeps,
   stopDir?: string,
 ): string | undefined {
   let dir = resolve(startDir);
@@ -72,9 +74,9 @@ function tryLoad(path: string, deps: ConfigFsDeps): RepoConfig | undefined {
   try {
     const parsed = RepoConfigSchema.safeParse(JSON.parse(deps.read(path)));
     if (parsed.success) return parsed.data;
-    console.error(`[config] ignoring invalid ${path}: ${parsed.error.message}`);
+    deps.reportIssue?.({ path, kind: 'invalid', message: parsed.error.message });
   } catch (err) {
-    console.error(`[config] ignoring unreadable ${path}:`, err);
+    deps.reportIssue?.({ path, kind: 'unreadable', message: String(err), cause: err });
   }
   return undefined;
 }
@@ -85,7 +87,7 @@ function tryLoad(path: string, deps: ConfigFsDeps): RepoConfig | undefined {
  */
 export function loadRepoConfig(
   cwd: string,
-  deps: ConfigFsDeps = realFs,
+  deps: ConfigFsDeps,
   stopDir?: string,
 ): RepoConfig {
   const configDir = findConfigDir(cwd, deps, stopDir);
@@ -103,7 +105,7 @@ export function loadRepoConfig(
  */
 export function loadHomeConfig(
   home: BacklogHome,
-  deps: ConfigFsDeps = realFs,
+  deps: ConfigFsDeps,
 ): RepoConfig {
   const base = tryLoad(join(home.controlDir, CONFIG_FILE), deps) ?? {};
   if (home.kind === 'global') return base;
@@ -114,13 +116,13 @@ export function loadHomeConfig(
 export interface ResolveContextParams {
   /** Caller-supplied context (CLI flag / MCP param). Wins over everything. */
   explicit?: string;
-  /** Working directory to discover config from. Defaults to process.cwd(). */
-  cwd?: string;
-  /** Environment map. Defaults to process.env. */
-  env?: Record<string, string | undefined>;
+  /** Working directory to discover config from. Supplied by the caller. */
+  cwd: string;
+  /** Environment map. Supplied by the caller. */
+  env: Record<string, string | undefined>;
   /** Inclusive upper discovery boundary. */
   stopDir?: string;
-  deps?: ConfigFsDeps;
+  deps: ConfigFsDeps;
   /** Resolved home when its config file should be read directly. */
   home?: BacklogHome;
   /**
@@ -143,7 +145,7 @@ export interface ResolveContextParams {
  * where no single home's or repo's ambient scope may speak for all homes.
  */
 export function resolveContext(
-  params: ResolveContextParams = {},
+  params: ResolveContextParams,
 ): string | undefined {
   const clean = (v: string | undefined): string | undefined => {
     const t = v?.trim();
@@ -153,7 +155,7 @@ export function resolveContext(
   const explicit = clean(params.explicit);
   if (explicit) return explicit;
 
-  const env = params.env ?? process.env;
+  const env = params.env;
   const fromEnv = clean(env[CONTEXT_ENV_VAR]);
   if (fromEnv) return fromEnv;
 
@@ -162,6 +164,6 @@ export function resolveContext(
   if (params.home !== undefined) {
     return clean(loadHomeConfig(params.home, params.deps).context);
   }
-  const cwd = params.cwd ?? process.cwd();
+  const cwd = params.cwd;
   return clean(loadRepoConfig(cwd, params.deps, params.stopDir).context);
 }

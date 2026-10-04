@@ -9,7 +9,7 @@ import {
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it, beforeAll } from 'vitest';
-import { discoverDocuments } from '../core/document-discovery.js';
+import { discoverDocuments } from '../storage/local/document-discovery.js';
 
 const DOCUMENTS_DIR = join(tmpdir(), 'aime', 'docs');
 const OUTSIDE_FILE = join(tmpdir(), 'outside.md');

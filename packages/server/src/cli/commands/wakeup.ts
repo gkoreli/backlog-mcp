@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { wakeup } from '../../core/wakeup.js';
 import { enforceWakeupCeiling } from '../../core/wakeup-wire.js';
-import { resolveContext } from '../../core/config.js';
+import { resolveContext } from '../../storage/local/config.js';
 import type { WakeupParams, WakeupResult } from '../../core/types.js';
 import type { CrossHomeWakeupResult } from '../../core/home-read-coordinator.types.js';
 import { ambientAgentIdentity } from '../../storage/local/agent-identity.js';

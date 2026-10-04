@@ -9,7 +9,7 @@ import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { MemoryComposer } from '@backlog-mcp/memory';
 import type { SubstrateType } from '@backlog-mcp/shared';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
-import { assertDocsNativeMigrationComplete } from '../../core/migrate-docs-native.js';
+import { assertDocsNativeMigrationComplete } from './migrate-docs-native.js';
 import {
   type ProjectSubstrateRegistry,
   type SubstrateDefinitionDiagnostic,

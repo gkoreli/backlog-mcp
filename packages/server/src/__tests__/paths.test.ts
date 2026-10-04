@@ -20,6 +20,14 @@ describe('PathResolver tilde & path resolution', () => {
     vi.resetModules();
   });
 
+  it('canonicalizes the nearest existing ancestor through explicit read capabilities', function injectedCanonicalization() {
+    const exists = vi.fn(function exists(path: string) { return path === '/logical/root'; });
+    const canonicalize = vi.fn(function canonicalize() { return '/physical/root'; });
+    expect(paths.canonicalizeThroughExistingAncestor('/logical/root/new/docs', { exists, canonicalize })).toBe('/physical/root/new/docs');
+    expect(canonicalize).toHaveBeenCalledTimes(1);
+    expect(canonicalize).toHaveBeenCalledWith('/logical/root');
+  });
+
   describe('expandTilde', () => {
     it('expands a bare ~ to the home directory', () => {
       expect(paths.expandTilde('~')).toBe(homedir());

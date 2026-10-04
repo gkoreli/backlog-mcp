@@ -1,10 +1,3 @@
-import {
-  lstatSync,
-  readFileSync,
-  readdirSync,
-  realpathSync,
-  statSync,
-} from 'node:fs';
 import { extname, isAbsolute, posix, relative, resolve, sep } from 'node:path';
 import matter from 'gray-matter';
 import { parseDocumentIdentity } from './document-identity.js';
@@ -36,15 +29,6 @@ const FORMAT_BY_EXTENSION: Readonly<Record<string, DocumentFormat>> = {
   '.yml': 'yaml',
 };
 
-const DEFAULT_DEPENDENCIES: DocumentDiscoveryDependencies = {
-  readDirectory: readDirectory,
-  readFile: readTextFile,
-  lstat: lstatSync,
-  stat: statSync,
-  realpath: realpathSync,
-  getGitFirstAddDate: noGitFirstAddDate,
-};
-
 /**
  * Recursively discovers supported documents beneath one bounded documents directory.
  *
@@ -52,7 +36,7 @@ const DEFAULT_DEPENDENCIES: DocumentDiscoveryDependencies = {
  * from ordinary resources, and reports individual failures without aborting the scan.
  */
 export function discoverDocuments(params: DiscoverDocumentsParams): DocumentDiscoveryResult {
-  const dependencies = { ...DEFAULT_DEPENDENCIES, ...params.dependencies };
+  const dependencies = params.dependencies;
   const diagnostics: DocumentDiscoveryDiagnostic[] = [];
   const documentsDir = resolve(params.documentsDir);
   const canonicalDocumentsDir = readCanonicalDocumentsDir(
@@ -520,16 +504,4 @@ function createUnreadablePathDiagnostic(
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function readDirectory(absolutePath: string): string[] {
-  return readdirSync(absolutePath, { encoding: 'utf8' });
-}
-
-function readTextFile(absolutePath: string): string {
-  return readFileSync(absolutePath, 'utf8');
-}
-
-function noGitFirstAddDate(): undefined {
-  return undefined;
 }

@@ -172,3 +172,44 @@ These are invariant failures, not reasons for a new domain framework.
   with Orama BM25 and an injected gated watcher: incompatible configuration and
   draining admission were rejected, then one replacement started after retirement.
   Both subscriptions stopped. This was not an OS-watcher or HTTP request test.
+
+- Stage E remaining module plan: local config/discovery wrappers own real I/O and
+  ambient defaults; domain functions require injected read ports. Migration's
+  existing policy remains in a read-only planner with an explicit destination
+  snapshot. A local executor consumes its planned actions/digests/target bytes and
+  retains preflight, containment, exclusive creation, source rechecks, quarantine
+  and rollback order. Config normalization and path canonicalization have shared
+  owners. Adapter entrypoints retain their optional overrides and default behavior.
+  Verify existing failure fixtures plus a read-only planner fixture and disposable
+  real-process dry-run/apply/fail-closed cases before removing core-I/O exceptions.
+
+- Stage E I/O boundaries now require complete injected reads in domain config and
+  discovery. Local wrappers preserve ambient defaults and overrides; config errors
+  can be captured as structured diagnostics, and the local sink preserves console
+  reporting. Migration planning accepts only a read port plus explicit destination
+  documents. Local publication/deletion/rollback is separate from policy; shared
+  normalization and source digests prevent drift between planning and execution.
+  Canonicalization reuses PathResolver with explicit read capabilities.
+- Migration execution consumes trusted planner-produced data, not an externally
+  submitted serialized plan. TypeScript readonly does not freeze it. Source bytes,
+  target occupation, source symlink replacements, target escapes and captured root
+  changes are checked before destructive steps. This adds fail-closed checks at
+  the newly explicit boundary; existing quarantine and rollback behavior remains.
+  Six memfs fixtures explicitly separate planning from execution. A compiled-module
+  actual-process check in disposable homes preserved dry-run sources, migrated a
+  valid task, preserved invalid-source bytes as quarantine, retained config fallback
+  and rejected discovery escapes plus changed bytes/occupied targets/source and
+  destination symlink replacements. No user home or installed CLI changed.
+- Final verification: workspace build/typecheck passed; server 1,562 tests passed
+  / 2 existing skips, memory 49 and viewer 163 passed (1,774 total). The final
+  controlled intent test also proves compensation reports partial failure and
+  preserves an intervening edit rather than overwriting it. All four architecture
+  exception groups are empty: zero core-I/O or outward import violations remain
+  on the allowlist. Markdown links and whitespace checks pass.
+- Remaining limits are explicit: multi-document plans use guarded compensation,
+  not crash-atomic transactions; native editors do not participate in the home
+  lock; journal append is best-effort under ADR 0117; registry draining controls
+  graph admission rather than leasing all outstanding calls. The broad facade
+  remains for compatibility, and Hono/Orama are not comprehensively decomposed.
+  These are separate structural/lifecycle opportunities, not hidden substitutes
+  for the completed correctness fixes. D1 remains descoped without local parity.

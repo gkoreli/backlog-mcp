@@ -15,7 +15,7 @@ import {
 } from 'node:path';
 import { isPathWithin } from '../core/backlog-home.js';
 import { paths } from '../utils/paths.js';
-import { resolveContext } from '../core/config.js';
+import { resolveContext } from '../storage/local/config.js';
 import { REQUIREMENT_TYPE } from '../core/requirements/constraint-stub.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
 import type { AppRequestRuntime } from './app-request-runtime.types.js';

@@ -408,3 +408,54 @@
   were added, and these passing suites do not invalidate the counterexamples.
   No production code, version,
   changelog, installed package, publication or push is part of this change.
+
+## Implementation after maintainer authorization
+
+The assessment above is the historical baseline. The maintainer subsequently
+requested engineering; [ADR 0135](../adr/0135-complete-reads-and-managed-mutation-consistency.md)
+records the accepted decisions, staged changes and verification limits.
+
+- **F1:** complete async/sync corpus capabilities replace bounded invariant reads;
+  eligibility precedes display pagination. Local fixtures cover older holders and
+  siblings beyond 20; public display defaults remain bounded.
+- **F2/F3/F6:** exact-Markdown preimages guard managed read-modify-write under the
+  home lock. Core updates/body edits/intents, forgetting/GC and legacy usage writes
+  carry the guard; conflicts do not journal a rejected attempt. Commit receipts
+  acknowledge authoritative changes independently of projection/index/log/event
+  failure, and search repairs on its next query. Stamping and typed write errors
+  have named owners. Atomic file publication preserves bytes and permission bits.
+- **F4/F7:** a pure correction plan validates the complete locked holder set and
+  successor before execution. Guarded compensation preserves exact original bytes;
+  unrecoverable native changes return explicit partial-failure IDs. Memory validity
+  and entry minting share a lossless malformed-date policy and operation time.
+  Committed diagnostics pass through store/composer/remember. Intent compensation
+  likewise preserves intervening edits and reports partial failure.
+- **F5/F9:** reconciliation refreshes filter fields and full cached payloads without
+  requiring timestamp or searchable-text changes; embeddings are reused when text
+  is unchanged. Spotlight renders server snippets with escaped highlights and open
+  substrate keys. HomeSelector ignores stale responses and disposed refreshes.
+- **F8/F10/F11:** real mutation and memory consumers have narrow ports; the local
+  service depends on search/catalog capabilities and separate snapshot projection.
+  Writable local composition requires complete reads and managed mutation/correction
+  capabilities. CLI/MCP share context construction, preserving adapter actor/context
+  policy. Runtime replacement waits for successful retirement; stop failures can be
+  retried, and incompatible paths/family descriptors are rejected.
+- **Remaining core I/O:** config/discovery defaults moved to local wrappers.
+  Migration has a read-only domain planner, shared normalization/digests and a local
+  executor preserving quarantine, preflight, exclusive publication and rollback.
+  The explicit execution boundary rejects stale bytes, target occupation and
+  symlink/root replacements. PathResolver owns ancestor canonicalization; injected
+  capabilities preserve controllable reads. The architecture allowlist is empty.
+
+Workspace build/typecheck and unit tests passed: server 1,562 / 2 existing skips,
+memory 49, viewer 163, totaling 1,774 passing tests. Actual disposable-process checks
+covered corpus counts, conflicting writes, simultaneous corrections, permissions,
+shutdown admission and migration/discovery containment. ADR 0135 identifies which
+callbacks were mocked; these are not claims of complete CLI/browser/OS-watcher
+coverage or universal native-editor transactions.
+
+The broad compatibility facade and large Hono/Orama modules remain. Further route
+or engine decomposition is optional structural work, with no remaining correctness
+fix from these findings substituted by a type-only move. Multi-document recovery is
+compensating, journals remain best-effort, and graph admission is not an all-request
+lease. No version bump, installed-package replacement, push or publication occurred.

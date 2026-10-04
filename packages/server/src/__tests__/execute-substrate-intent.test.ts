@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from 'node:util';
+import { EntityWriteConflictError } from '../core/entity-mutation.contract.js';
 import type {
   AnyEntity,
   CompiledSubstrateIntent,
@@ -676,6 +678,31 @@ describe('executeSubstrateIntent', () => {
     expect(vi.mocked(service.save).mock.calls[1]?.[0].updated_at).not.toBe(NOW);
     expect(vi.mocked(service.save).mock.calls[2]?.[0]).toEqual(superseded);
     expect(vi.mocked(service.save).mock.calls[3]?.[0]).toEqual(replacement);
+    expect(entries).toEqual([]);
+  });
+
+  it('reports partial failure instead of compensating over an intervening edit', async function guardsIntentCompensation() {
+    const replacement = entity('ADR 0002', 'adr', { status: 'proposed', supersedes: [] });
+    const superseded = entity('ADR 0001', 'adr', { status: 'accepted' });
+    const { service, store } = serviceHarness([replacement, superseded]);
+    const { context, entries } = contextHarness();
+    const { validator } = validatorHarness();
+    service.saveCommitted = vi.fn(async function guardedSave(candidate, options) {
+      if (options?.expected !== undefined && !isDeepStrictEqual(store.get(candidate.id), options.expected.entity)) {
+        throw new EntityWriteConflictError(candidate.id);
+      }
+      if (candidate.id === superseded.id) {
+        const changed = store.get(replacement.id);
+        if (changed === undefined) throw new Error('Fixture absent');
+        store.set(replacement.id, { ...changed, title: 'Intervening native edit' });
+        throw new Error('Target failed before commit');
+      }
+      store.set(candidate.id, candidate);
+      return { value: candidate, preimage: { entity: candidate } };
+    });
+    await expect(executeSubstrateIntent({ intent: supersedeIntent(), input: { replacement_id: replacement.id, superseded_id: superseded.id }, service, validator, context })).rejects.toMatchObject({ code: 'partial_failure', ids: [replacement.id, superseded.id], compensationSucceeded: false });
+    expect(store.get(replacement.id)?.title).toBe('Intervening native edit');
+    expect(store.get(superseded.id)).toEqual(superseded);
     expect(entries).toEqual([]);
   });
 

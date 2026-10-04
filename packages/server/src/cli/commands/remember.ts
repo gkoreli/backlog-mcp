@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { remember } from '../../core/remember.js';
 import { findCollisionCandidatesForMemory } from '../../core/collision-candidates.js';
-import { resolveContext } from '../../core/config.js';
+import { resolveContext } from '../../storage/local/config.js';
 import type { HomeProvenance } from '../../core/home-provenance.types.js';
 import type { RememberResult } from '../../core/types.js';
 import { parseCommaList } from '../parse-fields.js';

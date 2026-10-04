@@ -1,3 +1,4 @@
+import { reportConfigIssue } from './config.js';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { paths } from '../../utils/paths.js';
@@ -28,7 +29,7 @@ function isDirectory(path: string): boolean {
 }
 
 const filesystem: BacklogHomeDeps = {
-  exists: existsSync, read,
+  exists: existsSync, read, reportConfigIssue,
   canonicalize: paths.canonicalizeThroughExistingAncestor.bind(paths),
   isDirectory, homeDir: homedir,
 };

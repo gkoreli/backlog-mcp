@@ -22,8 +22,20 @@ begins at 0.57.0 — earlier history lives in git.
 
 ### Fixed
 
-- **Runtime replacement waits for successful shutdown.** New requests cannot create a second graph while a home drains; failed watcher retirement can be retried. Cached roots reject incompatible document/control paths and changed worktree-family facts.
-- Memory corrections now validate complete successor/closure plans under the home lock, restore original Markdown on publication failure, and report partial recovery IDs. Managed Markdown publication preserves permissions and avoids truncating existing files on failed writes. Remember receipts retain committed-write diagnostics; memory expiry reads share one lossless malformed-date policy.
+- **Migration checks the boundary between planning and execution.** Replaced
+  source symlinks, destination escapes and changed canonical roots are rejected
+  before source deletion; stale bytes and occupied targets retain their existing
+  guards. Config/discovery defaults and migration execution now live at the local
+  boundary, with domain policy using explicit read capabilities.
+- **Runtime replacement waits for successful shutdown.** New requests cannot
+  create a second graph while a home drains; failed watcher retirement can be
+  retried. Cached roots reject incompatible document/control paths and changed
+  worktree-family facts.
+- **Memory corrections validate complete plans under the home lock.** Publication
+  failure restores original Markdown or reports partial recovery IDs. Managed
+  publication preserves permissions and avoids truncating existing files on failed
+  writes. Remember receipts retain committed-write diagnostics; expiry reads share
+  one lossless malformed-date policy.
 - **Managed edits detect conflicting document changes.** Local update, body edit
   and compiled intents compare exact Markdown revisions under the home write
   lock; conflicts instruct callers to reread. Committed writes remain successful

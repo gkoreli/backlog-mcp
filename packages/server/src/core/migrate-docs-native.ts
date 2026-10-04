@@ -1,15 +1,6 @@
-import {
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  realpathSync,
-  rmdirSync,
-  rmSync,
-  unlinkSync,
-  writeFileSync,
-} from 'node:fs';
+/** Read-only migration planning and preflight; all local reads are injected. */
+import { normalizedConfig, configSourceAbsolute } from './migrate-docs-native-config.js';
+import { migrationSourceDigest } from './migrate-docs-native-source.js';
 import {
   basename,
   dirname,
@@ -20,10 +11,8 @@ import {
   resolve,
   sep,
 } from 'node:path';
-import { createHash } from 'node:crypto';
 import matter from 'gray-matter';
 import { parseEntityId } from '@backlog-mcp/shared';
-import { discoverDocuments } from './document-discovery.js';
 import { parseDocumentIdentity } from './document-identity.js';
 import { claimSubstrateDocuments } from './substrates/index.js';
 import { isPathWithin } from './backlog-home.js';
@@ -34,44 +23,12 @@ import type {
   DocsNativeMigrationConfig,
   DocsNativeMigrationConfigSource,
   DocsNativeMigrationDirectoryEntry,
-  DocsNativeMigrationFileSystem,
+  DocsNativeMigrationReadPort,
   DocsNativeMigrationIssue,
   DocsNativeMigrationMove,
   DocsNativeMigrationPlan,
-  DocsNativeMigrationReport,
-  MigrateDocsNativeParams,
-  PlanDocsNativeMigrationParams,
+  DocsNativeMigrationPlanInput,
 } from './migrate-docs-native.types.js';
-
-const realFileSystem: DocsNativeMigrationFileSystem = {
-  exists: existsSync,
-  isSymbolicLink: function isSymbolicLink(path) {
-    return lstatSync(path).isSymbolicLink();
-  },
-  realpath: realpathSync,
-  readDirectory: function readDirectory(path) {
-    return readdirSync(path, { withFileTypes: true });
-  },
-  readFile: readFileSync,
-  makeDirectory: function makeDirectory(path) {
-    mkdirSync(path, { recursive: true });
-  },
-  writeFileExclusive: function writeFileExclusive(path, content) {
-    writeFileSync(path, content, { flag: 'wx' });
-  },
-  writeFile: writeFileSync,
-  unlink: unlinkSync,
-  removeTree: function removeTree(path) {
-    rmSync(path, { recursive: true, force: true });
-  },
-  removeEmptyDirectory: function removeEmptyDirectory(path) {
-    try {
-      rmdirSync(path);
-    } catch {
-      // Existing or concurrently-created siblings keep their directory.
-    }
-  },
-};
 
 interface CollectedLegacyFile {
   sourcePath: string;
@@ -88,7 +45,7 @@ interface PlannedEntityDocument {
   targetContent?: Buffer;
 }
 
-const LEGACY_PROJECT_CONTROL_DIR = '.backlog-mcp';
+export const LEGACY_PROJECT_CONTROL_DIR = '.backlog-mcp';
 
 /** Error containing every deterministic preflight issue. */
 export class DocsNativeMigrationError extends Error {
@@ -108,18 +65,8 @@ export class DocsNativeMigrationRequiredError extends Error {
   }
 }
 
-function fileSystem(
-  overrides: Partial<DocsNativeMigrationFileSystem> | undefined,
-): DocsNativeMigrationFileSystem {
-  return { ...realFileSystem, ...overrides };
-}
-
 function toPosix(path: string): string {
   return path.split(sep).join('/');
-}
-
-function digest(content: Buffer): string {
-  return createHash('sha256').update(content).digest('hex');
 }
 
 function normalizeLegacyValue(value: unknown): {
@@ -183,7 +130,7 @@ function normalizeLegacyEntityData(
 
 function configHasLegacyScope(
   path: string,
-  fs: DocsNativeMigrationFileSystem,
+  fs: DocsNativeMigrationReadPort,
 ): boolean {
   if (!fs.exists(path)) return false;
   try {
@@ -204,10 +151,10 @@ function configHasLegacyScope(
  * never guesses, merges, or silently dual-reads legacy locations.
  */
 export function assertDocsNativeMigrationComplete(
-  home: PlanDocsNativeMigrationParams['home'],
-  options: AssertDocsNativeMigrationCompleteOptions = {},
+  home: DocsNativeMigrationPlanInput['home'],
+  options: Omit<AssertDocsNativeMigrationCompleteOptions, 'fileSystem'> & { fileSystem: DocsNativeMigrationReadPort },
 ): void {
-  const fs = fileSystem(options.fileSystem);
+  const fs = options.fileSystem;
   if (home.kind === 'project') {
     const legacyControl = join(home.root, LEGACY_PROJECT_CONTROL_DIR);
     const configNeedsRename = [
@@ -301,7 +248,7 @@ function compareIssues(
 function collectFiles(
   root: string,
   sourceRoot: string,
-  fs: DocsNativeMigrationFileSystem,
+  fs: DocsNativeMigrationReadPort,
   issues: DocsNativeMigrationIssue[],
 ): CollectedLegacyFile[] {
   if (!fs.exists(sourceRoot)) return [];
@@ -431,7 +378,7 @@ function planQuarantinedEntity(
   file: CollectedLegacyFile,
   identity: { id: string; type: string },
   raw: Buffer,
-  params: PlanDocsNativeMigrationParams,
+  params: DocsNativeMigrationPlanInput,
   documentsRootPath: string,
 ): {
   move: DocsNativeMigrationMove;
@@ -453,15 +400,15 @@ function planQuarantinedEntity(
       id: identity.id,
       targetDocumentPath,
       content: raw.toString('utf-8'),
-      sourceDigest: digest(raw),
+      sourceDigest: migrationSourceDigest(raw),
     },
   };
 }
 
 function planEntity(
   file: CollectedLegacyFile,
-  params: PlanDocsNativeMigrationParams,
-  fs: DocsNativeMigrationFileSystem,
+  params: DocsNativeMigrationPlanInput,
+  fs: DocsNativeMigrationReadPort,
   documentsRootPath: string,
   issues: DocsNativeMigrationIssue[],
 ): {
@@ -542,7 +489,7 @@ function planEntity(
         id,
         targetDocumentPath,
         content: plannedContent.toString('utf-8'),
-        sourceDigest: digest(raw),
+        sourceDigest: migrationSourceDigest(raw),
         ...(shouldRewrite ? { targetContent } : {}),
       },
     };
@@ -565,7 +512,7 @@ function planEntity(
 function addOptionalFile(
   actions: DocsNativeMigrationAction[],
   legacyRoot: string,
-  fs: DocsNativeMigrationFileSystem,
+  fs: DocsNativeMigrationReadPort,
   sourcePath: string,
   targetPath: string,
   category: DocsNativeMigrationMove['category'],
@@ -582,7 +529,7 @@ function addTreeMoves(
   sourceRootPath: string,
   targetRootPath: string,
   category: DocsNativeMigrationMove['category'],
-  fs: DocsNativeMigrationFileSystem,
+  fs: DocsNativeMigrationReadPort,
 ): void {
   const sourceRoot = join(legacyRoot, ...sourceRootPath.split('/'));
   for (const file of collectFiles(legacyRoot, sourceRoot, fs, issues)) {
@@ -596,12 +543,12 @@ function addTreeMoves(
 }
 
 function addProjectControlMoves(
-  params: PlanDocsNativeMigrationParams,
+  params: DocsNativeMigrationPlanInput,
   legacyRoot: string,
   controlRootPath: string,
   actions: DocsNativeMigrationAction[],
   issues: DocsNativeMigrationIssue[],
-  fs: DocsNativeMigrationFileSystem,
+  fs: DocsNativeMigrationReadPort,
 ): boolean {
   const targetControl = params.home.controlDir;
   if (fs.exists(legacyRoot) && fs.exists(targetControl)) {
@@ -662,7 +609,7 @@ function addNestedGlobalControlMoves(
   controlRootPath: string,
   actions: DocsNativeMigrationAction[],
   issues: DocsNativeMigrationIssue[],
-  fs: DocsNativeMigrationFileSystem,
+  fs: DocsNativeMigrationReadPort,
 ): void {
   const nestedControl = join(legacyRoot, LEGACY_PROJECT_CONTROL_DIR);
   if (!fs.exists(nestedControl)) return;
@@ -699,56 +646,11 @@ function addNestedGlobalControlMoves(
   }
 }
 
-function configSourceAbsolute(
-  source: DocsNativeMigrationConfigSource,
-  legacyRoot: string,
-  homeRoot: string,
-): string {
-  const root = source.root === 'legacy' ? legacyRoot : homeRoot;
-  return join(root, ...source.path.split('/'));
-}
-
-function normalizedConfig(
-  source: DocsNativeMigrationConfigSource,
-  legacyRoot: string,
-  homeRoot: string,
-  fs: DocsNativeMigrationFileSystem,
-  issues?: DocsNativeMigrationIssue[],
-): Record<string, unknown> | undefined {
-  const absolutePath = configSourceAbsolute(source, legacyRoot, homeRoot);
-  try {
-    const value = JSON.parse(fs.readFile(absolutePath).toString('utf-8')) as unknown;
-    if (
-      typeof value !== 'object'
-      || value === null
-      || Array.isArray(value)
-    ) {
-      throw new Error('config must be a JSON object');
-    }
-    const config = { ...value } as Record<string, unknown>;
-    if ('scope' in config && 'context' in config) {
-      throw new Error('config declares both scope and context');
-    }
-    if ('scope' in config) {
-      config.context = config.scope;
-      delete config.scope;
-    }
-    return config;
-  } catch (error) {
-    issues?.push({
-      code: 'invalid-config',
-      message: `Cannot migrate config ${source.path}: ${String(error)}`,
-      sourcePaths: [source.path],
-    });
-    return undefined;
-  }
-}
-
 function addConfigAction(
   action: DocsNativeMigrationConfig,
   legacyRoot: string,
   homeRoot: string,
-  fs: DocsNativeMigrationFileSystem,
+  fs: DocsNativeMigrationReadPort,
   issues: DocsNativeMigrationIssue[],
   actions: DocsNativeMigrationAction[],
 ): void {
@@ -779,7 +681,7 @@ function addProjectConfigActions(
   homeRoot: string,
   legacyRoot: string,
   controlRootPath: string,
-  fs: DocsNativeMigrationFileSystem,
+  fs: DocsNativeMigrationReadPort,
   issues: DocsNativeMigrationIssue[],
   actions: DocsNativeMigrationAction[],
 ): void {
@@ -807,7 +709,7 @@ function addProjectConfigActions(
 function addGlobalConfigAction(
   homeRoot: string,
   legacyRoot: string,
-  fs: DocsNativeMigrationFileSystem,
+  fs: DocsNativeMigrationReadPort,
   issues: DocsNativeMigrationIssue[],
   actions: DocsNativeMigrationAction[],
 ): void {
@@ -855,13 +757,10 @@ function addGlobalConfigAction(
 }
 
 function addCollisionIssues(
-  params: PlanDocsNativeMigrationParams,
+  params: DocsNativeMigrationPlanInput,
   plannedDocuments: readonly PlannedEntityDocument[],
   issues: DocsNativeMigrationIssue[],
 ): void {
-  const discovered = discoverDocuments({
-    documentsDir: params.home.documentsDir,
-  });
   const syntheticDocuments = plannedDocuments.map(function createDocument(document) {
     return {
       sourcePath: document.targetDocumentPath,
@@ -878,7 +777,7 @@ function addCollisionIssues(
   });
   const claims = claimSubstrateDocuments({
     homeKey: params.home.root,
-    documents: [...discovered.documents, ...syntheticDocuments],
+    documents: [...params.destinationDocuments, ...syntheticDocuments],
     substrates: params.registry.listSubstrates(),
   });
 
@@ -891,31 +790,16 @@ function addCollisionIssues(
   }
 }
 
-function canonicalizeMigrationPath(
-  path: string,
-  fs: DocsNativeMigrationFileSystem,
-): string {
-  const missingSegments: string[] = [];
-  let existingPath = resolve(path);
-  while (!fs.exists(existingPath)) {
-    const parent = dirname(existingPath);
-    if (parent === existingPath) return resolve(path);
-    missingSegments.unshift(basename(existingPath));
-    existingPath = parent;
-  }
-  return resolve(fs.realpath(existingPath), ...missingSegments);
-}
-
 function addDestinationContainmentIssue(
   homeRoot: string,
   targetPath: string,
-  fs: DocsNativeMigrationFileSystem,
+  fs: DocsNativeMigrationReadPort,
   issues: DocsNativeMigrationIssue[],
 ): void {
   try {
-    const canonicalRoot = canonicalizeMigrationPath(homeRoot, fs);
+    const canonicalRoot = fs.canonicalize(homeRoot);
     const target = join(homeRoot, ...targetPath.split('/'));
-    const canonicalTarget = canonicalizeMigrationPath(target, fs);
+    const canonicalTarget = fs.canonicalize(target);
     if (isPathWithin(canonicalRoot, canonicalTarget)) return;
     issues.push({
       code: 'unsupported-source',
@@ -937,7 +821,7 @@ function addDestinationIssues(
   planRoot: string,
   legacyRoot: string,
   actions: readonly DocsNativeMigrationAction[],
-  fs: DocsNativeMigrationFileSystem,
+  fs: DocsNativeMigrationReadPort,
   issues: DocsNativeMigrationIssue[],
 ): void {
   const byTarget = new Map<string, DocsNativeMigrationMove[]>();
@@ -1018,7 +902,7 @@ function addDestinationIssues(
 function captureMoveDigests(
   actions: readonly DocsNativeMigrationAction[],
   legacyRoot: string,
-  fs: DocsNativeMigrationFileSystem,
+  fs: DocsNativeMigrationReadPort,
   issues: DocsNativeMigrationIssue[],
   sourceDigests: Map<string, string>,
 ): void {
@@ -1028,7 +912,7 @@ function captureMoveDigests(
     }
     try {
       const source = join(legacyRoot, ...action.sourcePath.split('/'));
-      sourceDigests.set(action.sourcePath, digest(fs.readFile(source)));
+      sourceDigests.set(action.sourcePath, migrationSourceDigest(fs.readFile(source)));
     } catch (error) {
       issues.push({
         code: 'unsupported-source',
@@ -1063,9 +947,9 @@ function sortedTargetContents(
 
 /** Build the complete deterministic migration plan without mutating disk. */
 export function planDocsNativeMigration(
-  params: PlanDocsNativeMigrationParams,
+  params: DocsNativeMigrationPlanInput,
 ): DocsNativeMigrationPlan {
-  const fs = fileSystem(params.fileSystem);
+  const fs = params.fileSystem;
   const legacyRoot = resolve(
     params.legacyRoot
       ?? (params.home.kind === 'project'
@@ -1106,6 +990,8 @@ export function planDocsNativeMigration(
       homeKind: params.home.kind,
       legacyRoot,
       homeRoot,
+      canonicalHomeRoot: captureCanonicalRoot(homeRoot, fs),
+      canonicalLegacyRoot: captureCanonicalRoot(legacyRoot, fs),
       actions: actions.sort(compareActions),
       issues: issues.sort(compareIssues),
       sourceDigests: sortedDigests(sourceDigests),
@@ -1238,6 +1124,8 @@ export function planDocsNativeMigration(
     homeKind: params.home.kind,
     legacyRoot,
     homeRoot,
+    canonicalHomeRoot: captureCanonicalRoot(homeRoot, fs),
+    canonicalLegacyRoot: captureCanonicalRoot(legacyRoot, fs),
     actions: actions.sort(compareActions),
     issues: issues.sort(compareIssues),
     sourceDigests: sortedDigests(sourceDigests),
@@ -1245,377 +1133,7 @@ export function planDocsNativeMigration(
   };
 }
 
-function missingDirectories(
-  path: string,
-  stopAt: string,
-  fs: DocsNativeMigrationFileSystem,
-): string[] {
-  const directories: string[] = [];
-  let current = path;
-  while (current !== stopAt && !fs.exists(current)) {
-    directories.push(current);
-    current = dirname(current);
-  }
-  return directories;
-}
-
-function cleanupCreatedTargets(
-  targets: readonly string[],
-  directories: readonly string[],
-  fs: DocsNativeMigrationFileSystem,
-): void {
-  for (const target of [...targets].reverse()) {
-    try {
-      fs.unlink(target);
-    } catch {
-      // Best effort: the error that caused rollback remains primary.
-    }
-  }
-  for (const directory of [...directories].sort(function deepestFirst(left, right) {
-    return right.length - left.length;
-  })) {
-    fs.removeEmptyDirectory(directory);
-  }
-}
-
-function renderConfig(
-  action: DocsNativeMigrationConfig,
-  plan: DocsNativeMigrationPlan,
-  fs: DocsNativeMigrationFileSystem,
-  sourceContents: ReadonlyMap<string, Buffer>,
-): Buffer {
-  const snapshotFileSystem: DocsNativeMigrationFileSystem = {
-    ...fs,
-    readFile: function readSnapshot(path) {
-      const content = sourceContents.get(path);
-      if (content === undefined) {
-        throw new Error(`Config source was not snapshotted: ${path}`);
-      }
-      return content;
-    },
-  };
-  let merged: Record<string, unknown> = {};
-  for (const source of action.sources) {
-    const config = normalizedConfig(
-      source,
-      plan.legacyRoot,
-      plan.homeRoot,
-      snapshotFileSystem,
-    );
-    if (config === undefined) {
-      throw new Error(`Config changed before migration: ${source.path}`);
-    }
-    merged = { ...merged, ...config };
-  }
-  return Buffer.from(`${JSON.stringify(merged, null, 2)}\n`);
-}
-
-function assertSourceUnchanged(
-  sourcePath: string,
-  absolutePath: string,
-  expectedDigest: string,
-  fs: DocsNativeMigrationFileSystem,
-): Buffer {
-  const content = fs.readFile(absolutePath);
-  if (digest(content) !== expectedDigest) {
-    throw new Error(
-      `Legacy migration source changed after planning: ${sourcePath}`,
-    );
-  }
-  return content;
-}
-
-function assertDestinationContained(
-  plan: DocsNativeMigrationPlan,
-  targetPath: string,
-  fs: DocsNativeMigrationFileSystem,
-): void {
-  const root = canonicalizeMigrationPath(plan.homeRoot, fs);
-  const target = canonicalizeMigrationPath(
-    join(plan.homeRoot, ...targetPath.split('/')),
-    fs,
-  );
-  if (!isPathWithin(root, target)) {
-    throw new Error(
-      `Docs-native migration destination escapes its home: ${targetPath}`,
-    );
-  }
-}
-
-function restoreDeletedSources(
-  deletedSources: ReadonlyMap<string, Buffer>,
-  fs: DocsNativeMigrationFileSystem,
-): void {
-  for (const [source, content] of deletedSources) {
-    try {
-      fs.makeDirectory(dirname(source));
-      fs.writeFileExclusive(source, content);
-    } catch {
-      // Best effort: the error that caused rollback remains primary.
-    }
-  }
-}
-
-function cleanupEmptySourceDirectories(
-  sourcePaths: readonly string[],
-  legacyRoot: string,
-  includeLegacyRoot: boolean,
-  fs: DocsNativeMigrationFileSystem,
-): void {
-  const directories = new Set<string>();
-  for (const source of sourcePaths) {
-    let current = dirname(source);
-    while (current !== legacyRoot && isPathWithin(legacyRoot, current)) {
-      directories.add(current);
-      current = dirname(current);
-    }
-  }
-  if (includeLegacyRoot) directories.add(legacyRoot);
-  for (const directory of [...directories].sort(function deepestFirst(
-    left,
-    right,
-  ) {
-    return right.length - left.length;
-  })) {
-    fs.removeEmptyDirectory(directory);
-  }
-}
-
-function cleanupEmptyLegacyTree(
-  root: string,
-  fs: DocsNativeMigrationFileSystem,
-): void {
-  if (!fs.exists(root) || fs.isSymbolicLink(root)) return;
-  let entries: DocsNativeMigrationDirectoryEntry[];
-  try {
-    entries = fs.readDirectory(root);
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    if (entry.isDirectory() && !entry.isSymbolicLink()) {
-      cleanupEmptyLegacyTree(join(root, entry.name), fs);
-    }
-  }
-  fs.removeEmptyDirectory(root);
-}
-
-function executePlan(
-  plan: DocsNativeMigrationPlan,
-  fs: DocsNativeMigrationFileSystem,
-): DocsNativeMigrationReport {
-  if (plan.issues.length > 0) throw new DocsNativeMigrationError(plan.issues);
-  const moves = plan.actions.filter(
-    (action): action is DocsNativeMigrationMove => action.kind === 'move',
-  );
-  const configs = plan.actions.filter(
-    (action): action is DocsNativeMigrationConfig => action.kind === 'config',
-  );
-  const sourceContents = new Map<string, Buffer>();
-  const renderedConfigs = new Map<DocsNativeMigrationConfig, Buffer>();
-
-  for (const move of moves) {
-    const source = join(plan.legacyRoot, ...move.sourcePath.split('/'));
-    const target = join(plan.homeRoot, ...move.targetPath.split('/'));
-    if (!fs.exists(source)) {
-      throw new Error(`Legacy migration source changed before execution: ${move.sourcePath}`);
-    }
-    if (fs.exists(target)) {
-      throw new Error(`Docs-native migration destination changed before execution: ${move.targetPath}`);
-    }
-    const expectedDigest = plan.sourceDigests[move.sourcePath];
-    if (expectedDigest === undefined) {
-      throw new Error(`Legacy migration source was not snapshotted: ${move.sourcePath}`);
-    }
-    sourceContents.set(
-      source,
-      assertSourceUnchanged(
-        move.sourcePath,
-        source,
-        expectedDigest,
-        fs,
-      ),
-    );
-    assertDestinationContained(plan, move.targetPath, fs);
-  }
-  for (const config of configs) {
-    const target = join(plan.homeRoot, ...config.targetPath.split('/'));
-    for (const source of config.sources) {
-      if (!fs.exists(configSourceAbsolute(
-        source,
-        plan.legacyRoot,
-        plan.homeRoot,
-      ))) {
-        throw new Error(`Config source changed before execution: ${source.path}`);
-      }
-      const absoluteSource = configSourceAbsolute(
-        source,
-        plan.legacyRoot,
-        plan.homeRoot,
-      );
-      sourceContents.set(absoluteSource, fs.readFile(absoluteSource));
-    }
-    const targetIsSource = config.sources.some(function matchesTarget(source) {
-      return configSourceAbsolute(
-        source,
-        plan.legacyRoot,
-        plan.homeRoot,
-      ) === target;
-    });
-    if (fs.exists(target) && !targetIsSource) {
-      throw new Error(`Config destination changed before execution: ${config.targetPath}`);
-    }
-    assertDestinationContained(plan, config.targetPath, fs);
-    renderedConfigs.set(
-      config,
-      renderConfig(config, plan, fs, sourceContents),
-    );
-  }
-
-  const createdTargets: string[] = [];
-  const createdDirectories = new Set<string>();
-  const overwrittenTargets = new Map<string, Buffer>();
-  const deletedSources = new Map<string, Buffer>();
-  let movedConfigs = 0;
-  try {
-    for (const move of moves) {
-      const source = join(plan.legacyRoot, ...move.sourcePath.split('/'));
-      const target = join(plan.homeRoot, ...move.targetPath.split('/'));
-      const parent = dirname(target);
-      for (const directory of missingDirectories(parent, plan.homeRoot, fs)) {
-        createdDirectories.add(directory);
-      }
-      fs.makeDirectory(parent);
-      const content = sourceContents.get(source);
-      if (content === undefined) {
-        throw new Error(`Legacy migration source was not snapshotted: ${move.sourcePath}`);
-      }
-      fs.writeFileExclusive(
-        target,
-        plan.targetContents[move.sourcePath] ?? content,
-      );
-      createdTargets.push(target);
-    }
-    for (const config of configs) {
-      const target = join(plan.homeRoot, ...config.targetPath.split('/'));
-      const parent = dirname(target);
-      for (const directory of missingDirectories(parent, plan.homeRoot, fs)) {
-        createdDirectories.add(directory);
-      }
-      fs.makeDirectory(parent);
-      const content = renderedConfigs.get(config);
-      if (content === undefined) {
-        throw new Error(`Config was not prepared before migration: ${config.targetPath}`);
-      }
-      if (fs.exists(target)) {
-        overwrittenTargets.set(target, fs.readFile(target));
-        fs.writeFile(target, content);
-      } else {
-        fs.writeFileExclusive(target, content);
-        createdTargets.push(target);
-      }
-    }
-
-    for (const move of moves) {
-      const source = join(plan.legacyRoot, ...move.sourcePath.split('/'));
-      const expectedDigest = plan.sourceDigests[move.sourcePath];
-      const content = sourceContents.get(source);
-      if (expectedDigest === undefined || content === undefined) {
-        throw new Error(`Legacy migration source was not snapshotted: ${move.sourcePath}`);
-      }
-      assertSourceUnchanged(move.sourcePath, source, expectedDigest, fs);
-      fs.unlink(source);
-      deletedSources.set(source, content);
-    }
-    for (const config of configs) {
-      const target = join(plan.homeRoot, ...config.targetPath.split('/'));
-      for (const source of config.sources) {
-        const absoluteSource = configSourceAbsolute(
-          source,
-          plan.legacyRoot,
-          plan.homeRoot,
-        );
-        if (absoluteSource !== target) {
-          const content = sourceContents.get(absoluteSource);
-          if (content === undefined) {
-            throw new Error(`Config source was not snapshotted: ${source.path}`);
-          }
-          if (digest(fs.readFile(absoluteSource)) !== digest(content)) {
-            throw new Error(`Config source changed after planning: ${source.path}`);
-          }
-          fs.unlink(absoluteSource);
-          deletedSources.set(absoluteSource, content);
-          movedConfigs += 1;
-        }
-      }
-    }
-  } catch (error) {
-    restoreDeletedSources(deletedSources, fs);
-    for (const [target, content] of overwrittenTargets) {
-      try {
-        fs.writeFile(target, content);
-      } catch {
-        // Best effort: the error that caused rollback remains primary.
-      }
-    }
-    cleanupCreatedTargets(
-      createdTargets,
-      [...createdDirectories],
-      fs,
-    );
-    throw error;
-  }
-
-  const discards = plan.actions.filter(function isDiscard(action) {
-    return action.kind === 'discard';
-  });
-  for (const discard of discards) {
-    const root = discard.root === 'legacy' ? plan.legacyRoot : plan.homeRoot;
-    fs.removeTree(join(root, ...discard.path.split('/')));
-  }
-  cleanupEmptySourceDirectories(
-    [...deletedSources.keys()],
-    plan.legacyRoot,
-    plan.homeKind === 'project',
-    fs,
-  );
-  if (plan.homeKind === 'project') {
-    cleanupEmptyLegacyTree(plan.legacyRoot, fs);
-  } else {
-    for (const directory of [
-      'tasks',
-      'resources',
-      '.internal',
-      'logs',
-      LEGACY_PROJECT_CONTROL_DIR,
-    ]) {
-      cleanupEmptyLegacyTree(join(plan.legacyRoot, directory), fs);
-    }
-  }
-
-  return {
-    dryRun: false,
-    actions: plan.actions,
-    moved: moves.length + movedConfigs,
-    rewritten: configs.length + Object.keys(plan.targetContents).length,
-    discarded: discards.length,
-  };
-}
-
-/** Plan and optionally execute the one-shot global docs-native migration. */
-export function migrateDocsNative(
-  params: MigrateDocsNativeParams,
-): DocsNativeMigrationReport {
-  const plan = planDocsNativeMigration(params);
-  if (plan.issues.length > 0) throw new DocsNativeMigrationError(plan.issues);
-  if (params.dryRun) {
-    return {
-      dryRun: true,
-      actions: plan.actions,
-      moved: 0,
-      rewritten: 0,
-      discarded: 0,
-    };
-  }
-  return executePlan(plan, fileSystem(params.fileSystem));
+function captureCanonicalRoot(root: string, fs: DocsNativeMigrationReadPort): string | undefined {
+  try { return fs.canonicalize(root); }
+  catch { return undefined; } // Existing preflight issues remain complete; execution requires a captured root.
 }

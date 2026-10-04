@@ -4,7 +4,7 @@ import {
   annotateRecallProvenance,
   loadAgentAttributionIndex,
 } from '../../core/agent-attribution.js';
-import { resolveContext } from '../../core/config.js';
+import { resolveContext } from '../../storage/local/config.js';
 import type { RecallParams, RecallResult } from '../../core/types.js';
 import type { CrossHomeRecallResult } from '../../core/home-read-coordinator.types.js';
 import { parseCommaList } from '../parse-fields.js';

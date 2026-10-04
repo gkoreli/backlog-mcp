@@ -154,7 +154,6 @@ export {
   assertDocsNativeMigrationComplete,
   DocsNativeMigrationError,
   DocsNativeMigrationRequiredError,
-  migrateDocsNative,
   planDocsNativeMigration,
 } from './migrate-docs-native.js';
 export type {

@@ -174,6 +174,18 @@ describe('memory correction consistency', function corrections() {
 });
 
 describe('memory validity policy', function validityPolicy() {
+  it('uses one read-operation time for malformed creation-date minting across recalled entries', async function stableReadTime() {
+    const graph = fixture('stable-memory-read-clock', 2);
+    for (const entity of await graph.service.scan({ type: 'memory' })) await graph.service.save({ ...entity, created_at: 'malformed' });
+    const now = vi.fn(function clock() { return NOW; });
+    const store = new BacklogMemoryStore(() => graph.service, undefined, now);
+    const results = await store.recall({ query: 'Historical' });
+    expect(results).toHaveLength(2);
+    expect(results.every(function sameTime(result) { return result.entry.createdAt === NOW; })).toBe(true);
+    expect(now).toHaveBeenCalledTimes(1);
+    graph.service.flush();
+  });
+
   it.each([undefined, null, '', 'invalid', new Date(NOW - 1).toISOString(), new Date(NOW).toISOString(), new Date(NOW + 1).toISOString()])('projects expiry %s consistently for counts, recall and contradictions', async function validity(value) {
     const graph = fixture(`validity-${String(value)}`);
     const memory = MemorySchema.parse({ ...graph.storage.get('MEMO-0001'), ...(value === undefined ? {} : { valid_until: value }) });

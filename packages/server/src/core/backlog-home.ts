@@ -132,6 +132,7 @@ function resolveProjectContext(
   const config = loadRepoConfig(startDir, {
     exists: deps.exists,
     read: deps.read,
+    reportIssue: deps.reportConfigIssue,
   }, stopDir);
   return { projectRoot, config };
 }
@@ -152,6 +153,7 @@ function createSelectedProjectHome(
   const config = loadRepoConfig(canonicalRoot, {
     exists: deps.exists,
     read: deps.read,
+    reportIssue: deps.reportConfigIssue,
   }, canonicalRoot);
   return createProjectHome(
     canonicalRoot,

@@ -1,3 +1,4 @@
+import type { ConfigReadIssue } from './config.js';
 /** A documents universe backed by either a user-global or project-local root. */
 export interface BacklogHome {
   kind: 'global' | 'project';
@@ -35,6 +36,7 @@ export type BacklogHomeSelector = 'global' | 'project';
 
 /** Injectable path and filesystem operations used by home resolution. */
 export interface BacklogHomeDeps {
+  reportConfigIssue?: (issue: ConfigReadIssue) => void;
   exists: (path: string) => boolean;
   isDirectory: (path: string) => boolean;
   read: (path: string) => string;

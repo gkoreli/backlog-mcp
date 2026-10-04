@@ -1,5 +1,5 @@
 import type { BacklogHome } from '../../core/backlog-home.types.js';
-import { discoverDocuments } from '../../core/document-discovery.js';
+import { discoverDocuments } from './document-discovery.js';
 import {
   createBuiltinSubstrateRegistrations,
   loadProjectSubstrateDefinitions,

@@ -103,17 +103,20 @@ export class PathResolver {
    * propagate. This is not an existence check, tilde expansion or containment
    * policy. Strict reads and lock-directory validation keep their own checks.
    */
-  public canonicalizeThroughExistingAncestor(path: string): string {
+  public canonicalizeThroughExistingAncestor(path: string, deps: {
+    exists(path: string): boolean;
+    canonicalize(path: string): string;
+  } = { exists: existsSync, canonicalize: this.canonicalizeExistingPath.bind(this) }): string {
     const absolutePath = resolve(path);
     const missingSegments: string[] = [];
     let existingPath = absolutePath;
-    while (!existsSync(existingPath)) {
+    while (!deps.exists(existingPath)) {
       const parent = dirname(existingPath);
       if (parent === existingPath) return absolutePath;
       missingSegments.unshift(basename(existingPath));
       existingPath = parent;
     }
-    return resolve(this.canonicalizeExistingPath(existingPath), ...missingSegments);
+    return resolve(deps.canonicalize(existingPath), ...missingSegments);
   }
   
   /**

@@ -1,10 +1,8 @@
 import type { Command } from 'commander';
 import { BacklogHomeResolutionError } from '../../core/backlog-home.js';
 import { resolveBacklogHome } from '../../storage/local/backlog-home.js';
-import {
-  migrateDocsNative,
-  type DocsNativeMigrationReport,
-} from '../../core/index.js';
+import { migrateDocsNative } from '../../storage/local/migrate-docs-native.js';
+import type { DocsNativeMigrationReport } from '../../core/migrate-docs-native.types.js';
 import { loadHomeSubstrateRegistry } from '../../storage/local/home-substrate-registry.js';
 import { paths } from '../../utils/paths.js';
 import { resolveLegacyDataRoot } from '../../utils/legacy-data-root.js';

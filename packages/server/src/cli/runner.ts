@@ -28,7 +28,7 @@ import {
   defaultHomeLabel,
   recentHomesManifestPath,
 } from '../storage/local/recent-homes-store.js';
-import { resolveContext } from '../core/config.js';
+import { resolveContext } from '../storage/local/config.js';
 import type { LocalHomeResolutionParams } from '../storage/local/backlog-home.types.js';
 import type { BacklogHome } from '../core/backlog-home.types.js';
 import type {

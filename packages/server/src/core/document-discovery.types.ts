@@ -33,7 +33,7 @@ export interface DocumentDiscoveryDependencies {
 /** Input to the bounded document discovery operation. */
 export interface DiscoverDocumentsParams {
   documentsDir: string;
-  dependencies?: Partial<DocumentDiscoveryDependencies>;
+  dependencies: DocumentDiscoveryDependencies;
 }
 
 /** A supported open document discovered beneath the documents directory. */

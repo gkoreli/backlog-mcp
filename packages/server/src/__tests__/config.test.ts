@@ -1,12 +1,14 @@
+import { loadRepoConfig as loadConfigWith } from '../core/config.js';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   CONFIG_DIR,
   findConfigDir,
   loadHomeConfig,
   loadRepoConfig,
   resolveContext,
-} from '../core/config.js';
+} from '../storage/local/config.js';
 import { createBacklogHome } from '../storage/local/backlog-home.js';
 
 function writeConfig(
@@ -224,5 +226,16 @@ describe('resolveContext precedence', () => {
       env: { BACKLOG_CONTEXT: 'FLDR-ENV' },
       cwd: '/config/scope',
     })).toBe('FLDR-ENV');
+  });
+});
+
+describe('injected config diagnostics', function diagnosticPort() {
+  it('retains valid fallback fields and reports malformed configuration through the supplied port', function reportsInvalidConfig() {
+    writeConfig('/config/diagnostic-port', 'config.json', '{"context":"FLDR-0001"}');
+    writeConfig('/config/diagnostic-port', 'config.local.json', '{invalid');
+    const reportIssue = vi.fn();
+    expect(loadConfigWith('/config/diagnostic-port', { exists: existsSync, read: function read(path) { return readFileSync(path, 'utf8'); }, reportIssue })).toEqual({ context: 'FLDR-0001' });
+    expect(reportIssue).toHaveBeenCalledTimes(1);
+    expect(reportIssue.mock.calls[0]?.[0]).toMatchObject({ kind: 'unreadable', path: '/config/diagnostic-port/.backlog/config.local.json', message: expect.any(String) });
   });
 });

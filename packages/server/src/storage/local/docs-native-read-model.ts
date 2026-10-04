@@ -1,5 +1,5 @@
 import type { ClaimQuarantine } from '../../core/backlog-service.contract.js';
-import { discoverDocuments } from '../../core/document-discovery.js';
+import { discoverDocuments } from './document-discovery.js';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
 import { claimSubstrateDocuments, type ClaimedSubstrateDocument, type ProjectSubstrateRegistry } from '../../core/substrates/index.js';
 import { formatStorageDisplayId } from '../../core/substrates/storage-identity.js';

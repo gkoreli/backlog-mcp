@@ -79,15 +79,8 @@ export const FROZEN_UTILS: readonly string[] = [
  * ADR 0134.1 §Audit explains each group. Shrink only.
  */
 export const KNOWN_VIOLATIONS: Readonly<Record<string, readonly string[]>> = {
-  'core-io': [
-    'core/config.ts -> node:fs',
-    'core/document-discovery.ts -> node:fs',
-    'core/migrate-docs-native.ts -> node:fs',
-  ],
-  'core-outward': [
-  ],
-  'infrastructure-adapter': [
-  ],
-  'adapter-adapter': [
-  ],
+  'core-io': [],
+  'core-outward': [],
+  'infrastructure-adapter': [],
+  'adapter-adapter': [],
 };

@@ -17,7 +17,7 @@ import {
   DocsNativeMigrationError,
   migrateDocsNative,
   planDocsNativeMigration,
-} from '../core/migrate-docs-native.js';
+} from '../storage/local/migrate-docs-native.js';
 import {
   createBuiltinSubstrateRegistrations,
   loadProjectSubstrateDefinitions,

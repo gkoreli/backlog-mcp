@@ -11,7 +11,7 @@ import {
 import matter from 'gray-matter';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Resource } from '@backlog-mcp/memory/search';
-import { discoverDocuments } from '../core/document-discovery.js';
+import { discoverDocuments } from '../storage/local/document-discovery.js';
 import { isPathWithin } from '../core/path-containment.js';
 import { isOrientationRootFilename } from '../core/orientation.js';
 import type { ResourceContent } from '../core/resource-content.contract.js';

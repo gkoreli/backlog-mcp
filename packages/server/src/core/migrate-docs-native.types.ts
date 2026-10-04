@@ -1,3 +1,4 @@
+import type { DiscoveredDocument } from './document-discovery.types.js';
 import type { BacklogHome } from './backlog-home.types.js';
 import type { ProjectSubstrateRegistry } from './substrates/index.js';
 
@@ -73,6 +74,9 @@ export interface DocsNativeMigrationPlan {
   homeKind: BacklogHome['kind'];
   legacyRoot: string;
   homeRoot: string;
+  /** Canonical roots captured while planning; execution rejects replaced roots. */
+  canonicalHomeRoot?: string;
+  canonicalLegacyRoot?: string;
   actions: readonly DocsNativeMigrationAction[];
   issues: readonly DocsNativeMigrationIssue[];
   /** Planning-time hashes used to reject source changes before deletion. */
@@ -97,12 +101,17 @@ export interface DocsNativeMigrationDirectoryEntry {
 }
 
 /** Injectable file operations used by memfs tests and rollback verification. */
-export interface DocsNativeMigrationFileSystem {
+/** Reads required by domain migration planning; no write capability is exposed. */
+export interface DocsNativeMigrationReadPort {
   exists(path: string): boolean;
   isSymbolicLink(path: string): boolean;
   realpath(path: string): string;
+  canonicalize(path: string): string;
   readDirectory(path: string): DocsNativeMigrationDirectoryEntry[];
   readFile(path: string): Buffer;
+}
+
+export interface DocsNativeMigrationFileSystem extends DocsNativeMigrationReadPort {
   makeDirectory(path: string): void;
   writeFileExclusive(path: string, content: Buffer): void;
   writeFile(path: string, content: Buffer): void;
@@ -126,4 +135,10 @@ export interface PlanDocsNativeMigrationParams {
 
 export interface MigrateDocsNativeParams extends PlanDocsNativeMigrationParams {
   dryRun?: boolean;
+}
+
+/** Domain input is complete: local defaults and destination discovery are already resolved. */
+export interface DocsNativeMigrationPlanInput extends Omit<PlanDocsNativeMigrationParams, 'fileSystem'> {
+  fileSystem: DocsNativeMigrationReadPort;
+  destinationDocuments: readonly DiscoveredDocument[];
 }
