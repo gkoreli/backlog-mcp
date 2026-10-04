@@ -50,8 +50,8 @@ This shapes the entire design.
   **file discovery from cwd is reliable here.**
 - **The MCP server is detached, persistent, and shared.** `cli/server-manager.ts`
   spawns `node-server.mjs` with `detached: true`, `child.unref()`, persisting
-  across sessions and shared by multiple MCP clients (DEVELOPMENT.md "Production
-  Mode"). Its `process.cwd()` is **not** the client's project dir. Reading a
+  across sessions and shared by multiple MCP clients ([development guide, Production
+  Mode](../guides/development.md#production-mode-mcp-clients)). Its `process.cwd()` is **not** the client's project dir. Reading a
   per-project config file from the server's cwd is unreliable.
 - Precedent: `BACKLOG_DATA_DIR` (`paths.ts:81`) already solves the analogous
   "which data dir" problem via **env**, because env is the one channel that

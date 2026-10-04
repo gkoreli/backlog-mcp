@@ -31,8 +31,9 @@ help_text = read('cli-help.json')
 result['cli'] = {'named_paths': len(help_text)-1, 'root': measure(help_text['root'], raw=True), 'all_help_text_sum': {'bytes': sum(measure(v, raw=True)['bytes'] for v in help_text.values()), 'tokens': sum(measure(v, raw=True)['tokens'] for v in help_text.values())}, 'pages': {k: measure(v, raw=True) for k,v in help_text.items()}}
 result['samples'] = [{'name': c['name'], 'arguments': measure(c['arguments']), 'response': measure(c['response'])} for c in read('sample-calls.json')]
 agents = (repo / 'AGENTS.md').read_text()
-protocol = agents.split('## Memory Protocol')[1].split('## Deployment Posture')[0]
-result['instructions'] = {'AGENTS.md': measure(agents, raw=True), 'memory_protocol_section': measure('## Memory Protocol'+protocol, raw=True), 'README.md': measure((repo / 'README.md').read_text(), raw=True)}
+protocol = '## Minimal memory loop' + agents.split('## Minimal memory loop', 1)[1].split('## Read on demand', 1)[0]
+protocol_guide = (repo / 'docs/guides/memory-protocol.md').read_text()
+result['instructions'] = {'AGENTS.md': measure(agents, raw=True), 'memory_protocol_section': measure(protocol, raw=True), 'memory_protocol_guide': measure(protocol_guide, raw=True), 'README.md': measure((repo / 'README.md').read_text(), raw=True)}
 (base / 'context-measurements.json').write_text(json.dumps(result, indent=2)+'\n')
 for k,v in result['catalogs'].items():
     print(k, v['count'], v['tools_list_result'], 'names/descriptions', v['names_descriptions'])

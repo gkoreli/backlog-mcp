@@ -1,370 +1,49 @@
-# AGENTS.md — Guidelines for AI Agents Working in backlog-mcp
-
-## Testing
-
-### Philosophy
-
-**Unit tests only. No integration tests.**
-
-- Unit tests mock external dependencies (filesystem, network, etc.)
-- Tests should be fast, deterministic, and isolated
-- If tests touch real filesystem, they're not unit tests. The one exception:
-  tests whose subject *is* the repository, such as `architecture.test.ts`
-  (it reads the source tree) and the git probes (`identity-resolution`,
-  `git-law-freshness`), read real files through
-  `vi.importActual('node:fs')` and never write.
-
-### How It Works
-
-All tests use **memfs** for in-memory filesystem mocking, with the exception above.
-
-1. `vitest.config.ts` loads `src/__tests__/helpers/setup.ts` globally (server package)
-2. `setup.ts` mocks `node:fs` with memfs before any test runs
-3. Tests call real production code (e.g., `storage.add()`)
-4. Production code calls `writeFileSync`/`readFileSync` → intercepted by memfs → stored in RAM
-5. Filesystem resets between test files (not between individual tests)
-
-### Test Locations
-
-| Package | Test locations |
-|---------|----------------|
-| Server | `packages/server/src/__tests__/*.test.ts` and co-located `*.test.ts` |
-| Viewer | `packages/viewer/**/*.test.ts` |
-
-Use the test runner's summary for current counts.
-
-```bash
-pnpm test                                # All workspace tests
-pnpm --filter backlog-mcp test           # Server only
-pnpm --filter @backlog-mcp/viewer test   # Viewer only
-```
-
-### Rules
-
-**DO:**
-- Write unit tests that use the mocked fs automatically
-- Create test data using production APIs (`storage.add()`, etc.)
-- Use `beforeAll`/`afterAll` for setup/teardown within a test file
-- Mock external modules explicitly with `vi.mock()` when needed
-- Use `tmpdir()` for path strings — only fs operations are mocked
-
-**DON'T:**
-- Don't write custom fs mocks — use the global memfs setup
-- Don't use `beforeEach` to reset filesystem (breaks `beforeAll` patterns)
-- Don't rewrite tests to fit mocks — fix the mock instead
-
-### Correct Patterns
-
-```typescript
-// Test using production APIs — memfs handles I/O
-it('should create a task', () => {
-  const task = createTask({ id: 'TASK-0001', title: 'Test' });
-  storage.add(task);
-  const retrieved = storage.get('TASK-0001');
-  expect(retrieved?.title).toBe('Test');
-});
-
-// Mock paths module when needed
-beforeEach(() => {
-  vi.spyOn(paths, 'backlogDataDir', 'get').mockReturnValue('/test/data');
-});
-
-// Mock specific modules for isolation
-vi.mock('../storage/backlog.js', () => ({
-  storage: { list: vi.fn(), get: vi.fn() },
-}));
-```
-
-### Debugging Test Failures
-
-- **ENOENT** — file wasn't created in virtual fs before reading. Check `storage.add()` was called.
-- **Cannot read properties of undefined** — module loaded before mock. Move `vi.mock()` to top of file.
-- **Tests pass individually but fail together** — shared state. Filesystem resets per file, not per test.
-
-## Code Style
-
-Binding engineering rules (layers, ports, DDD, boundaries, enforcement) are in
-[ADR 0134](docs/adr/0134-engineering-rules.md). The bullets below are a summary.
-- **`index.ts` files are barrel exports only** — never put implementation in `index.ts`
-- **No re-exporting between packages** — import from the source package directly
-- **Minimal code** — only what's needed to solve the problem
-- **Declarative with named functions** — not inline callbacks
-- **Never use `!` non-null assertions** — use proper narrowing (ternary, `if` check, `??` fallback)
-- **Composable, modular, no god files** — decompose into meaningful single-purpose modules; composition over inheritance; strongly typed throughout; JSDoc on exported functions and non-obvious decisions
-- **Core-first layering (ADR 0090)** — business logic lives in `src/core/*` as standalone, transport-free functions; MCP tools, CLI commands, and HTTP routes are thin adapters that map params and call core. Any consumer can reuse core.
-
-### Architecture (ADR 0134, enforced)
-
-Layers in `packages/server/src/` and what each may import:
-
-| Layer | Folders | May import |
-|---|---|---|
-| Domain | `core/`, `substrate-definitions/` | core, `@backlog-mcp/shared`, `@backlog-mcp/memory`, `zod`, pure Node (`node:path`, `node:crypto`, `node:util`) |
-| Infrastructure | `storage/`, `memory/`, `operations/`, `resources/`, `events/`, `auth/` | core, other infrastructure |
-| Composition | `composition/`, `node-server.ts`, `dev-entry.ts`, `worker-entry.ts` | everything |
-| Adapters | `cli/`, `tools/` (MCP), `server/` (HTTP) | core, infrastructure, composition; never each other, except `server` mounting `tools` for the MCP endpoint |
-
-`src/__tests__/architecture.test.ts` checks every import against these rules.
-When it fails:
-
-- **"has no new violations"**: you added an import that breaks a rule. Fix
-  the import: move the code to the layer that owns it, or depend on a port.
-  Adding it to `KNOWN_VIOLATIONS` is not a fix; that needs an ADR amendment.
-- **"lists no fixed violations"**: you fixed a known violation. Delete its
-  entry from `KNOWN_VIOLATIONS` in `src/__tests__/helpers/architecture-rules.ts`.
-  The list only shrinks.
-- **"adds no files to utils/"**: put the file in the folder named for its
-  concept.
-
-Shared logic that two adapters need goes in `core/`. A shared runtime piece
-goes in `composition/`. Transport policy (path containment, loopback-only
-routes) stays in its own adapter (ADR 0134 R2.6).
-
-### File naming convention (labelled "ADR 0109"; there is no ADR file, this section is the source)
-
-The repo historically mixed `types.ts`, `*-types.ts`, and would-be `*.types.ts`.
-Settle on **suffix-based naming where files are tightly related**, by role:
-
-- **Satellite types** (types that serve exactly one sibling module) → co-locate as
-  `<base>.types.ts`. Example: `disk-storage-adapter.ts` + `disk-storage-adapter.types.ts`.
-- **Module-wide types** (shared across a whole folder) → keep the folder's
-  `types.ts` (the pattern in `core/`, `core/substrates/`, `core/get-context/`,
-  `resources/`). Do not split these into per-file satellites.
-- **Shared contracts/interfaces** (an interface implemented by several modules and
-  consumed widely) → name by the *contract*, not an implementation:
-  `<name>.contract.ts`. Example: `IBacklogService` in
-  `backlog-service.contract.ts` (implemented by local + D1 services, imported by
-  ~70 files, tests included). A port lives with its consumer (ADR 0134 R1.2): this one still
-  sits in `storage/` and is a known violation that moves to `core/` in ADR 0134
-  Phase 2.
-- **Tightly-coupled siblings in general** share a base name and differ only by
-  suffix (`.types.ts`, `.contract.ts`, `.test.ts`) so they sort adjacently and the
-  relationship is obvious.
-
-Apply to new and touched files; do not do a sweeping repo-wide rename (churn +
-merge-conflict risk) — let legacy `types.ts` files migrate opportunistically.
-
-## Viewer Architecture
-
-### Design System: Tsa (ცა)
-
-The viewer is styled with **Tsa** ("sky" in Georgian) — our design system paired with Nisli.
-
-- All colors are CSS custom properties (`--t-*` prefix), defined in `packages/viewer/theme/`
-- Theme switching via `data-theme="dark"|"light"` on `<html>`, persisted to localStorage
-- Brand gradient (`#00d4ff → #7b2dff → #ff2d7b`) and entity type gradients are theme-invariant
-- Never add hardcoded color values — always use `var(--t-*)` tokens
-
-```
-packages/viewer/theme/
-├── index.css      # Barrel import
-├── tokens.css     # Invariants (fonts, radius, brand gradients)
-├── dark.css       # Dark values (default)
-└── light.css      # Light values
-```
-
-### Markdown & Syntax Highlighting
-
-All markdown concerns live in `packages/viewer/markdown/`:
-
-```
-packages/viewer/markdown/
-├── index.ts         # Barrel: { marked, highlight, initHighlighter }
-├── renderer.ts      # marked + shiki config + custom plugins
-├── shiki.css        # Dual-theme CSS variable switching
-├── github-dark.css  # GitHub markdown prose (dark, scoped)
-└── github-light.css # GitHub markdown prose (light, scoped)
-```
-
-**Key decisions (ADR 0111):**
-- **Shiki** for syntax highlighting (not highlight.js) — TextMate grammars, VS Code-quality, dual-theme via CSS variables
-- **`marked-shiki`** as the bridge — makes `marked.parse()` async
-- **Async markdown is a resource** — consumers use `resource(source, loader)` for parsing; imperative DOM post-processing remains an effect
-- **One render, both themes** — shiki outputs `--shiki-light`/`--shiki-dark` per token; CSS picks the active one
-
-**Shiki bundle rules (critical for dist size):**
-- **Never import `shiki` directly** — it bundles ALL 350+ grammars as async chunks even if unused
-- **Use fine-grained imports**: `shiki/core` + `@shikijs/langs/<name>` + `@shikijs/themes/<name>`
-- **Use `shiki/engine/javascript`** (`createJavaScriptRegexEngine`) — pure JS, no WASM binary
-- **Only add grammars you need** — each `import('@shikijs/langs/x')` becomes one lazy chunk
-
-## The Development Loop (maintainer decision, 2026-06-10)
-
-backlog-mcp evolves through a deliberate loop, recorded in the ADR thread:
-
-1. **Research with evidence** — survey the field (delegate to a researcher
-   when useful); steal/adapt/reject ideas against our constraints
-   (local-first, no LLM in the server write path, human-visible markdown,
-   one source of truth). Findings land as an ADR with primary-source links
-   (pattern: ADR 0092.5).
-2. **Ground in our code** — audit what actually exists before planning
-   (pattern: ADR 0092.2 §audit). ADRs cite files, not intentions.
-3. **Plan as an ADR** — design + numbered rulings + file-level engineering
-   plan, cross-referenced to the thread (patterns: 0092.3, 0092.1).
-4. **Engineer in phases** — core-first, modular, committed in logical chunks.
-5. **Validate manually** — run the real loop in real processes, not just the
-   test suite; it catches what unit tests structurally miss (pattern:
-   ADR 0092.6 found the composer.forget race). For any boundary that takes
-   untrusted or per-home/tenant input (home headers, project roots, user-defined
-   substrate schemas, claim collisions), verify it **fails closed** on malformed
-   and adversarial input — not just the happy path. A review that only checks the
-   happy-path isolation has not reviewed the boundary.
-6. **Record** — engineering-record ADR with distilled insights, validation
-   findings, and next phases (patterns: 0092.4, 0092.6). Then loop.
-
-## Memory Protocol (ADR 0092 thread)
-
-backlog-mcp has a durable memory layer. Memories are first-class entities
-(`MEMO-` ids, markdown + frontmatter) — atomic facts you can recall, decay,
-supersede, and rank by usage. Use it; don't let each session start cold.
-
-### The loop
-
-1. **Wake up once, at session start** — run `backlog_wakeup` (CLI: `backlog
-   wakeup`). One dense briefing: active tasks, current epics, top knowledge,
-   recent completions, recent activity. Do not repeat it during ordinary work.
-   After compaction or context loss, recover from the durable work record;
-   `backlog_wakeup` with `operation` can restore a known live operation.
-2. **Ask when prior knowledge matters** — use `backlog_recall query="<topic>"`
-   (CLI: `backlog recall "<topic>"`) for learned knowledge and `backlog_search`
-   for the current corpus. Inspect a memory's age, provenance and correction
-   lineage before treating it as current. Project decisions outweigh generic
-   priors; stale memories do not override current user direction or verified
-   contracts. Memories are hidden from ordinary `search`/`list`; explicit
-   `list type="memory"` includes them.
-3. **Expand when the work becomes specific** — call `backlog_get` for full
-   content. When starting work on an entity, pass `context: true` to include
-   its relational neighborhood (parent, children, siblings, references,
-   referenced-by, and related items) as stubs, then expand only the stubs you
-   need. One retrieval language, with progressive disclosure throughout:
-   orient → ask → expand.
-   For a tool call, expand the selected tool's full input schema before
-   constructing arguments. A discovery summary is not an argument contract;
-   client-owned schema deferral is not guaranteed. Derive field guidance from
-   its owning substrate; the shared Markdown body field is `content`.
-4. **Remember what's durable** — when you learn a non-obvious decision, a
-   gotcha, a convention, or a fact that will matter next session, write it with
-   `backlog_remember`. One atomic fact per memory.
-5. **Correct, don't duplicate** — when something you already remembered
-   changes, use MCP `supersedes` (CLI: `--supersedes <MEMO-id>`) to keep lineage
-   and expire the old one, or MCP `state_key` (CLI: `--state-key <key>`) for
-   evolving single-value facts (a new holder auto-closes
-   the previous). Never write a contradicting second memory.
-
-### Recall discipline (don't clog context)
-
-- Recall **once per task topic**, not before every tool call.
-- A recall result spends context budget — worth it when it replaces
-  re-deriving something expensive, wasteful for trivia.
-
-### What to remember (and what NOT to)
-
-Capture quality is the whole game — noise pollutes recall and erodes trust.
-
-- **Do**: durable decisions, non-obvious gotchas, project conventions,
-  preferences, facts that outlive the session. Pick the right `--layer`
-  (`semantic` = what is true · `procedural` = how we do things · `episodic` =
-  what happened) and `--kind` (`current` · `historical` · `plan` · `preference`
-  · `timeless` — timeless is exempt from decay).
-- **Don't**: obvious facts, one-off details, restated task descriptions,
-  "ran tests, passed". Episodic completions auto-capture on task→done — you
-  don't hand-write those.
-
-### Lifecycle
-
-- `backlog_forget` soft-expires (drops from recall, stays auditable in the
-  viewer); MCP `expired: true` (CLI: `--expired`) hard-deletes already-expired
-  memories (GC).
-- Recall/read bumps a memory's `usage_count` + `last_used_at` — useful memories
-  rank higher over time, stale ones decay. Self-curating; no action needed.
-- When atomic memories sprawl, MCP `backlog_consolidation_candidates`
-  (CLI: `backlog consolidation-candidates`) surfaces
-  clusters ripe for distillation into fewer `derived` semantic/procedural
-  memories (ADR 0092.7). Capture small, compress upward.
-
-## Deployment Posture (ADR 0104)
-
-**Local-first is the primary mode.** The Node/local deployment (filesystem
-markdown storage, Orama hybrid BM25+vector search with local embeddings, RAG,
-context hydration, agentic memory, live viewer over SSE) is where the product
-grows. The Cloudflare Workers + D1 remote mode lost too many of these
-capabilities (no local embeddings, no hybrid search/RAG parity) and is
-descoped — retained, no parity owed (NORTH-STAR Invariant 4). Do not
-compromise local-mode capabilities for D1 parity; new features target local
-mode first and need no D1 story to ship.
-
-## Monorepo Architecture
-
-### Package Structure
-
-Four workspace packages:
-
-| Package | npm name | Published | Purpose |
-|---------|----------|-----------|---------|
-| `packages/shared` | `@backlog-mcp/shared` | No (private) | Entity types, ID utilities |
-| `packages/server` | `backlog-mcp` | Yes | MCP server, CLI, HTTP API |
-| `packages/memory` | `@backlog-mcp/memory` | No (private) | Hybrid search (Orama BM25 + vector), memory retrieval/ranking |
-| `packages/viewer` | `@backlog-mcp/viewer` | No (private) | Web UI, built assets copied into server |
-
-`@nisli/core` is now maintained externally at <https://github.com/gkoreli/nisli>
-and consumed as a normal npm dependency by `packages/viewer`.
-
-### Internal Package Pattern (Compiled Package)
-
-Shared exports source in dev, dist at publish time:
-
-```json
-{
-  "exports": { ".": "./src/index.ts" },
-  "publishConfig": {
-    "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } }
-  }
-}
-```
-
-- Dev: TypeScript resolves imports directly from source — no build step needed
-- Build: tsdown inlines shared code into server's bundle via `noExternal: ['@backlog-mcp/shared']`
-
-### Why `devDependencies` for `@backlog-mcp/shared`
-
-Shared is in server's `devDependencies`, not `dependencies`:
-
-- **If `dependencies`**: `npm install backlog-mcp` tries to fetch `@backlog-mcp/shared` from registry → fails (private)
-- **If `devDependencies`**: consumers never try to install it → no problem
-- tsdown bundles it regardless of placement since it's imported
-
-### Versioning & Changelog
-
-Every version bump updates `CHANGELOG.md` in the same change — a bump commit that
-does not touch the changelog is incomplete. The flow (keep-a-changelog format):
-
-- User-facing work lands under `## [Unreleased]` as it merges, grouped into
-  `### Added` / `### Changed` / `### Fixed` / `### Removed`.
-- The `chore: bump versions (server X, viewer Y)` commit renames `[Unreleased]`
-  to `## [X] — YYYY-MM-DD` and opens a fresh empty `[Unreleased]`.
-- *User-facing* means a tool / CLI / viewer behavior, a schema, or a storage-layout
-  change an agent or human would notice. Internal refactors and test-only changes
-  stay out unless they change observable behavior.
-
-### Publishing
-
-The server package is published via CI:
-
-**Server** (`backlog-mcp`):
-```yaml
-cd packages/server
-cp ../../README.md README.md    # Root README for npm
-pnpm pack                       # workspace:* → real versions
-npm publish backlog-mcp-*.tgz --provenance --access public
-```
-
-`pnpm pack` resolves `workspace:*` to real version numbers. `npm publish` is used (not `pnpm publish`) for OIDC trusted publishing support.
-
-### tsdown Bundling Config
-
-```
-skipNodeModulesBundle: true          # Externalize all node_modules
-noExternal: ['@backlog-mcp/shared']  # Override: inline shared
-```
-
-Both are needed. Without `noExternal`, `skipNodeModulesBundle` would externalize shared via the pnpm workspace symlink.
+# AGENTS.md — backlog-mcp
+
+backlog-mcp is a local-first, markdown-backed engine for agent context and
+memory. Tasks, decisions, and memories share one store, used through the CLI,
+MCP, and a live read-only viewer. Humans can read, edit, and diff the markdown
+without the tool.
+
+## Critical constraints
+
+- Preserve human-visible markdown and one source of truth. No LLM in the server
+  write path. Local mode grows; D1/Workers is descoped, retained with no parity
+  owed. Never compromise local capabilities for D1 parity.
+- For code changes, follow [ADR 0134](docs/adr/0134-engineering-rules.md):
+  transport-free business logic in core, thin peer adapters, injected ports,
+  modular typed code. Fix architecture violations; never grow the allowlist.
+- Unit tests only, with mocked external dependencies and memfs. Repository/git
+  probes may read real files via `vi.importActual('node:fs')`, never write them.
+  Read the testing guide for any test work, including running and debugging.
+- User-facing changes need a `CHANGELOG.md` entry; every version bump updates
+  the changelog in the same change. See the packages and releases guide.
+- Before calling a tool, expand its full input schema. Discovery summaries are
+  not argument contracts; the shared Markdown body field is `content`.
+
+## Minimal memory loop
+
+- Wake once at session start: `backlog_wakeup` / `backlog wakeup`. Do not repeat
+  during ordinary work. After context loss, recover from the durable work record;
+  wakeup with `operation` can restore a known live operation.
+- Recall when prior knowledge matters, once per topic: `backlog_recall` /
+  `backlog recall "<topic>"`. Search the current corpus with `backlog_search`;
+  expand selected entities with `backlog_get` (`context: true` for relation stubs).
+- Inspect age, provenance, and correction lineage. Current user direction,
+  project decisions, and verified contracts outweigh stale memories.
+- Remember durable, non-obvious facts with `backlog_remember`, one fact per
+  memory. Correct with `supersedes` or `state_key`; never duplicate contradictions.
+
+## Read on demand
+
+Choose the links that match the task; this is a discovery map, not a read-all list.
+The guides are active instructions. Existing ADRs remain authority for their rules.
+
+- [Product direction](docs/NORTH-STAR.md) — Read this when assessing product scope, priorities, or architectural tradeoffs.
+- [Development setup and runtime](docs/guides/development.md) — Read this when installing dependencies, running local development, choosing workspace/CLI commands, or understanding runtime topology and data layout.
+- [Testing and memfs](docs/guides/testing.md) — Read this when adding, changing, or running tests, or investigating failures.
+- [Engineering and file naming](docs/guides/engineering.md) — Read this when writing, reviewing, moving, or refactoring code, or resolving architecture failures; includes the convention labelled “ADR 0109” (no ADR file exists).
+- [Viewer styling and markdown](docs/guides/viewer.md) — Read this when changing components, themes, styles, markdown, highlighting, or viewer bundle size.
+- [Development loop](docs/guides/development-loop.md) — Read this when researching, designing, planning, implementing, or validating features or architecture; includes manual fail-closed validation for untrusted or per-home/tenant inputs.
+- [Memory protocol](docs/guides/memory-protocol.md) — Read this when using backlog knowledge/entities/tool schemas, capturing or correcting memories, consolidating, or recovering context.
+- [Packages and releases](docs/guides/packages-and-releases.md) — Read this when changing package boundaries, dependencies, exports, builds, deployment assumptions, user-facing behavior, changelog, versions, or publishing.

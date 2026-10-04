@@ -51,7 +51,8 @@ pressured designs toward the lowest common denominator. The product identity
 
 ## Engineering principles (restated as binding)
 
-Captured alongside this decision (see AGENTS.md §Code Style):
+Captured alongside this decision (see the [engineering guide](../guides/engineering.md#code-style),
+formerly AGENTS.md §Code Style):
 composable, declarative, modular code with JSDoc; no god files — decompose
 into single-purpose modules; composition over inheritance; strongly typed;
 core-first layering per ADR 0090 (business logic in `src/core/*`, transports

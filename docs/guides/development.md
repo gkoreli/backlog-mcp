@@ -1,4 +1,9 @@
-# Development Guide
+# Development setup and runtime
+
+Read this when installing dependencies, running local development, choosing
+workspace or CLI commands, or understanding runtime topology and data layout.
+These are active contributor instructions, reached from [AGENTS.md](../../AGENTS.md).
+The architecture sections summarize the linked ADRs; those ADRs remain authoritative.
 
 ## Quick Start
 
@@ -6,15 +11,19 @@ Development uses Node 24 LTS via mise.
 
 ```bash
 pnpm install
-pnpm dev  # Starts MCP server + web viewer with hot reload (port 3040)
+pnpm dev  # Starts MCP server + web viewer with hot reload (default port 5173)
 ```
 
 ## Monorepo Structure
+
+Read [Packages and releases](packages-and-releases.md) when changing package
+boundaries, exports, dependencies, bundling, or releases. This is an overview.
 
 ```
 packages/
 ├── server/       # MCP server, CLI, HTTP API — published as `backlog-mcp`
 ├── viewer/       # Web UI built with `@nisli/core`
+├── memory/       # Hybrid search and memory retrieval/ranking (private)
 └── shared/       # Entity types, ID utilities (private, inlined at build)
 ```
 
@@ -28,7 +37,7 @@ The viewer uses [Nisli](https://github.com/gkoreli/nisli), a zero-dependency rea
 pnpm build               # Build all packages (shared → viewer → server)
 pnpm test                # Run all workspace tests
 pnpm test:watch          # Watch mode (server only)
-pnpm dev                 # Server + viewer with hot reload (port 3040)
+pnpm dev                 # Server + viewer with hot reload (default port 5173)
 pnpm clean               # Remove dist/ from all packages
 pnpm typecheck           # Type-check all packages
 ```
@@ -55,6 +64,7 @@ backlog-mcp stop         # Stop the server
 ### Production Mode (MCP Clients)
 
 When running via `backlog-mcp` (or `pnpm start`):
+
 - **HTTP server** spawns as a detached background process on port 3030
 - **stdio bridge** runs in foreground, connects to HTTP server via `mcp-remote`
 - HTTP server persists across sessions (shared by multiple MCP clients)
@@ -63,7 +73,9 @@ When running via `backlog-mcp` (or `pnpm start`):
 ### Development Mode
 
 When running `pnpm dev`:
-- Runs Vite as the single dev server on one port (default `:5173`)
+
+- Runs Vite as the single dev server on one port (default `:5173`, overridden
+  by `VITE_PORT`; Vite may use the next available port if it is occupied)
 - Vite serves the SPA + assets + HMR natively
 - The Hono backend (API/SSE/MCP) is loaded via Vite's SSR module graph as a fallback handler
 - Single origin — mirrors prod topology (no proxy, no second process)
@@ -80,33 +92,36 @@ When running `pnpm dev`:
 - **Agent-first** — MCP and the CLI are both agent surfaces over one core;
   which one is primary is an open decision (EPIC-0001, TASK-0012)
 - **Binding engineering rules** — layers, ports, and DDD rules are in
-  [ADR 0134](docs/adr/0134-engineering-rules.md) and enforced by
+  [ADR 0134](../adr/0134-engineering-rules.md) and enforced by
   `packages/server/src/__tests__/architecture.test.ts`
 
 ## Data Model
 
-Entity types are **substrates** (ADR 0113): Markdown with YAML frontmatter,
+Entity types are **substrates** ([ADR 0113](../adr/0113-user-defined-substrates.md)): Markdown with YAML frontmatter,
 stored in the selected home's documents directory (`<repo>/docs/` or
 `~/.backlog/docs/`), one folder per substrate. Filenames are `<ID>-<slug>.md`,
-and the slug is frozen at creation (ADR 0129).
+and the slug is frozen at creation ([ADR 0129](../adr/0129-semantic-filenames-id-plus-slug.md)).
 
-| Substrate | Prefix | Folder | Source |
-|---|---|---|---|
-| task | `TASK-` | `tasks/` | built in |
-| epic | `EPIC-` | `epics/` | built in |
-| folder | `FLDR-` | `folders/` | built in |
-| artifact | `ARTF-` | `artifacts/` | built in |
-| milestone | `MLST-` | `milestones/` | built in |
-| cron | `CRON-` | `crons/` | built in |
-| memory | `MEMO-` | `memories/` | built in |
-| adr, requirement, prompt | | `adr/`, `requirements/`, `prompts/` | packaged definitions |
+Built-in substrates, with ID prefix and folder:
+
+- **task:** `TASK-`, `tasks/`.
+- **epic:** `EPIC-`, `epics/`.
+- **folder:** `FLDR-`, `folders/`.
+- **artifact:** `ARTF-`, `artifacts/`.
+- **milestone:** `MLST-`, `milestones/`.
+- **cron:** `CRON-`, `crons/`.
+- **memory:** `MEMO-`, `memories/`.
+
+Packaged definitions: **adr**, **requirement**, and **prompt** in `adr/`,
+`requirements/`, and `prompts/`, respectively.
 
 A project can declare more under `docs/substrates/` (ADR 0113). Entities link
 through `parent_id` and typed references.
 
 ## File Structure
 
-`packages/server/src/`, by ADR 0134 layer:
+`packages/server/src/`, by ADR 0134 layer (see also the
+[engineering guide](engineering.md) when changing code or file naming):
 
 ```
 core/                   Domain: pure functions, domain types, ports (*.contract.ts)
@@ -129,11 +144,13 @@ node-server.ts, dev-entry.ts, worker-entry.ts   Process entry points (compositio
 
 packages/viewer/
 ├── components/    # Web components
-├── services/      # App state, SSE client, markdown, URL state
+├── services/      # App state, SSE client, URL state
 ├── utils/         # API client, date formatting
 ├── icons/         # SVG icon exports
+├── markdown/      # Markdown rendering and syntax highlighting
+├── theme/         # Tsa tokens and dark/light theme values
 ├── main.ts        # App initialization
-└── styles.css     # All styling
+└── styles.css     # App layout styling (theme and markdown CSS are colocated)
 ```
 
 Nisli source and framework ADRs now live in the [Nisli repository](https://github.com/gkoreli/nisli):
@@ -143,18 +160,8 @@ Nisli source and framework ADRs now live in the [Nisli repository](https://githu
 
 ## Web Viewer Patterns
 
-### Icons
-- No emojis — use SVG icons from `viewer/icons/index.ts`
-- Futuristic gradient style matching `logo.svg`
-
-### Styling
-- Components inherit colors from parent elements
-- Selection states must be consistent across all item types
-- Tree connectors use `::before`/`::after` pseudo-elements
-
-### Filters
-- "All" option goes last in filter lists
-- Child tasks without visible parent show as orphans (not hidden)
+Read the [viewer guide](viewer.md#web-viewer-patterns) when changing icons,
+styling, or filters. It owns the contributor patterns previously listed here.
 
 ## Testing
 
@@ -163,4 +170,6 @@ pnpm test           # All workspace tests
 pnpm test:watch     # Watch mode (server)
 ```
 
-All tests use **memfs** for in-memory filesystem mocking. See [AGENTS.md](AGENTS.md) for testing guidelines.
+Read [Testing and memfs](testing.md) when adding, changing, or running
+tests, or investigating failures. It covers mocking, the read-only repository/git
+probe exception, and debugging patterns.

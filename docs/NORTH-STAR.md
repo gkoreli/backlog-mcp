@@ -562,8 +562,10 @@ input**, not just the happy path.
 - **Progressive disclosure & the port:** ADR 0106 (semantic intent tools) · ADR 0074–0078
   (context hydration) · ADR 0105 (per-repo auto-scope).
 - **Posture & storage:** ADR 0104 (local-first) · ADR 0107 (Loro-as-truth — *proposed*,
-  see Open decisions) · `AGENTS.md`
-  (development loop, memory protocol, code style).
+  see Open decisions) · [AGENTS.md](../AGENTS.md)
+  (entry point to the active [development loop](guides/development-loop.md),
+  [memory protocol](guides/memory-protocol.md), and
+  [engineering guide](guides/engineering.md)).
 - **In-flight threads this North Star sets requirements for:** ADR 0112 (docs-native
   project-scoped backlog — quartz) · ADR 0113 (user-defined substrates; ADR + requirements
   substrates — basalt) · ADR 0114 (memory vs context tool disposition — onyx) ·

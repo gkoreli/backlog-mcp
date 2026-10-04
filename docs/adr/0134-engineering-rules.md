@@ -20,9 +20,9 @@ relates_to:
 backlog-mcp's architecture is currently described across many ADRs, each
 restating part of it: ADR 0090 (core is pure), ADR 0091 (inject capabilities),
 ADR 0104 (binding engineering principles), ADR 0106.5 R8 (file reading is a
-local-adapter concern), the file naming convention labelled ADR 0109 in
-`AGENTS.md` (there is no ADR file for it), and the code-style section of
-`AGENTS.md`. None of them says where code lives, what it may depend on, or how
+local-adapter concern), the file naming convention labelled ADR 0109, now in the
+[engineering guide](../guides/engineering.md#file-naming-convention) (there is no ADR file for it), and the code-style guidance
+originally in `AGENTS.md` (now in that guide). None of them says where code lives, what it may depend on, or how
 a violation is found. As a result, some of those principles have eroded without
 anyone noticing.
 
@@ -70,7 +70,7 @@ Paths are relative to `packages/server/src/`.
   those objects live outside core and are wired by composition. This restates
   ADR 0090 principle 1 and ADR 0091, and makes both enforceable.
 - **R1.2 Ports are owned by their consumer.** The interface core calls lives in
-  core as `<name>.contract.ts` (file naming, `AGENTS.md`), and infrastructure implements it.
+  core as `<name>.contract.ts` (file naming, [engineering guide](../guides/engineering.md)), and infrastructure implements it.
   Core never imports a port from the layer that implements it. Precedent:
   `IntentRegistryPort` (ADR 0106.5 Phase B step 1).
 - **R1.3 Adapters are peers and thin.** An adapter parses input, calls core,
@@ -95,7 +95,7 @@ Paths are relative to `packages/server/src/`.
 - **R1.6 Packages are bounded contexts.** `shared` holds wire and entity types.
   `memory` holds memory composition. `server` holds the backlog domain and its
   adapters. `viewer` is a client of the HTTP API only. A package imports another
-  package's public entry point, never its files (`AGENTS.md`: no re-exporting
+  package's public entry point, never its files ([engineering guide](../guides/engineering.md): no re-exporting
   between packages). `shared` and `memory` never import `server`.
 
 ### R2. Domain model (DDD)
@@ -169,21 +169,21 @@ Paths are relative to `packages/server/src/`.
   second responsibility, or grows past about 400 lines, gets split along its
   concepts. For example, `cli/commands/create.ts` keeps registration and input
   resolution, and `cli/commands/create-output.ts` holds formatting.
-- **R4.2 Name files by role** (`AGENTS.md`, "File naming convention (ADR 0109)"): `<base>.types.ts` for satellite
+- **R4.2 Name files by role** ([engineering guide](../guides/engineering.md), "File naming convention"): `<base>.types.ts` for satellite
   types, `<name>.contract.ts` for ports, `<base>.test.ts` for tests, and
   `types.ts` only for types shared across a whole folder.
 - **R4.3 Name folders for domain concepts, not technical buckets.** `utils/`
   is frozen: nothing new goes in it, and its files move to the concept they
   serve when touched (for example `utils/global-home-paths.ts` → the home
   concept). New shared code goes in a concept folder.
-- **R4.4 `index.ts` is a barrel only** (`AGENTS.md`). A module never imports
+- **R4.4 `index.ts` is a barrel only** ([engineering guide](../guides/engineering.md)). A module never imports
   its own barrel. Cross-folder imports use the barrel where one exists.
 - **R4.5 Every file starts with a short comment that states its
   responsibility,** and every exported function has JSDoc that cites the ADR
   or prior art it implements.
 - **R4.6 Declarative, named functions.** Callbacks passed to `run`, `.action`,
   `.filter` and similar are named functions, not anonymous arrows
-  (`AGENTS.md`), so that stack traces and code search can find them.
+  ([engineering guide](../guides/engineering.md)), so that stack traces and code search can find them.
 
 ### R5. Reuse, root causes, and type safety
 
@@ -199,7 +199,7 @@ Paths are relative to `packages/server/src/`.
   so, and the code cites that ADR at the fallback. Example: recording recent
   homes, ADR 0128 R3, at `cli/runner.ts`.
 - **R5.4 Strict types.** No `any` in exported signatures, no `!` non-null
-  assertions (`AGENTS.md`), and `import type` for type-only imports
+  assertions ([engineering guide](../guides/engineering.md)), and `import type` for type-only imports
   (`verbatimModuleSyntax`). Narrow with checks, not casts.
 - **R5.5 Borrow battle-tested conventions.** When an established tool already
   has a convention for the same problem, adopt it and cite it in the file
@@ -209,7 +209,7 @@ Paths are relative to `packages/server/src/`.
 
 ### R6. Verification and enforcement
 
-- **R6.1 Unit tests with memfs, no integration tests** (`AGENTS.md`). Every
+- **R6.1 Unit tests with memfs, no integration tests** ([testing guide](../guides/testing.md)). Every
   change passes `pnpm build && pnpm test` and `pnpm typecheck` before it is
   committed, which is what CI runs (`.github/workflows`).
 - **R6.2 Architecture rules are tests, with a ratchet.**
@@ -233,13 +233,13 @@ Paths are relative to `packages/server/src/`.
 
 ### R7. Change process
 
-- **R7.1 Follow the development loop** (`AGENTS.md`): research the current
+- **R7.1 Follow the development loop** ([development loop](../guides/development-loop.md)): research the current
   state and write it up with file citations, plan as an ADR with numbered
   rulings, engineer in phases starting from core, run a validation pass, then
   record the outcome.
 - **R7.2 Commit small and conventional** (`feat(cli): …`, `docs(adr): …`),
-  with the `CHANGELOG.md` entry in the same change (`AGENTS.md`, Versioning).
-- **R7.3 ADRs cite files and commits, not intentions** (`AGENTS.md`).
+  with the `CHANGELOG.md` entry in the same change ([packages and releases](../guides/packages-and-releases.md#versioning--changelog)).
+- **R7.3 ADRs cite files and commits, not intentions** ([development loop](../guides/development-loop.md)).
 
 ### R8. Dependencies
 
@@ -303,7 +303,7 @@ changes behavior. Behavior changes are separate ADRs.
 5. **Split by concept, opportunistically.** Split `core/types.ts` into
    satellite `.types.ts` files, and split `server/hono-app.ts` into route
    modules. Do each when the file is next touched for another reason
-   (`AGENTS.md` file naming: no sweeping renames).
+   ([engineering guide](../guides/engineering.md) file naming: no sweeping renames).
 
 ## Consequences
 
@@ -345,7 +345,7 @@ changes behavior. Behavior changes are separate ADRs.
 
 - ADR 0090 (core purity, wrapper pattern), ADR 0091 (capability injection),
   ADR 0104 (binding principles), ADR 0106.5 R8 (local-adapter file reading),
-  `AGENTS.md` file naming ("ADR 0109"), ADR 0112 R-1, R-2, R-8, R-9 (homes, discovery,
+  [engineering guide](../guides/engineering.md) file naming ("ADR 0109"), ADR 0112 R-1, R-2, R-8, R-9 (homes, discovery,
   provenance), ADR 0117 (write boundary), ADR 0128 (home presentation,
   fail-open recent homes), ADR 0133 (atomic creation).
 - `2207110` (the CLI adopted the server's resolver), `c460830` (CLI body-file
