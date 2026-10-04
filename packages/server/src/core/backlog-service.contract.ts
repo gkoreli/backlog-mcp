@@ -9,6 +9,7 @@ import type {
 import type { UnifiedSearchResult, SearchableType } from '@backlog-mcp/memory/search';
 import type { ResourceContent } from './resource-content.contract.js';
 import type { EntityCreationPort } from './entity-creation.contract.js';
+import type { EntityCorpusReadPort, SyncEntityCorpusReadPort } from './entity-corpus.contract.js';
 
 /** Explicit authority to canonicalize an external document during a managed write. */
 export interface StorageSaveOptions {
@@ -28,9 +29,10 @@ export interface ListFilter {
   parent_id?: string;
   query?: string;
   limit?: number;
+  excludeTypes?: readonly SubstrateType[];
 }
 
-export interface IBacklogService {
+export interface IBacklogService extends Partial<EntityCorpusReadPort>, Partial<SyncEntityCorpusReadPort> {
   /** Atomic creation in local mode; constrained adapters may retain explicit-ID add. */
   create?: EntityCreationPort['create'];
   get(id: string): Promise<AnyEntity | undefined>;

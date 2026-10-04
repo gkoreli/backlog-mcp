@@ -20,6 +20,8 @@
  * output. Identity is OPTIONAL, modular, never forced (PROMPT 0003).
  */
 
+import { readEntityCorpus } from './entity-corpus.js';
+
 import type { IBacklogService } from './backlog-service.contract.js';
 import type { RecallItem } from './types.js';
 
@@ -76,7 +78,7 @@ export async function loadAgentAttributionIndex(
 ): Promise<AgentAttributionIndex> {
   let agents: ReadonlyArray<AgentDocumentLike> = [];
   try {
-    agents = await service.list({ type: AGENT_SUBSTRATE_TYPE });
+    agents = await readEntityCorpus(service, { type: AGENT_SUBSTRATE_TYPE });
   } catch {
     // Fall through to the empty index — rendering keeps raw sources.
   }

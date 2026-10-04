@@ -20,6 +20,8 @@
  * divergence threshold.
  */
 
+import { readEntityCorpus } from './entity-corpus.js';
+
 import type { Entity, Memory } from '@backlog-mcp/shared';
 import { EntityType } from '@backlog-mcp/shared';
 import type { IBacklogService } from './backlog-service.contract.js';
@@ -97,7 +99,7 @@ export async function detectContradictions(
   service: IBacklogService,
 ): Promise<ContradictionsResult> {
   const now = Date.now();
-  const memories = (await service.list({ type: EntityType.Memory }))
+  const memories = (await readEntityCorpus(service, { type: EntityType.Memory }))
     .map(e => e as Entity as Memory);
   const live_keyed = memories.filter(m => m.state_key && isLive(m, now)).length;
   const groups = groupByStateKey(memories, { now });
@@ -119,7 +121,7 @@ export async function contradictsFor(
   now: number = Date.now(),
 ): Promise<string[]> {
   if (!memory.state_key || !isLive(memory, now)) return [];
-  const memories = (await service.list({ type: EntityType.Memory }))
+  const memories = (await readEntityCorpus(service, { type: EntityType.Memory }))
     .map(e => e as Entity as Memory);
   return memories
     .filter(m =>

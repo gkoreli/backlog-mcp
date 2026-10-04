@@ -26,7 +26,7 @@ interface GetContextDeps {
  */
 function contextDeps(service: IBacklogService): GetContextDeps | null {
   const getSync = service.getSync?.bind(service);
-  const listSync = service.listSync?.bind(service);
+  const listSync = service.scanSync?.bind(service);
   if (!getSync || !listSync) return null;
   return {
     compose: {
@@ -44,7 +44,7 @@ function contextDeps(service: IBacklogService): GetContextDeps | null {
       getEntity: (id) => getSync(id),
       // Exhaustive like wakeup's constraint read: reverse relations must
       // see every declaring document (ListFilter has no paging).
-      listByType: (type) => listSync({ type, limit: 100_000 }),
+      listByType: (type) => listSync({ type }),
       // Registry-compiled edges (0113 C.2) — absent on legacy services.
       ...(service.listDisclosureRelations === undefined
         ? {}

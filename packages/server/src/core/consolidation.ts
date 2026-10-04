@@ -15,6 +15,8 @@
  * accumulating their story.
  */
 
+import { readEntityCorpus } from './entity-corpus.js';
+
 import type { Entity, Memory } from '@backlog-mcp/shared';
 import { EntityType } from '@backlog-mcp/shared';
 import type { IBacklogService } from './backlog-service.contract.js';
@@ -179,7 +181,7 @@ export async function consolidationCandidates(
 
   const now = deps.now ?? Date.now();
   const demand = demandCounts(deps.readUsageLines?.() ?? [], { now });
-  const all = await service.list({ type: EntityType.Memory });
+  const all = await readEntityCorpus(service, { type: EntityType.Memory });
   const episodics = all
     .map(e => e as Entity as Memory)
     .filter(m => isConsolidatableEpisodic(m, now))

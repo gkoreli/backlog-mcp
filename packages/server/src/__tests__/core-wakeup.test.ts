@@ -27,6 +27,13 @@ function mockService(entities: Entity[] = []): IBacklogService {
   return {
     get: vi.fn(async (id: string) => store.get(id)),
     getMarkdown: vi.fn(async () => null),
+    scan: vi.fn(async (filter?: any) => {
+      let result = [...store.values()];
+      if (filter?.status) result = result.filter(e => filter.status.includes(e.status));
+      if (filter?.type) result = result.filter(e => (e.type ?? 'task') === filter.type);
+      if (filter?.parent_id) result = result.filter(e => e.parent_id === filter.parent_id);
+      return result;
+    }),
     list: vi.fn(async (filter?: any) => {
       let result = [...store.values()];
       if (filter?.status) result = result.filter(e => filter.status.includes(e.status));
@@ -83,7 +90,7 @@ describe('core/wakeup', () => {
     });
 
     expect(result.metadata.unfiled_count).toBe(5);
-    expect(svc.list).toHaveBeenCalledWith({ limit: 100_000 });
+    expect(svc.scan).toHaveBeenCalledWith({});
   });
 
   it('includes identity when readIdentity returns a string', async () => {

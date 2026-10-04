@@ -22,6 +22,7 @@ function makeService(overrides: Partial<IBacklogService> = {}): IBacklogService 
   return {
     get: vi.fn().mockResolvedValue(undefined),
     getMarkdown: vi.fn().mockResolvedValue(null),
+    scan: vi.fn().mockResolvedValue([]),
     list: vi.fn().mockResolvedValue([]),
     add: vi.fn().mockResolvedValue(undefined),
     save: vi.fn().mockResolvedValue(undefined),
@@ -246,7 +247,8 @@ describe('Viewer Routes - collision candidates', () => {
     const service = makeService({
       get: vi.fn().mockResolvedValue(memory),
       getMarkdown: vi.fn().mockResolvedValue('# Deployment'),
-      list: vi.fn().mockResolvedValue([memory]),
+      scan: vi.fn().mockResolvedValue([memory]),
+    list: vi.fn().mockResolvedValue([memory]),
     });
     const app = createApp(service);
 
@@ -266,7 +268,8 @@ describe('Viewer Routes - collision candidates', () => {
     const service = makeService({
       get: vi.fn().mockResolvedValue(memory),
       getMarkdown: vi.fn().mockResolvedValue('# Deployment'),
-      list: vi.fn().mockResolvedValue([memory]),
+      scan: vi.fn().mockResolvedValue([memory]),
+    list: vi.fn().mockResolvedValue([memory]),
       searchUnified: vi.fn().mockRejectedValue(new Error('search unavailable')),
     });
     const app = createApp(service);

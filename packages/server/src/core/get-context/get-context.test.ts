@@ -25,6 +25,13 @@ function makeLocalService(entities: Entity[]): IBacklogService {
   return {
     getMarkdown: async (id: string) => byId.has(id) ? `# ${id} body` : null,
     getSync: (id: string) => byId.get(id),
+    scanSync: (filter?: { parent_id?: string }) => {
+      const all = [...byId.values()];
+      if (filter?.parent_id !== undefined) {
+        return all.filter(e => (e.parent_id ?? e.epic_id) === filter.parent_id);
+      }
+      return all;
+    },
     listSync: (filter?: { parent_id?: string }) => {
       const all = [...byId.values()];
       if (filter?.parent_id !== undefined) {

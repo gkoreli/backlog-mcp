@@ -21,6 +21,10 @@ begins at 0.57.0 — earlier history lives in git.
   entry points were removed.
 
 ### Fixed
+- **Memory correction, forgetting and analysis read the full local corpus.**
+  Older memories and descendants beyond the default 20-result display page are
+  included. Generic work listing excludes memories before pagination, so newer
+  memories no longer hide older work.
 - **Package paths work beneath an ancestor directory named `src`.** Runtime
   roots now follow the resolver module's location instead of the first `src`
   segment. Local home roots also use PathResolver's tilde expansion and resolve

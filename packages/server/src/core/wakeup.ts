@@ -22,6 +22,8 @@
  * ``WakeupParams``. Transports wrap the real IO; tests pass stubs.
  */
 
+import { readEntityCorpus } from './entity-corpus.js';
+
 import type { Entity, Memory, RuntimeEntity, SubstrateWorkflowDefinition } from '@backlog-mcp/shared';
 import type { MemoryEntry } from '@backlog-mcp/memory';
 import { EntityType, getSubstrate, isValidEntityId, parseEntityId } from '@backlog-mcp/shared';
@@ -204,7 +206,7 @@ function assertValidScope(scope: string): void {
 }
 
 /**
- * Build the transitive descendant set of ``scopeId`` using ``service.list``.
+ * Build the transitive descendant set of ``scopeId`` using the complete corpus capability.
  * Returns the set of IDs that are scope-or-descendants (scope included).
  *
  * Implementation: BFS layer-by-layer. Each layer queries ``list(parent_id: X)``
@@ -220,7 +222,7 @@ async function descendantSet(
 
   while (frontier.length > 0) {
     const children = await Promise.all(
-      frontier.map(id => service.list({ parent_id: id })),
+      frontier.map(id => readEntityCorpus(service, { parent_id: id })),
     );
     const next: string[] = [];
     for (const batch of children) {
@@ -372,7 +374,7 @@ export async function wakeup(
 
   // Home-wide by necessity: an unattached entity has no subtree ancestry by
   // which to assign it to a narrower wakeup scope.
-  const unfiledCount = (await service.list({ limit: 100_000 }))
+  const unfiledCount = (await readEntityCorpus(service, {}))
     .filter(function isUnfiled(entity) {
       return isUnfiledWorkEntity(entity, params.acceptsParent);
     })
@@ -403,19 +405,20 @@ export async function wakeup(
 
   // L1 Now — active tasks (in_progress | blocked), epics excluded;
   // and current epics as their own section.
-  const active = await service.list({ status: ['in_progress', 'blocked'] });
+  const active = await readEntityCorpus(service, { status: ['in_progress', 'blocked'] });
   const activeTasks = inScope(active.flatMap(function getActiveBuiltin(entity) {
     const builtin = asBuiltinEntity(entity);
     return builtin === undefined || builtin.type === 'epic' ? [] : [builtin];
   }))
     .sort(byUpdatedAtDesc)
+    .slice(0, 20)
     .map(e => toSummary(e, 'task', nowMs));
 
-  const epics = await service.list({ type: EntityType.Epic, status: ['open', 'in_progress'] });
+  const epics = await readEntityCorpus(service, { type: EntityType.Epic, status: ['open', 'in_progress'] });
   const currentEpics = inScope(epics.flatMap(function getEpic(entity) {
     const builtin = asBuiltinEntity(entity);
     return builtin?.type === EntityType.Epic ? [builtin] : [];
-  })).sort(byUpdatedAtDesc).map(e => toSummary(e, 'epic', nowMs));
+  })).sort(byUpdatedAtDesc).slice(0, 20).map(e => toSummary(e, 'epic', nowMs));
 
   // L2.5 Knowledge (ADR-0092.5 R-6, after MemPalace's L1 "essential story"):
   // top semantic/procedural memories for the scope — what the agent KNOWS
@@ -423,7 +426,7 @@ export async function wakeup(
   const maxKnowledge = params.maxKnowledge ?? (focalId !== undefined ? 3 : 5);
   let knowledge: WakeupKnowledgeItem[] = [];
   if (maxKnowledge > 0) {
-    const memories = (await service.list({ type: EntityType.Memory }))
+    const memories = (await readEntityCorpus(service, { type: EntityType.Memory }))
       .flatMap(function getMemory(entity) {
         const builtin = asBuiltinEntity(entity);
         return builtin?.type === EntityType.Memory ? [builtin] : [];
@@ -487,7 +490,7 @@ export async function wakeup(
     // Exhaustive read (no paging in ListFilter): the omitted count must be
     // the whole truth, and worst-first ordering must see every live REQ —
     // a storage-side cap would cut oldest-first BEFORE the band sort.
-    const requirements = await service.list({ type: REQUIREMENT_TYPE, limit: 100_000 });
+    const requirements = await readEntityCorpus(service, { type: REQUIREMENT_TYPE });
     const now = Date.now();
     const live = requirements
       .map(r => ({
@@ -542,7 +545,7 @@ export async function wakeup(
   const focalPool: Array<{ id: string; section: string }> = [];
   for (const declared of declaredSections) {
     if (declared.type === REQUIREMENT_TYPE && declared.wakeup.section === 'constraints') continue;
-    const entities = await service.list({ type: declared.type, limit: 100_000 });
+    const entities = await readEntityCorpus(service, { type: declared.type });
     const statusIncluded = entities
       .filter(e => {
         if (declared.wakeup.includeStatuses.length === 0) return true;
@@ -738,7 +741,7 @@ export async function wakeup(
   }
 
   // L2 Recent — last N done tasks by updated_at, + last N ops from the log.
-  const done = await service.list({ status: ['done'] });
+  const done = await readEntityCorpus(service, { status: ['done'] });
   const completions = inScope(done.flatMap(function getCompletedBuiltin(entity) {
     const builtin = asBuiltinEntity(entity);
     return builtin === undefined ? [] : [builtin];

@@ -32,6 +32,8 @@ function mockService(entities: Entity[]): IBacklogService {
   return {
     get: vi.fn(async (id: string) => entities.find(e => e.id === id)),
     getMarkdown: vi.fn(async () => null),
+    scan: vi.fn(async (filter?: { type?: string }) =>
+      filter?.type ? entities.filter(e => (e.type ?? 'task') === filter.type) : entities),
     list: vi.fn(async (filter?: { type?: string }) =>
       filter?.type ? entities.filter(e => (e.type ?? 'task') === filter.type) : entities),
     add: vi.fn(async () => {}),

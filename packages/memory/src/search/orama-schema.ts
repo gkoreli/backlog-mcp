@@ -101,8 +101,14 @@ export function buildWhereClause(filters?: SearchOptions['filters'], docTypes?: 
         .filter((token): token is string => token !== undefined),
     };
   }
-  if (filters?.type) where.type = { eq: filters.type };
+  const selectedTypes = docTypes?.length ? docTypes : filters?.type ? [filters.type] : undefined;
+  if (selectedTypes !== undefined) {
+    where.type = { in: selectedTypes.filter(function isEligible(type) {
+      return !filters?.excludeTypes?.includes(type);
+    }) };
+  } else if (filters?.excludeTypes?.length) {
+    where.type = { nin: [...filters.excludeTypes, 'resource'] };
+  }
   if (filters?.parent_id) where.parent_id = { eq: filters.parent_id };
-  if (docTypes?.length) where.type = { in: docTypes };
   return Object.keys(where).length > 0 ? where : undefined;
 }

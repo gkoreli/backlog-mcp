@@ -35,6 +35,11 @@ function stubService(fixture: ServiceFixture = {}): IBacklogService {
   return {
     get: vi.fn(async function get() { return undefined; }),
     getMarkdown: vi.fn(async function getMarkdown() { return null; }),
+    scan: vi.fn(async function list(filter) {
+      if (filter?.type === 'requirement') return fixture.requirements ?? [];
+      if (filter?.type === 'memory') return fixture.memories ?? [];
+      return [];
+    }),
     list: vi.fn(async function list(filter) {
       if (filter?.type === 'requirement') return fixture.requirements ?? [];
       if (filter?.type === 'memory') return fixture.memories ?? [];

@@ -1,3 +1,5 @@
+import { selectEntityCorpus } from '../../core/entity-corpus.js';
+import type { EntityCorpusFilter } from '../../core/entity-corpus.contract.js';
 import type { ClaimQuarantine, StorageSaveOptions } from '../../core/backlog-service.contract.js';
 import {
   EntityType,
@@ -213,12 +215,23 @@ export class BacklogService implements IBacklogService {
     return this.storage.getMarkdown(id);
   }
 
+  /** Complete local snapshot for invariant and analysis consumers. */
+  async scan(filter?: EntityCorpusFilter): Promise<AnyEntity[]> {
+    return this.scanSync(filter);
+  }
+
+  /** Complete synchronous snapshot for context traversal. */
+  scanSync(filter?: EntityCorpusFilter): AnyEntity[] {
+    return selectEntityCorpus(this.storage.iterateEntities(), filter);
+  }
+
   async list(filter?: {
     status?: string[];
     type?: SubstrateType;
     parent_id?: string;
     query?: string;
     limit?: number;
+    excludeTypes?: readonly SubstrateType[];
   }): Promise<AnyEntity[]> {
     const { query, ...storageFilter } = filter ?? {};
 
@@ -229,6 +242,7 @@ export class BacklogService implements IBacklogService {
           status: storageFilter.status,
           type: storageFilter.type,
           parent_id: storageFilter.parent_id,
+          excludeTypes: storageFilter.excludeTypes,
         },
         limit: storageFilter.limit,
       });

@@ -45,6 +45,7 @@ import { registerUpdate } from '../cli/commands/update.js';
 
 function createRuntime(): CliRuntime {
   const service = {
+    scan: vi.fn(async function list() { return []; }),
     list: vi.fn(async function list() { return []; }),
     searchUnified: vi.fn(async function search() { return []; }),
   } as unknown as IBacklogService;

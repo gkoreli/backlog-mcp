@@ -516,6 +516,13 @@ function mockService(entities: Entity[] = []): IBacklogService {
   return {
     get: async (id: string) => store.get(id),
     getMarkdown: async () => null,
+    scan: async (filter?: { status?: string[]; type?: string; parent_id?: string }) => {
+      let result = [...store.values()];
+      if (filter?.status) result = result.filter(e => filter.status?.includes(e.status ?? ''));
+      if (filter?.type) result = result.filter(e => (e.type ?? 'task') === filter.type);
+      if (filter?.parent_id) result = result.filter(e => e.parent_id === filter.parent_id);
+      return result;
+    },
     list: async (filter?: { status?: string[]; type?: string; parent_id?: string }) => {
       let result = [...store.values()];
       if (filter?.status) result = result.filter(e => filter.status?.includes(e.status ?? ''));

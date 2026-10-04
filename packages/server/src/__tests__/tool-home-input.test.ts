@@ -139,7 +139,8 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
 
   it('switches to collision candidates only when explicitly requested', async function switchesContradictionMode() {
     const service = {
-      list: vi.fn(async function list() { return []; }),
+      scan: vi.fn(async function list() { return []; }),
+    list: vi.fn(async function list() { return []; }),
       searchUnified: vi.fn(async function search() { return []; }),
     } as unknown as IBacklogService;
     const handler = captureHandler(function register(server) {
@@ -237,7 +238,8 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
   it('routes home:all wakeup as grouped briefings', async function coordinatesWakeup() {
     const localList = vi.fn();
     const service = {
-      list: localList,
+      scan: localList,
+    list: localList,
     } as unknown as IBacklogService;
     const wakeup = vi.fn(async function wakeupAcrossHomes() {
       return {
@@ -289,7 +291,7 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
     expect(list).toHaveBeenCalledWith({
       status: ['open'],
       limit: 5,
-      parent_id: undefined,
+      excludeTypes: ['memory'],
     });
   });
 });

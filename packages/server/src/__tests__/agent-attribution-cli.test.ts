@@ -114,7 +114,8 @@ describe('CLI --as agent attribution (ADR 0119 Slice A)', () => {
     };
     const runtime = {
       service: {
-        list: vi.fn(async () => [agentDoc]),
+        scan: vi.fn(async () => [agentDoc]),
+    list: vi.fn(async () => [agentDoc]),
       } as unknown as IBacklogService,
       memoryComposer: {
         recall: async () => [

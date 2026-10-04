@@ -6,6 +6,8 @@
  * dependency: adjudication remains an explicit human/agent action recorded in
  * Markdown through `distinct_from`, `supersedes`, `state_key`, or expiry.
  */
+
+import { readEntityCorpus } from './entity-corpus.js';
 import type { Memory } from '@backlog-mcp/shared';
 import { EntityType } from '@backlog-mcp/shared';
 import type { IBacklogService } from './backlog-service.contract.js';
@@ -301,7 +303,7 @@ export async function findCollisionCandidatesForMemory(
   options: { now?: number } = {},
 ): Promise<CollisionCandidate[]> {
   const now = options.now ?? Date.now();
-  const corpus = memoryCorpus(await service.list({ type: EntityType.Memory }));
+  const corpus = memoryCorpus(await readEntityCorpus(service, { type: EntityType.Memory }));
   const focal = corpus.find(function findFocal(memory) {
     return memory.id === focalId;
   });
@@ -343,7 +345,7 @@ export async function findCollisionCandidatePairs(
   } = {},
 ): Promise<CollisionCandidatesResult> {
   const now = options.now ?? Date.now();
-  const corpus = memoryCorpus(await service.list({ type: EntityType.Memory }));
+  const corpus = memoryCorpus(await readEntityCorpus(service, { type: EntityType.Memory }));
   const live = corpus.filter(function isLiveMemory(memory) {
     return isLive(memory, now);
   });

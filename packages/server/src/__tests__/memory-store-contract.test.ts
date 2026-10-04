@@ -53,11 +53,17 @@ function fakeService(): IBacklogService {
   return {
     async get(id) { return store.get(id); },
     async getMarkdown() { return null; },
-    async list(filter) {
+    async scan(filter) {
       let out = [...store.values()];
       if (filter?.type) out = out.filter(e => (e.type ?? 'task') === filter.type);
       if (filter?.parent_id) out = out.filter(e => e.parent_id === filter.parent_id);
       return out;
+    },
+    async list(filter) {
+      let out = [...store.values()];
+      if (filter?.type) out = out.filter(e => (e.type ?? 'task') === filter.type);
+      if (filter?.parent_id) out = out.filter(e => e.parent_id === filter.parent_id);
+      return out.slice(0, filter?.limit ?? 20);
     },
     async add(candidate) {
       const entity = EntitySchema.parse(candidate);

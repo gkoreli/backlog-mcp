@@ -3,7 +3,7 @@ import type { ListParams, ListResult } from './types.js';
 
 export async function listItems(service: IBacklogService, params: ListParams = {}): Promise<ListResult> {
   const { counts: wantCounts, ...filter } = params;
-  const tasks = await service.list(filter);
+  const tasks = await service.list({ ...filter, ...(filter.type === 'memory' ? {} : { excludeTypes: ['memory'] }) });
   // ADR-0092.3: memories are excluded from generic listing unless explicitly
   // requested via `type: 'memory'` — backlog_recall is their read surface.
   const visible = filter.type === 'memory'

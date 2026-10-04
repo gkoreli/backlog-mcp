@@ -47,6 +47,7 @@ export type IndexableEntity = SearchEntityDocument;
  * Search filter options
  */
 export interface SearchFilters {
+  excludeTypes?: readonly SubstrateType[];
   status?: string[];
   type?: SubstrateType;
   parent_id?: string;

@@ -24,6 +24,8 @@
  *    process by design. Register an InMemoryStore for 'session' if needed.
  */
 
+import { readEntityCorpus } from '../core/entity-corpus.js';
+
 import { EntityType, MemorySchema, isValidEntityId, type Entity, type Memory } from '@backlog-mcp/shared';
 import type { MemoryStore, MemoryEntry, MemoryLayer, RecallQuery, MemoryResult, ForgetFilter } from '@backlog-mcp/memory';
 import type { IBacklogService } from '../core/backlog-service.contract.js';
@@ -105,7 +107,7 @@ export class BacklogMemoryStore implements MemoryStore {
       await this.expireMemory(supersedes, nowIso);
     }
     if (stateKey) {
-      const all = await service.list({ type: EntityType.Memory });
+      const all = await readEntityCorpus(service, { type: EntityType.Memory });
       for (const m of all) {
         const prev = m as Memory;
         if (prev.state_key !== stateKey) continue;
@@ -167,7 +169,7 @@ export class BacklogMemoryStore implements MemoryStore {
 
   async forget(filter: ForgetFilter): Promise<number> {
     const service = this.getService();
-    const memories = await service.list({ type: EntityType.Memory });
+    const memories = await readEntityCorpus(service, { type: EntityType.Memory });
     const now = Date.now();
     const nowIso = new Date(now).toISOString();
     let count = 0;
@@ -200,7 +202,7 @@ export class BacklogMemoryStore implements MemoryStore {
   }
 
   async size(): Promise<number> {
-    const memories = await this.getService().list({ type: EntityType.Memory });
+    const memories = await readEntityCorpus(this.getService(), { type: EntityType.Memory });
     const now = Date.now();
     return memories.filter(m => {
       const vu = (m as Memory).valid_until;

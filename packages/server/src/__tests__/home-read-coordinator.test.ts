@@ -153,6 +153,7 @@ function createService(options: ServiceOptions = {}): IBacklogService {
     getMarkdown: vi.fn(async function getMarkdown(): Promise<string | null> {
       return null;
     }),
+    scan: vi.fn(list),
     list: vi.fn(list),
     add: vi.fn(async function add(): Promise<void> {}),
     save: vi.fn(async function save(): Promise<void> {}),
@@ -725,6 +726,7 @@ describe('home read coordinator', function describeHomeReadCoordinator() {
         return [];
       }
       return createRuntime(kind, id, {
+        scan: list,
         list,
         readIdentity: function readIdentity() {
           return `${label} identity`;

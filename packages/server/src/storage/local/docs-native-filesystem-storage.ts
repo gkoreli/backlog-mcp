@@ -1,3 +1,4 @@
+import { matchesEntityFilter } from '../../core/entity-corpus.js';
 import type { ClaimQuarantine, StorageSaveOptions } from '../../core/backlog-service.contract.js';
 import {
   existsSync,
@@ -16,7 +17,6 @@ import {
 import { isPathWithin } from '../../core/backlog-home.js';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
 import type { EntityDraft } from '../../core/entity-creation.contract.js';
-import { matchesDeclaredStatus } from '../../core/status-token.js';
 import { slugifyDocumentTitle } from '../../core/document-slug.js';
 import {
   normalizeDocumentSourcePath,
@@ -295,30 +295,10 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   }
 
   list(filter?: ListFilter): AnyEntity[] {
-    const { status, type, parent_id, limit = 20 } = filter ?? {};
-    let documents = Array.from(this.iterateDocuments());
-
-    if (status !== undefined) {
-      documents = documents.filter(function hasSelectedStatus(document) {
-        // Token-normalized (status-token.ts): lenient external reads write
-        // freeform statuses; `--status accepted` must match "Accepted,
-        // amended 2026-04-14" without a synonym map.
-        const entityStatus = document.entity.status;
-        return status.some(function matchesFilter(filterStatus) {
-          return matchesDeclaredStatus(entityStatus, filterStatus);
-        });
-      });
-    }
-    if (type !== undefined) {
-      documents = documents.filter(function hasSelectedType(document) {
-        return document.entity.type === type;
-      });
-    }
-    if (parent_id !== undefined) {
-      documents = documents.filter(function hasSelectedParent(document) {
-        return document.entity.parent_id === parent_id;
-      });
-    }
+    const { limit = 20, ...eligibility } = filter ?? {};
+    const documents = Array.from(this.iterateDocuments()).filter(function isEligible(document) {
+      return matchesEntityFilter(document.entity, eligibility);
+    });
 
     documents.sort(function compareDocuments(left, right) {
       const timeOrder = sortableTime(right) - sortableTime(left);

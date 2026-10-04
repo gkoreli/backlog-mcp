@@ -1,0 +1,71 @@
+---
+title: "0135. Complete reads and managed mutation consistency"
+date: 2026-10-03
+status: "Accepted — engineering in stages under maintainer authorization"
+---
+
+# 0135. Complete reads and managed mutation consistency
+
+The maintainer authorized engineering of [assessment 0019](../reports/0019-ddd-flow-assessment-2026-10-03.md).
+Its reproduction with 25 memories returned size 20 and could not forget the
+oldest ID. A controlled concurrent core update lost an independent field change.
+These are invariant failures, not reasons for a new domain framework.
+
+## Rulings
+
+1. **Complete reads are a separate consumer capability.** `EntityCorpusReadPort`
+   returns a complete filtered snapshot without pagination or search ranking.
+   Local storage's existing iterator supplies it. An unavailable capability fails
+   visibly rather than silently substituting a display page. Analysis, correction,
+   counts and context membership use complete reads; public listing stays bounded.
+   Eligibility is shared and applied before display limits. Context traversal has
+   the equivalent local synchronous capability. The descoped D1 graph need not
+   acquire local capabilities to satisfy this ruling.
+2. **Managed updates detect stale preimages.** Local read-modify-write operations
+   must compare a captured preimage/revision inside the existing home write lock.
+   A conflict is a typed domain error with a reread instruction. No semantic write
+   is automatically replayed or rebased. Native edits remain authoritative; the
+   guarantee must identify what is checked and avoid claiming editor transactions.
+3. **A durable commit is acknowledged independently of derived indexing.** A
+   committed mutation with failed index work reports repair pending explicitly;
+   it is not returned as an uncommitted failure. Preserve ordered indexing,
+   reconciliation and exact semantic journal ownership. Additive diagnostics are
+   permitted; do not change existing successful receipt fields or replay writes.
+   ADR 0117's journal remains an exact best-effort append attempt, not an atomic
+   second source of truth. Sink failures after commit cannot undo that commit.
+4. **Correction is a deterministic multi-document plan.** Complete holder discovery,
+   successor validation and predecessor closure belong to one domain operation.
+   Preserve ADD-only history and explicit recovery/partial-failure reporting.
+   Neither reordering two independent writes nor a process-only mutex establishes
+   the invariant. A narrow local capability may coordinate a real plan under the
+   existing home lock; no generic transaction framework is authorized by this ADR.
+5. **Search payload freshness is distinct from searchable-text freshness.** Native
+   metadata changes must refresh returned entities and filter fields even without
+   timestamp changes. Embeddings only need recomputation when embedding inputs
+   change. Viewer match explanations consume server-declared plain-text snippets;
+   HTML highlighting remains a client rendering concern.
+6. **Validity and write stamping have named owners.** Memory folds use a common
+   temporal projection and one operation time. Malformed dates remain lossless and
+   diagnosable. Body edits reuse identity/timestamp policy while preserving their
+   text-edit receipt and attribution. Missing storage claims are typed errors.
+7. **Refactor capabilities after their contracts are concrete.** Narrow ports and
+   composition bundles follow actual consumers. Preserve open substrates, literal
+   null intent values, generic null deletion, native resource edits, containment,
+   home isolation and multi-intent single semantic journal ownership. Lifecycle
+   cleanup must state admission during shutdown. Larger migration/discovery moves
+   must preserve preflight, rollback and lossless diagnostics in separate stages.
+
+## Engineering record
+
+- Stage A introduces complete corpus reads and eligibility before pagination;
+  memory/analysis/attribution/wakeup/context callers migrate to that capability.
+  Real local memfs fixtures cover more than 20 memories and siblings. Existing
+  fake services now declare scan separately; the memory fake's display list is
+  actually bounded. Later stages will record their exact implementation and
+  verification here rather than claiming these rulings are already all shipped.
+- Stage A verification: workspace build/typecheck passed; server 1,519 tests
+  passed / 2 existing skips, memory 49 and viewer 157 passed. A built-module
+  actual-filesystem check in a disposable temporary home returned complete size
+  25, display size 20, oldest-ID forget count 1 and remaining live size 24.
+  Search was unused and mocked in that manual check; unit query parity used the
+  real Orama implementation over memfs. No user corpus or installed package changed.

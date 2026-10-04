@@ -39,7 +39,8 @@ function makeMemory(id: string): Entity {
 describe('backlog_consolidation_candidates via MCP', () => {
   const memories = [makeMemory('MEMO-0001'), makeMemory('MEMO-0002'), makeMemory('MEMO-0003')];
   const service = {
-    list: async () => memories,
+    scan: async () => memories,
+    list: async () => memories.slice(0, 20),
     searchUnified: async () => [],
   } as unknown as IBacklogService;
   // Three recalls of bundle members within the window — meets min_demand 3.

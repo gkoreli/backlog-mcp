@@ -27,6 +27,7 @@ function mockService(
       });
     }),
     getMarkdown: vi.fn(async function getMarkdown() { return null; }),
+    scan: vi.fn(async function list() { return memories; }),
     list: vi.fn(async function list() { return memories; }),
     add: vi.fn(async function add(entity) { return entity; }),
     save: vi.fn(async function save(entity) { return entity; }),
