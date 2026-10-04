@@ -1,3 +1,4 @@
+import { withWriteWarnings } from './entity-mutation.js';
 import type { IBacklogService } from './backlog-service.contract.js';
 import type {
   DeleteParams,
@@ -21,16 +22,20 @@ export async function deleteItem(
   ctx: WriteContext,
   attribution: MutationAttribution,
 ): Promise<DeleteResult> {
-  const deleted = await service.delete(params.id);
-  const result: DeleteResult = { id: params.id, deleted };
+  const committed = service.deleteCommitted === undefined
+    ? { value: await service.delete(params.id) }
+    : await service.deleteCommitted(params.id);
+  const deleted = committed.value;
+  let result: DeleteResult = withWriteWarnings({ id: params.id, deleted }, committed.warnings);
   if (deleted) {
-    recordMutation(
+    const warnings = recordMutation(
       ctx,
       attribution,
       params.id,
       params as unknown as Record<string, unknown>,
       result,
     );
+    result = withWriteWarnings(result, warnings);
   }
   return result;
 }

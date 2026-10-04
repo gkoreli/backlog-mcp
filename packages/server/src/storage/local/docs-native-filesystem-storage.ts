@@ -1,3 +1,7 @@
+/** Authoritative docs-native writes, revision checks and home-local locking. */
+import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
+import { EntityWriteConflictError, type EntityPreimage } from '../../core/entity-mutation.contract.js';
 import { matchesEntityFilter } from '../../core/entity-corpus.js';
 import type { ClaimQuarantine, StorageSaveOptions } from '../../core/backlog-service.contract.js';
 import {
@@ -25,6 +29,7 @@ import {
 } from '../../core/document-identity.js';
 import {
   SubstrateWriteError,
+  MissingStorageClaimError,
   type ProjectSubstrateRegistry,
 } from '../../core/substrates/index.js';
 import type {
@@ -176,7 +181,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   private claimFor(entity: AnyEntity): Readonly<SubstrateStorageClaim> {
     const claim = this.registry.getStorageClaim(entity.type);
     if (claim === undefined) {
-      throw new Error(`No storage claim for entity type: ${entity.type}`);
+      throw new MissingStorageClaimError(entity.type);
     }
     return claim;
   }
@@ -228,7 +233,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     candidate: AnyEntity,
     sourcePath: string,
     exclusive: boolean,
-  ): AnyEntity {
+  ): EntityPreimage {
     const validation = this.registry.validateWrite(candidate);
     if (!validation.ok) {
       throw new SubstrateWriteError(candidate.type, validation.issues);
@@ -248,14 +253,15 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     const target = this.resolveClaimedPath(sourcePath, claim);
     validateWriteIdentity(entity, target.sourcePath, claim);
     mkdirSync(dirname(target.absolutePath), { recursive: true });
+    const markdown = serializeEntity(entity);
     writeFileSync(
       target.absolutePath,
-      serializeEntity(entity),
+      markdown,
       exclusive ? { flag: 'wx' } : undefined,
     );
     // The disk changed; the derived read model is now stale (ADR 0127 R2).
     this.invalidate();
-    return entity;
+    return { entity, revision: documentRevision(markdown) };
   }
 
   getDocumentById(id: string): StoredEntityDocument | undefined {
@@ -314,7 +320,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   createDocument(entity: AnyEntity, sourcePath: string): AnyEntity {
     const storage = this;
     return this.mutate(function insert() {
-      return storage.write(entity, sourcePath, true);
+      return storage.write(entity, sourcePath, true).entity;
     });
   }
 
@@ -324,7 +330,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     return this.mutate(function createEntity() {
       const id = nextStorageDocumentId(storage.registry, draft.type, storage.getMaxId(draft.type));
       const entity = { ...draft, id };
-      return storage.write(entity, storage.newDocumentSourcePath(entity), true);
+      return storage.write(entity, storage.newDocumentSourcePath(entity), true).entity;
     });
   }
 
@@ -348,11 +354,32 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
 
   save(entity: AnyEntity, options?: StorageSaveOptions): AnyEntity {
     const storage = this;
+    return storage.saveVersioned(entity, options).entity;
+  }
+
+  /** Return the revision from the exact bytes written within the home lock. */
+  saveVersioned(entity: AnyEntity, options?: StorageSaveOptions): EntityPreimage {
+    const storage = this;
     return this.mutate(function saveDocument() { return storage.saveCurrent(entity, options); });
   }
 
-  private saveCurrent(entity: AnyEntity, options?: StorageSaveOptions): AnyEntity {
+  /** Capture entity and exact Markdown revision from one authoritative snapshot. */
+  getForWrite(id: string): EntityPreimage | undefined {
+    const document = this.getDocumentById(id);
+    return document === undefined ? undefined : { entity: document.entity, revision: documentRevision(document.markdown) };
+  }
+
+  private saveCurrent(entity: AnyEntity, options?: StorageSaveOptions): EntityPreimage {
     const existing = this.getDocumentById(entity.id);
+    if (options?.expected !== undefined) {
+      const expected = options.expected;
+      if (existing === undefined || expected.entity.id !== entity.id
+        || (expected.revision === undefined
+          ? !isDeepStrictEqual(existing.entity, expected.entity)
+          : documentRevision(existing.markdown) !== expected.revision)) {
+        throw new EntityWriteConflictError(entity.id);
+      }
+    }
     if (
       existing !== undefined
       && options?.canonicalAdoption !== true
@@ -422,4 +449,9 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     this.assertNoClaimCollisions(type);
     return this.snapshot().maxIds.get(type) ?? 0;
   }
+}
+
+/** Opaque exact-byte revision; timestamps are not concurrency tokens. */
+function documentRevision(markdown: string): string {
+  return createHash('sha256').update(markdown).digest('hex');
 }

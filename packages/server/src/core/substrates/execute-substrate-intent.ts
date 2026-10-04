@@ -1,3 +1,5 @@
+import { readEntityForWrite, saveEntityCommitted, withWriteWarnings } from '../entity-mutation.js';
+import type { EntityPreimage, WriteWarning } from '../entity-mutation.contract.js';
 import type {
   AnyEntity,
   CompiledFieldBinding,
@@ -69,10 +71,10 @@ function entityField(entity: AnyEntity, field: string): unknown {
 async function requireEntity(
   service: ExecuteSubstrateIntentParams['service'],
   id: string,
-): Promise<AnyEntity> {
-  const entity = await service.get(id);
-  if (entity === undefined) throw new NotFoundError(id);
-  return entity;
+): Promise<EntityPreimage> {
+  const preimage = await readEntityForWrite(service, id);
+  if (preimage === undefined) throw new NotFoundError(id);
+  return preimage;
 }
 
 function requireSubjectType(entity: AnyEntity, substrateType: string): void {
@@ -181,7 +183,7 @@ async function executeCreate(
     params.context,
     attribution(params.intent, 'create'),
   );
-  return { ids: [result.id], changed: true };
+  return withWriteWarnings({ ids: [result.id], changed: true }, result.warnings);
 }
 
 async function executeTransition(
@@ -192,7 +194,8 @@ async function executeTransition(
   }
   const operation = params.intent.operation;
   const id = requiredString(params.input, operation.subjectInput);
-  const entity = await requireEntity(params.service, id);
+  const preimage = await requireEntity(params.service, id);
+  const entity = preimage.entity;
   requireSubjectType(entity, params.intent.substrateType);
   const transition = transitionValue(entity, operation.transition);
   const fields = mappedFields(operation.fields, params.input);
@@ -207,15 +210,16 @@ async function executeTransition(
     ...entity,
     ...fields,
   });
-  await updateEntityPostimage(
+  const result = await updateEntityPostimage(
     params.service,
     entity,
     postimage,
     fields,
     params.context,
     attribution(params.intent, 'update'),
+    preimage,
   );
-  return { ids: [id], changed: true };
+  return withWriteWarnings({ ids: [id], changed: true }, result.warnings);
 }
 
 async function executeSetField(
@@ -226,7 +230,8 @@ async function executeSetField(
   }
   const operation = params.intent.operation;
   const id = requiredString(params.input, operation.subjectInput);
-  const entity = await requireEntity(params.service, id);
+  const preimage = await requireEntity(params.service, id);
+  const entity = preimage.entity;
   requireSubjectType(entity, params.intent.substrateType);
   if (entityField(entity, operation.field) === operation.value) {
     return { ids: [id], changed: false };
@@ -235,15 +240,16 @@ async function executeSetField(
     ...entity,
     [operation.field]: operation.value,
   });
-  await updateEntityPostimage(
+  const result = await updateEntityPostimage(
     params.service,
     entity,
     postimage,
     { [operation.field]: operation.value },
     params.context,
     attribution(params.intent, 'update'),
+    preimage,
   );
-  return { ids: [id], changed: true };
+  return withWriteWarnings({ ids: [id], changed: true }, result.warnings);
 }
 
 async function executeRelateAndTransition(
@@ -259,10 +265,12 @@ async function executeRelateAndTransition(
     throw new ValidationError('Relation source and target must be different entities');
   }
 
-  const [source, target] = await Promise.all([
+  const [sourcePreimage, targetPreimage] = await Promise.all([
     requireEntity(params.service, sourceId),
     requireEntity(params.service, targetId),
   ]);
+  const source = sourcePreimage.entity;
+  const target = targetPreimage.entity;
   requireSubjectType(source, params.intent.substrateType);
   if (!operation.relation.targets.includes(target.type)) {
     throw new ValidationError(
@@ -295,24 +303,33 @@ async function executeRelateAndTransition(
 
   let sourceAttempted = false;
   let targetAttempted = false;
+  let writtenSource: EntityPreimage = { entity: sourcePostimage };
+  let writtenTarget: EntityPreimage = { entity: targetPostimage };
+  const warnings: WriteWarning[] = [];
   try {
     if (relation.changed) {
+      sourceAttempted = params.service.saveCommitted === undefined;
+      const committed = await saveEntityCommitted(params.service, sourcePostimage, { expected: sourcePreimage });
       sourceAttempted = true;
-      await params.service.save(sourcePostimage);
+      writtenSource = committed.preimage ?? { entity: committed.value };
+      warnings.push(...(committed.warnings ?? []));
     }
     if (transition.changed) {
+      targetAttempted = params.service.saveCommitted === undefined;
+      const committed = await saveEntityCommitted(params.service, targetPostimage, { expected: targetPreimage });
       targetAttempted = true;
-      await params.service.save(targetPostimage);
+      writtenTarget = committed.preimage ?? { entity: committed.value };
+      warnings.push(...(committed.warnings ?? []));
     }
   } catch (error) {
     const compensationErrors: unknown[] = [];
     try {
-      if (targetAttempted) await params.service.save(target);
+      if (targetAttempted) await saveEntityCommitted(params.service, target, { expected: writtenTarget });
     } catch (targetCompensationError) {
       compensationErrors.push(targetCompensationError);
     }
     try {
-      if (sourceAttempted) await params.service.save(source);
+      if (sourceAttempted) await saveEntityCommitted(params.service, source, { expected: writtenSource });
     } catch (sourceCompensationError) {
       compensationErrors.push(sourceCompensationError);
     }
@@ -334,18 +351,15 @@ async function executeRelateAndTransition(
     );
   }
 
-  const result = {
-    ids: [sourceId, targetId],
-    changed: true,
-  } as const;
-  recordMutation(
+  const result = withWriteWarnings({ ids: [sourceId, targetId], changed: true }, warnings);
+  const journalWarnings = recordMutation(
     params.context,
     attribution(params.intent, 'update'),
     sourceId,
     { ...params.input },
     result,
   );
-  return result;
+  return withWriteWarnings(result, journalWarnings);
 }
 
 /** Execute one compiler-resolved semantic mutation without reopening declarations. */

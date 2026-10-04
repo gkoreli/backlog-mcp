@@ -1,18 +1,9 @@
 /**
- * Mutation recorder — core's single entry point for the write journal.
- *
- * Pure function: builds an OperationEntry, appends it to the log, emits a
- * live-event if the context carries an event bus. No module state, no
- * singletons, no wrappers.
- *
- * Called by core write functions (createEntity, updateEntity, deleteItem,
- * editItem) after their mutation completes successfully. The write and
- * its journal entry are a single operation — you cannot perform the
- * mutation without recording it, because both live inside the same core
- * function.
- *
- * See ADR 0094.
+ * One semantic journal append attempt and live notification after commit.
+ * ADR 0117 makes the local journal best-effort, not crash-atomic with Markdown.
+ * ADR 0135 R3 returns known sink failures as committed-write diagnostics.
  */
+import type { WriteWarning } from './entity-mutation.contract.js';
 
 import type { WriteContext } from './types.js';
 import type { Mutation, MutationAttribution, OperationEntry } from './operation-log.contract.js';
@@ -36,7 +27,7 @@ export function recordMutation(
   resourceId: string,
   params: Record<string, unknown>,
   result: unknown,
-): void {
+): WriteWarning[] {
   const ts = new Date().toISOString();
 
   const entry: OperationEntry = {
@@ -49,13 +40,23 @@ export function recordMutation(
     actor: ctx.actor,
   };
 
-  ctx.operationLog.append(entry);
+  const warnings: WriteWarning[] = [];
+  try {
+    ctx.operationLog.append(entry);
+  } catch {
+    warnings.push({ code: 'journal_append_failed', message: 'Markdown committed; the journal append attempt failed.' });
+  }
 
-  ctx.eventBus?.emit({
-    type: MUTATION_EVENT_MAP[attribution.mutation],
-    id: resourceId,
-    tool: attribution.tool,
-    actor: ctx.actor.name,
-    ts,
-  });
+  try {
+    ctx.eventBus?.emit({
+      type: MUTATION_EVENT_MAP[attribution.mutation],
+      id: resourceId,
+      tool: attribution.tool,
+      actor: ctx.actor.name,
+      ts,
+    });
+  } catch {
+    warnings.push({ code: 'notification_failed', message: 'Markdown committed; live notification failed. Refresh the viewer to read current state.' });
+  }
+  return warnings;
 }

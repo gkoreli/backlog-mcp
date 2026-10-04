@@ -21,6 +21,12 @@ begins at 0.57.0 — earlier history lives in git.
   entry points were removed.
 
 ### Fixed
+- **Managed edits detect conflicting document changes.** Local update, body edit
+  and compiled intents compare exact Markdown revisions under the home write
+  lock; conflicts instruct callers to reread. Committed writes remain successful
+  when indexing or an injected journal/notification sink fails, with additive
+  warnings and search repair on the next query. Custom body edits preserve
+  absent or author-owned timestamps, and unknown substrate errors are typed.
 - **Native metadata edits refresh search filters and result payloads.**
   Changes are detected even when searchable text and timestamps stay unchanged;
   metadata-only updates reuse embeddings. Explicit filters also apply to exact-ID

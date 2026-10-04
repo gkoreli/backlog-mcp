@@ -1,3 +1,7 @@
+/** Body editing shares managed stamping and acknowledges committed effects. */
+import { readEntityForWrite, saveEntityCommitted, withWriteWarnings } from './entity-mutation.js';
+import { EntityWriteConflictError } from './entity-mutation.contract.js';
+import { stampUpdatePostimage } from './update.js';
 import type { IBacklogService } from './backlog-service.contract.js';
 import type { Operation } from '@backlog-mcp/shared';
 import { applyOperation } from './text-operations.js';
@@ -24,22 +28,25 @@ export async function editItem(
   attribution: MutationAttribution,
 ): Promise<EditResult> {
   const { id, operation } = params;
-  const task = await service.get(id);
-  if (!task) throw new NotFoundError(id);
-
+  const preimage = await readEntityForWrite(service, id);
+  if (preimage === undefined) throw new NotFoundError(id);
+  const task = preimage.entity;
+  let newBody: string;
   try {
-    const newBody = applyOperation(task.content ?? '', operation as Operation);
-    await service.save({ ...task, content: newBody, updated_at: new Date().toISOString() });
-    const result: EditResult = { success: true, message: `Successfully applied ${operation.type} to ${id}` };
-    recordMutation(
-      ctx,
-      attribution,
-      id,
-      params as unknown as Record<string, unknown>,
-      result,
-    );
-    return result;
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    newBody = applyOperation(task.content ?? '', operation as Operation);
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
+
+  let committed;
+  try {
+    committed = await saveEntityCommitted(service, stampUpdatePostimage(task, { ...task, content: newBody }), { expected: preimage });
+  } catch (error) {
+    if (error instanceof EntityWriteConflictError) throw error;
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+  const result: EditResult = withWriteWarnings({ success: true, message: `Successfully applied ${operation.type} to ${id}` }, committed.warnings);
+  return withWriteWarnings(result, recordMutation(
+    ctx, attribution, id, params as unknown as Record<string, unknown>, result,
+  ));
 }

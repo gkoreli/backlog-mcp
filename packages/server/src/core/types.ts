@@ -1,3 +1,4 @@
+import type { MutationReceipt } from './entity-mutation.contract.js';
 /**
  * Core function types — transport-agnostic.
  *
@@ -176,7 +177,7 @@ export interface CreateEntityParams {
   enabled?: boolean;
 }
 
-export interface CreateResult {
+export interface CreateResult extends MutationReceipt {
   id: string;
   parent_id?: string;
   routed_by?: ContainerRouteProvenance;
@@ -203,7 +204,7 @@ export interface UpdateEntityParams {
   next_run?: string | null;   // null clears
 }
 
-export interface UpdateResult {
+export interface UpdateResult extends MutationReceipt {
   id: string;
 }
 
@@ -213,7 +214,7 @@ export interface DeleteParams {
   id: string;
 }
 
-export interface DeleteResult {
+export interface DeleteResult extends MutationReceipt {
   id: string;
   deleted: boolean;
 }
@@ -1007,7 +1008,7 @@ export interface EditParams {
   operation: EditOperation;
 }
 
-export interface EditResult {
+export interface EditResult extends MutationReceipt {
   success: boolean;
   message?: string;
   error?: string;

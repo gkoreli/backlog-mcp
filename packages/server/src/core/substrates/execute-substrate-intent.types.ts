@@ -1,3 +1,4 @@
+import type { MutationReceipt } from '../entity-mutation.contract.js';
 import type { CompiledSubstrateIntent } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../backlog-service.contract.js';
 import type { WriteContext } from '../types.js';
@@ -11,7 +12,7 @@ export interface ExecuteSubstrateIntentParams {
   context: WriteContext;
 }
 
-export interface ExecuteSubstrateIntentResult {
+export interface ExecuteSubstrateIntentResult extends MutationReceipt {
   ids: readonly string[];
   changed: boolean;
 }

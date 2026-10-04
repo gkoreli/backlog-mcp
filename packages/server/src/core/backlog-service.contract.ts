@@ -10,12 +10,10 @@ import type { UnifiedSearchResult, SearchableType } from '@backlog-mcp/memory/se
 import type { ResourceContent } from './resource-content.contract.js';
 import type { EntityCreationPort } from './entity-creation.contract.js';
 import type { EntityCorpusReadPort, SyncEntityCorpusReadPort } from './entity-corpus.contract.js';
+import type { EntityMutationPort, StorageSaveOptions } from './entity-mutation.contract.js';
+export type { StorageSaveOptions } from './entity-mutation.contract.js';
 
 /** Explicit authority to canonicalize an external document during a managed write. */
-export interface StorageSaveOptions {
-  canonicalAdoption?: true;
-}
-
 /** A claimed document that failed compilation; retained as a lossless resource. */
 export interface ClaimQuarantine {
   type: string;
@@ -32,7 +30,7 @@ export interface ListFilter {
   excludeTypes?: readonly SubstrateType[];
 }
 
-export interface IBacklogService extends Partial<EntityCorpusReadPort>, Partial<SyncEntityCorpusReadPort> {
+export interface IBacklogService extends Partial<EntityCorpusReadPort>, Partial<SyncEntityCorpusReadPort>, Partial<EntityMutationPort> {
   /** Atomic creation in local mode; constrained adapters may retain explicit-ID add. */
   create?: EntityCreationPort['create'];
   get(id: string): Promise<AnyEntity | undefined>;

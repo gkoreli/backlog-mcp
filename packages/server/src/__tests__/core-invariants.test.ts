@@ -529,7 +529,7 @@ describe('core/updateEntity', () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
     const result = await updateEntity(svc, { id: 'TASK-0001', status: 'done' }, testCtx());
     expect(result.id).toBe('TASK-0001');
-    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ status: 'done' }));
+    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ status: 'done' }), expect.objectContaining({ expected: expect.objectContaining({ entity: expect.any(Object) }) }));
   });
 
   it('throws NotFoundError for missing task', async () => {
@@ -554,13 +554,13 @@ describe('core/updateEntity', () => {
   it('sets due_date when string provided', async () => {
     const svc = mockService([makeEntity({ id: 'MLST-0001', title: 'M', type: 'milestone' as any })]);
     await updateEntity(svc, { id: 'MLST-0001', due_date: '2026-06-01' }, testCtx());
-    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ due_date: '2026-06-01' }));
+    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ due_date: '2026-06-01' }), expect.objectContaining({ expected: expect.objectContaining({ entity: expect.any(Object) }) }));
   });
 
   it('updates evidence array', async () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
     await updateEntity(svc, { id: 'TASK-0001', evidence: ['Fixed in PR #1'] }, testCtx());
-    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ evidence: ['Fixed in PR #1'] }));
+    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ evidence: ['Fixed in PR #1'] }), expect.objectContaining({ expected: expect.objectContaining({ entity: expect.any(Object) }) }));
   });
 
   it('named update params take precedence over generic fields', async () => {
@@ -578,7 +578,7 @@ describe('core/updateEntity', () => {
     expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({
       title: 'Named title',
       status: 'done',
-    }));
+    }), expect.objectContaining({ expected: expect.objectContaining({ entity: expect.any(Object) }) }));
   });
 
   it('null in generic fields clears a substrate field', async () => {
@@ -638,7 +638,7 @@ describe('core/updateEntity', () => {
       id: 'TASK-0001',
       type: 'task',
       created_at: '2026-01-01T00:00:00.000Z',
-    }));
+    }), expect.objectContaining({ expected: expect.objectContaining({ entity: expect.any(Object) }) }));
   });
 
   it('records semantic update attribution and emits update-class SSE', async () => {
@@ -788,21 +788,21 @@ describe('core/editItem', () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', content: 'Hello world' })]);
     const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'str_replace', old_str: 'Hello', new_str: 'Goodbye' } }, testCtx());
     expect(result.success).toBe(true);
-    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ content: 'Goodbye world' }));
+    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ content: 'Goodbye world' }), expect.objectContaining({ expected: expect.objectContaining({ entity: expect.any(Object) }) }));
   });
 
   it('applies append operation', async () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', content: 'Line 1' })]);
     const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'append', new_str: 'Line 2' } }, testCtx());
     expect(result.success).toBe(true);
-    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ content: 'Line 1\nLine 2' }));
+    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ content: 'Line 1\nLine 2' }), expect.objectContaining({ expected: expect.objectContaining({ entity: expect.any(Object) }) }));
   });
 
   it('applies insert operation', async () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T', content: 'Line 1\nLine 3' })]);
     const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'insert', insert_line: 1, new_str: 'Line 2' } }, testCtx());
     expect(result.success).toBe(true);
-    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ content: 'Line 1\nLine 2\nLine 3' }));
+    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ content: 'Line 1\nLine 2\nLine 3' }), expect.objectContaining({ expected: expect.objectContaining({ entity: expect.any(Object) }) }));
   });
 
   it('throws NotFoundError for missing task', async () => {
@@ -828,7 +828,7 @@ describe('core/editItem', () => {
     const svc = mockService([makeEntity({ id: 'TASK-0001', title: 'T' })]);
     const result = await editItem(svc, { id: 'TASK-0001', operation: { type: 'append', new_str: 'First content' } }, testCtx());
     expect(result.success).toBe(true);
-    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ content: 'First content' }));
+    expect(svc.save).toHaveBeenCalledWith(expect.objectContaining({ content: 'First content' }), expect.objectContaining({ expected: expect.objectContaining({ entity: expect.any(Object) }) }));
   });
 
   it('sets updated_at on successful edit', async () => {

@@ -147,9 +147,17 @@ export function nextStorageDocumentId(
   }
   const claim = catalog.getStorageClaim(type);
   if (claim === undefined) {
-    throw new Error(`No storage claim for entity type: ${type}`);
+    throw new MissingStorageClaimError(type);
   }
 
   const key = String(currentMaxId + 1).padStart(minimumDigits(claim), '0');
   return formatStorageDisplayId(claim, key);
+}
+
+/** Registry identity allocation requires an active storage claim. */
+export class MissingStorageClaimError extends Error {
+  constructor(readonly type: string) {
+    super(`No storage claim for entity type: ${type}`);
+    this.name = 'MissingStorageClaimError';
+  }
 }

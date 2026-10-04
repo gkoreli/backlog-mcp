@@ -52,3 +52,5 @@ export type {
   SubstrateDefinitionIssueCode,
   SubstrateWriteValidationResult,
 } from './types.js';
+
+export { MissingStorageClaimError } from './storage-identity.js';

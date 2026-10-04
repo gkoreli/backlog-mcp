@@ -1,4 +1,7 @@
-import { ZodError } from 'zod';
+/** Managed update owns postimage policy, capture and semantic acknowledgement. */
+import { normalizeWriteError } from './write-errors.js';
+import { readEntityForWrite, saveEntityCommitted, withWriteWarnings } from './entity-mutation.js';
+import type { Committed, EntityPreimage } from './entity-mutation.contract.js';
 import type { AnyEntity } from '@backlog-mcp/shared';
 import type { IBacklogService } from './backlog-service.contract.js';
 import { shouldCaptureCompletion } from './memory-capture-rules.js';
@@ -6,7 +9,6 @@ import { captureCompletion } from './memory-capture.js';
 import {
   asBuiltinEntity,
   isBuiltinSubstrateType,
-  SubstrateWriteError,
 } from './substrates/index.js';
 import {
   NotFoundError,
@@ -16,7 +18,6 @@ import {
   type UpdateResult,
   type WriteContext,
 } from './types.js';
-import { formatZodError } from './zod-errors.js';
 import { recordMutation } from './operation-log.js';
 
 function applyChanges(
@@ -32,15 +33,6 @@ function applyChanges(
   }
 }
 
-function normalizeWriteError(error: unknown): never {
-  if (error instanceof SubstrateWriteError) {
-    throw new ValidationError(error.message);
-  }
-  if (error instanceof ZodError) {
-    throw new ValidationError(formatZodError(error));
-  }
-  throw error;
-}
 
 /** Pin update identity and apply the shared server-owned timestamp policy. */
 export function stampUpdatePostimage(
@@ -85,6 +77,7 @@ export async function updateEntityPostimage(
   effectiveChanges: Record<string, unknown>,
   ctx: WriteContext,
   attribution: MutationAttribution,
+  preimage: EntityPreimage = { entity: current },
 ): Promise<UpdateResult> {
   delete effectiveChanges.id;
   delete effectiveChanges.type;
@@ -92,13 +85,14 @@ export async function updateEntityPostimage(
   delete effectiveChanges.updated_at;
   const merged = stampUpdatePostimage(current, postimage);
 
-  let stored: AnyEntity;
+  let committed: Committed<AnyEntity>;
   try {
-    stored = await service.save(merged as AnyEntity);
+    committed = await saveEntityCommitted(service, merged, { expected: preimage });
   } catch (error) {
     normalizeWriteError(error);
   }
 
+  const stored = committed.value;
   const before = asBuiltinEntity(current);
   const after = asBuiltinEntity(stored);
   if (
@@ -110,15 +104,15 @@ export async function updateEntityPostimage(
     await captureCompletion(ctx.memoryComposer, after, ctx.actor);
   }
 
-  const result: UpdateResult = { id: stored.id };
-  recordMutation(
+  const result: UpdateResult = withWriteWarnings({ id: stored.id }, committed.warnings);
+  const warnings = recordMutation(
     ctx,
     attribution,
     stored.id,
     { id: stored.id, ...effectiveChanges },
     result,
   );
-  return result;
+  return withWriteWarnings(result, warnings);
 }
 
 /** Merge an update and let the active registry perform the canonical write. */
@@ -129,8 +123,9 @@ export async function updateEntity(
   attribution: MutationAttribution,
 ): Promise<UpdateResult> {
   const { id, fields, ...updates } = params;
-  const current = await service.get(id);
-  if (!current) throw new NotFoundError(id);
+  const preimage = await readEntityForWrite(service, id);
+  if (preimage === undefined) throw new NotFoundError(id);
+  const current = preimage.entity;
 
   const merged: Record<string, unknown> = { ...current };
   const effectiveChanges: Record<string, unknown> = {};
@@ -144,5 +139,6 @@ export async function updateEntity(
     effectiveChanges,
     ctx,
     attribution,
+    preimage,
   );
 }

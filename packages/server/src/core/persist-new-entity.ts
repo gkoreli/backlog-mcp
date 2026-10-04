@@ -1,23 +1,26 @@
 import { nextEntityId, type AnyEntity } from '@backlog-mcp/shared';
 import type { IBacklogService } from './backlog-service.contract.js';
 import type { EntityDraft } from './entity-creation.contract.js';
-import { isBuiltinSubstrateType, SubstrateWriteError } from './substrates/index.js';
+import { isBuiltinSubstrateType } from './substrates/index.js';
 import { ValidationError } from './types.js';
+import { normalizeWriteError } from './write-errors.js';
+import type { Committed } from './entity-mutation.contract.js';
 
 /** Prefer atomic repository creation; retain explicit-ID compatibility for constrained adapters. */
 export async function persistNewEntity(service: IBacklogService, draft: EntityDraft): Promise<AnyEntity> {
-  if (service.create !== undefined) {
-    try {
-      return await service.create(draft);
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith('No storage claim for entity type:')) {
-        throw new ValidationError(`Unknown substrate type: ${draft.type}`);
-      }
-      throw error;
-    }
+  return (await persistNewEntityCommitted(service, draft)).value;
+}
+
+/** Creation receipt preserves derived-effect warnings without polluting Markdown. */
+export async function persistNewEntityCommitted(service: IBacklogService, draft: EntityDraft): Promise<Committed<AnyEntity>> {
+  try {
+    if (service.createCommitted !== undefined) return await service.createCommitted(draft);
+    if (service.create !== undefined) return { value: await service.create(draft) };
+    const id = await allocateEntityId(service, draft.type);
+    return { value: await service.add({ ...draft, id }) };
+  } catch (error) {
+    normalizeWriteError(error);
   }
-  const id = await allocateEntityId(service, draft.type);
-  return service.add({ ...draft, id });
 }
 
 async function allocateBuiltinId(
@@ -40,15 +43,6 @@ async function allocateEntityId(
   try {
     return await service.allocateId(type);
   } catch (error) {
-    if (error instanceof SubstrateWriteError) {
-      throw new ValidationError(error.message);
-    }
-    if (
-      error instanceof Error
-      && error.message.startsWith('No storage claim for entity type:')
-    ) {
-      throw new ValidationError(`Unknown substrate type: ${type}`);
-    }
-    throw error;
+    normalizeWriteError(error);
   }
 }

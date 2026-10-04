@@ -82,3 +82,27 @@ These are invariant failures, not reasons for a new domain framework.
   check passed metadata filtering, exact-ID payload freshness and cache reload.
   Stage A's older-task fixture now assigns timestamps after factory construction
   and explicitly proves it falls outside the raw default page before eligibility.
+- Stage C adds an exact-Markdown SHA-256 preimage to local reads and captures the
+  written revision inside the lock. Updates/body edits/single compiled intents
+  compare it against the fresh locked snapshot; a typed `write_conflict` asks for
+  a reread. Legacy injected repositories without revision reads retain semantic
+  preimages, not a claim of cross-process protection. The local docs-native graph
+  supplies the full capability. Native editors remain non-cooperating: detection
+  is at the check boundary, not an OS transaction with arbitrary editors.
+- Local committed create/save/delete outcomes carry optional warnings separately
+  from entities. Catalog invalidation, projection and ordered indexing are covered
+  by the derived-effect boundary. Failure marks search unready and the next query
+  retries full reconciliation; it never repeats the document mutation. Core
+  receipts and CLI/MCP formatting preserve diagnostics. Known throwing log/event
+  sinks return warnings after one attempt; standard local append remains best-effort
+  under ADR 0117. Body edits reuse stamping; missing claims and write normalization
+  have named typed owners. Multi-intent compensation now guards restoration with
+  the revision it actually wrote, rather than overwriting intervening edits.
+- Stage C verification: workspace build/typecheck passed; server 1,527 / 2 existing
+  skips, memory 49 and viewer 163 tests passed. New memfs cases cover interleaved
+  updates, native formatting edits, committed add/save/delete index failures,
+  throwing custom-field projection, custom timestamps and throwing effect sinks.
+  Two actual Node processes over a disposable home both captured one preimage:
+  exactly one committed, one reported conflict, and only one journal attempt was
+  made. Search/resource work was mocked in that process check; no full CLI race
+  or universal native-editor transaction is claimed.

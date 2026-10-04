@@ -1,3 +1,4 @@
+import { EntityWriteConflictError } from '../core/entity-mutation.contract.js';
 import type { CompiledSubstrateIntent } from '@backlog-mcp/shared';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import {
@@ -44,6 +45,7 @@ function quarantineDiagnostic(
 }
 
 function errorPayload(error: unknown): Record<string, unknown> {
+  if (error instanceof EntityWriteConflictError) return { error: error.message, code: 'write_conflict', ids: [error.id] };
   if (error instanceof SubstrateIntentExecutionError) {
     return {
       error: error.message,

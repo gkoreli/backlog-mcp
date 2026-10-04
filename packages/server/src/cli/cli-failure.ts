@@ -1,3 +1,4 @@
+import { EntityWriteConflictError } from '../core/entity-mutation.contract.js';
 import { SubstrateWriteError } from '../core/substrates/substrate-write-error.js';
 import { WorkspaceHomeResolutionError } from '../core/backlog-home.errors.js';
 import { NotFoundError, ValidationError } from '../core/types.js';
@@ -14,6 +15,7 @@ export interface CliFailureIo {
  */
 function isDomainError(error: unknown): error is Error {
   return error instanceof NotFoundError
+    || error instanceof EntityWriteConflictError
     || error instanceof ValidationError
     || error instanceof SubstrateWriteError;
 }

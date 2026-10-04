@@ -1,15 +1,16 @@
+/** Managed creation owns routing, capture and one semantic journal attempt. */
+import { normalizeWriteError } from './write-errors.js';
+import { withWriteWarnings } from './entity-mutation.js';
 import {
   getSubstrate,
   type SubstrateDefinition,
 } from '@backlog-mcp/shared';
-import { ZodError } from 'zod';
 import type { IBacklogService } from './backlog-service.contract.js';
 import { shouldCaptureArtifact } from './memory-capture-rules.js';
 import { captureArtifact } from './memory-capture.js';
 import {
   asBuiltinEntity,
   isBuiltinSubstrateType,
-  SubstrateWriteError,
 } from './substrates/index.js';
 import { ValidationError } from './types.js';
 import type {
@@ -18,9 +19,8 @@ import type {
   MutationAttribution,
   WriteContext,
 } from './types.js';
-import { formatZodError } from './zod-errors.js';
 import { recordMutation } from './operation-log.js';
-import { persistNewEntity } from './persist-new-entity.js';
+import { persistNewEntityCommitted } from './persist-new-entity.js';
 import { routeContainer } from './container-routing.js';
 import { extractEntityIds } from './get-context/cross-reference-traversal.js';
 
@@ -33,15 +33,6 @@ function assignDefined(
   }
 }
 
-function normalizeWriteError(error: unknown): never {
-  if (error instanceof SubstrateWriteError) {
-    throw new ValidationError(error.message);
-  }
-  if (error instanceof ZodError) {
-    throw new ValidationError(formatZodError(error));
-  }
-  throw error;
-}
 
 function entityRefs(params: CreateEntityParams): string[] {
   const referenceIds = (params.references ?? []).flatMap(function ids(reference) {
@@ -156,13 +147,14 @@ export async function createEntity(
     candidate.updated_at = now;
   }
 
-  let stored;
+  let committed;
   try {
-    stored = await persistNewEntity(service, { ...candidate, type, title });
+    committed = await persistNewEntityCommitted(service, { ...candidate, type, title });
   } catch (error) {
     normalizeWriteError(error);
   }
 
+  const stored = committed.value;
   const builtin = asBuiltinEntity(stored);
   if (ctx.memoryComposer && builtin !== undefined && shouldCaptureArtifact(builtin)) {
     await captureArtifact(ctx.memoryComposer, builtin, ctx.actor);
@@ -170,6 +162,7 @@ export async function createEntity(
 
   const result: CreateResult = {
     id: stored.id,
+    ...(committed.warnings === undefined ? {} : { warnings: committed.warnings }),
     ...(route.parentId === undefined ? {} : { parent_id: route.parentId }),
     ...(route.routedBy === undefined ? {} : { routed_by: route.routedBy }),
   };
@@ -177,12 +170,12 @@ export async function createEntity(
     || params.parent_id !== undefined
     ? params
     : { ...params, parent_id: route.parentId };
-  recordMutation(
+  const warnings = recordMutation(
     ctx,
     attribution,
     stored.id,
     effectiveParams as unknown as Record<string, unknown>,
     result,
   );
-  return result;
+  return withWriteWarnings(result, warnings);
 }

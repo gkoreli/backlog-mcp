@@ -8,6 +8,7 @@ import type {
 } from '@backlog-mcp/shared';
 import type { DocumentIdentity } from '../core/document-identity.types.js';
 import type { EntityDraft } from '../core/entity-creation.contract.js';
+import type { EntityPreimage } from '../core/entity-mutation.contract.js';
 
 /** Local synchronous listing accepts the repository filters except search queries. */
 export type ListFilter = Omit<BacklogListFilter, 'query'>;
@@ -32,6 +33,8 @@ export interface StorageAdapter {
   list(filter?: ListFilter): AnyEntity[];
   add(entity: AnyEntity): AnyEntity;
   save(entity: AnyEntity, options?: StorageSaveOptions): AnyEntity;
+  getForWrite?(id: string): EntityPreimage | undefined;
+  saveVersioned?(entity: AnyEntity, options?: StorageSaveOptions): EntityPreimage;
   delete(id: string): boolean;
   counts(): {
     total_tasks: number;

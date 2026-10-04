@@ -1,3 +1,5 @@
+/** Local repository façade and ordered derived-search reconciliation. */
+import type { Committed, EntityPreimage, WriteWarning } from '../../core/entity-mutation.contract.js';
 import { selectEntityCorpus } from '../../core/entity-corpus.js';
 import type { EntityCorpusFilter } from '../../core/entity-corpus.contract.js';
 import type { ClaimQuarantine, StorageSaveOptions } from '../../core/backlog-service.contract.js';
@@ -310,56 +312,89 @@ export class BacklogService implements IBacklogService {
     return this.search.isHybridSearchActive();
   }
 
+  /** Compatibility façade; durable writes never reject for failed derived indexing. */
   async add(candidate: AnyEntity): Promise<AnyEntity> {
     const storage = this.storage;
     const entity = await retryDocumentWrite(function insert() { return storage.add(candidate); });
-    return this.indexCreatedEntity(entity);
+    const committed = await this.indexCreatedEntity(entity);
+    return committed.value;
   }
 
-  /** The local repository owns allocation and insertion as one storage operation. */
+  /** The local repository allocates and inserts as one storage operation. */
   async create(draft: EntityDraft): Promise<AnyEntity> {
+    return (await this.createCommitted(draft)).value;
+  }
+
+  async createCommitted(draft: EntityDraft): Promise<Committed<AnyEntity>> {
     const storage = this.storage;
     if (storage.create === undefined) {
-      return this.add({ ...draft, id: await this.allocateId(draft.type) });
+      const candidate = { ...draft, id: await this.allocateId(draft.type) };
+      const entity = await retryDocumentWrite(function insertExplicitId() { return storage.add(candidate); });
+      return this.indexCreatedEntity(entity);
     }
-    const create = storage.create.bind(storage);
-    const entity = await retryDocumentWrite(function insert() { return create(draft); });
+    const entity = await retryDocumentWrite(function insert() { return storage.create?.(draft); });
+    if (entity === undefined) throw new Error('Storage creation capability disappeared');
     return this.indexCreatedEntity(entity);
   }
 
-  private async indexCreatedEntity(entity: AnyEntity): Promise<AnyEntity> {
-    // The new entity document is also a catalog resource (ADR 0127 R2).
-    this.resourceManager.invalidate();
-    const document = createSearchEntityDocument(entity, this.getSearchFields);
-    if (document !== undefined) {
-      await this.enqueueSearchOperation(() => this.search.addDocument(document));
-    }
-    return entity;
+  private async indexCreatedEntity(entity: AnyEntity): Promise<Committed<AnyEntity>> {
+    const service = this;
+    const warnings = await this.indexCommittedWrite(function addIndex(search) {
+      const document = createSearchEntityDocument(entity, service.getSearchFields);
+      return document === undefined ? Promise.resolve() : search.addDocument(document);
+    });
+    return warnings.length === 0 ? { value: entity } : { value: entity, warnings };
   }
 
-  async save(
-    candidate: AnyEntity,
-    options?: StorageSaveOptions,
-  ): Promise<AnyEntity> {
+  async getForWrite(id: string): Promise<EntityPreimage | undefined> {
+    if (this.storage.getForWrite !== undefined) return this.storage.getForWrite(id);
+    const entity = this.storage.get(id);
+    return entity === undefined ? undefined : { entity };
+  }
+
+  async save(candidate: AnyEntity, options?: StorageSaveOptions): Promise<AnyEntity> {
+    return (await this.saveCommitted(candidate, options)).value;
+  }
+
+  async saveCommitted(candidate: AnyEntity, options?: StorageSaveOptions): Promise<Committed<AnyEntity>> {
     const storage = this.storage;
-    const entity = await retryDocumentWrite(function save() { return storage.save(candidate, options); });
-    // The saved document's catalog projection (title/status) may have changed.
-    this.resourceManager.invalidate();
-    const document = createSearchEntityDocument(entity, this.getSearchFields);
-    if (document !== undefined) {
-      await this.enqueueSearchOperation(() => this.search.updateDocument(document));
-    }
-    return entity;
+    const preimage = await retryDocumentWrite(function save() {
+      return storage.saveVersioned === undefined
+        ? { entity: storage.save(candidate, options) }
+        : storage.saveVersioned(candidate, options);
+    });
+    const entity = preimage.entity;
+    const service = this;
+    const warnings = await this.indexCommittedWrite(function updateIndex(search) {
+      const document = createSearchEntityDocument(entity, service.getSearchFields);
+      return document === undefined ? Promise.resolve() : search.updateDocument(document);
+    });
+    return warnings.length === 0 ? { value: entity, preimage } : { value: entity, preimage, warnings };
   }
 
   async delete(id: string): Promise<boolean> {
+    return (await this.deleteCommitted(id)).value;
+  }
+
+  async deleteCommitted(id: string): Promise<Committed<boolean>> {
     const storage = this.storage;
     const deleted = await retryDocumentWrite(function remove() { return storage.delete(id); });
-    if (deleted) {
+    if (!deleted) return { value: false };
+    const warnings = await this.indexCommittedWrite(function removeIndex(search) { return search.removeDocument(id); });
+    return warnings.length === 0 ? { value: true } : { value: true, warnings };
+  }
+
+  /** Failure leaves the authoritative commit acknowledged and forces read repair. */
+  private async indexCommittedWrite(operation: (search: OramaSearchService) => Promise<void>): Promise<WriteWarning[]> {
+    try {
       this.resourceManager.invalidate();
-      await this.enqueueSearchOperation(() => this.search.removeDocument(id));
+      await this.enqueueSearchOperation(() => operation(this.search));
+      return [];
+    } catch (error) {
+      this.searchReady = false;
+      logger.warn('Markdown committed; search index repair pending', { error: error instanceof Error ? error.message : String(error) });
+      return [{ code: 'index_repair_pending', message: 'Markdown committed; search indexing failed. The next search will retry full reconciliation.' }];
     }
-    return deleted;
   }
 
   async counts(): Promise<{ total_tasks: number; total_epics: number; by_status: Record<Status, number>; by_type: Record<string, number> }> {
