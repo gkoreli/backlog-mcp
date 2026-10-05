@@ -13,6 +13,13 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+## [0.77.0] — 2026-10-05
+
+*This release keeps reads and managed writes consistent in the selected local
+home, and makes failed advisory work visible without losing committed Markdown.
+The viewer advances to 0.67.0 with server search snippets and reliable home-state
+refreshes.*
+
 ### Changed
 
 - **Contributor agents load detailed guidance on demand.** A compact
