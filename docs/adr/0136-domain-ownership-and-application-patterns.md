@@ -565,3 +565,47 @@ check also passed against the rebuilt route owner. Watchers, runtime selection
 and diagnostic logging were injected; embeddings were disabled. These checks do
 not claim OS watcher, model-download or global user-corpus coverage. Fixtures
 were removed. No dependency, version, publication or installed-CLI change.
+
+### Stage 5 documentation acceptance
+
+README is 77 physical lines and keeps product context, install, task/memory quick
+start, read-only viewer and a repository-URL link map. Current topic owners are:
+
+- `guides/installation.md`: MCP setup, daemon/stdio lifecycle, foreground use and
+  explicitly descoped legacy hosting.
+- `guides/commands-and-entities.md`: open substrates, MCP examples, native/body
+  editing and CLI create body sources/write receipts.
+- `guides/homes-and-configuration.md`: selection differences, environment,
+  attribution ladder and idempotent migration.
+- `guides/viewer-usage.md`: the read-only interface and Desk; existing
+  `guides/viewer.md` remains the contributor styling/rendering owner.
+- `guides/claude-code-hooks.md`: client-owned SessionStart recipe and current
+  external-contract notes; existing `guides/memory-protocol.md` remains the
+  recall/capture/correction owner.
+- Existing development/testing/engineering/release guides retain their owners;
+  `docs/README.md` links user, contributor, decision and evidence material with
+  bullets, including reports/proposals/evaluation/references.
+
+The ADR index's former README MCP-tools anchor now targets the command guide.
+No ADR, task or memory identity moved. Historical content remains in place.
+Maintained Claude Code claims were checked against its official hooks reference
+on 2026-10-05: plain-text SessionStart stdout also injects context, and hook
+failures may show diagnostics. The guide corrects the old JSON-only/silent-failure
+claims without rewriting historical ADRs or asserting untested client behavior.
+
+All five quick-start examples parsed through their actual built Commander
+registrations. Action bodies were intercepted to inspect arguments; this is not
+an actual npx install or a full CLI write-process claim. Each example selects
+`--home project --project-root .`; real shared validation, PathResolver-backed
+caller selection and workspace selection resolved that relative root to the same
+canonical disposable project before `docs/` existed. Actual local storage and
+read processes then used those homes. General create/list/recall/remember defaults
+remain unchanged; documentation no longer implies they follow wakeup discovery.
+
+All 52 repository/relative paths and anchors in README, the entry map and five
+new user guides resolve against the final working tree. The published README
+uses GitHub repository URLs because docs are not packaged. A locally built npm
+tarball contained the exact 77-line README and both new route/query owners;
+private workspace references resolved, docs remained excluded and version stayed
+0.77.0. No publication or remote availability of unpushed guide URLs is claimed.
+Temporary package README, tarball and disposable process fixtures were cleaned.

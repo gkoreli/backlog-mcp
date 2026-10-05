@@ -76,3 +76,6 @@ Capture quality is the whole game — noise pollutes recall and erodes trust.
   (CLI: `backlog consolidation-candidates`) surfaces
   clusters ripe for distillation into fewer `derived` semantic/procedural
   memories (ADR 0092.7). Capture small, compress upward.
+
+For client-owned orientation hooks, use the [Claude Code recipe](claude-code-hooks.md).
+For tool examples and body edits, use [Commands and entities](commands-and-entities.md).

@@ -184,3 +184,7 @@ pnpm test:watch     # Watch mode (server)
 Read [Testing and memfs](testing.md) when adding, changing, or running
 tests, or investigating failures. It covers mocking, the read-only repository/git
 probe exception, and debugging patterns.
+
+For end-user setup, use [Installation](installation.md). Home selection and
+migration live in [Homes and configuration](homes-and-configuration.md);
+[the documentation map](../README.md) lists current topic owners.

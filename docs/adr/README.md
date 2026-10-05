@@ -8,7 +8,7 @@ and [0136 — domain ownership and application patterns](0136-domain-ownership-a
 
 ADRs preserve the contracts and assumptions at the time of a decision. For
 current invocation, use the selected tool's full schema or CLI `--help`, with
-[README examples](../../README.md#mcp-tools) as orientation. In particular,
+[command examples](../guides/commands-and-entities.md#mcp-tools) as orientation. In particular,
 ADR 0106.4 renamed entity bodies to `content`, ADR 0106.5 retired generic MCP
 create/update, and ADR 0129.1 resolves document identities without synthesized
 paths. Historical examples are not a second API. Tool-schema deferral depends

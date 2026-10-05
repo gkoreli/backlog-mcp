@@ -17,6 +17,10 @@ begins at 0.57.0 — earlier history lives in git.
 
 - Read briefings, recall stub ages and Desk analysis use their supplied observation
   time across asynchronous reads; hybrid query decay anchors before retrieval.
+- README now provides a short quick start and links to focused installation,
+  commands, homes, viewer and hook guides. The Claude Code recipe documents both
+  supported stdout forms and visible failure diagnostics.
+
 ### Fixed
 
 - Viewer task filters treat unknown names consistently, including inherited
