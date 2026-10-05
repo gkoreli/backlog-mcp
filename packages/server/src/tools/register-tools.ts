@@ -115,6 +115,7 @@ export function registerTools(
   });
   registerWriteResourceTool(server, service, deps);
   registerBacklogWakeupTool(server, service, {
+    clock: deps?.clock?.bind(deps),
     ...(deps?.operationLogger ? { operationLogger: deps.operationLogger } : {}),
     ...(deps?.readLocalFile ? { readLocalFile: deps.readLocalFile } : {}),
     ...(deps?.identityPath ? { identityPath: deps.identityPath } : {}),
@@ -132,6 +133,7 @@ export function registerTools(
     ...(deps?.agentIdentity ? { agentIdentity: deps.agentIdentity } : {}),
   });
   registerBacklogRecallTool(server, {
+    clock: deps?.clock?.bind(deps),
     ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}),
     ...(deps?.usageTracker ? { usageTracker: deps.usageTracker } : {}),
     ...(deps?.homeReadCoordinator

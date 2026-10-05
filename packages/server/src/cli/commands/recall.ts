@@ -118,7 +118,7 @@ export function registerRecall(program: Command): void {
               };
               const result = await recall(
                 params,
-                { memoryComposer: runtime.memoryComposer },
+                { memoryComposer: runtime.memoryComposer, now: runtime.writeContext.clock?.() ?? Date.now() },
               );
               // Resolve agent provenance (ADR 0119 Slice A): only when
               // there is something to annotate; unresolved sources stay

@@ -197,6 +197,7 @@ function createRuntime(
         ? '/global'
         : `${id}/.backlog`,
     },
+    clock: Date.now,
     service: createService(options),
     ...(options.composer === undefined
       ? {}

@@ -18,11 +18,13 @@ import { ValidationError, type RecallParams, type RecallResult, type RecallItem 
 const DEFAULT_LAYERS = ['episodic', 'semantic', 'procedural'] as const;
 
 export interface RecallDeps {
+  /** Observation time for stub age/usage projection; stores own retrieval timing. */
+  now: number;
   /**
    * Episodic memory composer. Transport adapters pass in the one from
    * their WriteContext (Node bootstrap) or omit it (Worker).
    */
-  memoryComposer?: MemoryComposer;
+  memoryComposer?: Pick<MemoryComposer, 'recall'>;
 }
 
 export async function recall(params: RecallParams, deps: RecallDeps): Promise<RecallResult> {
@@ -46,7 +48,7 @@ export async function recall(params: RecallParams, deps: RecallDeps): Promise<Re
   const results = await deps.memoryComposer.recall(recallQuery);
 
   const full = params.full === true;
-  const now = Date.now();
+  const now = deps.now;
   const items: RecallItem[] = results.map(r => toRecallItem(r.entry, r.score, full, now));
 
   // Token-budget packing (ADR-0092.5 R-5, after Hindsight): greedily include

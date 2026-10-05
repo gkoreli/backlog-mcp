@@ -291,7 +291,7 @@ describe('Agent substrate — ADR 0119 Slice A (nine-agent fixture, R8)', () => 
     expect(rows).toHaveLength(rowsBefore + 1);
     expect(rows.at(-1)?.actor).toEqual({ type: 'agent', name: 'AGENT-0001' });
 
-    const result = await recall({ query: 'Slice A checkpoint fixture' }, { memoryComposer: runtime.memoryComposer });
+    const result = await recall({ query: 'Slice A checkpoint fixture' }, { memoryComposer: runtime.memoryComposer, now: Date.now() });
     annotateRecallProvenance(result.items, await loadAgentAttributionIndex(runtime.service));
     const item = result.items.find(i => i.title === 'Slice A checkpoint');
     expect(item?.source).toBe('AGENT-0001');       // stored provenance is the identity
@@ -314,7 +314,7 @@ describe('Agent substrate — ADR 0119 Slice A (nine-agent fixture, R8)', () => 
 
     expect(journalRows().at(-1)?.actor).toEqual({ type: 'agent', name: 'aime:beryl' });
 
-    const result = await recall({ query: 'fusion-scope invariants review' }, { memoryComposer: runtime.memoryComposer });
+    const result = await recall({ query: 'fusion-scope invariants review' }, { memoryComposer: runtime.memoryComposer, now: Date.now() });
     annotateRecallProvenance(result.items, await loadAgentAttributionIndex(runtime.service));
     const item = result.items.find(i => i.title === 'Beryl review note');
     expect(item?.source).toBe('aime:beryl');
@@ -350,7 +350,7 @@ describe('Agent substrate — ADR 0119 Slice A (nine-agent fixture, R8)', () => 
   // ── 4. Absent identity is byte-identical to today ───────────────────
 
   it('absent identity: memory provenance stays the raw actor and renders "by goga"', async () => {
-    const result = await recall({ query: 'Ambient writes pre-0119 attribution' }, { memoryComposer: runtime.memoryComposer });
+    const result = await recall({ query: 'Ambient writes pre-0119 attribution' }, { memoryComposer: runtime.memoryComposer, now: Date.now() });
     annotateRecallProvenance(result.items, await loadAgentAttributionIndex(runtime.service));
     const item = result.items.find(i => i.title === 'Ambient control');
     expect(item?.source).toBe('goga');

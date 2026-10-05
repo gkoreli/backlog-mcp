@@ -6,7 +6,7 @@
  * shape of RecallItem (metadata surfaced as top-level convenience
  * fields like entity_id, kind).
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MemoryComposer, InMemoryStore } from '@backlog-mcp/memory';
 import { recall } from '../core/recall.js';
 import { ValidationError } from '../core/types.js';
@@ -27,15 +27,15 @@ describe('core/recall', () => {
   });
 
   it('returns empty when no composer is wired', async () => {
-    const result = await recall({ query: 'anything' }, {});
+    const result = await recall({ query: 'anything' }, { now: Date.now() });
     expect(result.items).toEqual([]);
     expect(result.total).toBe(0);
     expect(result.query).toBe('anything');
   });
 
   it('rejects an empty query with ValidationError', async () => {
-    await expect(recall({ query: '' }, { memoryComposer: composer })).rejects.toThrow(ValidationError);
-    await expect(recall({ query: '   ' }, { memoryComposer: composer })).rejects.toThrow(/query is required/);
+    await expect(recall({ query: '' }, { memoryComposer: composer, now: Date.now() })).rejects.toThrow(ValidationError);
+    await expect(recall({ query: '   ' }, { memoryComposer: composer, now: Date.now() })).rejects.toThrow(/query is required/);
   });
 
   it('returns matching episodic memories', async () => {
@@ -48,7 +48,7 @@ describe('core/recall', () => {
       metadata: { entity_id: 'TASK-0001', kind: 'completion' },
     });
 
-    const result = await recall({ query: 'auth' }, { memoryComposer: composer });
+    const result = await recall({ query: 'auth' }, { memoryComposer: composer, now: Date.now() });
     expect(result.total).toBe(1);
     const item = result.items[0]!;
     expect(item.digest).toMatch(/auth/i);       // stubs by default (ADR-0092.5 R-5)
@@ -83,7 +83,7 @@ describe('core/recall', () => {
       },
     });
 
-    const result = await recall({ query: 'release' }, { memoryComposer: composer });
+    const result = await recall({ query: 'release' }, { memoryComposer: composer, now: Date.now() });
     const item = result.items[0];
     expect(item?.title).toBe('Deploy procedure');
     expect(item?.uses).toBe(5);
@@ -104,7 +104,7 @@ describe('core/recall', () => {
       context: 'FLDR-0002',
     });
 
-    const result = await recall({ query: 'alpha', context: 'FLDR-0001' }, { memoryComposer: composer });
+    const result = await recall({ query: 'alpha', context: 'FLDR-0001' }, { memoryComposer: composer, now: Date.now() });
     expect(result.items.map(i => i.id)).toEqual(['m1']);
   });
 
@@ -118,7 +118,7 @@ describe('core/recall', () => {
       tags: ['task'],
     });
 
-    const result = await recall({ query: 'alpha', tags: ['artifact'] }, { memoryComposer: composer });
+    const result = await recall({ query: 'alpha', tags: ['artifact'] }, { memoryComposer: composer, now: Date.now() });
     expect(result.items.map(i => i.id)).toEqual(['art']);
   });
 
@@ -131,7 +131,7 @@ describe('core/recall', () => {
     await store.store({ id: 'ep', layer: 'episodic', content: 'alpha', source: 's', createdAt: 1 });
     await sem.store({ id: 'se', layer: 'semantic', content: 'alpha', source: 's', createdAt: 1 });
 
-    const result = await recall({ query: 'alpha' }, { memoryComposer: composer });
+    const result = await recall({ query: 'alpha' }, { memoryComposer: composer, now: Date.now() });
     expect(result.items.map(i => i.id).sort()).toEqual(['ep', 'se']);
   });
 
@@ -141,7 +141,7 @@ describe('core/recall', () => {
     await store.store({ id: 'ep', layer: 'episodic', content: 'alpha', source: 's', createdAt: 1 });
     await sem.store({ id: 'se', layer: 'semantic', content: 'alpha', source: 's', createdAt: 1 });
 
-    const result = await recall({ query: 'alpha', layers: ['semantic'] }, { memoryComposer: composer });
+    const result = await recall({ query: 'alpha', layers: ['semantic'] }, { memoryComposer: composer, now: Date.now() });
     expect(result.items.map(i => i.id)).toEqual(['se']);
   });
 
@@ -149,7 +149,7 @@ describe('core/recall', () => {
     for (let i = 0; i < 5; i++) {
       await store.store({ id: `m${i}`, layer: 'episodic', content: 'alpha', source: 's', createdAt: 1 });
     }
-    const result = await recall({ query: 'alpha', limit: 2 }, { memoryComposer: composer });
+    const result = await recall({ query: 'alpha', limit: 2 }, { memoryComposer: composer, now: Date.now() });
     expect(result.items).toHaveLength(2);
   });
 
@@ -161,11 +161,33 @@ describe('core/recall', () => {
     await store.store({
       id: 'noMeta', layer: 'episodic', content: 'alpha', source: 's', createdAt: 1,
     });
-    const result = await recall({ query: 'alpha' }, { memoryComposer: composer });
+    const result = await recall({ query: 'alpha' }, { memoryComposer: composer, now: Date.now() });
     const byId = Object.fromEntries(result.items.map(i => [i.id, i]));
     expect(byId['withMeta']!.entity_id).toBe('TASK-0042');
     expect(byId['withMeta']!.kind).toBe('completion');
     expect(byId['noMeta']!.entity_id).toBeUndefined();
     expect(byId['noMeta']!.kind).toBeUndefined();
+  });
+});
+
+
+describe('recall observation time', function recallTime() {
+  it('projects age and idle time from supplied entry time across delayed retrieval', async function delayedRecall() {
+    const day = 86400000;
+    const now = Date.parse('2026-10-05T00:00:00Z');
+    const composer = new MemoryComposer();
+    const retrieve = vi.spyOn(composer, 'recall').mockImplementation(async function delayedStore() {
+      await Promise.resolve();
+      return [{ score: 0.8, entry: {
+        id: 'MEMO-0001', title: 'Deploy', content: 'Deploy convention', layer: 'semantic', source: 'fixture',
+        createdAt: now - day, metadata: { usageCount: 1, last_used_at: new Date(now - day).toISOString() },
+      } }];
+    });
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now + 5 * day);
+    try {
+      const result = await recall({ query: 'deploy' }, { memoryComposer: composer, now });
+      expect(result.items[0]).toMatchObject({ age_days: 1, idle_days: 1, score: 0.8 });
+      expect(clock).not.toHaveBeenCalled();
+    } finally { clock.mockRestore(); retrieve.mockRestore(); }
   });
 });

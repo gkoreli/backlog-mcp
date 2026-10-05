@@ -1176,3 +1176,31 @@ describe('core/wakeup', () => {
     });
   });
 });
+
+
+describe('wakeup observation time', function wakeupTime() {
+  it('uses the supplied time through delayed identity, corpus, knowledge and constraints', async function delayedBriefing() {
+    const now = Date.parse('2026-10-05T00:00:00Z');
+    const service = mockService([
+      makeEntity({ id: 'TASK-0001', title: 'Active', status: 'in_progress', updated_at: new Date(now).toISOString() }),
+      makeEntity({ id: 'MEMO-0001', title: 'Knowledge', content: 'Knowledge body', status: undefined, type: 'memory', layer: 'semantic', created_at: 'malformed', valid_until: new Date(now + 1).toISOString() } as Partial<Entity> & { id: string; title: string }),
+      makeEntity({ id: 'MEMO-0002', title: 'Expired exactly', content: 'Expired body', status: undefined, type: 'memory', layer: 'semantic', valid_until: new Date(now).toISOString() } as Partial<Entity> & { id: string; title: string }),
+      makeEntity({ id: 'REQ-0001', title: 'Constraint', type: 'requirement', status: 'ruled', compliance: 'at_risk', checked_at: new Date(now).toISOString() } as Partial<Entity> & { id: string; title: string }),
+    ]);
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+    const scan = service.scan?.bind(service);
+    service.scan = vi.fn(async function delayedScan(filter) {
+      await Promise.resolve();
+      clock.mockReturnValue(now + 3 * 86400000);
+      return scan?.(filter) ?? [];
+    });
+    try {
+      const result = await wakeup(service, { now, agentIdentity: { value: 'fixture', source: 'env' } });
+      expect(result.now.active_tasks[0]).toMatchObject({ age_days: 0 });
+      expect(result.knowledge).toHaveLength(1);
+      expect(result.knowledge[0]).toMatchObject({ id: 'MEMO-0001', age_days: 0 });
+      expect(result.constraints[0]).toMatchObject({ checked_days_ago: 0 });
+      expect(clock).not.toHaveBeenCalled();
+    } finally { clock.mockRestore(); }
+  });
+});

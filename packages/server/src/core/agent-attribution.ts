@@ -22,7 +22,7 @@
 
 import { readEntityCorpus } from './entity-corpus.js';
 
-import type { IBacklogService } from './backlog-service.contract.js';
+import type { EntityCorpusReadPort } from './entity-corpus.contract.js';
 import type { RecallItem } from './types.js';
 
 /** The Agent substrate's registry type key (docs/substrates/agent.json). */
@@ -74,7 +74,7 @@ export function buildAgentAttributionIndex(
  * sources exactly as before ADR 0119.
  */
 export async function loadAgentAttributionIndex(
-  service: IBacklogService,
+  service: Partial<EntityCorpusReadPort>,
 ): Promise<AgentAttributionIndex> {
   let agents: ReadonlyArray<AgentDocumentLike> = [];
   try {

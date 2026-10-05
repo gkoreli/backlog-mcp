@@ -478,3 +478,90 @@ server 1,630 tests passed with two existing skips, memory 56 and viewer 163 pass
 (1,849 total). This includes 25 additional failure/time/native-data/reuse cases.
 The rebuilt actual-process disposable-home check passed again after the final
 reference and remember changes. There are no new import exceptions.
+
+## Stage 5 bounded plan — read adapters, query ownership and documentation
+
+The next pass moves viewer entity/search/analysis route registration into one
+HTTP read owner, retaining request-selected runtime resolution, error behavior,
+provenance and route order. Orama query intent, retrieval/fusion and presentation
+move into a query reader over the captured ready index view; lifecycle,
+embeddings initialization, mutations and cache publication stay with the service.
+The existing ID, memory-default, parsed-filter, recency and fusion contracts are
+preserved. Query temporal decay samples time before asynchronous retrieval.
+
+Recall stub ages accept supplied observation time from CLI/MCP/home-read
+boundaries. Wakeup uses one supplied or compatibility-default time from entry,
+including constraints and memory minting; Desk's HTTP caller supplies its runtime
+clock. These are presentation/read-fold times, not a claim that nested memory
+stores observe a transactional snapshot or share every clock. Wakeup, Desk and
+cross-home reads request cohesive read capabilities rather than write authority.
+
+README becomes 50–100 physical lines. Focused user guides own installation,
+commands/entities, homes/configuration/migration and viewer use; contributor
+owners retain development and architecture material. A bullet-based docs entry
+map separates user guidance, contributor guidance and historical decisions.
+Repository URLs keep the published npm README links usable. Maintained external
+hook claims are checked against the official client documentation. ADR/task/
+memory identities and historical content remain in place.
+
+Acceptance: focused unit regressions for delayed observation and query behavior,
+full build/typecheck/tests and empty architecture exception lists; actual built
+module reads in disposable homes and npm README/link checks. Record actual versus
+injected boundaries and clean fixtures. No dependency/version/publish change.
+
+### Stage 5 code acceptance
+
+`server/viewer-read-routes.ts` owns viewer entity discovery/detail, cross-home
+search adaptation and read analysis. It consumes a read-only runtime type and
+existing core owners; Hono assembly still owns authentication, home/process
+controls, document proxies and static-route ordering. Task filter lookup now uses
+a typed Map: ordinary unknown values remain unrestricted, and inherited object
+keys cannot become status arrays. Desk binds selected readers and supplies one
+runtime clock value before reads. Home provenance consumes only home/source-path
+presentation capabilities.
+
+`memory/src/search/orama-query-reader.ts` owns intent routing, SDK retrieval, fusion
+and presentation over the captured ready generation. OramaSearchService retains
+index lifecycle, embedding initialization/resources, incremental mutations and
+cache publication. Existing overfetch-by-two, rank normalization, linear fusion,
+decay, coordination bonus, exact title pin and final limit order remain intact.
+Recent mode reorders the already limited set; filter-only mode skips retrieval;
+caller type overrides stay fail-closed; exact-ID navigation and generic default
+memory exclusion remain distinct. The query owner takes a supplied decay time
+and has no ambient clock. Captured maps remain mutable under incremental writes;
+this does not claim a transactional index snapshot or change generation rules.
+
+Recall requires supplied stub-projection time and only the composer's recall
+capability. CLI/MCP and each resolved home supply time before retrieval. Wakeup
+uses one entry anchor for identity-delayed reads, constraint checks, expiry,
+ages and minting. Wakeup, Desk, attribution and cross-home consumers now ask for
+their actual cohesive read capabilities. Projected clocks retain the source
+receiver. CLI uses its existing write-context clock; it acquires no new active
+home state or alternate path resolver.
+
+Remaining compatibility boundaries are explicit: direct wakeup and Desk calls
+retain optional time defaults; nested recall stores retain their own retrieval,
+expiry and usage timing; cross-home reads sample each selected runtime, not a
+shared transactional instant. Outer application/CLI runtime assembly and MCP
+list/get/search registrations still accept the full service facade. Other command
+clocks and the memory-store correction clock remain future work. Existing write,
+compensation, native-editor, runtime-admission and derived-state limits remain.
+
+Eight additional unit cases cover delayed recall/wakeup/Desk/query time and
+CLI/MCP registration forwarding; an existing projection case verifies clock
+receiver binding. The full workspace suite passed: server 1,638 with two existing
+skips, memory 56, viewer 163 (1,857 total). Workspace build/typecheck passed;
+final server rebuild and focused 76-test read/ownership checks also passed after
+last type/test refinements. All four import exception lists remain empty. One
+older CLI attribution fixture needed its required write context restored.
+
+Actual built Node processes used two disposable project homes, real local
+storage and Orama BM25. Selected HTTP detail/Desk/search reads retained same-ID
+home provenance, explicit memory navigation and default memory exclusion.
+Malformed home/root input was rejected; unknown explicit search types returned
+no rows. Recall/wakeup projections and Desk timestamps honored supplied time.
+The prior native YAML/date/binary and required-versus-advisory analysis process
+check also passed against the rebuilt route owner. Watchers, runtime selection
+and diagnostic logging were injected; embeddings were disabled. These checks do
+not claim OS watcher, model-download or global user-corpus coverage. Fixtures
+were removed. No dependency, version, publication or installed-CLI change.

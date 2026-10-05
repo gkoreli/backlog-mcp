@@ -4,8 +4,9 @@ import { createHomeReadCoordinator } from '../core/home-read-coordinator.js';
 import type { AppRequestRuntimeResolver } from './app-request-runtime.types.js';
 
 /** Composition facts, with optional local file and journal readers. */
-export interface HomeReadRuntimeSource extends Omit<HomeReadRuntime, 'home'> {
+export interface HomeReadRuntimeSource extends Omit<HomeReadRuntime, 'home' | 'clock'> {
   home?: HomeReadRuntime['home'];
+  clock?: () => number;
   readLocalFile?: (path: string) => string | null;
   identityPath?: string;
   visionPath?: string;
@@ -29,6 +30,7 @@ export function createHomeReadRuntime(source: HomeReadRuntimeSource): HomeReadRu
   const logger = source.operationLogger;
   return {
     home,
+    clock: source.clock?.bind(source) ?? Date.now,
     service: source.service,
     memoryComposer: source.memoryComposer,
     usageTracker: source.usageTracker,

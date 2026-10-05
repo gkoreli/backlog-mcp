@@ -14,7 +14,7 @@ import type { AppRequestRuntime } from '../composition/app-request-runtime.types
  * their existing response shapes remain unchanged until the Phase E cutover.
  */
 export function getHomeProvenance(
-  runtime: AppRequestRuntime,
+  runtime: Pick<AppRequestRuntime, 'home' | 'getSourcePath'>,
   sourcePath?: string,
 ): Partial<HomeProvenance> {
   const home = runtime.home;
@@ -25,7 +25,7 @@ export function getHomeProvenance(
 
 /** Attach selected-home provenance to one entity response. */
 export function withEntityHomeProvenance<T extends AnyEntity>(
-  runtime: AppRequestRuntime,
+  runtime: Pick<AppRequestRuntime, 'home' | 'getSourcePath'>,
   entity: T,
 ): T & Partial<HomeProvenance> {
   return {
@@ -35,7 +35,7 @@ export function withEntityHomeProvenance<T extends AnyEntity>(
 }
 
 function searchSourcePath(
-  runtime: AppRequestRuntime,
+  runtime: Pick<AppRequestRuntime, 'home' | 'getSourcePath'>,
   result: UnifiedSearchResult,
 ): string | undefined {
   if (
@@ -50,7 +50,7 @@ function searchSourcePath(
 
 /** Attach selected-home provenance to one unified search result. */
 export function withSearchHomeProvenance(
-  runtime: AppRequestRuntime,
+  runtime: Pick<AppRequestRuntime, 'home' | 'getSourcePath'>,
   result: UnifiedSearchResult,
 ): UnifiedSearchResult & Partial<HomeProvenance> {
   return {

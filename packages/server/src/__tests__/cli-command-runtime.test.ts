@@ -409,3 +409,35 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
     });
   });
 });
+
+
+describe('CLI read clocks', function cliReadTime() {
+  it('supplies the command clock before delayed recall and wakeup reads', async function delayedReadCommands() {
+    const runtime = createRuntime();
+    const now = Date.parse('2026-10-05T00:00:00Z');
+    let observedAt = now;
+    const clock = vi.fn(function clock() { return observedAt; });
+    runtime.writeContext.clock = clock;
+    vi.spyOn(runtime.memoryComposer, 'recall').mockImplementation(async function delayedRecall() {
+      await Promise.resolve(); observedAt += 3 * 86400000;
+      return [{ score: 1, entry: { id: 'MEMO-1', title: 'Convention', content: 'Convention', layer: 'semantic', source: 'fixture', createdAt: now - 86400000 } }];
+    });
+    let result: unknown;
+    mocks.run.mockImplementation(async function selected(handler: (runtime: CliRuntime) => Promise<unknown>) { result = await handler(runtime); });
+    const recallProgram = new Command().option('--json'); registerRecall(recallProgram);
+    await recallProgram.parseAsync(['node', 'backlog', 'recall', 'convention']);
+    expect(result).toMatchObject({ items: [{ age_days: 1 }] });
+    expect(clock).toHaveBeenCalledOnce();
+    observedAt = now; clock.mockClear();
+    runtime.service.scan = vi.fn(async function delayedScan(filter) {
+      await Promise.resolve(); observedAt += 86400000;
+      return filter?.status?.includes('in_progress') && filter.type === undefined
+        ? [{ id: 'TASK-1', title: 'Active', type: 'task', status: 'in_progress', created_at: new Date(now).toISOString(), updated_at: new Date(now).toISOString() }]
+        : [];
+    });
+    const wakeupProgram = new Command().option('--json'); registerWakeup(wakeupProgram);
+    await wakeupProgram.parseAsync(['node', 'backlog', 'wakeup']);
+    expect(result).toMatchObject({ now: { active_tasks: [{ age_days: 0 }] } });
+    expect(clock).toHaveBeenCalledOnce();
+  });
+});

@@ -312,7 +312,7 @@ export async function runAcrossHomes<R>(
         : {}),
     });
     acquired.push(runtime);
-    return createHomeReadRuntime({ ...runtime, substrateRegistry: runtime.writeContext.substrateRegistry });
+    return createHomeReadRuntime({ ...runtime, clock: runtime.writeContext.clock?.bind(runtime.writeContext), substrateRegistry: runtime.writeContext.substrateRegistry });
   }
   const coordinator = createHomeReadCoordinator({ resolveRuntime });
   const activeProjectRoot = projectRoot

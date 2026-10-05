@@ -21,8 +21,11 @@ describe('home read capability projection', function readProjection() {
     const readLocalFile = vi.fn(function read(path: string) { return path.endsWith('identity.md') ? '  Selected identity\n' : ' \n'; });
     const registry = { allowed: 'review', acceptsParent(type: string) { return type === this.allowed; } };
     const logger = { entries: [], read() { return this.entries; } };
-    const source = { home, service, readLocalFile, identityPath: '/selected/docs/identity.md', visionPath: '/selected/docs/NORTH-STAR.md', substrateRegistry: registry, operationLogger: logger, actor: { type: 'agent' as const, name: 'writer' }, scopeRoot: 'FOLDER-1' };
+    const source = { observedAt: 12345, clock() { return this.observedAt; }, home, service, readLocalFile, identityPath: '/selected/docs/identity.md', visionPath: '/selected/docs/NORTH-STAR.md', substrateRegistry: registry, operationLogger: logger, actor: { type: 'agent' as const, name: 'writer' }, scopeRoot: 'FOLDER-1' };
     const runtime = createHomeReadRuntime(source);
+    expect(runtime.clock()).toBe(12345);
+    source.observedAt = 54321;
+    expect(runtime.clock()).toBe(54321);
     expect(runtime.readIdentity?.()).toBe('Selected identity');
     expect(runtime.readVision?.()).toBeUndefined();
     expect(readLocalFile.mock.calls).toEqual([['/selected/docs/identity.md'], ['/selected/docs/NORTH-STAR.md']]);

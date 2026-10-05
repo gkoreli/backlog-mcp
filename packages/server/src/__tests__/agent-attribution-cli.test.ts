@@ -113,6 +113,7 @@ describe('CLI --as agent attribution (ADR 0119 Slice A)', () => {
       content: 'orchestrator',
     };
     const runtime = {
+      writeContext: { actor: { type: 'agent', name: 'fixture' } },
       service: {
         scan: vi.fn(async () => [agentDoc]),
     list: vi.fn(async () => [agentDoc]),

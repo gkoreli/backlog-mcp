@@ -467,6 +467,7 @@ export function createHomeReadCoordinator(
 
     async function runRecall(runtime: HomeReadRuntime): Promise<RecallResult> {
       return recall(perHomeParams, {
+        now: runtime.clock(),
         ...(runtime.memoryComposer === undefined
           ? {}
           : { memoryComposer: runtime.memoryComposer }),
@@ -499,6 +500,7 @@ export function createHomeReadCoordinator(
     async function runWakeup(runtime: HomeReadRuntime): Promise<WakeupResult> {
       return wakeup(runtime.service, {
         ...params,
+        now: runtime.clock(),
         ...(runtime.readIdentity === undefined
           ? {}
           : { readIdentity: runtime.readIdentity }),

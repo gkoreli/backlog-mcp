@@ -135,3 +135,33 @@ describe('GET /desk', () => {
     expect(params.get('project_root')).toBe(PROJECT_ROOT);
   });
 });
+
+
+describe('viewer selected read clock and input', function selectedReadBoundary() {
+  it('samples the bound runtime clock before delayed Desk readers and list work', async function selectedDeskClock() {
+    const service = createService();
+    const now = Date.parse('2026-07-02T00:00:00Z');
+    const clock = vi.fn(function clock() { return now; });
+    const runtime = { ...createRuntime(service), clock, expectedHome: PROJECT_ROOT,
+      readDeskDocuments() {
+        expect(this.home?.id).toBe(this.expectedHome);
+        return [{ path: 'docs/adr/fixture.md', title: 'Fixture', status: 'Proposed', updatedAt: new Date(now - 86400000).toISOString() }];
+      },
+    };
+    service.list = vi.fn(async function delayedList() { await Promise.resolve(); return []; });
+    const app = createApp(service, { resolveRuntime: async function selected() { return runtime; } });
+    const response = await app.request('/api/desk');
+    const body = await response.json();
+    expect(body.metadata.generated_at).toBe(new Date(now).toISOString());
+    expect(body.items[0]).toMatchObject({ age_days: 1 });
+    expect(clock).toHaveBeenCalledTimes(1);
+  });
+  it('treats unknown and inherited filter names as the existing unrestricted selection', async function unknownFilters() {
+    const service = createService();
+    const app = createApp(service);
+    for (const filter of ['unknown', 'constructor', '__proto__']) {
+      expect((await app.request(`/tasks?filter=${filter}`)).status).toBe(200);
+      expect(service.list).toHaveBeenLastCalledWith({ status: undefined, query: undefined, limit: 10000 });
+    }
+  });
+});

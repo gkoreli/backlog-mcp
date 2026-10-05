@@ -230,6 +230,7 @@ export function registerWakeup(program: Command): void {
               // R3): it obeys the same hard ceiling as the MCP boundary.
               return enforceWakeupCeiling(await wakeup(runtime.service, {
               ...baseParams,
+              now: runtime.writeContext.clock?.() ?? Date.now(),
               ...(scope === undefined ? {} : { scope }),
               readIdentity: runtime.readIdentity,
               acceptsParent: function acceptsParent(type) {

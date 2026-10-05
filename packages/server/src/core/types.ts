@@ -260,6 +260,8 @@ export interface SearchResult {
  * The MCP/CLI transport wraps a real file read; tests pass a stub.
  */
 export interface WakeupParams {
+  /** One briefing observation time. Legacy direct callers may omit it. */
+  now?: number;
   /**
    * Restrict the briefing to a single subtree — a Folder, Milestone, or Epic
    * entity ID. Every active task, epic, completion, and activity entry is

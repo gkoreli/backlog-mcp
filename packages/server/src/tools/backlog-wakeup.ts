@@ -2,8 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MemoryEntry } from '@backlog-mcp/memory';
 import type { Memory } from '@backlog-mcp/shared';
 import { z } from 'zod';
-import type { IBacklogService } from '../core/backlog-service.contract.js';
-import { wakeup } from '../core/wakeup.js';
+import { wakeup, type WakeupReader } from '../core/wakeup.js';
 import { enforceWakeupCeiling, serializeBriefing } from '../core/wakeup-wire.js';
 import type { ResolvedAgentIdentity } from '../core/identity-resolution.js';
 import { ValidationError, type WakeupGrounding } from '../core/types.js';
@@ -15,6 +14,7 @@ import {
 } from './home-input.js';
 
 export interface BacklogWakeupDeps {
+  clock?: () => number;
   operationLogger?: {
     read: (options: { limit?: number }) => Array<{
       ts: string;
@@ -53,7 +53,7 @@ export interface BacklogWakeupDeps {
  */
 export function registerBacklogWakeupTool(
   server: McpServer,
-  service: IBacklogService,
+  service: WakeupReader,
   deps?: BacklogWakeupDeps,
 ): void {
   server.registerTool(
@@ -141,6 +141,7 @@ export function registerBacklogWakeupTool(
 
         const result = await wakeup(service, {
           ...wakeupParams,
+          now: deps?.clock?.() ?? Date.now(),
           readIdentity,
           ...(deps?.readGrounding === undefined
             ? {}

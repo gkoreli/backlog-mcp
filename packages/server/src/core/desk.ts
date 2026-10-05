@@ -30,6 +30,8 @@
 
 import type { RuntimeEntity } from '@backlog-mcp/shared';
 import type { IBacklogService } from './backlog-service.contract.js';
+import type { MemoryAnalysisReader } from './memory-analysis.js';
+
 import {
   COLLISION_PRIORITY_THRESHOLD,
   compareBytewise,
@@ -52,6 +54,10 @@ import type {
   DeskParams,
   DeskResult,
 } from './desk.types.js';
+
+/** Bounded health presentation and complete advisory memory analysis. */
+export type DeskReader = MemoryAnalysisReader & Pick<IBacklogService, 'list' | 'listClaimQuarantines'>;
+
 
 /** Tenet 2 applied to humans: a bounded page, worst-first, or it is broken. */
 export const DESK_BUDGET = 7;
@@ -258,7 +264,7 @@ function healthItem(stub: ConstraintStub): DeskItem {
 // ── The fold ─────────────────────────────────────────────────────────────
 
 export async function desk(
-  service: IBacklogService,
+  service: DeskReader,
   params: DeskParams = {},
 ): Promise<DeskResult> {
   const now = params.now ?? Date.now();

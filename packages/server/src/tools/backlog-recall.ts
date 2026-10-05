@@ -27,7 +27,8 @@ import {
 } from './home-input.js';
 
 export interface BacklogRecallDeps {
-  memoryComposer?: MemoryComposer;
+  clock?: () => number;
+  memoryComposer?: Pick<MemoryComposer, 'recall'>;
   /** Logs recall demand to the usage JSONL (ADR 0092.9 R-16). */
   usageTracker?: MemoryUsageTracker;
   homeReadCoordinator?: HomeReadCoordinator;
@@ -81,7 +82,7 @@ export function registerBacklogRecallTool(
             )
           : await recall(
               recallParams,
-              { ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}) },
+              { now: deps?.clock?.() ?? Date.now(), ...(deps?.memoryComposer ? { memoryComposer: deps.memoryComposer } : {}) },
             );
         if (home !== 'all') {
           // Recall demand log (R-16) — weak signal, JSONL only; recall stays

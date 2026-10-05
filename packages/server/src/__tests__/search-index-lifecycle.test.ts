@@ -137,3 +137,24 @@ describe('search active state and cache lifetime', function lifecycle() {
     search.flush();
   });
 });
+
+describe('query observation time', function queryTime() {
+  it('keeps decay anchored before a delayed vector retriever crosses a day boundary', async function delayedDecay() {
+    const now = Date.parse('2026-10-05T00:00:00Z');
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+    vi.spyOn(EmbeddingService.prototype, 'init').mockResolvedValue(undefined);
+    const embed = vi.spyOn(EmbeddingService.prototype, 'embed').mockResolvedValue(vector);
+    const search = new OramaSearchService({ cachePath: '/query-clock/index.json', hybridSearch: true, halfLifeDays: 1 });
+    const candidate = document('NOTE-1', 'Needle convention');
+    candidate.entity.created_at = new Date(now - 86400000).toISOString();
+    await search.index([candidate]);
+    const baseline = await search.searchAll('needle');
+    expect(baseline).toHaveLength(1);
+    const pending = gate();
+    embed.mockImplementationOnce(async function delayedVector() { await pending.waiting; return vector; });
+    const result = search.searchAll('needle');
+    clock.mockReturnValue(now + 30 * 86400000);
+    pending.release();
+    expect(await result).toEqual(baseline);
+  });
+});

@@ -13,6 +13,15 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+### Changed
+
+- Read briefings, recall stub ages and Desk analysis use their supplied observation
+  time across asynchronous reads; hybrid query decay anchors before retrieval.
+### Fixed
+
+- Viewer task filters treat unknown names consistently, including inherited
+  object-key names, without mistaking them for status arrays.
+
 ## [0.77.0] — 2026-10-05
 
 *This release keeps reads and managed writes consistent in the selected local

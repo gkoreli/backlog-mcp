@@ -28,6 +28,8 @@ import type { Entity, Memory, RuntimeEntity, SubstrateWorkflowDefinition } from 
 import type { MemoryEntry } from '@backlog-mcp/memory';
 import { EntityType, getSubstrate, isValidEntityId, parseEntityId } from '@backlog-mcp/shared';
 import type { IBacklogService } from './backlog-service.contract.js';
+import type { EntityCorpusReadPort } from './entity-corpus.contract.js';
+
 import { mintMemoryEntry as mintFrontmatterEntry } from './memory-entry.js';
 import { loadAgentAttributionIndex } from './agent-attribution.js';
 import { asBuiltinEntity } from './substrates/index.js';
@@ -51,6 +53,10 @@ import {
   type WakeupActivity,
   type WakeupKnowledgeItem,
 } from './types.js';
+
+/** Complete orientation reads and declared disclosure, without write authority. */
+export type WakeupReader = Partial<EntityCorpusReadPort> & Pick<IBacklogService, 'get' | 'listWakeupDisclosures' | 'listClaimQuarantines'>;
+
 
 /**
  * Pointer budget for the orientation map (charter Slice A): the line stays
@@ -214,7 +220,7 @@ function assertValidScope(scope: string): void {
  * backlogs of hundreds of entities finish in a handful of queries.
  */
 async function descendantSet(
-  service: IBacklogService,
+  service: WakeupReader,
   scopeId: string,
 ): Promise<Set<string>> {
   const set = new Set<string>([scopeId]);
@@ -338,9 +344,10 @@ function describeFocalCandidates(
 }
 
 export async function wakeup(
-  service: IBacklogService,
+  service: WakeupReader,
   params: WakeupParams = {},
 ): Promise<WakeupResult> {
+  const nowMs = params.now ?? Date.now();
   // Focal yield rule (north-star Amnesia contract): when an operation focus
   // is requested, non-focal defaults yield budget to the focal section —
   // completions 5→2, activity 5→2, knowledge 5→3, declared sections capped
@@ -366,8 +373,7 @@ export async function wakeup(
       ?? agentIdentity.value;
     identityDisclosure = `${display} (${agentIdentity.source})`;
   }
-  // One time anchor for every age_days in the briefing.
-  const nowMs = Date.now();
+  // The entry time remains stable across identity and corpus reads.
   // First-impression grounding (charter Slices A/B): composition-discovered
   // plain data — orientation pointers, vision candidates, observed recency.
   const grounding = params.readGrounding?.();
@@ -488,7 +494,7 @@ export async function wakeup(
     // the whole truth, and worst-first ordering must see every live REQ —
     // a storage-side cap would cut oldest-first BEFORE the band sort.
     const requirements = await readEntityCorpus(service, { type: REQUIREMENT_TYPE });
-    const now = Date.now();
+    const now = nowMs;
     const live = requirements
       .map(r => ({
         stub: toConstraintStub(r as RuntimeEntity, now),

@@ -123,7 +123,7 @@ describe('Recall Golden Benchmark', () => {
   });
 
   const topIds = async (query: string, params: Record<string, unknown> = {}) => {
-    const result = await recall({ query, ...params }, { memoryComposer: composer });
+    const result = await recall({ query, ...params }, { memoryComposer: composer, now: Date.now() });
     return result.items.map(i => i.id);
   };
 
@@ -135,7 +135,7 @@ describe('Recall Golden Benchmark', () => {
   });
 
   it('expired and superseded memories never surface; the correction carries lineage', async () => {
-    const result = await recall({ query: 'deploy release publish' }, { memoryComposer: composer });
+    const result = await recall({ query: 'deploy release publish' }, { memoryComposer: composer, now: Date.now() });
     const ids = result.items.map(i => i.id);
     expect(ids).not.toContain('MEMO-0002');   // superseded → expired
     expect(ids).not.toContain('MEMO-0008');   // plain expired
@@ -181,7 +181,7 @@ describe('Recall Golden Benchmark', () => {
   });
 
   it('stubs are provenance-bearing and bodies appear only under full:true (ADR 0115 R-1)', async () => {
-    const stubs = await recall({ query: 'deploy release' }, { memoryComposer: composer });
+    const stubs = await recall({ query: 'deploy release' }, { memoryComposer: composer, now: Date.now() });
     for (const item of stubs.items) {
       expect(item.title.length).toBeGreaterThan(0);
       expect(typeof item.age_days).toBe('number');
@@ -193,7 +193,7 @@ describe('Recall Golden Benchmark', () => {
     expect(winner?.idle_days).toBe(2);
     expect(winner?.age_days).toBe(60);
 
-    const full = await recall({ query: 'deploy release', full: true }, { memoryComposer: composer });
+    const full = await recall({ query: 'deploy release', full: true }, { memoryComposer: composer, now: Date.now() });
     const fullWinner = full.items.find(i => i.id === 'MEMO-0001');
     expect(fullWinner?.content).toContain('typecheck');
   });

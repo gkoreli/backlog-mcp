@@ -588,7 +588,7 @@ describe('LocalRuntime', function describeLocalRuntime() {
 
     const result = await recall(
       { query: 'ignored project state' },
-      { memoryComposer: runtime.memoryComposer },
+      { memoryComposer: runtime.memoryComposer, now: Date.now() },
     );
     runtime.usageTracker.recordRecall(
       result.query,

@@ -1,5 +1,6 @@
-import type { EventBus } from '../events/event-bus.js';
 /** HTTP application assembly; routes consume request-selected capabilities (ADR 0136). */
+import { registerViewerReadRoutes } from './viewer-read-routes.js';
+import type { EventBus } from '../events/event-bus.js';
 import { registerMcpRoute } from './mcp-route.js';
 import { selectAppRequestRuntime, type RequestSelectionSource } from './request-selection.js';
 export { selectAppRequestRuntime } from './request-selection.js';
@@ -12,10 +13,6 @@ import matter from 'gray-matter';
 import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { IOperationLog, Actor } from '../core/operation-log.contract.js';
 import type { ToolDeps } from '../tools/index.js';
-import { detectContradictions } from '../core/contradictions.js';
-import { desk } from '../core/desk.js';
-import { findCollisionCandidatePairs } from '../core/collision-candidates.js';
-import { readEntityDetail, projectEntityUsage } from '../core/entity-detail.js';
 import {
   createAuthRuntime,
   registerMcpAuthMiddleware,
@@ -28,11 +25,7 @@ import type {
   AppRequestRuntimeResolver,
   AppRequestRuntimeSelection,
 } from '../composition/app-request-runtime.types.js';
-import {
-  getHomeProvenance,
-  withEntityHomeProvenance,
-  withSearchHomeProvenance,
-} from './home-provenance.js';
+import { getHomeProvenance } from './home-provenance.js';
 import { homedir } from 'node:os';
 import type { RecentHomesStore } from '../storage/local/recent-homes-store.js';
 import {
@@ -172,123 +165,14 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
   // ── Viewer REST API ─────────────────────────────────────────────────────────
 
-  // GET /tasks
-  app.get('/tasks', async (c) => {
-    const runtime = await resolveRequestRuntime(c.req);
-    const filterParam = c.req.query('filter') ?? 'active';
-    const q = c.req.query('q');
-    const limit = parseInt(c.req.query('limit') ?? '10000', 10);
-
-    const statusMap: Record<string, string[] | undefined> = {
-      active: ['open', 'in_progress', 'blocked'],
-      completed: ['done', 'cancelled'],
-      all: undefined,
-    };
-    const status = statusMap[filterParam] as any;
-
-    const now = (runtime.clock?.() ?? Date.now());
-    const results = await runtime.service.list({ status, query: q || undefined, limit });
-    return c.json(results.map(function addProvenance(result) {
-      return withEntityHomeProvenance(
-        runtime,
-        projectEntityUsage(result, runtime.mintMemoryEntry?.bind(runtime), now),
-      );
-    }));
-  });
-
-  // GET /tasks/:id
-  app.get('/tasks/:id', async function readTaskDetail(c) {
-    const runtime = await resolveRequestRuntime(c.req);
-    const now = (runtime.clock?.() ?? Date.now());
-    const detail = await readEntityDetail(runtime.service, c.req.param('id'), {
-      now, childLimit: 1000,
-      readUsageLines: runtime.readUsageLines?.bind(runtime),
-      mintMemoryEntry: runtime.mintMemoryEntry?.bind(runtime),
-    });
-    if (detail === undefined) return c.json({ error: 'Not found' }, 404);
-    const { entity, children, ...analysis } = detail;
-    return c.json({
-      ...withEntityHomeProvenance(runtime, entity), ...analysis,
-      children: children.map(function childProvenance(child) { return withEntityHomeProvenance(runtime, child); }),
-    });
-  });
-
-  // GET /search
-  app.get('/search', async (c) => {
-    const selection = selectAppRequestRuntime(c.req);
-    const q = c.req.query('q');
-    if (!q) return c.json({ error: 'Missing required query param: q' }, 400);
-    const limit = parseInt(c.req.query('limit') ?? '20', 10);
-    const types = c.req.query('types')?.split(',');
-    const sort = c.req.query('sort');
-    // home=all — cross-home discovery (ADR 0112.4 §3): read-only, fused via
-    // the shipped coordinator (rrf merge, provenance-stamped per row). Same
-    // machinery the MCP search tool uses; the coordinator resolves exactly
-    // global + the supplied project root — never a workspace scan (R-2/R-9).
-    if (selection.home === 'all' && deps?.resolveRuntime !== undefined) {
-      const coordinator = createSelectedHomeReadCoordinator(
-        resolveSelectedRuntime,
-        selection.projectRoot,
-      );
-      const crossHome = await coordinator.search(
-        {
-          query: q,
-          limit,
-          ...(types === undefined ? {} : { types }),
-          ...(sort === undefined ? {} : { sort: sort as 'relevant' | 'recent' }),
-        },
-        selection.projectRoot === undefined ? undefined : { projectRoot: selection.projectRoot },
-      );
-      // Adapt to the route's UnifiedSearchResult shape ({item, type, score,
-      // provenance}) so the viewer renders one result grammar for both modes.
-      return c.json(crossHome.results.map(function toUnifiedShape(item) {
-        const { score, home, home_id, source_path, within_home_rank, ...entity } = item;
-        return {
-          item: entity,
-          type: entity.type,
-          score,
-          home,
-          home_id,
-          ...(source_path === undefined ? {} : { source_path }),
-        };
-      }));
-    }
-
-    const runtime = await resolveSelectedRuntime(selection);
-    const results = await runtime.service.searchUnified(q, {
-      types,
-      sort,
-      limit,
-    });
-    return c.json(results.map(function addProvenance(result) {
-      return withSearchHomeProvenance(runtime, result);
-    }));
-  });
-
-  // GET /memory/contradictions — all contradiction sets (ADR 0092.13 R-9)
-  app.get('/memory/contradictions', async (c) => {
-    const runtime = await resolveRequestRuntime(c.req);
-    const now = (runtime.clock?.() ?? Date.now());
-    const result = c.req.query('candidates') === 'true'
-      ? await findCollisionCandidatePairs(runtime.service, { now })
-      : await detectContradictions(runtime.service, now);
-    return c.json(result);
-  });
-
-  // GET /api/desk — the Desk briefing (attention-viewer V1): ONE new
-  // composition endpoint by design law. The server composes the fold from
-  // store state; the viewer renders it verbatim, read-only.
-  app.get('/api/desk', async (c) => {
-    const runtime = await resolveRequestRuntime(c.req);
-    const briefing = await desk(runtime.service, {
-      readDocuments: runtime.readDeskDocuments,
-      readEvaluationCandidates: runtime.readEvaluationCandidates,
-      readGrounding: runtime.readGrounding,
-    });
-    return c.json({
-      ...briefing,
-      ...getHomeProvenance(runtime),
-    });
+  registerViewerReadRoutes(app, {
+    resolveRequestRuntime,
+    resolveSelectedRuntime,
+    ...(deps?.resolveRuntime === undefined ? {} : {
+      crossHomeCoordinator: function crossHomeCoordinator(projectRoot?: string) {
+        return createSelectedHomeReadCoordinator(resolveSelectedRuntime, projectRoot);
+      },
+    }),
   });
 
   // GET /api/status

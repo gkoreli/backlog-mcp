@@ -33,10 +33,10 @@ describe('domain ownership (ADR 0136)', function modelOwnership() {
   });
   it('keeps pure policy and capture independent of ambient time', function suppliedTime() {
     const paths = [
-      'core/entity-references.ts', 'core/operation-history.ts', 'core/memory-analysis-view.ts', 'core/memory-analysis.ts', 'core/entity-detail.ts',
+      'core/recall.ts', 'core/home-read-coordinator.ts', 'core/entity-references.ts', 'core/operation-history.ts', 'core/memory-analysis-view.ts', 'core/memory-analysis.ts', 'core/entity-detail.ts',
       'core/contradictions.ts', 'core/consolidation.ts', 'core/collision-candidates.ts', 'core/memory-entry.ts', 'core/usage-series.ts',
       'core/operation-entry.ts', 'core/memory-validity.ts', 'core/memory-correction.ts', 'core/memory-capture.ts',
-      '../../memory/src/search/search-selection.ts', '../../memory/src/search/search-document.ts',
+      '../../memory/src/search/orama-query-reader.ts', '../../memory/src/search/search-selection.ts', '../../memory/src/search/search-document.ts',
     ];
     for (const path of paths) expect(ambientReferences(source(resolve(SOURCE_ROOT, path)), true), path).toEqual([]);
   });

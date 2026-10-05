@@ -4,6 +4,7 @@ import type {
 } from '@backlog-mcp/memory';
 import type { Memory } from '@backlog-mcp/shared';
 import type { IBacklogService } from './backlog-service.contract.js';
+import type { WakeupReader } from './wakeup.js';
 import type { BacklogHome } from './backlog-home.types.js';
 import type {
   RecallItem,
@@ -42,8 +43,9 @@ export interface HomeRecallDemandRecorder {
  */
 export interface HomeReadRuntime {
   home: BacklogHome;
-  service: IBacklogService;
-  memoryComposer?: MemoryComposer;
+  service: WakeupReader & Pick<IBacklogService, 'searchUnified' | 'isHybridSearchActive'>;
+  clock: () => number;
+  memoryComposer?: Pick<MemoryComposer, 'recall'>;
   usageTracker?: HomeRecallDemandRecorder;
   getSourcePath?: (id: string) => string | undefined;
   readIdentity?: () => string | undefined;
@@ -126,7 +128,7 @@ export interface CrossHomeRecallResult {
 /** Cross-home wakeup parameters; runtime-owned readers are not caller inputs. */
 export type CrossHomeWakeupParams = Omit<
   WakeupParams,
-  'readIdentity' | 'readVision' | 'readGrounding' | 'acceptsParent' | 'readOperations' | 'mintMemoryEntry'
+  'now' | 'readIdentity' | 'readVision' | 'readGrounding' | 'acceptsParent' | 'readOperations' | 'mintMemoryEntry'
 >;
 
 /**
