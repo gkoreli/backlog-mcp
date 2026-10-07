@@ -7,6 +7,7 @@ import type {
   RuntimeSubstrateDefinition,
   SubstrateIntakeDefinition,
   SubstrateType,
+  SubstrateWorkflowDefinition,
 } from '@backlog-mcp/shared';
 import type {
   DiscoveredDocument,
@@ -71,6 +72,7 @@ export interface CompiledSubstrateDefinition {
 
 export interface CompiledBuiltinSubstrate {
   kind: 'compiled';
+  workflow?: SubstrateWorkflowDefinition;
   sourcePath: string;
   type: SubstrateType;
   intake?: SubstrateIntakeDefinition;

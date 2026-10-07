@@ -8,7 +8,7 @@
  * `ContextStub`s — id + title + status + type, hydratable with another get.
  */
 
-import type { Status, EntityType } from '@backlog-mcp/shared';
+import type { EntityType } from '@backlog-mcp/shared';
 
 // ── Stage currency (internal to the stages) ─────────────────────────
 
@@ -17,7 +17,8 @@ export type Fidelity = 'full' | 'summary' | 'reference';
 export interface ContextEntity {
   id: string;
   title: string;
-  status?: Status;
+  status?: string;
+  description?: string;
   type: EntityType;
   parent_id?: string;
   fidelity: Fidelity;
@@ -57,6 +58,7 @@ export interface ContextResource {
 export interface ContextStub {
   id: string;
   title: string;
+  description?: string;
   status?: string;
   /** Open substrate type — builtin (task/epic/...) or runtime (adr/requirement/...). */
   type: string;

@@ -8,6 +8,9 @@ export { compileSubstrateDefinition } from './compile-substrate-definition.js';
 export { compileSubstrateDisclosure } from './compile-substrate-disclosure.js';
 export { compileSubstrateIntents } from './compile-substrate-intents.js';
 export { executeSubstrateIntent } from './execute-substrate-intent.js';
+export { describeSubstrateActions, isExecutableIntent, resolveSubstrateAction } from './action-catalog.js';
+export { allocateThreadChild } from './thread-allocation.js';
+export { describeStorageDocument } from './storage-document-disclosure.js';
 export { SubstrateIntentExecutionError } from './execute-substrate-intent.types.js';
 export {
   createBuiltinSubstrateRegistrations,

@@ -1,4 +1,4 @@
-import { EntityType, TYPE_PREFIXES } from '@backlog-mcp/shared';
+import { AdrSubstrate, EntityType, TYPE_PREFIXES } from '@backlog-mcp/shared';
 import type {
   SubstrateStorageCatalog,
   SubstrateStorageClaim,
@@ -30,6 +30,7 @@ const BUILTIN_STORAGE_CLAIMS = {
   milestone: createStorageClaim(EntityType.Milestone, 'milestones'),
   cron: createStorageClaim(EntityType.Cron, 'crons'),
   memory: createStorageClaim(EntityType.Memory, 'memories'),
+  adr: { type: EntityType.Adr, folder: 'adr', identity: AdrSubstrate.identity },
 } satisfies Record<EntityType, Readonly<SubstrateStorageClaim>>;
 
 const STORAGE_CLAIMS_BY_TYPE: Readonly<

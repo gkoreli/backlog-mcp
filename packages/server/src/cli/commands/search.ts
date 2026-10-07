@@ -1,4 +1,5 @@
 import type { Command } from 'commander';
+import { formatDocumentDiscovery } from './document-discovery-output.js';
 import { searchItems } from '../../core/search.js';
 import type { SearchParams, SearchResult } from '../../core/types.js';
 import type { CrossHomeSearchResult } from '../../core/home-read-coordinator.types.js';
@@ -29,6 +30,8 @@ function format(result: SearchCommandResult): string {
     const status = r.status ? `[${r.status}] ` : '';
     let line = `${home}${(r.id ?? r.path ?? '').padEnd(12)} ${r.type.padEnd(8)} ${status}${r.title}`;
     if (r.snippet) line += `\n  ${r.snippet}`;
+    const discovery = formatDocumentDiscovery(r);
+    if (discovery.length > 0) line += `\n${discovery.join('\n')}`;
     return line;
   });
   lines.push('', `${result.total} results (${result.search_mode})`);

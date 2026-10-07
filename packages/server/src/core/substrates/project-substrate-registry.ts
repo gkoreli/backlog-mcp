@@ -70,6 +70,11 @@ export class ProjectSubstrateRegistry implements SubstrateStorageCatalog {
     return this.#substrates.get(type)?.disclosure.search?.fields;
   }
 
+  /** Compact frontmatter disclosure is independent of indexed fields (ADR 0113.2). */
+  getDiscoveryProjection(type: string): readonly string[] | undefined {
+    return this.#substrates.get(type)?.disclosure.discovery?.projection;
+  }
+
   listDisclosureRelations(): readonly CompiledDisclosureRelation[] {
     return [...this.#substrates.values()]
       .flatMap(function substrateRelations(substrate) {

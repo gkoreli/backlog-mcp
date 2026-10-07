@@ -123,6 +123,8 @@ async function createDocsNativeCliRuntime(
   return {
     home,
     service: appRuntime.service,
+    intentRegistry: localRuntime.substrateRegistry,
+    intentValidator: localRuntime.substrateRegistry,
     writeContext: createManagedWriteContext({
       actor,
       operationLog: localRuntime.operationLogger,

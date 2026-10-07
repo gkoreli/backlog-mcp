@@ -52,6 +52,7 @@ export class BacklogService implements IBacklogService {
   private readonly search: BacklogSearchPort;
   private readonly resourceManager: BacklogServiceDependencies['resourceManager'];
   private readonly getSearchFields: BacklogServiceDependencies['getSearchFields'];
+  readonly getDiscoveryProjection: BacklogServiceDependencies['getDiscoveryProjection'];
   readonly listDisclosureRelations: NonNullable<BacklogServiceDependencies['listDisclosureRelations']> | undefined;
   readonly listWakeupDisclosures: NonNullable<BacklogServiceDependencies['listWakeupDisclosures']> | undefined;
   private readonly allocateEntityId: BacklogServiceDependencies['allocateId'];
@@ -66,6 +67,7 @@ export class BacklogService implements IBacklogService {
     this.search = dependencies.search;
     this.resourceManager = dependencies.resourceManager;
     this.getSearchFields = dependencies.getSearchFields;
+    this.getDiscoveryProjection = dependencies.getDiscoveryProjection;
     this.listDisclosureRelations = dependencies.listDisclosureRelations;
     this.listWakeupDisclosures = dependencies.listWakeupDisclosures;
     this.allocateEntityId = dependencies.allocateId;
@@ -275,6 +277,11 @@ export class BacklogService implements IBacklogService {
     return this.search.isHybridSearchActive();
   }
 
+  /** Follow the authoritative file for discovery; never synthesize slug paths (ADR 0113.2). */
+  getDocumentDiscovery(id: string) {
+    return this.storage.getDocumentDiscovery?.(id);
+  }
+
   /** Compatibility façade; durable writes never reject for failed derived indexing. */
   async add(candidate: AnyEntity): Promise<AnyEntity> {
     const storage = this.storage;
@@ -297,6 +304,17 @@ export class BacklogService implements IBacklogService {
     }
     const entity = await retryDocumentWrite(function insert() { return storage.create?.(draft); });
     if (entity === undefined) throw new Error('Storage creation capability disappeared');
+    return this.indexCreatedEntity(entity);
+  }
+
+  /** Thread allocation cannot degrade to an unlocked or root allocation (ADR 0129.2 R2). */
+  async createThreadChildCommitted(draft: EntityDraft, thread: string): Promise<Committed<AnyEntity>> {
+    const storage = this.storage;
+    if (storage.createThreadChild === undefined) throw new Error('Atomic thread creation capability is unavailable');
+    const entity = await retryDocumentWrite(function insertChild() {
+      if (storage.createThreadChild === undefined) throw new Error('Atomic thread creation capability disappeared');
+      return storage.createThreadChild(draft, thread);
+    });
     return this.indexCreatedEntity(entity);
   }
 

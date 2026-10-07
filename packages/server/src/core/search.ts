@@ -2,12 +2,13 @@ import type { AnyEntity } from '@backlog-mcp/shared';
 import type { IBacklogService } from './backlog-service.contract.js';
 import type { Resource, SearchableType } from '@backlog-mcp/memory/search';
 import { ValidationError, type SearchParams, type SearchResult, type SearchResultItem } from './types.js';
+import { projectDocumentDiscovery } from './project-document-discovery.js';
 
 function isResource(type: string): boolean {
   return type === 'resource';
 }
 
-export async function searchItems(service: Pick<IBacklogService, 'searchUnified' | 'isHybridSearchActive'>, params: SearchParams): Promise<SearchResult> {
+export async function searchItems(service: Pick<IBacklogService, 'searchUnified' | 'isHybridSearchActive' | 'getDiscoveryProjection' | 'getDocumentDiscovery'>, params: SearchParams): Promise<SearchResult> {
   const { query, types, status, parent_id, sort, limit, include_content, include_scores } = params;
 
   if (!query.trim()) throw new ValidationError('Query must not be empty');
@@ -46,11 +47,15 @@ export async function searchItems(service: Pick<IBacklogService, 'searchUnified'
       id: entity.id,
       title: entity.title,
       type: r.type,
+      ...projectDocumentDiscovery(entity, service),
       ...(status === undefined ? {} : { status }),
     };
     const parentId = entity.parent_id;
     if (parentId) item.parent_id = parentId;
-    if (r.snippet) { item.snippet = r.snippet.text; item.matched_fields = r.snippet.matched_fields; }
+    if (r.snippet) {
+      if (item.description === undefined || include_content) item.snippet = r.snippet.text;
+      item.matched_fields = r.snippet.matched_fields;
+    }
     if (include_scores) item.score = Math.round(r.score * 1000) / 1000;
     if (include_content && typeof entity.content === 'string') {
       item.content = entity.content;

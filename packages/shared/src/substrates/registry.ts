@@ -25,6 +25,7 @@ import { ArtifactSubstrate } from './artifact.js';
 import { MilestoneSubstrate } from './milestone.js';
 import { CronSubstrate } from './cron.js';
 import { MemorySubstrate } from './memory.js';
+import { AdrSubstrate } from './adr.js';
 import type { SubstrateDefinition } from './base.js';
 
 export const SUBSTRATES = {
@@ -35,6 +36,7 @@ export const SUBSTRATES = {
   [EntityType.Milestone]: MilestoneSubstrate,
   [EntityType.Cron]: CronSubstrate,
   [EntityType.Memory]: MemorySubstrate,
+  [EntityType.Adr]: AdrSubstrate,
 } as const satisfies Record<EntityType, SubstrateDefinition>;
 
 /**
@@ -52,6 +54,7 @@ export const EntitySchema = z.discriminatedUnion('type', [
   MilestoneSubstrate.schema,
   CronSubstrate.schema,
   MemorySubstrate.schema,
+  AdrSubstrate.schema,
 ]);
 
 /** The canonical Entity type — discriminated union across all substrates. */
@@ -73,6 +76,7 @@ export type ArtifactEntity = Extract<Entity, { type: 'artifact' }>;
 export type MilestoneEntity = Extract<Entity, { type: 'milestone' }>;
 export type CronEntity = Extract<Entity, { type: 'cron' }>;
 export type MemoryEntity = Extract<Entity, { type: 'memory' }>;
+export type AdrEntity = Extract<Entity, { type: 'adr' }>;
 
 /** Per-type inferred aliases — consumers narrow via `.type` to use these. */
 export type { Task } from './task.js';
@@ -82,6 +86,7 @@ export type { Artifact } from './artifact.js';
 export type { Milestone } from './milestone.js';
 export type { Cron } from './cron.js';
 export type { Memory } from './memory.js';
+export type { Adr } from './adr.js';
 
 /** Look up a substrate by EntityType enum value. */
 export function getSubstrate(type: EntityType): SubstrateDefinition {

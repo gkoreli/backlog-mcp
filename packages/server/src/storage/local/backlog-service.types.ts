@@ -8,6 +8,7 @@ export interface BacklogServiceDependencies {
   search: BacklogSearchPort;
   resourceManager: BacklogResourceCatalogPort;
   getSearchFields?: (type: SubstrateType) => readonly string[] | undefined;
+  getDiscoveryProjection?: (type: SubstrateType) => readonly string[] | undefined;
   allocateId?: (type: SubstrateType, currentMaxId: number) => string;
   /** Registry-derived reads (0113 C.2) — injected like getSearchFields. */
   listDisclosureRelations?: () => readonly CompiledDisclosureRelation[];

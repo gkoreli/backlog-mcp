@@ -35,6 +35,8 @@ import {
   SubstrateWriteError,
   MissingStorageClaimError,
   type ProjectSubstrateRegistry,
+  allocateThreadChild,
+  describeStorageDocument,
 } from '../../core/substrates/index.js';
 import type {
   DocumentStorageAdapter,
@@ -272,6 +274,14 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     return this.snapshot().byId.get(id);
   }
 
+  /** Real filename and engine-formatted thread identities for compact discovery (ADR 0113.2). */
+  getDocumentDiscovery(id: string) {
+    const document = this.getDocumentById(id);
+    if (document === undefined) return undefined;
+    const claim = this.claimFor(document.entity);
+    return describeStorageDocument(claim, id, document.sourcePath);
+  }
+
   getDocumentBySourcePath(
     sourcePath: string,
   ): StoredEntityDocument | undefined {
@@ -335,6 +345,26 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
       const id = nextStorageDocumentId(storage.registry, draft.type, storage.getMaxId(draft.type));
       const entity = { ...draft, id };
       return storage.write(entity, storage.newDocumentSourcePath(entity), true).entity;
+    });
+  }
+
+  /** Core validates and generates against fresh claims in the insertion lock (ADR 0129.2). */
+  createThreadChild(draft: EntityDraft, thread: string): AnyEntity {
+    const storage = this;
+    return this.mutate(function createChild() {
+      storage.assertNoClaimCollisions(draft.type);
+      const claim = storage.registry.getStorageClaim(draft.type);
+      if (claim === undefined) throw new MissingStorageClaimError(draft.type);
+      const allocation = allocateThreadChild({
+        claim,
+        thread,
+        document: storage.getDocumentById(thread),
+        occupiedKeys: storage.snapshot().identitiesByType.get(draft.type) ?? [],
+      });
+      const entity = { ...draft, id: allocation.id };
+      const canonicalPath = storage.newDocumentSourcePath(entity);
+      const sourcePath = posix.join(allocation.folder, posix.basename(canonicalPath));
+      return storage.write(entity, sourcePath, true).entity;
     });
   }
 

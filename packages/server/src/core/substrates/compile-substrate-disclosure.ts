@@ -121,11 +121,20 @@ export function compileSubstrateDisclosure(
 
   const issues: SubstrateDefinitionIssue[] = [];
   const disclosure: {
+    discovery?: CompiledSubstrateDisclosure['discovery'];
     search?: CompiledSubstrateDisclosure['search'];
     recall?: CompiledSubstrateDisclosure['recall'];
     get?: CompiledSubstrateDisclosure['get'];
     wakeup?: CompiledSubstrateDisclosure['wakeup'];
   } = {};
+
+  if (source.discovery !== undefined) {
+    issues.push(...validateFields(definition, source.discovery.projection, '/disclosure/discovery/projection'));
+    if (source.discovery.projection.includes('content')) {
+      issues.push(issue('/disclosure/discovery/projection', 'discovery cannot disclose the full content field'));
+    }
+    disclosure.discovery = { projection: source.discovery.projection };
+  }
 
   if (source.search?.enabled === true) {
     issues.push(...validateFields(

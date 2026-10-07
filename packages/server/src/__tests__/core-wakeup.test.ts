@@ -51,6 +51,11 @@ function mockService(entities: Entity[] = []): IBacklogService {
 }
 
 describe('core/wakeup', () => {
+  it('does not classify a native ADR as unfiled work', async function nativeAdrIsDecision() {
+    const adr = makeEntity({ id: 'ADR 0106.7', type: 'adr', title: 'Operation contracts', content: 'Decision.', status: 'accepted' });
+    const result = await wakeup(mockService([adr]));
+    expect(result.metadata.unfiled_count).toBeUndefined();
+  });
   it('returns a minimal briefing for an empty backlog', async () => {
     const svc = mockService([]);
     const result = await wakeup(svc);

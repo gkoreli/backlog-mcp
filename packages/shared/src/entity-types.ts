@@ -12,6 +12,7 @@
 
 import { EntityType } from './entity-type.js';
 import { SUBSTRATES } from './substrates/registry.js';
+import type { SubstrateDefinition } from './substrates/base.js';
 
 export { EntityType, ENTITY_TYPES } from './entity-type.js';
 
@@ -22,10 +23,6 @@ export { EntityType, ENTITY_TYPES } from './entity-type.js';
 export const TYPE_PREFIXES: Record<EntityType, string> = Object.fromEntries(
   (Object.keys(SUBSTRATES) as EntityType[]).map(type => [type, SUBSTRATES[type].prefix]),
 ) as Record<EntityType, string>;
-
-const PREFIX_TO_TYPE: Record<string, EntityType> = Object.fromEntries(
-  Object.entries(TYPE_PREFIXES).map(([type, prefix]) => [prefix, type as EntityType]),
-);
 
 // ============================================================================
 // Status + Reference — re-exported from the substrate base for convenience
@@ -44,22 +41,35 @@ export type { Entity } from './substrates/registry.js';
 // ID utilities — pattern derived from TYPE_PREFIXES
 // ============================================================================
 
-function buildIdPattern(): RegExp {
-  const alternation = Object.values(TYPE_PREFIXES).join('|');
-  return new RegExp(`^(${alternation})-(\\d{4,})$`);
+function escapePattern(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
 }
 
-const ID_PATTERN = buildIdPattern();
+function identityParts(type: EntityType): { prefix: string; suffix: string; threaded: boolean; minimumDigits: number } {
+  const substrate: SubstrateDefinition = SUBSTRATES[type];
+  const identity = substrate.identity;
+  const template = identity?.displayTemplate ?? `${substrate.prefix}-{key}`;
+  const [prefix = '', suffix = ''] = template.split('{key}');
+  return { prefix, suffix, threaded: identity?.strategy === 'numbered-threaded', minimumDigits: identity?.minimumDigits ?? 4 };
+}
 
+/** Validate canonical native identities, including ADR thread children (ADR 0113.2). */
 export function isValidEntityId(id: unknown): id is string {
-  return typeof id === 'string' && ID_PATTERN.test(id);
+  return typeof id === 'string' && parseEntityId(id) !== null;
 }
 
+/** Recover a native type and its root sequence; dotted children retain that root. */
 export function parseEntityId(id: string): { type: EntityType; num: number } | null {
-  const match = ID_PATTERN.exec(id);
-  if (!match?.[1] || !match[2]) return null;
-  const type = PREFIX_TO_TYPE[match[1]];
-  return type ? { type, num: parseInt(match[2], 10) } : null;
+  for (const type of Object.values(EntityType)) {
+    const identity = identityParts(type);
+    const keyPattern = `\\d{${identity.minimumDigits},}${identity.threaded ? '(?:\\.\\d+)*' : ''}`;
+    const pattern = new RegExp(`^${escapePattern(identity.prefix)}(${keyPattern})${escapePattern(identity.suffix)}$`, 'u');
+    const key = pattern.exec(id)?.[1];
+    if (key === undefined) continue;
+    const num = Number(key.split('.')[0]);
+    return Number.isSafeInteger(num) ? { type, num } : null;
+  }
+  return null;
 }
 
 /** Parse just the numeric portion of an entity ID. */
@@ -68,7 +78,8 @@ export function parseEntityNum(id: string): number | null {
 }
 
 export function formatEntityId(num: number, type: EntityType = EntityType.Task): string {
-  return `${TYPE_PREFIXES[type]}-${num.toString().padStart(4, '0')}`;
+  const identity = identityParts(type);
+  return `${identity.prefix}${num.toString().padStart(identity.minimumDigits, '0')}${identity.suffix}`;
 }
 
 export function nextEntityId(maxId: number, type: EntityType = EntityType.Task): string {
@@ -76,8 +87,5 @@ export function nextEntityId(maxId: number, type: EntityType = EntityType.Task):
 }
 
 export function getTypeFromId(id: string): EntityType {
-  for (const [type, prefix] of Object.entries(TYPE_PREFIXES)) {
-    if (id.startsWith(prefix + '-')) return type as EntityType;
-  }
-  return EntityType.Task;
+  return parseEntityId(id)?.type ?? EntityType.Task;
 }

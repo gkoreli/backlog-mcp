@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ADR_SUBSTRATE_POLICY } from '../substrate-definitions/adr-substrate-definition.js';
 import { parseDocumentIdentity } from '../core/document-identity.js';
 import {
   claimSubstrateDocuments,
@@ -141,11 +142,34 @@ const PACKAGED_SUBSTRATES = PACKAGED_RESULT.registry.listSubstrates();
 
 function packagedSubstrate(type: string): CompiledSubstrateDefinition {
   const substrate = PACKAGED_RESULT.registry.getSubstrate(type);
-  if (!substrate) throw new Error(`missing packaged substrate ${type}`);
+  if (!substrate || substrate.kind !== 'declarative') throw new Error(`missing packaged substrate ${type}`);
   return substrate;
 }
 
-const PACKAGED_ADR = packagedSubstrate('adr');
+// Declarative replacement mechanics use a historical ADR fixture; the live ADR is compiled.
+const adrFixture = compileSubstrateDefinition({
+  sourcePath: 'builtin:adr@1',
+  value: {
+    definitionVersion: 1, type: 'adr', label: { singular: 'ADR', plural: 'ADRs' }, folder: 'adr',
+    identity: { strategy: 'numbered-threaded', minimumDigits: 4, displayTemplate: 'ADR {key}' },
+    ...ADR_SUBSTRATE_POLICY,
+    schema: {
+      ...canonicalSchema('adr'),
+      properties: {
+        ...(canonicalSchema('adr').properties as Record<string, unknown>),
+        content: { type: 'string', maxLength: 2000000 },
+        description: { type: 'string', minLength: 1, maxLength: 320 },
+        status: { type: 'string', enum: ['draft', 'proposed', 'living', 'accepted', 'deferred', 'rejected', 'superseded'] },
+        date: { type: 'string', format: 'date' },
+        ...Object.fromEntries(Object.keys(ADR_SUBSTRATE_POLICY.relations).map(function relationField(field) {
+          return [field, { type: 'array', maxItems: 100, items: { type: 'string', maxLength: 500 } }];
+        })),
+      },
+    },
+  },
+});
+if (!adrFixture.ok) throw new Error(JSON.stringify(adrFixture.diagnostic));
+const PACKAGED_ADR = adrFixture.substrate;
 const PACKAGED_REQUIREMENT = packagedSubstrate('requirement');
 const PACKAGED_PROMPT = packagedSubstrate('prompt');
 
@@ -324,7 +348,7 @@ describe('ProjectSubstrateRegistry', function describeRegistry() {
     });
     const result = createProjectSubstrateRegistry({
       builtins: BUILTIN_SUBSTRATES,
-      packaged: [PACKAGED_ADR, PACKAGED_REQUIREMENT, PACKAGED_PROMPT],
+      packaged: [PACKAGED_REQUIREMENT, PACKAGED_PROMPT],
       project: [shadow],
     });
 

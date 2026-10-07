@@ -9,6 +9,7 @@ import type {
 } from '@backlog-mcp/shared';
 import type { DocumentIdentity } from '../core/document-identity.types.js';
 import type { EntityDraft } from '../core/entity-creation.contract.js';
+import type { DocumentDiscoveryMetadata } from '../core/document-discovery.contract.js';
 import type { EntityPreimage, StorageDeleteOptions } from '../core/entity-mutation.contract.js';
 
 /** Local synchronous listing accepts the repository filters except search queries. */
@@ -29,6 +30,8 @@ export interface AsyncListFilter {
 export interface StorageAdapter {
   /** Allocate and insert under the storage write boundary when supported. */
   create?(draft: EntityDraft): AnyEntity;
+  createThreadChild?(draft: EntityDraft, thread: string): AnyEntity;
+  getDocumentDiscovery?(id: string): DocumentDiscoveryMetadata | undefined;
   correctMemory?(draft: Omit<Memory, 'id'>, now: number): { value: Memory; changed: Memory[] };
   get(id: string): AnyEntity | undefined;
   getMarkdown(id: string): string | null;

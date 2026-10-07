@@ -1,3 +1,4 @@
+/** Validate and execute compiled substrate actions (ADR 0106.5 / 0106.6). */
 import type { WriteWarning } from '@backlog-mcp/shared';
 import { readEntityForWrite, saveEntityCommitted, withWriteWarnings } from '../entity-mutation.js';
 import type { EntityPreimage } from '../entity-mutation.contract.js';
@@ -10,7 +11,7 @@ import type {
   JsonValue,
 } from '@backlog-mcp/shared';
 import { isDeepStrictEqual } from 'node:util';
-import { createEntity } from '../create.js';
+import { executeEntityCreation } from '../create-entity-operation.js';
 import { recordMutation } from '../operation-log.js';
 import {
   NotFoundError,
@@ -147,7 +148,7 @@ function relationValue(
 function createParams(
   intent: CompiledSubstrateIntent,
   input: Readonly<Record<string, unknown>>,
-): Parameters<typeof createEntity>[1] {
+): Parameters<typeof executeEntityCreation>[1] {
   if (intent.operation.kind !== 'create') {
     throw new ValidationError('Expected a compiled create intent');
   }
@@ -178,11 +179,16 @@ function createParams(
 async function executeCreate(
   params: ExecuteSubstrateIntentParams,
 ): Promise<ExecuteSubstrateIntentResult> {
-  const result = await createEntity(
+  const operation = params.intent.operation;
+  const thread = operation.kind === 'create' && operation.allocation !== undefined
+    ? params.input[operation.allocation.threadInput]
+    : undefined;
+  const result = await executeEntityCreation(
     params.service,
     createParams(params.intent, params.input),
     params.context,
     attribution(params.intent, 'create'),
+    typeof thread === 'string' ? thread : undefined,
   );
   return withWriteWarnings({ ids: [result.id], changed: true }, result.warnings);
 }
@@ -363,10 +369,17 @@ async function executeRelateAndTransition(
   return withWriteWarnings(result, journalWarnings);
 }
 
-/** Execute one compiler-resolved semantic mutation without reopening declarations. */
+/** Execute a validated, compiler-resolved semantic mutation (ADR 0106.6 R2). */
 export async function executeSubstrateIntent(
   params: ExecuteSubstrateIntentParams,
 ): Promise<ExecuteSubstrateIntentResult> {
+  const parsed = params.intent.intentInputSchema.safeParse(params.input);
+  if (!parsed.success) {
+    throw new ValidationError(parsed.error.issues.map(function inputIssue(issue) {
+      return `${issue.path.join('.') || 'input'}: ${issue.message}`;
+    }).join('; '));
+  }
+  params = { ...params, input: parsed.data };
   switch (params.intent.operation.kind) {
     case 'create':
       return executeCreate(params);

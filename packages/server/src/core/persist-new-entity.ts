@@ -12,8 +12,12 @@ export async function persistNewEntity(service: EntityCreationRepository, draft:
 }
 
 /** Creation receipt preserves derived-effect warnings without polluting Markdown. */
-export async function persistNewEntityCommitted(service: EntityCreationRepository, draft: EntityDraft): Promise<Committed<AnyEntity>> {
+export async function persistNewEntityCommitted(service: EntityCreationRepository, draft: EntityDraft, thread?: string): Promise<Committed<AnyEntity>> {
   try {
+    if (thread !== undefined) {
+      if (service.createThreadChildCommitted === undefined) throw new ValidationError('Atomic thread creation capability is unavailable');
+      return await service.createThreadChildCommitted(draft, thread);
+    }
     if (service.createCommitted !== undefined) return await service.createCommitted(draft);
     if (service.create !== undefined) return { value: await service.create(draft) };
     const id = await allocateEntityId(service, draft.type);

@@ -12,6 +12,8 @@ import type { EntityCreationPort } from './entity-creation.contract.js';
 import type { EntityCorpusReadPort, SyncEntityCorpusReadPort } from './entity-corpus.contract.js';
 import type { EntityMutationPort, StorageDeleteOptions, StorageSaveOptions } from './entity-mutation.contract.js';
 import type { MemoryCorrectionPort } from './memory-correction.contract.js';
+import type { ThreadCreationPort } from './thread-creation.contract.js';
+import type { DocumentDiscoveryPort } from './document-discovery.contract.js';
 export type { StorageSaveOptions } from './entity-mutation.contract.js';
 
 /** Explicit authority to canonicalize an external document during a managed write. */
@@ -31,7 +33,7 @@ export interface ListFilter {
   excludeTypes?: readonly SubstrateType[];
 }
 
-export interface IBacklogService extends Partial<MemoryCorrectionPort>, Partial<EntityCorpusReadPort>, Partial<SyncEntityCorpusReadPort>, Partial<EntityMutationPort> {
+export interface IBacklogService extends DocumentDiscoveryPort, Partial<ThreadCreationPort>, Partial<MemoryCorrectionPort>, Partial<EntityCorpusReadPort>, Partial<SyncEntityCorpusReadPort>, Partial<EntityMutationPort> {
   /** Atomic creation in local mode; constrained adapters may retain explicit-ID add. */
   create?: EntityCreationPort['create'];
   get(id: string): Promise<AnyEntity | undefined>;

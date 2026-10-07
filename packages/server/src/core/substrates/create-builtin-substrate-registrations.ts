@@ -12,6 +12,7 @@ import {
 } from '../../substrate-definitions/builtin-substrate-intent-definitions.js';
 import type { SubstrateStorageCatalog } from './substrate-storage-catalog.contract.js';
 import { compileSubstrateIntents } from './compile-substrate-intents.js';
+import { compileSubstrateDisclosure } from './compile-substrate-disclosure.js';
 import type {
   CompiledBuiltinSubstrate,
   SubstrateDefinitionIssue,
@@ -52,9 +53,9 @@ function validateBuiltin(
 function compileBuiltinIntents(
   type: EntityType,
   storageClaim: CompiledBuiltinSubstrate['storageClaim'],
-): readonly CompiledSubstrateIntent[] {
+): { intents: readonly CompiledSubstrateIntent[]; disclosure: ReturnType<typeof compileSubstrateDisclosure> } {
   const declaration = BUILTIN_SUBSTRATE_INTENT_DEFINITIONS[type];
-  if (!declaration) return [];
+  if (!declaration) return { intents: [], disclosure: { disclosure: {}, relations: [], issues: [] } };
 
   const sourcePath = `builtin:${type}@compiled`;
   const definition = RuntimeSubstrateDefinitionSchema.parse({
@@ -69,14 +70,17 @@ function compileBuiltinIntents(
     schema: z.toJSONSchema(SUBSTRATES[type].schema),
     workflow: declaration.workflow,
     intents: declaration.intents,
+    relations: declaration.relations,
+    disclosure: declaration.disclosure,
   });
   const result = compileSubstrateIntents(sourcePath, definition);
-  if (result.issues.length > 0) {
+  const disclosure = compileSubstrateDisclosure(definition);
+  if (result.issues.length > 0 || disclosure.issues.length > 0) {
     throw new Error(
-      `Invalid built-in intent declaration for ${type}: ${JSON.stringify(result.issues)}`,
+      `Invalid built-in intent declaration for ${type}: ${JSON.stringify([...result.issues, ...disclosure.issues])}`,
     );
   }
-  return result.intents;
+  return { intents: result.intents, disclosure };
 }
 
 /**
@@ -94,6 +98,8 @@ export function createBuiltinSubstrateRegistrations(
       throw new Error(`Missing built-in storage claim for ${type}`);
     }
     const substrate: SubstrateDefinition = SUBSTRATES[type];
+    const compiled = compileBuiltinIntents(type, storageClaim);
+    const workflow = BUILTIN_SUBSTRATE_INTENT_DEFINITIONS[type]?.workflow;
     return {
       kind: 'compiled',
       sourcePath: `builtin:${type}@compiled`,
@@ -101,10 +107,11 @@ export function createBuiltinSubstrateRegistrations(
       ...(substrate.intake === undefined
         ? {}
         : { intake: substrate.intake }),
-      acceptsParent: true,
-      disclosure: {},
-      disclosureRelations: [],
-      intents: compileBuiltinIntents(type, storageClaim),
+      acceptsParent: substrate.structure.validParents.length > 0,
+      ...(workflow === undefined ? {} : { workflow }),
+      disclosure: compiled.disclosure.disclosure,
+      disclosureRelations: compiled.disclosure.relations,
+      intents: compiled.intents,
       storageClaim,
       validateWrite: function validateWrite(candidate) {
         return validateBuiltin(type, candidate);

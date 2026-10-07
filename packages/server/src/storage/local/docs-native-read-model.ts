@@ -1,3 +1,4 @@
+/** Project Markdown bodies/frontmatter and reserve authoritative filename claims. */
 import type { ClaimQuarantine } from '../../core/backlog-service.contract.js';
 import { discoverDocuments } from './document-discovery.js';
 import type { BacklogHome } from '../../core/backlog-home.types.js';
@@ -76,7 +77,7 @@ function parseStoredDocument(
       id,
       type: claimed.type,
       title,
-      ...(content ? { content } : {}),
+      content,
     };
 
     return {

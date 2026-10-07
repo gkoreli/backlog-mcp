@@ -26,10 +26,11 @@ function intent(toolName: string): CompiledSubstrateIntent {
 }
 
 describe('built-in substrate intent declarations', function describeBuiltins() {
-  it('compiles exactly the eleven server-owned semantic intents', () => {
+  it('compiles the native server-owned semantic intents', () => {
     expect(INTENTS.map(function toolName(compiled) {
       return compiled.toolName;
     })).toEqual([
+      'backlog_accept_adr',
       'backlog_attach_artifact',
       'backlog_block_task',
       'backlog_complete_task',
@@ -37,9 +38,11 @@ describe('built-in substrate intent declarations', function describeBuiltins() {
       'backlog_organize_folder',
       'backlog_pause_cron',
       'backlog_plan_epic',
+      'backlog_propose_adr',
       'backlog_resume_cron',
       'backlog_schedule_cron',
       'backlog_start_task',
+      'backlog_supersede_adr',
       'backlog_target_milestone',
     ]);
   });

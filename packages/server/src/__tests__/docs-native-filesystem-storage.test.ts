@@ -329,8 +329,8 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     if (external === undefined) throw new Error('expected claimed external ADR');
 
     expect(function saveExternalShape() {
-      storage.save(external, { canonicalAdoption: true });
-    }).toThrow(/additional properties/);
+      storage.save({ ...external, status: 'draft' }, { canonicalAdoption: true });
+    }).toThrow(/additional properties|unrecognized key/iu);
     expect(readFileSync(join(home.documentsDir, sourcePath), 'utf8')).toBe(markdown);
   });
 
@@ -342,7 +342,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
 
     const external = storage.get('ADR 0003');
     if (external === undefined) throw new Error('expected claimed external ADR');
-    const edited = { ...external, content: '# External ADR\n\nEdited body.' };
+    const edited = { ...external, status: 'draft', content: '# External ADR\n\nEdited body.' };
 
     expect(function saveWithoutAdoptionConsent() {
       storage.save(edited);

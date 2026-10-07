@@ -10,6 +10,7 @@ import {
 } from '@backlog-mcp/shared';
 import { z } from 'zod';
 import type { SubstrateDefinitionIssue } from './types.js';
+import { validateThreadAllocation } from './compile-thread-allocation.js';
 
 const RESERVED_CREATE_FIELDS = new Set([
   'id',
@@ -592,7 +593,10 @@ function singleEntitySyntheticInputs(
   inputs: ReadonlySet<string>;
   issues: readonly SubstrateDefinitionIssue[];
 } {
-  if (intent.operation === 'create') return { inputs: new Set(), issues: [] };
+  if (intent.operation === 'create') return {
+    inputs: new Set(intent.allocation === undefined ? [] : [intent.allocation.threadInput]),
+    issues: [],
+  };
   if (
     intent.operation === 'relate'
     || intent.operation === 'append-relation'
@@ -690,8 +694,9 @@ function compileOperation(
     return {
       operation: {
         kind: 'create',
-        fields: compileFieldBindings(intent, new Set()),
+        fields: compileFieldBindings(intent, new Set(intent.allocation === undefined ? [] : [intent.allocation.threadInput])),
         fixedFields,
+        ...(intent.allocation === undefined ? {} : { allocation: intent.allocation }),
       },
       issues: [],
     };
@@ -836,6 +841,7 @@ export function compileSubstrateIntents(
     const intentIssues = [
       ...synthetic.issues,
       ...createIssues,
+      ...validateThreadAllocation(definition, intent, index),
       ...input.issues,
       ...defaults.issues,
       ...operation.issues,

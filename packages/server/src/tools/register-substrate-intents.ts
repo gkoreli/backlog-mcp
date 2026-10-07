@@ -4,6 +4,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import {
   executeSubstrateIntent,
   SubstrateIntentExecutionError,
+  isExecutableIntent,
 } from '../core/substrates/index.js';
 import type { IBacklogService } from '../core/backlog-service.contract.js';
 import { buildWriteContext } from './build-write-context.js';
@@ -18,13 +19,6 @@ const QUARANTINE_REASON =
   'operation kind not yet executable — 0106.5 R5 initial-16 scope';
 const QUARANTINE_ESCAPE_PATH =
   'The first real project declaration needing relate or append-relation triggers implementation.';
-
-function isExecutableIntent(intent: CompiledSubstrateIntent): boolean {
-  return intent.operation.kind === 'create'
-    || intent.operation.kind === 'transition'
-    || intent.operation.kind === 'set-field'
-    || intent.operation.kind === 'relate-and-transition';
-}
 
 function quarantineDiagnostic(
   intent: CompiledSubstrateIntent,

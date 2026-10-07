@@ -16,6 +16,7 @@ export enum EntityType {
   Milestone = 'milestone',
   Cron = 'cron',
   Memory = 'memory',
+  Adr = 'adr',
 }
 
 export const ENTITY_TYPES = Object.values(EntityType);

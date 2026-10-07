@@ -2,9 +2,14 @@ import {
   EntityType,
   type RuntimeSubstrateIntentDefinition,
   type SubstrateWorkflowDefinition,
+  type SubstrateDisclosureDefinition,
+  type SubstrateRelationDefinition,
 } from '@backlog-mcp/shared';
+import { ADR_SUBSTRATE_POLICY } from './adr-substrate-definition.js';
 
 interface BuiltinSubstrateIntentDefinition {
+  readonly relations?: Readonly<Record<string, SubstrateRelationDefinition>>;
+  readonly disclosure?: SubstrateDisclosureDefinition;
   readonly workflow?: SubstrateWorkflowDefinition;
   readonly intents: readonly RuntimeSubstrateIntentDefinition[];
 }
@@ -36,6 +41,7 @@ const TASK_WORKFLOW: SubstrateWorkflowDefinition = {
 export const BUILTIN_SUBSTRATE_INTENT_DEFINITIONS: Readonly<
   Partial<Record<EntityType, BuiltinSubstrateIntentDefinition>>
 > = {
+  [EntityType.Adr]: ADR_SUBSTRATE_POLICY,
   [EntityType.Task]: {
     workflow: TASK_WORKFLOW,
     intents: [

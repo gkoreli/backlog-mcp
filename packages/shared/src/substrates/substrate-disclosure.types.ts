@@ -21,6 +21,7 @@ export interface CompiledSubstrateWakeupDisclosure {
 
 /** Safe, field-resolved progressive-disclosure plan for one substrate. */
 export interface CompiledSubstrateDisclosure {
+  readonly discovery?: { readonly projection: readonly string[] };
   readonly search?: CompiledSubstrateSearchDisclosure;
   readonly recall?: CompiledSubstrateRecallDisclosure;
   readonly get?: CompiledSubstrateGetDisclosure;

@@ -19,6 +19,7 @@ const ICONS: Record<EntityType, string> = {
   [EntityType.Milestone]: milestoneIcon,
   [EntityType.Cron]: cronIcon,
   [EntityType.Memory]: memoryIcon,
+  [EntityType.Adr]: artifactIcon,
 };
 
 export interface TypeConfig {

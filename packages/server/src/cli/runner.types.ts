@@ -16,6 +16,7 @@ import type { AppRequestRuntime } from '../composition/app-request-runtime.types
 import type { WriteProvenance } from '../composition/write-provenance.js';
 import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
+import type { IntentRegistryPort, IntentWriteValidatorPort } from '../core/substrates/index.js';
 
 /** CLI-only selector; `all` is accepted by the three bounded read commands. */
 export type CliHomeSelector = BacklogHomeSelector | 'all';
@@ -24,6 +25,8 @@ export type CliHomeSelector = BacklogHomeSelector | 'all';
 export interface CliRuntime {
   home?: BacklogHome;
   service: IBacklogService;
+  intentRegistry?: IntentRegistryPort;
+  intentValidator?: IntentWriteValidatorPort;
   writeContext: WriteContext;
   memoryComposer: MemoryComposer;
   mintMemoryEntry?: (memory: Memory, now?: number) => MemoryEntry;

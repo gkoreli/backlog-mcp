@@ -29,7 +29,8 @@ export function normalizeDocumentSourcePath(sourcePath: string): string {
   return withPosixSeparators ? posix.normalize(withPosixSeparators) : '';
 }
 
-function deriveThreadIdentity(
+/** Derive numbered document family and immediate ancestry (ADR 0129.2). */
+export function deriveThreadIdentity(
   pathKey: string,
 ): Pick<ParsedPathIdentity, 'threadRootKey' | 'threadParentKey'> {
   const segments = pathKey.split('.');

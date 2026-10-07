@@ -162,7 +162,8 @@ function isUnfiledWorkEntity(
     if (builtin.type === EntityType.Memory) return false;
     const identity = parseEntityId(builtin.id);
     if (identity === null) return false;
-    return !getSubstrate(identity.type).structure.isContainer
+    const structure = getSubstrate(identity.type).structure;
+    return structure.validParents.length > 0 && !structure.isContainer
       && builtin.parent_id === undefined;
   }
   return acceptsParent?.(entity.type) === true

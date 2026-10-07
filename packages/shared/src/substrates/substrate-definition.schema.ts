@@ -94,6 +94,10 @@ export const RuntimeSubstrateIntentDefinitionSchema = z.discriminatedUnion(
   [
     RuntimeSubstrateIntentBaseSchema.extend({
       operation: z.literal('create'),
+      allocation: z.object({
+        strategy: z.literal('thread-child'),
+        threadInput: FieldNameSchema,
+      }).strict().optional(),
     }).strict(),
     RuntimeSubstrateIntentBaseSchema.extend({
       operation: z.literal('transition'),
@@ -165,6 +169,7 @@ const DisclosureWakeupSchema = z.object({
 }).strict();
 
 export const SubstrateDisclosureDefinitionSchema = z.object({
+  discovery: z.object({ projection: InputNamesSchema.min(1) }).strict().optional(),
   search: DisclosureSearchSchema.optional(),
   recall: DisclosureRecallSchema.optional(),
   get: DisclosureGetSchema.optional(),

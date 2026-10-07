@@ -13,7 +13,28 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+### Added
+
+- ADR is a compiled native entity with typed lifecycle, threaded identities and
+  authored descriptions. List/search disclose descriptions, real filenames,
+  thread context and selected frontmatter before explicit body hydration.
+
+- Declared create actions can join document threads with a `thread` selector.
+  Core validates the selected document and generates its next child atomically,
+  beside the original document. Native ADR proposals support this directly.
+- CLI `actions [type]` discovers selected-home action contracts; `act <action>
+  --input <json-object>` executes the same declared actions as MCP.
+
+- A portable backlog usage skill under `.agents/skills/backlog/`, with a 50-line
+  entrypoint and on-demand references for CLI/MCP, memory, project-defined
+  substrates, ADRs, threads, and adoption of existing documentation.
+
 ### Changed
+
+- ADR proposals require a short `description` (roughly 50 tokens; maximum 320
+  characters). Existing managed ADRs remain readable and retain lifecycle actions
+  without backfilling descriptions or timestamps. Compiled ADR definitions can no
+  longer be replaced by project declarations; additional custom types remain open.
 
 - Read briefings, recall stub ages and Desk analysis use their supplied observation
   time across asynchronous reads; hybrid query decay anchors before retrieval.
@@ -22,6 +43,9 @@ begins at 0.57.0 — earlier history lives in git.
   supported stdout forms and visible failure diagnostics.
 
 ### Fixed
+
+- Empty Markdown bodies remain present in document projections, so an ADR with a
+  valid empty body can still use its managed lifecycle actions after reopening.
 
 - Viewer task filters treat unknown names consistently, including inherited
   object-key names, without mistaking them for status arrays.

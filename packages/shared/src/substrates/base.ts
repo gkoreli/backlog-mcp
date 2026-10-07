@@ -4,7 +4,7 @@
  * Pure Zod/TypeScript. Every substrate extends BaseEntitySchema to get common fields.
  */
 import { z } from 'zod';
-import type { SubstrateIntakeDefinition } from './substrate-definition.schema.js';
+import type { SubstrateIdentityDefinition, SubstrateIntakeDefinition } from './substrate-definition.schema.js';
 
 // ============================================================================
 // Status — canonical workflow states
@@ -82,8 +82,10 @@ export interface SubstrateUI {
 export interface SubstrateDefinition<TSchema extends z.ZodTypeAny = z.ZodTypeAny> {
   /** Canonical string key (matches EntityType enum value). */
   readonly type: string;
-  /** 4-char uppercase ID prefix (TASK, EPIC, …). */
+  /** Uppercase native identity prefix (TASK, EPIC, ADR, …). */
   readonly prefix: string;
+  /** Non-default canonical identity grammar, shared by native consumers. */
+  readonly identity?: SubstrateIdentityDefinition;
   /** Human-facing type label (singular). */
   readonly label: string;
   /** Zod schema — validation authority for this type's shape. */

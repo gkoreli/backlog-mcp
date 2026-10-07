@@ -1,5 +1,6 @@
 import type { MutationNotice } from './operation-log.contract.js';
 import type { MutationReceipt } from './entity-mutation.contract.js';
+import type { DocumentDiscoveryResult } from './document-discovery.contract.js';
 /**
  * Core function types — transport-agnostic.
  *
@@ -109,7 +110,7 @@ export interface ListParams {
   limit?: number;
 }
 
-export interface ListItem {
+export interface ListItem extends DocumentDiscoveryResult {
   id: string;
   title: string;
   status?: string;
@@ -229,7 +230,7 @@ export interface SearchParams {
   include_scores?: boolean;
 }
 
-export interface SearchResultItem {
+export interface SearchResultItem extends DocumentDiscoveryResult {
   id: string;
   title: string;
   type: string;

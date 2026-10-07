@@ -1,13 +1,14 @@
 import type { Command } from 'commander';
+import { formatDocumentDiscovery } from './document-discovery-output.js';
 import { listItems } from '../../core/list.js';
 import type { ListResult } from '../../core/types.js';
 import { cliRuntimeDependencies, run } from '../runner.js';
 
 function format(result: ListResult): string {
   if (result.tasks.length === 0) return 'No items found.';
-  const lines = result.tasks.map(t =>
-    `${t.id.padEnd(12)} ${(t.status ?? '-').padEnd(14)} ${t.type.padEnd(8)} ${t.title}`
-  );
+  const lines = result.tasks.flatMap(function formatItem(t) {
+    return [`${t.id.padEnd(12)} ${(t.status ?? '-').padEnd(14)} ${t.type.padEnd(8)} ${t.title}`, ...formatDocumentDiscovery(t)];
+  });
   if (result.counts) {
     lines.push('', `Total: ${result.counts.total_tasks} tasks, ${result.counts.total_epics} epics`);
   }

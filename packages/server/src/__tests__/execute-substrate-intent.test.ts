@@ -304,7 +304,7 @@ describe('executeSubstrateIntent', () => {
     const { validator } = validatorHarness();
     await expect(executeSubstrateIntent({
       intent, input: { title: 'Unattached' }, service, validator, context,
-    })).rejects.toThrow('artifact requires an explicit parent_id');
+    })).rejects.toThrow('parent_id');
     expect(service.allocateId).not.toHaveBeenCalled();
     expect(service.add).not.toHaveBeenCalled();
     expect(entries).toEqual([]);

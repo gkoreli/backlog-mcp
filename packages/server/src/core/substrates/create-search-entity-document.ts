@@ -19,6 +19,17 @@ export function createSearchEntityDocument(
   getSearchFields?:
     (type: SubstrateType) => readonly string[] | undefined,
 ): SearchEntityDocument | undefined {
+  const declaredFields = getSearchFields?.(entity.type);
+  if (declaredFields !== undefined) {
+    const record = entity as RuntimeEntity;
+    return {
+      kind: 'entity-document',
+      entity,
+      fields: declaredFields.map(function projectDeclaredField(name) {
+        return { name, value: record[name] };
+      }),
+    };
+  }
   const builtin = asBuiltinEntity(entity);
   if (builtin !== undefined) {
     const extras = builtin as {
@@ -45,16 +56,5 @@ export function createSearchEntityDocument(
     };
   }
 
-  const type = typeof entity.type === 'string' ? entity.type : undefined;
-  if (!type) return undefined;
-  const fields = getSearchFields?.(type);
-  if (!fields) return undefined;
-  const record = entity as RuntimeEntity;
-  return {
-    kind: 'entity-document',
-    entity,
-    fields: fields.map(function projectField(name) {
-      return { name, value: record[name] };
-    }),
-  };
+  return undefined;
 }

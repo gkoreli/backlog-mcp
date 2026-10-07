@@ -35,6 +35,10 @@ export type CompiledSubstrateIntentOperation =
     readonly fields: readonly CompiledFieldBinding[];
     /** Compiler-owned assignments applied last and therefore unoverrideable. */
     readonly fixedFields: Readonly<Record<string, JsonValue>>;
+    readonly allocation?: {
+      readonly strategy: 'thread-child';
+      readonly threadInput: string;
+    };
   }
   | {
     readonly kind: 'transition';

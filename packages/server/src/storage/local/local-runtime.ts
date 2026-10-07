@@ -308,6 +308,7 @@ export function createLocalRuntime(
     search,
     resourceManager,
     getSearchFields: substrateRegistry.getSearchFields.bind(substrateRegistry),
+    getDiscoveryProjection: substrateRegistry.getDiscoveryProjection.bind(substrateRegistry),
     allocateId,
     listDisclosureRelations:
       substrateRegistry.listDisclosureRelations.bind(substrateRegistry),
@@ -322,7 +323,7 @@ export function createLocalRuntime(
         if (wakeup === undefined) return [];
         const workflow = substrate.kind === 'declarative'
           ? substrate.definition.workflow
-          : undefined;
+          : substrate.workflow;
         return [{
           type: substrate.storageClaim.type,
           wakeup,

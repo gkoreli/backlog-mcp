@@ -47,6 +47,7 @@ function toRelationStub(entity: AnyEntity): ContextStub {
     type: typeof entity.type === 'string' ? entity.type : 'task',
   };
   if (typeof entity.status === 'string') stub.status = entity.status;
+  if ('description' in entity && typeof entity.description === 'string') stub.description = entity.description.slice(0, 320);
   if (entity.type === 'requirement') {
     // Through the constraint mint (0113.1 R-1) — one requirement read
     // boundary, one defaulting/normalization policy.

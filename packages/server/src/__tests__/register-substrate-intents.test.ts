@@ -283,7 +283,7 @@ describe('registerSubstrateIntents', function describeIntentRegistrar() {
     }
     expect(manifest.reduce(function schemaBytes(total, entry) {
       return total + entry.schemaBytes;
-    }, 0)).toBe(10750);
+    }, 0)).toBe(10997);
     expect(manifest).toEqual([
       {
         name: 'backlog_accept_adr',
@@ -348,8 +348,8 @@ describe('registerSubstrateIntents', function describeIntentRegistrar() {
       {
         name: 'backlog_propose_adr',
         description: 'Use when recording a proposed architectural decision in the current project.',
-        schemaBytes: 974,
-        schemaSha256: '68e889fbf2b4d0170ef905098a1fe83244923d07c7580ffeefe69206b9cdd556',
+        schemaBytes: 1221,
+        schemaSha256: 'c9a277bed768f0a4a6e31276e30edfcf64207f94d330c95eef4f4abde039d321',
       },
       {
         name: 'backlog_resume_cron',

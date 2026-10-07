@@ -22,6 +22,7 @@ export function taskToContextEntity(task: Entity, fidelity: Fidelity = 'full'): 
     status: task.status,
     type: (task.type ?? EntityType.Task) as EntityType,
     fidelity,
+    ...(task.type === 'adr' && task.description !== undefined ? { description: task.description } : {}),
   };
 
   const parentId = task.parent_id;
@@ -54,6 +55,7 @@ export function toStub(entity: ContextEntity): ContextStub {
     type: entity.type,
   };
   if (entity.status !== undefined) stub.status = entity.status;
+  if (entity.description !== undefined) stub.description = entity.description.slice(0, 320);
   if (entity.relevance_score !== undefined) stub.relevance_score = entity.relevance_score;
   if (entity.graph_depth !== undefined) stub.graph_depth = entity.graph_depth;
   return stub;
