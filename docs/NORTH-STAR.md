@@ -195,6 +195,10 @@ product's retrieval story.** Context engineering does not disappear — it survi
    the agent *wants* (`remember`, `recall`, `schedule`), not for what the database *stores*
    (`create(type=memory)`). The substrate abstraction stays internal and DRY behind one
    funnel; the boundary speaks the domain's language (ADR 0106, hexagonal).
+   A substrate declares its actions, input contracts, and semantic outcomes once.
+   CLI and MCP are peer adapters over that catalog and executor: syntax may differ,
+   but validation, transitions, correction lineage, and allocation guarantees do not
+   depend on the adapter (ADR 0106.6).
 6. **Docs-native, zero-migration adoption.** The backlog bolts onto the repo's `docs/`
    folder. Day-0, fully backwards compatible, nothing moved. Adoption cost is zero because
    the artifacts were going to live in the repo anyway.
@@ -232,6 +236,33 @@ product's retrieval story.** Context engineering does not disappear — it survi
     process or layer proves itself deterministic, resilient, and trustworthy, it is
     absorbed and the human moves up a level. Absorption is earned by demonstrated trust,
     never assumed (PROMPT 0005, verbatim).
+
+12. **Documents are agent-native through discovery before hydration.** Expose layers
+    of meaning: semantic filename/slug → thread and identity → a short authored
+    description and relevant frontmatter → the full document on explicit retrieval.
+    Descriptions should cost roughly 50 tokens, like skill descriptions, and explain
+    when the document is useful. Search and exploration must let an agent choose what
+    to read without first loading every body. A search may index full bodies while
+    returning compact descriptions; indexing scope and disclosure scope are separate.
+13. **Thread decisions; make amendments explicit.** A decision family can grow as
+    focused `x.n` documents collocated with its root rather than one huge document.
+    Each child has a descriptive slug and a bounded subject, so agents load the
+    relevant decision incrementally. State exactly which earlier rulings are
+    extended, superseded, or overruled and which remain in force. Thread membership
+    and a higher number do not establish authority. The caller selects a thread;
+    the engine validates it and generates managed child identities (ADR 0129.2).
+14. **ADRs are a compiled native substrate of the product.** Architectural decisions deserve
+    first-class capture, discovery, search, recall where declared, and selective
+    reading through backlog operations. Their description, lifecycle, thread, and
+    decision lineage belong in the document contract and its projections. Users
+    should not need to invent an ADR integration to get this experience; other
+    project document types can adopt the same substrate and disclosure concepts.
+15. **Tools and native files share one document truth.** Agents may use backlog
+    tools or native read/write primitives to explore and author the same frontmatter
+    Markdown. Managed actions enforce the declared domain guarantees; native edits
+    are reconciled and diagnosed without silently rewriting the source. Meaning must
+    survive without the engine. Descriptions are authored by humans or external
+    agents; the server validates and projects them deterministically.
 
 ## Invariants (violate these = malfunctioning)
 

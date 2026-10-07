@@ -9,6 +9,7 @@
 - [Read-only viewer and Desk](guides/viewer-usage.md).
 - [Claude Code session hooks](guides/claude-code-hooks.md).
 - [Agent installation skill](../SKILL.md).
+- [Reusable backlog usage skill](../.agents/skills/backlog/SKILL.md): a 50-line entrypoint with on-demand references for CLI/MCP, memory, custom substrates, ADRs, and existing-docs adoption.
 
 ## Contribute
 
