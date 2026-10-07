@@ -1,3 +1,8 @@
+---
+title: Architecture decision records
+description: "Discovery index for native ADR decisions, threaded amendments and historical supporting evidence. Follow canonical frontmatter lifecycle and explicit scoped overrides before applying a decision; implementation labels here preserve historical progress."
+---
+
 # Architecture Decision Records
 
 This directory contains Architecture Decision Records (ADRs) for backlog-mcp.
@@ -15,8 +20,9 @@ paths. Historical examples are not a second API. Tool-schema deferral depends
 on the client; it is not guaranteed by the server.
 
 The [2026-09-09 guidance audit](../reports/agent-guidance-audit-2026-09-09.md)
-records current corrections and the duplicate-identity blocker that prevented
-creating its managed ADR (TASK-0013; follow-up TASK-0014).
+records the corrections and duplicate-identity blocker observed at that time
+(TASK-0013; follow-up TASK-0014). [ADR 0113.3](./0113.3-adr-corpus-conformance.md)
+resolves that blocker through corpus normalization and evidence-preserving relocation.
 
 ## What is an ADR?
 
@@ -57,9 +63,9 @@ An ADR documents an important architectural decision along with its context and 
 - [0106. Semantic Intent-Tools at the MCP Boundary — Hide the Substrate in Core](./0106-semantic-intent-tools-at-mcp-boundary.md) **[north star — thread root; continues substrate thread 0098; children 0106.1–0106.3]** - MCP port speaks the consumer's intent (`remember`/`recall`/`schedule`), not the storage model (`create(type=…)`); substrate stays internal to core. Enabled by Claude Code MCP Tool Search (deferred tool loading, default-on) + API `advanced-tool-use` beta - 2026-06-17
 - [0106.1. Domain Vocabulary — Substrate, Entity, and Projection](./0106.1-domain-vocabulary-substrate-entity.md) **[glossary — source of truth for naming]** - Substrate = the low-level *definition* of a type (7, design-time); Entity = an *instance* of one specific substrate (N, runtime); Projection (`*Result`/`*Item`) = a shaped response view. Retires "Item"/"Task" as synonyms for Entity. `getSubstrate(type)` is the instance→definition bridge - 2026-06-17
 - [0106.2. Retire Task-as-Synonym-for-Entity; Introduce `<Type>Entity` Aliases](./0106.2-task-as-entity-rot-cleanup.md) **[executed — merged with 0106.3]** - Applies the 0106.1 glossary: rename generic-entity fossils (`createTask`→`createEntity`, `task: Entity`→`entity`), add `TaskEntity`/`MemoryEntity`/… as `Extract<Entity, {type}>` derivatives so bare `Task` means the task substrate only; folds in the `createEntity` factory cleanup. No behavior change - 2026-06-17
-- [0106.2 — Step-0 Classification Audit](./0106.2-STEP0-AUDIT.md) **[execution evidence]** - Per-hit classification (genuine task substrate / generic-entity fossil / projection) of every `Task`/`task`/`makeTask`/`TaskStorage` ref before any edit. Records the two gating findings: Zod `.strict()` rejects undefined-valued keys (if-ladder is load-bearing); `total_tasks`/`total_epics` are a wire contract (leave) - 2026-06-17
+- [0106.2 — Step-0 Classification Audit](./../adr-support/0106.2/step0-audit.md) **[execution evidence]** - Per-hit classification (genuine task substrate / generic-entity fossil / projection) of every `Task`/`task`/`makeTask`/`TaskStorage` ref before any edit. Records the two gating findings: Zod `.strict()` rejects undefined-valued keys (if-ladder is load-bearing); `total_tasks`/`total_epics` are a wire contract (leave) - 2026-06-17
 - [0106.4. Rename the Entity Body Field — `description` → `content`](./0106.4-entity-body-rename-description-to-content.md) **[executed — TASK-0690]** - One vocabulary across substrate + memory plugin: the markdown body becomes `content` everywhere (was `description` on entities, `content` in `MemoryEntry`). No SQL/data migration (D1 column already `body`, on-disk body positional); rename the public MCP/CLI input field too. Closes the body-field drift surfaced by TASK-0689. `toMemoryEntry` no longer translates the body name; Orama `INDEX_VERSION` 4→5 - 2026-06-17
-- [0106.4 — Step-0 Classification Audit](./0106.4-STEP0-AUDIT.md) **[execution evidence]** - Per-hit classification of every `description` ref (~262) before any edit: (a) entity body → RENAME (schema, storage seams, search index, core/memory/context, public tool+CLI field, viewer, tests) vs (b) LEAVE (`.describe()`/tool-schema keys, OAuth `error_description`, `package.json`, D1 SQL `body` column, on-disk positional body). Gate met: typecheck clean, 885/2 skipped, viewer 96, manual round-trip verified - 2026-06-17
+- [0106.4 — Step-0 Classification Audit](./../adr-support/0106.4/step0-audit.md) **[execution evidence]** - Per-hit classification of every `description` ref (~262) before any edit: (a) entity body → RENAME (schema, storage seams, search index, core/memory/context, public tool+CLI field, viewer, tests) vs (b) LEAVE (`.describe()`/tool-schema keys, OAuth `error_description`, `package.json`, D1 SQL `body` column, on-disk positional body). Gate met: typecheck clean, 885/2 skipped, viewer 96, manual round-trip verified - 2026-06-17
 - [0106.3. Storage Layer Restructure — Collapse Dead Adapter, Rename to FilesystemStorage, Split local/ vs d1/](./0106.3-storage-layer-restructure.md) **[executed — merged with 0106.2]** - `FilesystemStorageAdapter` is dead code while `BacklogService` uses `new TaskStorage()` directly; collapse the pass-through wrapper, rename `TaskStorage`→`FilesystemStorage`, depend on the `StorageAdapter` interface, split `storage/local/` + `storage/d1/`, rename `service-types.ts`→`backlog-service.contract.ts`. Establishes file-naming convention - 2026-06-17
 - [0105. Per-Repo Config (.backlog-mcp/) — Auto-Scope Memory & Wakeup](./0105-per-repo-config-auto-scope.md) - `.backlog-mcp/config.json` (committed) + `config.local.json` (gitignored) supply a default scope; precedence explicit > BACKLOG_SCOPE env > local > committed; CLI auto-scopes per project, detached MCP server uses the env layer - 2026-06-16
 - [0013.7. Transport, Bridge & Hosting — Decision Framework (the mcp-remote question)](./0013.7-transport-bridge-and-hosting-decision-framework.md) **[head of transport thread → 0013]** - Stops the recurring "do I still need mcp-remote?" loop: daemon model affirmed, mcp-remote correct *by destination* (local-no-auth → native bridge, stdio→remote-OAuth → keep it), Workers+D1-vs-Fly parked as explicit Open Tension - 2026-06-03
@@ -140,7 +146,7 @@ An ADR documents an important architectural decision along with its context and 
 - [0011. Viewer Version Management with Detached Process](./0011-viewer-version-management.md) - Automatic viewer restart on version mismatch using detached process and HTTP version endpoint - 2026-01-24 (Superseded by ADR-0013)
 - [0010. Unified Resource Path Resolution](./0010-unified-resource-path-resolution.md) - Centralized URI resolver for consistent MCP and HTTP resource handling - 2026-01-24
 - [0009. Read Resource Tool for Remote Deployment](./0009-read-resource-tool-for-remote-deployment.md) - Pragmatic workaround for Kiro CLI's lack of resources protocol support - 2026-01-23
-- [0008. Task-Attached Resources](./0008-task-attached-resources.md) - Separate resources directory with lifecycle management for ADRs and design docs - 2026-01-23
+- [0137. Task-Attached Resources](./0137-task-attached-resources.md) - Separate resources directory with lifecycle management for ADRs and design docs; duplicate historical 0008 reallocated by core - 2026-01-23
 - [0007. MCP Resource URI Implementation](./0007-mcp-resource-uri-implementation.md) - Shared URI resolver module for MCP and HTTP clients - 2026-01-22
 - [0006. MCP Resource URI Architecture](./0006-mcp-resource-uri-architecture.md) - Hybrid file:// and mcp:// URI support for portable resource references - 2026-01-22
 - [0005. Reusable Markdown Content Component](./0005-reusable-markdown-content-component.md) - Extract shared markdown rendering logic into reusable component for consistency - 2026-01-22
@@ -154,6 +160,8 @@ An ADR documents an important architectural decision along with its context and 
 - [0013.5. Dual-Mode Server Architecture for StreamableHTTPServerTransport](./0013.5-dual-mode-server-for-streamable-http.md) - Rejected by user: "I like the current architecture" (Superseded by ADR-0013.6; recommendation partially superseded by ADR-0013.7) (transport thread → 0013; renumbered from 0024) - 2026-01-25
 - [0013.4. Migrate to StreamableHTTPServerTransport](./0013.4-migrate-to-streamable-http-transport.md) - Blocked by protocol mismatch (didn't change transport flag) (Superseded by ADR-0013.6) (transport thread → 0013; renumbered from 0023) - 2026-01-25
 
+- [0138. Local LLM Optimization Layer](./0138-local-llm-optimization-layer.md) **[Proposed]** - Historical local-model exploration; duplicate historical 0018 reallocated by core - 2026-01-25
+
 ## Proposed ADRs
 
 Proposed ADRs are listed inline in **Active ADRs** above, tagged **[Proposed]**.
@@ -164,7 +172,22 @@ Framework (nisli) ADRs live in the [nisli repository](https://github.com/gkoreli
 
 ## Format
 
-Each ADR follows this structure:
+Each decision is a native `adr` substrate entity with YAML `id`, `type`,
+`title`, canonical lifecycle `status`, and a short authored `description`.
+Historical dates remain quoted ISO strings; timestamps are not fabricated.
+Decision relations use existing entity IDs and declared roles. Scoped overrides
+and original metadata remain explicit in `evidence`; contextual links use
+`references`. Acceptance and implementation progress are distinct.
+
+[ADR 0113.3](./0113.3-adr-corpus-conformance.md) records the corpus normalization.
+The unrelated historical duplicate decisions now have engine-allocated roots
+0137 and 0138; their original headings and dates remain intact. Execution
+briefs and audits live in `../adr-support/0106.2/` and `../adr-support/0106.4/`
+as supporting resources, without artificial ADR IDs.
+
+An ADR body normally contains the following sections; historical bodies retain
+the structure and evidence of their original decision:
+
 - **Context**: What problem are we solving?
 - **Proposed Solutions**: What options did we consider?
 - **Decision**: What did we choose and why?

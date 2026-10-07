@@ -1,3 +1,17 @@
+---
+id: ADR 0018
+type: adr
+title: Restore Flexible Static File Serving
+status: accepted
+date: '2026-01-24'
+description: >-
+  Restores flexible static-file serving needed by existing server and viewer
+  deployment. Resolves a restrictive serving change while preserving the
+  historical layout and runtime assumptions of that implementation.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0081'
+---
 # 0018. Restore Flexible Static File Serving
 
 **Date**: 2026-01-24

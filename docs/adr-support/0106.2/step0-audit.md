@@ -1,8 +1,9 @@
 ---
-title: "0106.2/0106.3 — Step 0 Classification Audit (execution evidence)"
-date: 2026-06-17
-status: Accepted
-backlog_item: TASK-0688
+title: 0106.2/0106.3 — Step 0 Classification Audit (execution evidence)
+description: "Historical classification audit for the associated ADR migration. Records pre-edit evidence, semantic categories and source locations; this supporting resource is execution evidence, not a separate architectural decision."
+date: "2026-06-17"
+evidence:
+  - "Historical backlog_item: \"TASK-0688\""
 ---
 
 # Step 0 Classification Audit — Task/task/makeTask/TaskStorage

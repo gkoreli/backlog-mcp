@@ -1,14 +1,30 @@
 ---
-title: "0120. Semantic Collision Candidates — Deterministic Adjudication Pressure"
-date: 2026-07-16
-status: Proposed
-continues:
-  - 0092.13-contradiction-detection.md
-relates_to:
-  - 0092.5-agentic-memory-landscape-2026.md
-  - 0092.7-phase-d-consolidation-engineering-plan.md
-  - 0112.1-per-home-retrieval-composition.md
-  - 0116-search-and-rag-uplift.md
+id: ADR 0120
+type: adr
+title: Semantic Collision Candidates — Deterministic Adjudication Pressure
+status: proposed
+date: '2026-07-16'
+description: >-
+  Proposes deterministic semantic-collision candidates for cheap human
+  adjudication. Keeps detection separate from correction authority and automatic
+  action so a suspected conflict does not silently replace durable knowledge.
+references:
+  - url: ./0092.13-contradiction-detection.md
+    title: 'Historical continues: 0092.13-contradiction-detection.md'
+  - url: ./0092.5-agentic-memory-landscape-2026.md
+    title: 'Historical relates_to: 0092.5-agentic-memory-landscape-2026.md'
+  - url: ./0092.7-phase-d-consolidation-engineering-plan.md
+    title: 'Historical relates_to: 0092.7-phase-d-consolidation-engineering-plan.md'
+  - url: ./0112.1-per-home-retrieval-composition.md
+    title: 'Historical relates_to: 0112.1-per-home-retrieval-composition.md'
+  - url: ./0116-search-and-rag-uplift.md
+    title: 'Historical relates_to: 0116-search-and-rag-uplift.md'
+evidence:
+  - 'Historical frontmatter status: "Proposed"'
+  - 'Historical frontmatter continues: ["0092.13-contradiction-detection.md"]'
+  - >-
+    Historical frontmatter relates_to:
+    ["0092.5-agentic-memory-landscape-2026.md","0092.7-phase-d-consolidation-engineering-plan.md","0112.1-per-home-retrieval-composition.md","0116-search-and-rag-uplift.md"]
 ---
 
 # 0120. Semantic Collision Candidates — Deterministic Adjudication Pressure

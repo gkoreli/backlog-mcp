@@ -1,3 +1,17 @@
+---
+id: ADR 0061
+type: adr
+title: Activity Panel Polish and Code Quality
+status: accepted
+date: '2026-02-05'
+description: >-
+  Polishes the activity panel's visual and interaction details after its larger
+  changes. Records bounded usability improvements to the existing history
+  surface rather than altering mutation or journal semantics.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0196'
+---
 # 0061. Activity Panel Polish and Code Quality
 
 **Date**: 2026-02-05

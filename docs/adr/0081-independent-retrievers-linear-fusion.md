@@ -1,3 +1,20 @@
+---
+id: ADR 0081
+type: adr
+title: Independent Retrievers with Linear Fusion Scoring
+status: accepted
+date: '2026-02-16'
+description: >-
+  Runs independent retrievers and combines normalized evidence through linear
+  fusion. Keeps lexical and semantic candidate generation distinct while
+  defining one explicit policy for merging their ranked results.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0302'
+  - >-
+    Historical body supersedes: ADR-0051 (multi-signal search ranking), ADR-0072
+    (normalize-then-multiply scoring)
+---
 # 0081. Independent Retrievers with Linear Fusion Scoring
 
 **Date**: 2026-02-16

@@ -1,3 +1,17 @@
+---
+id: ADR 0085
+type: adr
+title: source_path parameter for backlog_create
+status: accepted
+date: '2026-02-20'
+description: >-
+  Lets CLI creation read a document body from a source path. Specifies local
+  file input and user ergonomics while keeping source reading distinct from
+  domain validation and authoritative publication.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0354'
+---
 # 0085. source_path parameter for backlog_create
 
 **Date**: 2026-02-20

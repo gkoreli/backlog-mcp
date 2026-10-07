@@ -1,3 +1,17 @@
+---
+id: ADR 0050
+type: adr
+title: 'Search Ranking: Title Match Bonus'
+status: accepted
+date: '2026-02-02'
+description: >-
+  Adds a title-match bonus to search ranking when a document's name closely
+  matches the query. Explains the relevance signal and its interaction with
+  content matches so obvious navigation targets surface reliably.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0162'
+---
 # 0050. Search Ranking: Title Match Bonus
 
 **Date**: 2026-02-02

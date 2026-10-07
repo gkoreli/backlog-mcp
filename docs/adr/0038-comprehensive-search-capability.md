@@ -1,3 +1,16 @@
+---
+id: ADR 0038
+type: adr
+title: Comprehensive Search Capability
+status: accepted
+date: '2026-01-31'
+description: >-
+  Adds comprehensive corpus search for work and project context. Establishes
+  query capabilities and result needs that later ranking and retrieval decisions
+  refine, rather than making discovery depend on manual directory traversal.
+evidence:
+  - 'Historical body status: "Accepted"'
+---
 # 0038. Comprehensive Search Capability
 
 **Date**: 2026-01-31

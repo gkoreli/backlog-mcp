@@ -1,8 +1,20 @@
 ---
-title: "0104. Local-First Deployment Posture — D1/Workers Deprioritized"
-date: 2026-06-10
-status: Accepted
-folder: FLDR-0001
+id: ADR 0104
+type: adr
+title: Local-First Deployment Posture — D1/Workers Deprioritized
+status: accepted
+date: '2026-06-10'
+description: >-
+  Makes local operation the primary deployment posture and descopes Workers/D1
+  parity. Establishes binding product and engineering constraints that preserve
+  human-readable Markdown and avoid compromising local capabilities for remote
+  infrastructure.
+evidence:
+  - 'Historical frontmatter status: "Accepted"'
+  - 'Historical frontmatter folder: "FLDR-0001"'
+  - >-
+    Historical body relates to: ADR 0089 (Workers+D1 migration), ADR 0091
+    (runtime-clean worker
 ---
 
 # 0104. Local-First Deployment Posture — D1/Workers Deprioritized

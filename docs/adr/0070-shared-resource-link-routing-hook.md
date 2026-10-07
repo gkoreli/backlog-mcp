@@ -1,3 +1,17 @@
+---
+id: ADR 0070
+type: adr
+title: Shared Resource Link Routing Hook
+status: accepted
+date: '2026-02-11'
+description: >-
+  Shares resource-link routing through a reusable hook. Keeps link
+  interpretation consistent across Markdown and viewer surfaces while
+  centralizing navigation policy instead of duplicating handlers.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0279'
+---
 # 0070. Shared Resource Link Routing Hook
 
 **Date**: 2026-02-11

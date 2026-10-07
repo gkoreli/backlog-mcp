@@ -1,3 +1,17 @@
+---
+id: ADR 0068
+type: adr
+title: 'Unified URL State: Single `?id=` Param with localStorage Sidebar Scope'
+status: accepted
+date: '2026-02-07'
+description: >-
+  Unifies viewer URL state around a single entity ID parameter. Simplifies
+  navigation and deep links by identifying the selected document once instead of
+  maintaining separate type-specific selection fields.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0260'
+---
 # 0068. Unified URL State: Single `?id=` Param with localStorage Sidebar Scope
 
 **Date**: 2026-02-07

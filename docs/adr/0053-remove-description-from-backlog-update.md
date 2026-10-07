@@ -1,3 +1,17 @@
+---
+id: ADR 0053
+type: adr
+title: Remove description field from backlog_update tool
+status: accepted
+date: '2026-02-02'
+description: >-
+  Removes the old description body field from backlog update inputs. Records the
+  historical API simplification and its rationale; later body naming and native
+  ADR descriptions have separate semantic contracts.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0173'
+---
 # 0053. Remove description field from backlog_update tool
 
 **Date**: 2026-02-02

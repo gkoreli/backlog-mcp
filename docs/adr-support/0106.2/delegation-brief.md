@@ -1,3 +1,7 @@
+---
+title: "Delegation Brief — ADR 0106 Thread: Vocabulary + Storage Cleanup (0106.1 / 0106.2 / 0106.3)"
+description: "Historical delegation instructions for the associated ADR migration. Records bounded implementation steps and classification requirements; this supporting resource is execution guidance, not a separate architectural decision."
+---
 # Delegation Brief — ADR 0106 Thread: Vocabulary + Storage Cleanup (0106.1 / 0106.2 / 0106.3)
 
 **Task**: TASK-0688

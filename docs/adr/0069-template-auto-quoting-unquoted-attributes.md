@@ -1,3 +1,18 @@
+---
+id: ADR 0069
+type: adr
+title: Template Engine Auto-Quoting for Unquoted Attribute Expressions
+status: accepted
+date: '2026-02-11'
+description: >-
+  Makes template rendering safely handle unquoted attributes through
+  normalization. Records the parser/rendering fix that preserves dynamic
+  attribute meaning without requiring every component to apply a local
+  workaround.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0278'
+---
 # 0069. Template Engine Auto-Quoting for Unquoted Attribute Expressions
 
 **Date**: 2026-02-11

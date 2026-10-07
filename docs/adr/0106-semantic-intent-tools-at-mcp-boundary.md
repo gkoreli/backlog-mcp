@@ -1,8 +1,20 @@
 ---
-title: "0106. Semantic Intent-Tools at the MCP Boundary — Hide the Substrate in Core"
-date: 2026-06-17
-status: Accepted — implemented (ruling recorded as Resolved in NORTH-STAR; executed via ADR 0106.5 — Phase A shipped 0.60.0, full intent surface 0.62.0, 2026-07-16); status reconciled 2026-07-17
-backlog_item: TASK-0688
+id: ADR 0106
+type: adr
+title: Semantic Intent-Tools at the MCP Boundary — Hide the Substrate in Core
+status: accepted
+date: '2026-06-17'
+description: >-
+  Introduces semantic intent tools at the MCP boundary instead of generic
+  mutation inputs. Defines agent-facing action meaning and records the
+  substrate-based implementation that later members of this thread refine.
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted — implemented (ruling recorded as
+    Resolved in NORTH-STAR; executed via ADR 0106.5 — Phase A shipped 0.60.0,
+    full intent surface 0.62.0, 2026-07-16); status reconciled 2026-07-17"
+  - 'Historical frontmatter backlog_item: "TASK-0688"'
+  - 'Historical body backlog item: TASK-0688'
 ---
 
 # 0106. Semantic Intent-Tools at the MCP Boundary — Hide the Substrate in Core

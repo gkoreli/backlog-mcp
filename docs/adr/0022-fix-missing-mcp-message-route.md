@@ -1,3 +1,17 @@
+---
+id: ADR 0022
+type: adr
+title: Fix Missing /mcp/message POST Route
+status: accepted
+date: '2026-01-25'
+description: >-
+  Restores the missing MCP message route so connected clients can send protocol
+  messages. Describes the concrete server-routing failure and the endpoint
+  needed to complete the existing transport flow.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0090'
+---
 # 0022. Fix Missing /mcp/message POST Route
 
 **Date**: 2026-01-25

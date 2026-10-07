@@ -1,3 +1,18 @@
+---
+id: ADR 0087
+type: adr
+title: Remove create from write_resource — all creation through backlog_create
+status: accepted
+date: '2026-02-21'
+description: >-
+  Clarifies the boundary between write_resource and backlog_create.
+  Distinguishes editing resources from creating managed entities so adapters
+  expose clear operations without accidentally bypassing identity and schema
+  guarantees.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0355'
+---
 # 0087. Remove create from write_resource — all creation through backlog_create
 
 **Date**: 2026-02-21

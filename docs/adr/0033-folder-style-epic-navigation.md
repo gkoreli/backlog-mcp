@@ -1,3 +1,16 @@
+---
+id: ADR 0033
+type: adr
+title: Folder-Style Epic Navigation
+status: accepted
+date: '2026-01-27'
+description: >-
+  Changes epic navigation to behave like folders for hierarchical work browsing.
+  Describes interaction and rendering choices that make containers navigable
+  while preserving the underlying entity hierarchy.
+evidence:
+  - 'Historical body status: "Accepted"'
+---
 # 0033. Folder-Style Epic Navigation
 
 **Date**: 2026-01-27

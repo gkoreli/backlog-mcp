@@ -1,3 +1,16 @@
+---
+id: ADR 0099
+type: adr
+title: Fix Build OOM — Separate tsc Declarations from tsdown Bundling
+status: accepted
+date: '2026-04-30'
+description: >-
+  Separates declaration generation from bundling to prevent build out-of-memory
+  failures. Corrects the tooling pipeline at its source while keeping package
+  outputs and consumer-facing types intact.
+evidence:
+  - 'Historical body status: "Accepted"'
+---
 # 0099. Fix Build OOM — Separate tsc Declarations from tsdown Bundling
 
 **Date**: 2026-04-30

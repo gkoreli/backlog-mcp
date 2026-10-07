@@ -1,3 +1,29 @@
+---
+id: ADR 0110
+type: adr
+title: Vite for Viewer Dev (HMR) — Static Bundle in Prod
+status: accepted
+date: '2026-06-19'
+description: >-
+  Moves viewer development to Vite while retaining a static production bundle.
+  Records why esbuild re-imports duplicated framework state and adopts the
+  existing HMR integration with a single-origin development topology.
+evidence:
+  - >-
+    Historical body status: "Accepted — implemented. Viewer dev+build on Vite;
+    `@nisli/core/vite-hmr` 0.50.0; prod parity + cache headers verified. **Dev
+    is single-origin** via a `configureServer` post-hook (Vite serves
+    SPA+assets, Hono handles API/SSE as fallback). See *Engineering Record*."
+  - >-
+    Historical body supersedes: the dev-HMR *approach* of nisli **ADR 0021**
+    (`@nisli/core/esbuild-hmr`) for the backlog-mcp viewer. ADR 0021's
+    correctness analysis (re-mount lifecycle, ADR 0008.1) stays valid and is
+    reused.
+  - >-
+    Historical body relates to: [0108. Content-Hashed Viewer
+    Assets](./0108-viewer-asset-cache-busting.md) · [0104. Local-First
+    Deployment Posture](./0104-local-first-deployment-posture.md)
+---
 # 0110. Vite for Viewer Dev (HMR) — Static Bundle in Prod
 
 **Date**: 2026-06-19

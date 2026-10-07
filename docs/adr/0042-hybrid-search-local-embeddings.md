@@ -1,3 +1,17 @@
+---
+id: ADR 0042
+type: adr
+title: Hybrid Search with Local Embeddings
+status: accepted
+date: '2026-01-31'
+description: >-
+  Combines lexical search with local embeddings for hybrid retrieval. Describes
+  model and index integration, local operation and ranking implications while
+  keeping the stored Markdown corpus authoritative.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0146'
+---
 # 0042. Hybrid Search with Local Embeddings
 
 **Date**: 2026-01-31

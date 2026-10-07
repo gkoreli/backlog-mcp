@@ -1,3 +1,20 @@
+---
+id: ADR 0101
+type: adr
+title: 'Search: Reconciliation + ID Lookup + Architectural Findings'
+status: accepted
+date: '2026-05-24'
+description: >-
+  Reconciles the derived search index with authoritative storage. Defines
+  bootstrap and repair behavior so stale or missing index entries can be
+  corrected without treating search results as a complete corpus read.
+evidence:
+  - >-
+    Historical body status: "Accepted (Phases 1–4 shipped — the Phase 4
+    query-intent parser shipped via ADR 0092.4, which records ID-shaped queries
+    short-circuiting through it; report 0003 appendix). Status reconciled
+    2026-07-17."
+---
 # 0101. Search: Reconciliation + ID Lookup + Architectural Findings
 
 **Date**: 2026-05-24

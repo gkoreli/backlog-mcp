@@ -1,3 +1,17 @@
+---
+id: ADR 0062
+type: adr
+title: 'Spotlight Default Tabs: Recent Searches and Recent Activity'
+status: accepted
+date: '2026-02-05'
+description: >-
+  Defines useful default tabs for Spotlight search so initial exploration is
+  predictable. Connects the entry state to common browsing needs while retaining
+  explicit query and selection behavior.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0201'
+---
 # 0062. Spotlight Default Tabs: Recent Searches and Recent Activity
 
 **Date**: 2026-02-05

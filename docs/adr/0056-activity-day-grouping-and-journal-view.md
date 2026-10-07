@@ -1,3 +1,17 @@
+---
+id: ADR 0056
+type: adr
+title: Activity Day Grouping and Daily Work Journal View
+status: accepted
+date: '2026-02-04'
+description: >-
+  Groups activity by day and presents the operation journal in a readable view.
+  Defines chronological browsing behavior so history can be scanned without
+  loading or interpreting a flat list of unrelated actions.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0187'
+---
 # 0056. Activity Day Grouping and Daily Work Journal View
 
 **Date**: 2026-02-04

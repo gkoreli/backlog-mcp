@@ -1,3 +1,17 @@
+---
+id: ADR 0012
+type: adr
+title: Fix Nested Epic Rendering in Viewer
+status: accepted
+date: '2026-01-24'
+description: >-
+  Fixes nested epics appearing both at the root and under their parent in the
+  viewer. Makes hierarchical rendering classify children before assembling root
+  entries, preserving one visible location for each epic.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0070'
+---
 # 0012. Fix Nested Epic Rendering in Viewer
 
 **Date**: 2026-01-24

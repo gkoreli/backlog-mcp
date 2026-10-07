@@ -1,3 +1,17 @@
+---
+id: ADR 0102
+type: adr
+title: Fix SSE handler lifecycle in task-list component
+status: accepted
+date: '2026-02-15'
+description: >-
+  Fixes SSE handler lifecycle in the viewer's task list. Aligns subscription
+  creation and cleanup with component lifetime so repeated mounting does not
+  retain stale listeners or miss document updates.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0293'
+---
 # 0102. Fix SSE handler lifecycle in task-list component
 
 **Date**: 2026-02-15

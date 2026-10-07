@@ -1,5 +1,19 @@
 ---
-attention: "awaiting zombie-sweep ruling (report 0009 #7)"
+id: ADR 0083
+type: adr
+title: Search Service Architectural Review & Next-Generation Search
+status: proposed
+date: '2026-02-17'
+description: >-
+  Reviews the search service and proposes its next generation. Inventories
+  current behavior, weaknesses and future options without treating an
+  architectural review or unresolved attention marker as accepted
+  implementation.
+evidence:
+  - >-
+    Historical frontmatter attention: "awaiting zombie-sweep ruling (report 0009
+    #7)"
+  - 'Historical body status: "Proposed"'
 ---
 
 # 0083. Search Service Architectural Review & Next-Generation Search

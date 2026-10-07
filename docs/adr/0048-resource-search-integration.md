@@ -1,3 +1,17 @@
+---
+id: ADR 0048
+type: adr
+title: Resource Search Integration in Spotlight
+status: accepted
+date: '2026-02-01'
+description: >-
+  Includes resource documents in search alongside work entities. Defines corpus
+  integration and result routing so project decisions and artifacts are
+  discoverable without maintaining a separate search experience.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0160'
+---
 # 0048. Resource Search Integration in Spotlight
 
 **Date**: 2026-02-01

@@ -1,13 +1,35 @@
 ---
-title: "0126 — Retrieval Substrate: Stay on Orama-Done-Right; sqlite-vec as the Designed Fallback"
-date: 2026-07-18
-status: "Accepted (goga, 2026-07-18 — 'hold for now; we can replace that vector search any time'). Stay on Orama-done-right; sqlite-vec parked as the designed fallback with tripwires."
-author: granite (architect)
-relates_to:
-  - ../NORTH-STAR.md
-  - ../references/REF-0016-orama-text-analysis-pipeline-bm25.md
-  - 0125-consumer-agnostic-core-compose-dependencies.md
-  - ../evaluation/R8-JUDGING-2026-07-18.md
+id: ADR 0126
+type: adr
+title: >-
+  Retrieval Substrate: Stay on Orama-Done-Right; sqlite-vec as the Designed
+  Fallback
+status: accepted
+date: '2026-07-18'
+description: >-
+  Retains Orama with documented integration and parks sqlite-vec as an explicit
+  fallback. Defines evidence-based tripwires for revisiting the choice rather
+  than switching retrieval infrastructure without a demonstrated need.
+references:
+  - url: ../NORTH-STAR.md
+    title: 'Historical relates_to: ../NORTH-STAR.md'
+  - url: ./0016-agent-log-streaming-architecture.md
+    title: >-
+      Historical relates_to:
+      ../references/REF-0016-orama-text-analysis-pipeline-bm25.md
+  - url: ./0125-consumer-agnostic-core-compose-dependencies.md
+    title: 'Historical relates_to: 0125-consumer-agnostic-core-compose-dependencies.md'
+  - url: ../evaluation/R8-JUDGING-2026-07-18.md
+    title: 'Historical relates_to: ../evaluation/R8-JUDGING-2026-07-18.md'
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted (goga, 2026-07-18 — 'hold for now;
+    we can replace that vector search any time'). Stay on Orama-done-right;
+    sqlite-vec parked as the designed fallback with tripwires."
+  - 'Historical frontmatter author: "granite (architect)"'
+  - >-
+    Historical frontmatter relates_to:
+    ["../NORTH-STAR.md","../references/REF-0016-orama-text-analysis-pipeline-bm25.md","0125-consumer-agnostic-core-compose-dependencies.md","../evaluation/R8-JUDGING-2026-07-18.md"]
 ---
 
 # 0126 — Retrieval Substrate

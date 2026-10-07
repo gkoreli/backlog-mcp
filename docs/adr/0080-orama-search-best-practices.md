@@ -1,3 +1,19 @@
+---
+id: ADR 0080
+type: adr
+title: 'ADR-0080: Orama Search Best Practices Alignment'
+status: accepted
+date: '2026-02-16'
+description: >-
+  Applies documented Orama search practices to improve correctness and
+  relevance. Records supported engine behavior and integration choices rather
+  than building imitation mechanisms around misunderstood APIs.
+evidence:
+  - 'Historical body status: "Accepted  "'
+  - >-
+    Historical body related: ADR-0079 (native filtering), ADR-0072 (re-ranking
+    pipeline), ADR-0073 (server-side snippets)
+---
 # ADR-0080: Orama Search Best Practices Alignment
 
 **Status**: Accepted  

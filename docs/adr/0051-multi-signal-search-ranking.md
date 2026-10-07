@@ -1,3 +1,17 @@
+---
+id: ADR 0051
+type: adr
+title: Multi-Signal Search Ranking
+status: accepted
+date: '2026-02-02'
+description: >-
+  Combines multiple ranking signals to improve search result ordering. Records
+  how title, text and other evidence contribute, keeping relevance policy
+  explicit instead of burying independent heuristics in callers.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0165'
+---
 # 0051. Multi-Signal Search Ranking
 
 **Date**: 2026-02-02

@@ -1,3 +1,17 @@
+---
+id: ADR 0049
+type: adr
+title: Keep Orama Over Algolia for Search
+status: accepted
+date: '2026-02-02'
+description: >-
+  Retains Orama after evaluating Algolia against local operation and project
+  needs. Records the evidence and tradeoffs behind the existing engine choice
+  rather than changing retrieval infrastructure for brand familiarity.
+evidence:
+  - 'Historical body status: "Accepted  "'
+  - 'Historical body related adrs: 0038 (Comprehensive Search Capability)'
+---
 # 0049. Keep Orama Over Algolia for Search
 
 **Date**: 2026-02-02  

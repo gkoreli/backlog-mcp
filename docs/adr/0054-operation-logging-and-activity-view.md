@@ -1,3 +1,17 @@
+---
+id: ADR 0054
+type: adr
+title: Operation Logging and Activity View
+status: accepted
+date: '2026-02-02'
+description: >-
+  Adds operation logging and an activity view derived from managed actions.
+  Connects useful historical records with viewer discovery while preserving the
+  authoritative entity documents and existing mutation flow.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0175'
+---
 # 0054. Operation Logging and Activity View
 
 **Date**: 2026-02-02

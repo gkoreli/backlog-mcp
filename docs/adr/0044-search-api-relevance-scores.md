@@ -1,3 +1,17 @@
+---
+id: ADR 0044
+type: adr
+title: Search API Relevance Scores
+status: accepted
+date: '2026-01-31'
+description: >-
+  Adds relevance scores to search API responses so clients can explain and
+  compare results. Exposes ranking data through the shared contract instead of
+  requiring presentation layers to reconstruct search behavior.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0149'
+---
 # 0044. Search API Relevance Scores
 
 **Date**: 2026-01-31

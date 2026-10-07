@@ -1,7 +1,15 @@
 ---
-title: "Remote Auth Architecture — GitHub OAuth + PKCE + JWT Access Tokens"
-date: 2026-04-03
-status: Accepted, amended 2026-04-14
+id: ADR 0100
+type: adr
+title: Remote Auth Architecture — GitHub OAuth + PKCE + JWT Access Tokens
+status: accepted
+date: '2026-04-03'
+description: >-
+  Defines remote authentication and its amended architecture for hosted access.
+  Records security and session boundaries under the historical deployment model
+  while keeping authentication policy separate from the local document engine.
+evidence:
+  - 'Historical frontmatter status: "Accepted, amended 2026-04-14"'
 ---
 
 # 0100. Remote Auth Architecture — GitHub OAuth + PKCE + JWT Access Tokens

@@ -1,3 +1,17 @@
+---
+id: ADR 0034
+type: adr
+title: Fix Status Filter Mapping
+status: accepted
+date: '2026-01-28'
+description: >-
+  Corrects status-filter mapping between viewer choices and persisted task
+  states. Aligns displayed filtering with the entity contract so selecting a
+  status returns the intended work instead of a mismatched token.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-XXXX'
+---
 # 0034. Fix Status Filter Mapping
 
 **Date**: 2026-01-28

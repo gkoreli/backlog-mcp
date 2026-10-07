@@ -1,5 +1,21 @@
 ---
-attention: "awaiting zombie-sweep ruling (report 0009 #7)"
+id: ADR 0021
+type: adr
+title: 'ADR-0021: ChatGPT Apps SDK Integration Strategy'
+status: proposed
+date: '2026-01-25'
+description: >-
+  Explores integration with the ChatGPT Apps SDK and its presentation model.
+  Preserves client-specific requirements and unresolved review attention while
+  distinguishing a proposed integration from the core document engine.
+evidence:
+  - >-
+    Historical frontmatter attention: "awaiting zombie-sweep ruling (report 0009
+    #7)"
+  - 'Historical body status: "Proposed  "'
+  - >-
+    Historical body related: ADR-0020 (Fastify migration), ADR-0013 (HTTP MCP
+    server)
 ---
 
 # ADR-0021: ChatGPT Apps SDK Integration Strategy

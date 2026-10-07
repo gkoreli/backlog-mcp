@@ -1,7 +1,18 @@
 ---
-title: "0135. Complete reads and managed mutation consistency"
-date: 2026-10-03
-status: "Accepted — engineering in stages under maintainer authorization"
+id: ADR 0135
+type: adr
+title: Complete reads and managed mutation consistency
+status: accepted
+date: '2026-10-03'
+description: >-
+  Defines complete reads and exact-preimage managed mutation consistency.
+  Separates bounded display from authoritative scans and establishes
+  publication, compensation and diagnostic contracts that later engineering work
+  implements.
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted — engineering in stages under
+    maintainer authorization"
 ---
 
 # 0135. Complete reads and managed mutation consistency

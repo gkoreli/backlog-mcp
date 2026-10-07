@@ -1,3 +1,17 @@
+---
+id: ADR 0059
+type: adr
+title: Journal View Epic Grouping and UX Overhaul
+status: accepted
+date: '2026-02-05'
+description: >-
+  Groups journal activity by epic and refines browsing around related work.
+  Connects the historical action stream to the work hierarchy while retaining
+  the underlying operation record as the source of truth.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0195'
+---
 # 0059. Journal View Epic Grouping and UX Overhaul
 
 **Date**: 2026-02-05

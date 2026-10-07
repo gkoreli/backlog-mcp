@@ -1,3 +1,17 @@
+---
+id: ADR 0032
+type: adr
+title: Fix Copy Markdown Button
+status: accepted
+date: '2026-01-27'
+description: >-
+  Fixes copying Markdown from the viewer so the clipboard receives the intended
+  source. Distinguishes rendered presentation from document content and records
+  the correction at the reusable copy surface.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0099'
+---
 # 0032. Fix Copy Markdown Button
 
 **Date**: 2026-01-27

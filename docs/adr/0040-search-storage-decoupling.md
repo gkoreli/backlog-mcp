@@ -1,3 +1,17 @@
+---
+id: ADR 0040
+type: adr
+title: Search Storage Decoupling
+status: accepted
+date: '2026-01-31'
+description: >-
+  Separates search responsibilities from document storage so indexing can evolve
+  independently. Defines the boundary between authoritative records and derived
+  retrieval, reducing coupling in storage implementations and search consumers.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0145'
+---
 # 0040. Search Storage Decoupling
 
 **Date**: 2026-01-31

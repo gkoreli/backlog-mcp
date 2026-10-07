@@ -1,14 +1,32 @@
 ---
-title: "0129 — Semantic Filenames: ID plus slug, the ID stays the only identity"
-date: 2026-09-01
-status: "Accepted (goga) — Phase A implemented 2026-09-01; Phase B (R8, viewer pane id resolution) open"
-author: goga + claude
-relates_to:
-  - 0112-docs-native-project-scoped-backlog.md
-  - 0113-user-defined-substrates.md
-  - 0117-the-write-boundary.md
-  - 0127-storage-read-cache-uncached-corpus-rescan.md
-  - ../NORTH-STAR.md
+id: ADR 0129
+type: adr
+title: 'Semantic Filenames: ID plus slug, the ID stays the only identity'
+status: accepted
+date: '2026-09-01'
+description: >-
+  Defines semantic filenames as stable IDs plus frozen title slugs. Keeps
+  identity independent of presentation and permits native legacy names, while
+  exclusive creation guards the document ID rather than just a destination path.
+references:
+  - url: ./0112-docs-native-project-scoped-backlog.md
+    title: 'Historical relates_to: 0112-docs-native-project-scoped-backlog.md'
+  - url: ./0113-user-defined-substrates.md
+    title: 'Historical relates_to: 0113-user-defined-substrates.md'
+  - url: ./0117-the-write-boundary.md
+    title: 'Historical relates_to: 0117-the-write-boundary.md'
+  - url: ./0127-storage-read-cache-uncached-corpus-rescan.md
+    title: 'Historical relates_to: 0127-storage-read-cache-uncached-corpus-rescan.md'
+  - url: ../NORTH-STAR.md
+    title: 'Historical relates_to: ../NORTH-STAR.md'
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted (goga) — Phase A implemented
+    2026-09-01; Phase B (R8, viewer pane id resolution) open"
+  - 'Historical frontmatter author: "goga + claude"'
+  - >-
+    Historical frontmatter relates_to:
+    ["0112-docs-native-project-scoped-backlog.md","0113-user-defined-substrates.md","0117-the-write-boundary.md","0127-storage-read-cache-uncached-corpus-rescan.md","../NORTH-STAR.md"]
 ---
 
 # 0129 — Semantic Filenames

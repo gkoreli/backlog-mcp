@@ -1,12 +1,30 @@
 ---
-title: "0131 — Release Awareness and Self-Restart: System Information shows a stale daemon and restarts it"
-date: 2026-09-01
-status: "Accepted (goga) — implemented 2026-09-01, shipped 0.74.0"
-author: goga + claude
-relates_to:
-  - 0124-resilient-daemon.md
-  - 0130-clean-process-exit-onnx-abort.md
-  - ../NORTH-STAR.md
+id: ADR 0131
+type: adr
+title: >-
+  Release Awareness and Self-Restart: System Information shows a stale daemon
+  and restarts it
+status: accepted
+date: '2026-09-01'
+description: >-
+  Exposes running-versus-installed release state and controlled daemon restart.
+  Keeps restart admission loopback-only and uses lifecycle draining so
+  refreshing the runtime does not discard active work.
+references:
+  - url: ./0124-resilient-daemon.md
+    title: 'Historical relates_to: 0124-resilient-daemon.md'
+  - url: ./0130-clean-process-exit-onnx-abort.md
+    title: 'Historical relates_to: 0130-clean-process-exit-onnx-abort.md'
+  - url: ../NORTH-STAR.md
+    title: 'Historical relates_to: ../NORTH-STAR.md'
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted (goga) — implemented 2026-09-01,
+    shipped 0.74.0"
+  - 'Historical frontmatter author: "goga + claude"'
+  - >-
+    Historical frontmatter relates_to:
+    ["0124-resilient-daemon.md","0130-clean-process-exit-onnx-abort.md","../NORTH-STAR.md"]
 ---
 
 # 0131 — Release Awareness and Self-Restart

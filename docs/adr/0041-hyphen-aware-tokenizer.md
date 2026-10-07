@@ -1,3 +1,17 @@
+---
+id: ADR 0041
+type: adr
+title: Hyphen-Aware Custom Tokenizer
+status: accepted
+date: '2026-01-31'
+description: >-
+  Makes tokenization aware of hyphenated identifiers and compound terms.
+  Preserves useful matches for backlog IDs and domain vocabulary without
+  treating punctuation handling as unrelated query-specific exceptions.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0147'
+---
 # 0041. Hyphen-Aware Custom Tokenizer
 
 **Date**: 2026-01-31

@@ -1,3 +1,24 @@
+---
+id: ADR 0076
+type: adr
+title: >-
+  Context Hydration Phase Three — Depth 2+ Expansion, Session Memory,
+  Architectural Resilience
+status: accepted
+date: '2026-02-15'
+description: >-
+  Implements the third phase of context hydration and its additional sources.
+  Extends the existing staged composition instead of introducing a separate
+  retrieval path with incompatible focal context semantics.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - >-
+    Historical body supersedes: ADR-0075 Phase 3 roadmap items (depth 2+
+    expansion, session memory)
+  - >-
+    Historical body related: ADR-0074 (Phase 1 — Architecture), ADR-0075 (Phase
+    2 — Semantic Enrichment + Temporal Overlay)
+---
 # 0076. Context Hydration Phase Three — Depth 2+ Expansion, Session Memory, Architectural Resilience
 
 **Date**: 2026-02-15

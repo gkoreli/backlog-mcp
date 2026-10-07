@@ -1,3 +1,16 @@
+---
+id: ADR 0028
+type: adr
+title: System Configuration Visibility
+status: accepted
+date: '2026-01-26'
+description: >-
+  Exposes system configuration and runtime information to make operation
+  diagnosable. Defines visible settings and their presentation so users can
+  understand the running instance without inspecting hidden process state.
+evidence:
+  - 'Historical body status: "Accepted"'
+---
 # 0028. System Configuration Visibility
 
 **Date**: 2026-01-26

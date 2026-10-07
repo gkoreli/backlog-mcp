@@ -1,3 +1,16 @@
+---
+id: ADR 0027
+type: adr
+title: CLI Management Commands
+status: accepted
+date: '2026-01-26'
+description: >-
+  Adds CLI management commands for operating backlog outside MCP clients.
+  Establishes command parsing and lifecycle controls while sharing the existing
+  engine rather than embedding separate business logic in a terminal surface.
+evidence:
+  - 'Historical body status: "Accepted"'
+---
 # 0027. CLI Management Commands
 
 **Date**: 2026-01-26

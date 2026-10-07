@@ -1,3 +1,19 @@
+---
+id: ADR 0007
+type: adr
+title: MCP Resource URI Implementation
+status: superseded
+date: '2026-01-22'
+description: >-
+  Implements the MCP resource URI architecture with shared readers for MCP and
+  HTTP clients. Describes SDK registration and viewer retrieval without
+  duplicating domain behavior; the original contract is subsequently
+  consolidated.
+evidence:
+  - 'Historical body status: "Superseded by ADR-0031"'
+  - 'Historical body backlog item: TASK-0061'
+  - 'Historical body related: ADR 0006 (MCP Resource URI Architecture)'
+---
 # 0007. MCP Resource URI Implementation
 
 **Date**: 2026-01-22

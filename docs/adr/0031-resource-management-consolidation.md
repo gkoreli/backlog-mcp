@@ -1,3 +1,24 @@
+---
+id: ADR 0031
+type: adr
+title: Resource Management Consolidation
+status: accepted
+date: '2026-01-27'
+supersedes:
+  - ADR 0001
+  - ADR 0006
+  - ADR 0007
+  - ADR 0010
+  - ADR 0030
+description: >-
+  Consolidates resource management around a simpler document and file contract.
+  Explicitly replaces earlier writable-resource suffix and URI designs, reducing
+  separate paths while keeping Markdown as the source of truth.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: N/A (cleanup task)'
+  - 'Historical body supersedes: ADR-0001, ADR-0006, ADR-0007, ADR-0010, ADR-0030'
+---
 # 0031. Resource Management Consolidation
 
 **Date**: 2026-01-27

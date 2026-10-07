@@ -1,7 +1,15 @@
 ---
-title: "D1 Production Hardening — FTS5 Resilience + IOperationLog Abstraction"
-date: 2026-04-03
-status: Accepted
+id: ADR 0093
+type: adr
+title: D1 Production Hardening — FTS5 Resilience + IOperationLog Abstraction
+status: accepted
+date: '2026-04-03'
+description: >-
+  Hardens the D1-backed implementation for historical production use. Records
+  failure handling and remote persistence work without requiring later local
+  capabilities to maintain parity with the descoped deployment.
+evidence:
+  - 'Historical frontmatter status: "Accepted"'
 ---
 
 # 0093. D1 Production Hardening — FTS5 Resilience + IOperationLog Abstraction

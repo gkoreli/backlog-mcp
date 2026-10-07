@@ -1,3 +1,17 @@
+---
+id: ADR 0035
+type: adr
+title: Logging Infrastructure for Debugging and Visibility
+status: accepted
+date: '2026-01-28'
+description: >-
+  Introduces shared logging infrastructure for server diagnostics and operation
+  visibility. Defines logging responsibilities and useful output without
+  scattering unrelated console behavior across execution paths.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0121'
+---
 # 0035. Logging Infrastructure for Debugging and Visibility
 
 **Date**: 2026-01-28

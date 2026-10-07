@@ -1,3 +1,17 @@
+---
+id: ADR 0016
+type: adr
+title: Real-time Agent Log Streaming to Viewer UI
+status: accepted
+date: '2026-01-25'
+description: >-
+  Designs streaming agent logs for live observation of ongoing work. Covers
+  transport and viewer presentation so progress can be inspected without
+  repeatedly loading complete artifacts or polling static records.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0077'
+---
 # 0016. Real-time Agent Log Streaming to Viewer UI
 
 **Date**: 2026-01-25

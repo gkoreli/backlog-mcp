@@ -1,3 +1,20 @@
+---
+id: ADR 0072
+type: adr
+title: Normalize-Then-Multiply Search Scoring Architecture
+status: accepted
+date: '2026-02-12'
+description: >-
+  Normalizes ranking signals before multiplying them so incompatible score
+  scales do not dominate relevance. Records the scoring correction and its
+  rationale within the existing multi-signal retrieval pipeline.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0285'
+  - >-
+    Historical body supersedes: ADR-0051 (Multi-Signal Search Ranking) —
+    replaces additive reranking with normalized multiplicative approach
+---
 # 0072. Normalize-Then-Multiply Search Scoring Architecture
 
 **Date**: 2026-02-12

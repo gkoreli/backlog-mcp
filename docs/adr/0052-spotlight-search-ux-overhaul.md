@@ -1,3 +1,17 @@
+---
+id: ADR 0052
+type: adr
+title: Spotlight Search UX Overhaul
+status: accepted
+date: '2026-02-02'
+description: >-
+  Reworks Spotlight search presentation and interaction to make result
+  exploration more useful. Addresses the accumulated UX issues around query
+  entry, navigation and previews as one coherent viewer change.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0166'
+---
 # 0052. Spotlight Search UX Overhaul
 
 **Date**: 2026-02-02

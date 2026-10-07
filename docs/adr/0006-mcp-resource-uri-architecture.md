@@ -1,3 +1,17 @@
+---
+id: ADR 0006
+type: adr
+title: MCP Resource URI Architecture
+status: superseded
+date: '2026-01-22'
+description: >-
+  Defines portable MCP resource URIs in place of machine-specific file links.
+  Documents resource addressing, backwards compatibility and the original
+  abstraction; later consolidation replaces this URI design.
+evidence:
+  - 'Historical body status: "Superseded by ADR-0031"'
+  - 'Historical body related: ADR 0004 (MCP Resource Viewer Integration)'
+---
 # 0006. MCP Resource URI Architecture
 
 **Date**: 2026-01-22

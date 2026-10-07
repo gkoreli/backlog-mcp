@@ -1,3 +1,21 @@
+---
+id: ADR 0137
+type: adr
+title: Task-Attached Resources
+status: accepted
+date: '2026-01-23'
+description: >-
+  Designs durable resources attached to tasks, covering discovery, ownership and
+  lifecycle concerns. Explains why bare external references can orphan decision
+  documents and lose context when the associated work changes.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - >-
+    Identity normalization: duplicate historical ADR 0008 in
+    0008-task-attached-resources.md was reallocated by core
+    nextStorageDocumentId to ADR 0137; original heading and date retained.
+  - 'Historical body backlog item: N/A (design discussion)'
+---
 # 0008. Task-Attached Resources
 
 **Date**: 2026-01-23

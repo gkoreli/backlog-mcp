@@ -1,3 +1,21 @@
+---
+id: ADR 0036
+type: adr
+title: Ruthless Pruning System
+status: superseded
+date: '2026-01-28'
+description: >-
+  Designs automatic pruning and decay to limit backlog growth. Records the
+  superseded approach and its replacement by usage-aware memory ripeness and
+  docs-native storage, preserving the earlier reasoning as historical context.
+evidence:
+  - >-
+    Historical body status: "Superseded — the pruning system is superseded by
+    the 0092.x memory architecture (the decay idea reborn as usage-aware
+    ripeness, ADR 0092.12) and the docs-native pivot (ADR 0112); per report 0003
+    D10. Status reconciled 2026-07-17."
+  - 'Historical body backlog item: TASK-0129'
+---
 # 0036. Ruthless Pruning System
 
 **Date**: 2026-01-28

@@ -1,3 +1,7 @@
+---
+title: "Delegation Brief — ADR 0106.4: Rename Entity Body `description` → `content`"
+description: "Historical delegation instructions for the associated ADR migration. Records bounded implementation steps and classification requirements; this supporting resource is execution guidance, not a separate architectural decision."
+---
 # Delegation Brief — ADR 0106.4: Rename Entity Body `description` → `content`
 
 **Task**: TASK-0690
@@ -18,7 +22,7 @@ the field name (substrate, code, and the public MCP/CLI input field all move to 
   / JSON tool input schemas**; OAuth client/scope `description` (`auth/oauth-*.ts`);
   `package.json` description; any documentation string.
 
-Write the audit to `docs/adr/0106.4-STEP0-AUDIT.md` before editing. Blind sed is
+Write the audit to `docs/adr-support/0106.4/step0-audit.md` before editing. Blind sed is
 forbidden — it will corrupt population (b).
 
 ## Execution sequence

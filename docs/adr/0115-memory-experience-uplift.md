@@ -1,7 +1,20 @@
 ---
-title: "0115. Memory Experience Uplift — Provenance-Bearing Recall Stubs, Golden Recall Suite, Honest Clocks"
-date: 2026-07-16
-status: Accepted — implemented (shipped 0.59.0, 2026-07-16 — provenance-bearing recall stubs; wakeup stubs carry age_days and usage counts; CHANGELOG 0.59.0); status reconciled 2026-07-17
+id: ADR 0115
+type: adr
+title: >-
+  Memory Experience Uplift — Provenance-Bearing Recall Stubs, Golden Recall
+  Suite, Honest Clocks
+status: accepted
+date: '2026-07-16'
+description: >-
+  Improves memory recall with provenance-bearing stubs, honest ages and focused
+  evaluation. Makes freshness and usage visible before loading complete records
+  while keeping the retrieval contract bounded and testable.
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted — implemented (shipped 0.59.0,
+    2026-07-16 — provenance-bearing recall stubs; wakeup stubs carry age_days
+    and usage counts; CHANGELOG 0.59.0); status reconciled 2026-07-17"
 ---
 
 # 0115. Memory Experience Uplift

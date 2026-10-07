@@ -1,3 +1,17 @@
+---
+id: ADR 0030
+type: adr
+title: URI Resolver Cleanup and Simplification
+status: superseded
+date: '2026-01-27'
+description: >-
+  Simplifies URI resolution after earlier resource routing accumulated redundant
+  branches. Records the cleanup's compatibility scope; resource-management
+  consolidation later replaces the resulting contract.
+evidence:
+  - 'Historical body status: "Superseded by ADR-0031"'
+  - 'Historical body backlog item: N/A (cleanup task)'
+---
 # 0030. URI Resolver Cleanup and Simplification
 
 **Date**: 2026-01-27

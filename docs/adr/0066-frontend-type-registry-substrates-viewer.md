@@ -1,3 +1,17 @@
+---
+id: ADR 0066
+type: adr
+title: Frontend Type Registry for Substrates Viewer UI
+status: accepted
+date: '2026-02-07'
+description: >-
+  Adds a viewer type registry driven by substrate definitions. Shares entity
+  labels, badges and behavior through declarations so adding document types does
+  not require scattered task-specific conditionals.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0243'
+---
 # 0066. Frontend Type Registry for Substrates Viewer UI
 
 **Date**: 2026-02-07

@@ -1,8 +1,16 @@
 ---
-title: "Cron Entity Type — Scheduled Task Intake"
-date: 2026-04-28
-status: Superseded
-superseded_by: [0097, 0097.1, 0098]
+id: ADR 0096
+type: adr
+title: Cron Entity Type — Scheduled Task Intake
+status: superseded
+date: '2026-04-28'
+description: >-
+  Proposes a cron entity for storing scheduled work declarations. Preserves the
+  superseded initial model and the later engine-positioning and substrate
+  decisions that replace its design assumptions.
+evidence:
+  - 'Historical frontmatter status: "Superseded"'
+  - 'Historical frontmatter superseded_by: [97,97.1,98]'
 ---
 
 > **Status note (2026-04-28)**: This ADR is superseded. It is preserved

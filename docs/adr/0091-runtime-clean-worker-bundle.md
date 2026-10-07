@@ -1,7 +1,15 @@
 ---
-title: "Runtime-Clean Worker Bundle — Capability Injection Pattern"
-date: 2026-03-26
-status: Accepted
+id: ADR 0091
+type: adr
+title: Runtime-Clean Worker Bundle — Capability Injection Pattern
+status: accepted
+date: '2026-03-26'
+description: >-
+  Injects runtime capabilities to keep the Worker bundle free of local-only
+  dependencies. Defines portable boundaries and composition responsibilities so
+  core behavior does not import filesystem or process-specific effects.
+evidence:
+  - 'Historical frontmatter status: "Accepted"'
 ---
 
 > **2026-09-28:** §1 (`resolveSourcePath` in `ToolDeps`) is retired. ADR 0106.5 R8

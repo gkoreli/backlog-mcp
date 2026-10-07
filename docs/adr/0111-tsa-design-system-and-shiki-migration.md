@@ -1,7 +1,13 @@
 ---
-title: "0111: Tsa Design System and Shiki Migration"
-date: 2026-06-19
+id: ADR 0111
+type: adr
+title: Tsa Design System and Shiki Migration
 status: accepted
+date: '2026-06-19'
+description: >-
+  Migrates viewer presentation to the Tsa design system and Shiki highlighting.
+  Defines shared styling and Markdown code rendering choices while preserving
+  component responsibilities and a bounded client bundle.
 ---
 
 # 0111. Tsa Design System and Shiki Migration

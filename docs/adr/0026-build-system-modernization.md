@@ -1,3 +1,17 @@
+---
+id: ADR 0026
+type: adr
+title: Build System Modernization and Path Resolution
+status: accepted
+date: '2026-01-26'
+description: >-
+  Modernizes workspace builds to make package outputs and development workflows
+  more predictable. Records tooling choices and build responsibilities at the
+  time of adoption, with historical commands preserved for context.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0088'
+---
 # 0026. Build System Modernization and Path Resolution
 
 **Date**: 2026-01-26

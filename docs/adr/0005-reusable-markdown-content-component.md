@@ -1,3 +1,17 @@
+---
+id: ADR 0005
+type: adr
+title: Reusable Markdown Content Component
+status: accepted
+date: '2026-01-22'
+description: >-
+  Extracts reusable Markdown rendering for task details and resource views.
+  Centralizes the wrapper and rendering behavior so improvements and fixes apply
+  consistently across both viewer surfaces.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: Refactoring (no task ID)'
+---
 # 0005. Reusable Markdown Content Component
 
 **Date**: 2026-01-22

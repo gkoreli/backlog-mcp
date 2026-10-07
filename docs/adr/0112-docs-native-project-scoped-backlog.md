@@ -1,15 +1,53 @@
 ---
-title: "0112. Docs-Native Project-Scoped Backlog — Open Markdown Truth, Scoped Homes, Human IDs"
-date: 2026-07-16
-status: Accepted — implemented (shipped 0.59.0–0.61.0, 2026-07-16 — foundations 0.59.0, per-home runtimes 0.60.0 Phase B, cross-home reads + docs-native default and one-shot migration 0.61.0 Phases D–E; CHANGELOG); status reconciled 2026-07-17
-supersedes_in_part:
-  - "0107-loro-as-truth-local-first-history-substrate.md — project homes only: committed Markdown is authoritative; Loro may be derived history/sync or remain confined to the global home"
-  - "0092.9-phase-e-usage-feedback-research-and-plan.md — project homes only: recall usage remains local overlay state and does not rewrite committed memory frontmatter"
-relates_to:
-  - 0098-unified-substrate-architecture.md
-  - 0104-local-first-deployment-posture.md
-  - 0105-per-repo-config-auto-scope.md
-  - 0107-loro-as-truth-local-first-history-substrate.md
+id: ADR 0112
+type: adr
+title: >-
+  Docs-Native Project-Scoped Backlog — Open Markdown Truth, Scoped Homes, Human
+  IDs
+status: accepted
+date: '2026-07-16'
+description: >-
+  Makes project documents the authoritative backlog store within explicitly
+  selected homes. Defines native editing, human IDs, containment and provenance,
+  and scopes overrides to earlier history and memory-usage assumptions.
+references:
+  - url: ./0107-loro-as-truth-local-first-history-substrate.md
+    title: >-
+      Historical supersedes_in_part:
+      0107-loro-as-truth-local-first-history-substrate.md — project homes only:
+      committed Markdown is authoritative; Loro may be derived history/sync or
+      remain confined to the global home
+  - url: ./0092.9-phase-e-usage-feedback-research-and-plan.md
+    title: >-
+      Historical supersedes_in_part:
+      0092.9-phase-e-usage-feedback-research-and-plan.md — project homes only:
+      recall usage remains local overlay state and does not rewrite committed
+      memory frontmatter
+  - url: ./0098-unified-substrate-architecture.md
+    title: 'Historical relates_to: 0098-unified-substrate-architecture.md'
+  - url: ./0104-local-first-deployment-posture.md
+    title: 'Historical relates_to: 0104-local-first-deployment-posture.md'
+  - url: ./0105-per-repo-config-auto-scope.md
+    title: 'Historical relates_to: 0105-per-repo-config-auto-scope.md'
+  - url: ./0107-loro-as-truth-local-first-history-substrate.md
+    title: 'Historical relates_to: 0107-loro-as-truth-local-first-history-substrate.md'
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted — implemented (shipped
+    0.59.0–0.61.0, 2026-07-16 — foundations 0.59.0, per-home runtimes 0.60.0
+    Phase B, cross-home reads + docs-native default and one-shot migration
+    0.61.0 Phases D–E; CHANGELOG); status reconciled 2026-07-17"
+  - >-
+    Historical frontmatter supersedes_in_part:
+    ["0107-loro-as-truth-local-first-history-substrate.md — project homes only:
+    committed Markdown is authoritative; Loro may be derived history/sync or
+    remain confined to the global
+    home","0092.9-phase-e-usage-feedback-research-and-plan.md — project homes
+    only: recall usage remains local overlay state and does not rewrite
+    committed memory frontmatter"]
+  - >-
+    Historical frontmatter relates_to:
+    ["0098-unified-substrate-architecture.md","0104-local-first-deployment-posture.md","0105-per-repo-config-auto-scope.md","0107-loro-as-truth-local-first-history-substrate.md"]
 ---
 
 # 0112. Docs-Native Project-Scoped Backlog

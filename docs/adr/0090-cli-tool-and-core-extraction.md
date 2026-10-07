@@ -1,7 +1,15 @@
 ---
-title: "CLI Tool and Core Function Extraction"
-date: 2026-03-26
-status: Accepted
+id: ADR 0090
+type: adr
+title: CLI Tool and Core Function Extraction
+status: accepted
+date: '2026-03-26'
+description: >-
+  Extracts transport-free core functions and adds a CLI beside MCP. Establishes
+  thin peer wrappers, shared input/output contracts and business-policy
+  ownership so interface choice does not create divergent behavior.
+evidence:
+  - 'Historical frontmatter status: "Accepted"'
 ---
 
 # 0090. CLI Tool and Core Function Extraction

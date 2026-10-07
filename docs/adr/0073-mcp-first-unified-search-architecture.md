@@ -1,3 +1,19 @@
+---
+id: ADR 0073
+type: adr
+title: MCP-First Unified Search Architecture
+status: accepted
+date: '2026-02-14'
+description: >-
+  Defines one MCP-first search architecture shared with other interfaces. Keeps
+  retrieval behavior in the engine while adapters expose common contracts and
+  format results for their own interaction surfaces.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - >-
+    Historical body related: ADR-0038 (Comprehensive Search), ADR-0047 (Unified
+    Search API), ADR-0042 (Hybrid Search), ADR-0072 (Scoring)
+---
 # 0073. MCP-First Unified Search Architecture
 
 **Date**: 2026-02-14

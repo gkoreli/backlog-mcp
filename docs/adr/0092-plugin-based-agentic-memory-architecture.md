@@ -1,8 +1,17 @@
 ---
-title: "0092. Plugin-Based Agentic Memory Architecture"
-date: 2026-04-14
-status: Accepted
-backlog_item: TASK-0629
+id: ADR 0092
+type: adr
+title: Plugin-Based Agentic Memory Architecture
+status: accepted
+date: '2026-04-14'
+description: >-
+  Designs plugin-based agent memory over the existing authoritative backlog.
+  Defines memory layers, composition and extensible store capabilities without
+  replacing Markdown truth with a separate opaque memory database.
+evidence:
+  - 'Historical frontmatter status: "Accepted"'
+  - 'Historical frontmatter backlog_item: "TASK-0629"'
+  - 'Historical body backlog item: TASK-0629'
 ---
 
 # 0092. Plugin-Based Agentic Memory Architecture

@@ -1,3 +1,17 @@
+---
+id: ADR 0057
+type: adr
+title: 'Activity Panel Timezone Fix, Mode Persistence, and Task Titles'
+status: accepted
+date: '2026-02-05'
+description: >-
+  Adds persistent timezone selection and clearer titles to activity
+  presentation. Makes journal timestamps interpretable across sessions while
+  keeping the underlying operation times and records unchanged.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0193'
+---
 # 0057. Activity Panel Timezone Fix, Mode Persistence, and Task Titles
 
 **Date**: 2026-02-05

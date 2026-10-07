@@ -1,3 +1,17 @@
+---
+id: ADR 0002
+type: adr
+title: Fix Epic ID Generation to Prevent Overwrites
+status: accepted
+date: '2026-01-21'
+description: >-
+  Fixes epic allocation that examined only a paginated document list and could
+  overwrite existing epics. Separates complete identity enumeration from display
+  pagination so creating an entity cannot reuse an occupied number.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0048'
+---
 # 0002. Fix Epic ID Generation to Prevent Overwrites
 
 **Date**: 2026-01-21

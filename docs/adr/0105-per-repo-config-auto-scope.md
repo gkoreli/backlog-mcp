@@ -1,8 +1,17 @@
 ---
-title: "0105. Per-Repo Config (.backlog-mcp/) — Auto-Scope Memory & Wakeup"
-date: 2026-06-16
-status: Accepted
-backlog_item: TASK-0686
+id: ADR 0105
+type: adr
+title: Per-Repo Config (.backlog-mcp/) — Auto-Scope Memory & Wakeup
+status: accepted
+date: '2026-06-16'
+description: >-
+  Adds per-repository configuration and automatic project selection. Defines how
+  invocation resolves the applicable home and settings while preserving explicit
+  overrides and separation from entity context selection.
+evidence:
+  - 'Historical frontmatter status: "Accepted"'
+  - 'Historical frontmatter backlog_item: "TASK-0686"'
+  - 'Historical body backlog item: TASK-0686'
 ---
 
 # 0105. Per-Repo Config (.backlog-mcp/) — Auto-Scope Memory & Wakeup

@@ -1,3 +1,17 @@
+---
+id: ADR 0010
+type: adr
+title: Unified Resource Path Resolution
+status: superseded
+date: '2026-01-23'
+description: >-
+  Unifies resource path resolution across tasks, attachments and artifacts under
+  one storage layout. Removes duplicated type-specific path logic; later
+  resource-management consolidation replaces the original routing contract.
+evidence:
+  - 'Historical body status: "Superseded by ADR-0031"'
+  - 'Historical body related: ADR 0006, ADR 0007'
+---
 # 0010. Unified Resource Path Resolution
 
 **Date**: 2026-01-23

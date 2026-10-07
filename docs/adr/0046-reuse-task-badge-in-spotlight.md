@@ -1,3 +1,17 @@
+---
+id: ADR 0046
+type: adr
+title: Reuse task-badge Component in Spotlight Search
+status: accepted
+date: '2026-01-31'
+description: >-
+  Reuses the task badge in Spotlight instead of maintaining another status/type
+  presentation. Centralizes the shared visual vocabulary so task details and
+  search results communicate the same entity semantics.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0151'
+---
 # 0046. Reuse task-badge Component in Spotlight Search
 
 **Date**: 2026-01-31

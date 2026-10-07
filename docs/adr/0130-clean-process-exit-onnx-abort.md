@@ -1,13 +1,30 @@
 ---
-title: "0130 — Clean Process Exit: the ONNX abort, probe-before-compose, and exit discipline"
-date: 2026-09-01
-status: "Accepted (goga) — implemented 2026-09-01, shipped 0.72.1"
-author: goga + claude
-relates_to:
-  - 0124-resilient-daemon.md
-  - 0127-storage-read-cache-uncached-corpus-rescan.md
-  - 0129-semantic-filenames-id-plus-slug.md
-  - ../NORTH-STAR.md
+id: ADR 0130
+type: adr
+title: 'Clean Process Exit: the ONNX abort, probe-before-compose, and exit discipline'
+status: accepted
+date: '2026-09-01'
+description: >-
+  Fixes process exit failures around local ONNX inference and daemon startup.
+  Defines capability probing, graceful drain and shared error boundaries instead
+  of relying on immediate process termination to clean up runtime state.
+references:
+  - url: ./0124-resilient-daemon.md
+    title: 'Historical relates_to: 0124-resilient-daemon.md'
+  - url: ./0127-storage-read-cache-uncached-corpus-rescan.md
+    title: 'Historical relates_to: 0127-storage-read-cache-uncached-corpus-rescan.md'
+  - url: ./0129-semantic-filenames-id-plus-slug.md
+    title: 'Historical relates_to: 0129-semantic-filenames-id-plus-slug.md'
+  - url: ../NORTH-STAR.md
+    title: 'Historical relates_to: ../NORTH-STAR.md'
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted (goga) — implemented 2026-09-01,
+    shipped 0.72.1"
+  - 'Historical frontmatter author: "goga + claude"'
+  - >-
+    Historical frontmatter relates_to:
+    ["0124-resilient-daemon.md","0127-storage-read-cache-uncached-corpus-rescan.md","0129-semantic-filenames-id-plus-slug.md","../NORTH-STAR.md"]
 ---
 
 # 0130 — Clean Process Exit

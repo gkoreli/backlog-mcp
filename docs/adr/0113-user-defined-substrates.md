@@ -1,14 +1,40 @@
 ---
-title: "0113. User-Defined Substrates — Substrate Definitions as Data"
-date: 2026-07-16
-status: Accepted — implemented (Phases A–B shipped 0.60.0, Phase C shipped 0.61.0, 2026-07-16 — substrate compiler, per-project registry, declared-type search projections; CHANGELOG); status reconciled 2026-07-17
-spawned_by: "PROMPT 0001 — docs/prompts/0001-tasks-and-vision.md"
-extends: 0098-unified-substrate-architecture.md
-relates_to:
-  - 0104-local-first-deployment-posture.md
-  - 0106-semantic-intent-tools-at-mcp-boundary.md
-  - 0112-docs-native-project-scoped-backlog.md
-  - 0114-memory-context-surface-disposition.md
+id: ADR 0113
+type: adr
+title: User-Defined Substrates — Substrate Definitions as Data
+status: accepted
+date: '2026-07-16'
+extends:
+  - ADR 0098
+spawned_by:
+  - PROMPT 0001
+description: >-
+  Defines project-authored substrates as declarative schema, identity, intent
+  and disclosure policy. Opens the document catalog without scattering
+  custom-type rules across adapters; later native ADR promotion amends one
+  default type choice.
+references:
+  - url: ./0104-local-first-deployment-posture.md
+    title: 'Historical relates_to: 0104-local-first-deployment-posture.md'
+  - url: ./0106-semantic-intent-tools-at-mcp-boundary.md
+    title: 'Historical relates_to: 0106-semantic-intent-tools-at-mcp-boundary.md'
+  - url: ./0112-docs-native-project-scoped-backlog.md
+    title: 'Historical relates_to: 0112-docs-native-project-scoped-backlog.md'
+  - url: ./0114-memory-context-surface-disposition.md
+    title: 'Historical relates_to: 0114-memory-context-surface-disposition.md'
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted — implemented (Phases A–B shipped
+    0.60.0, Phase C shipped 0.61.0, 2026-07-16 — substrate compiler, per-project
+    registry, declared-type search projections; CHANGELOG); status reconciled
+    2026-07-17"
+  - >-
+    Historical frontmatter spawned_by: "PROMPT 0001 —
+    docs/prompts/0001-tasks-and-vision.md"
+  - 'Historical frontmatter extends: "0098-unified-substrate-architecture.md"'
+  - >-
+    Historical frontmatter relates_to:
+    ["0104-local-first-deployment-posture.md","0106-semantic-intent-tools-at-mcp-boundary.md","0112-docs-native-project-scoped-backlog.md","0114-memory-context-surface-disposition.md"]
 ---
 
 # 0113. User-Defined Substrates — Substrate Definitions as Data

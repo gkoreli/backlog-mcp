@@ -1,14 +1,33 @@
 ---
-title: "ADR 0121: Retrieval Evaluation from First Principles — Evidence That Binds"
-date: 2026-07-17
-status: Accepted (goga, 2026-07-17)
-author: granite
-relates_to:
-  - ../reports/0004-evaluation-adversarial-panel-2026-07.md
-  - 0116-search-and-rag-uplift.md
-  - ../evaluation/README.md
-  - ../evaluation/JUDGING.md
-  - ../proposals/implicit-qrels-from-journal-2026-07.md
+id: ADR 0121
+type: adr
+title: Retrieval Evaluation from First Principles — Evidence That Binds
+status: accepted
+date: '2026-07-17'
+description: >-
+  Makes retrieval evaluation evidence explicit and limits ranking changes until
+  suitable human judgments exist. Defines structural truth, judgment provenance,
+  token-cost goals and telemetry without disguising inferred relevance as
+  authoritative labels.
+references:
+  - url: ./0004-mcp-resource-viewer-integration.md
+    title: >-
+      Historical relates_to:
+      ../reports/0004-evaluation-adversarial-panel-2026-07.md
+  - url: ./0116-search-and-rag-uplift.md
+    title: 'Historical relates_to: 0116-search-and-rag-uplift.md'
+  - url: ../evaluation/README.md
+    title: 'Historical relates_to: ../evaluation/README.md'
+  - url: ../evaluation/JUDGING.md
+    title: 'Historical relates_to: ../evaluation/JUDGING.md'
+  - url: ../proposals/implicit-qrels-from-journal-2026-07.md
+    title: 'Historical relates_to: ../proposals/implicit-qrels-from-journal-2026-07.md'
+evidence:
+  - 'Historical frontmatter status: "Accepted (goga, 2026-07-17)"'
+  - 'Historical frontmatter author: "granite"'
+  - >-
+    Historical frontmatter relates_to:
+    ["../reports/0004-evaluation-adversarial-panel-2026-07.md","0116-search-and-rag-uplift.md","../evaluation/README.md","../evaluation/JUDGING.md","../proposals/implicit-qrels-from-journal-2026-07.md"]
 ---
 
 # ADR 0121 — Retrieval Evaluation from First Principles

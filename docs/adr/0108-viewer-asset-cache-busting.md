@@ -1,3 +1,21 @@
+---
+id: ADR 0108
+type: adr
+title: Content-Hashed Viewer Assets — Cache-Busting for Zero-Stale Releases
+status: accepted
+date: '2026-06-18'
+description: >-
+  Uses content-hashed viewer assets to prevent stale bundles after releases.
+  Defines production filenames and caching behavior so the browser obtains
+  current code without requiring blanket cache disabling.
+evidence:
+  - >-
+    Historical body status: "Accepted — implemented (commit `c14206c`, hardened
+    follow-up)"
+  - >-
+    Historical body relates to: [0104. Local-First Deployment
+    Posture](./0104-local-first-deployment-posture.md)
+---
 # 0108. Content-Hashed Viewer Assets — Cache-Busting for Zero-Stale Releases
 
 **Date**: 2026-06-18

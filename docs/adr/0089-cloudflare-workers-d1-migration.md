@@ -1,3 +1,19 @@
+---
+id: ADR 0089
+type: adr
+title: 'Cloudflare Workers + D1 Migration — Serverless, Free, Edge'
+status: accepted
+date: '2026-03-10'
+description: >-
+  Plans migration to Cloudflare Workers and D1 with phased server changes.
+  Preserves the historical remote-runtime design and completed Hono work; the
+  later local-first decision explicitly changes the product's deployment
+  posture.
+evidence:
+  - >-
+    Historical body status: "Accepted — Phases 1–4 complete (Hono migration
+    done)"
+---
 # 0089. Cloudflare Workers + D1 Migration — Serverless, Free, Edge
 
 **Date**: 2026-03-10

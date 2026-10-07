@@ -1,3 +1,16 @@
+---
+id: ADR 0098
+type: adr
+title: Unified Substrate Architecture — One Declaration Per Entity Type
+status: accepted
+date: '2026-04-28'
+description: >-
+  Unifies native substrate declarations and their shared contracts across
+  packages. Completes shared type ownership and reduces duplicated entity
+  knowledge while preserving extension points for additional document kinds.
+evidence:
+  - 'Historical body status: "Accepted"'
+---
 # 0098. Unified Substrate Architecture — One Declaration Per Entity Type
 
 **Date**: 2026-04-28

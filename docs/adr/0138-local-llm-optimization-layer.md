@@ -1,5 +1,24 @@
 ---
-attention: "awaiting zombie-sweep ruling (report 0009 #7)"
+id: ADR 0138
+type: adr
+title: Local LLM as Meta-Learning Optimization Layer
+status: proposed
+date: '2026-01-25'
+description: >-
+  Proposes a local language-model optimization layer for agent-facing
+  operations. Preserves the motivation, capability boundaries and unresolved
+  review state; this exploration does not authorize an LLM in the server write
+  path.
+evidence:
+  - >-
+    Historical frontmatter attention: "awaiting zombie-sweep ruling (report 0009
+    #7)"
+  - 'Historical body status: "Proposed  "'
+  - >-
+    Identity normalization: duplicate historical ADR 0018 in
+    0018-local-llm-optimization-layer.md was reallocated by core
+    nextStorageDocumentId to ADR 0138; original heading and date retained.
+  - 'Historical body related: TASK-0089, TASK-0023, EPIC-0002'
 ---
 
 # ADR 0018: Local LLM as Meta-Learning Optimization Layer

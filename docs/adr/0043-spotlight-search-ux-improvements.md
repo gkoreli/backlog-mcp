@@ -1,3 +1,17 @@
+---
+id: ADR 0043
+type: adr
+title: Spotlight Search UX Improvements
+status: accepted
+date: '2026-01-31'
+description: >-
+  Refines Spotlight interaction and result usability after the initial search
+  surface. Addresses the concrete navigation and display friction found in
+  everyday use, preserving the historical scope of the UX changes.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0148'
+---
 # 0043. Spotlight Search UX Improvements
 
 **Date**: 2026-01-31

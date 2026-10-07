@@ -1,3 +1,17 @@
+---
+id: ADR 0047
+type: adr
+title: Unified Search API with Proper Types
+status: accepted
+date: '2026-02-01'
+description: >-
+  Unifies search APIs across consumers to avoid divergent query contracts.
+  Shares retrieval and result semantics while allowing individual surfaces to
+  format and interact with results differently.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0159'
+---
 # 0047. Unified Search API with Proper Types
 
 **Date**: 2026-02-01

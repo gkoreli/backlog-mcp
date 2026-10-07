@@ -1,8 +1,18 @@
 ---
-title: "backlog-mcp as Agentic Context Storage Engine (supersedes 0096)"
-date: 2026-04-28
-status: Proposed
-supersedes: 0096-cron-entity-type.md
+id: ADR 0097
+type: adr
+title: backlog-mcp as Agentic Context Storage Engine (supersedes 0096)
+status: proposed
+date: '2026-04-28'
+supersedes:
+  - ADR 0096
+description: >-
+  Positions backlog as an agentic storage engine with extensible document
+  capabilities. Proposes cron and related extensions while distinguishing the
+  core store from external scheduling and orchestration clients.
+evidence:
+  - 'Historical frontmatter status: "Proposed"'
+  - 'Historical frontmatter supersedes: "0096-cron-entity-type.md"'
 ---
 
 # 0097. backlog-mcp as Agentic Context Storage Engine

@@ -1,3 +1,17 @@
+---
+id: ADR 0058
+type: adr
+title: Activity Panel Production Quality Refactor
+status: accepted
+date: '2026-02-05'
+description: >-
+  Hardens the activity panel for routine use beyond the prototype. Addresses
+  robustness, presentation and operational quality in the existing journal
+  experience rather than creating a second history source.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0194'
+---
 # 0058. Activity Panel Production Quality Refactor
 
 **Date**: 2026-02-05

@@ -1,15 +1,36 @@
 ---
-title: "0136. Domain ownership and application patterns"
-date: 2026-10-03
-status: "Accepted — maintainer authorized implementation and future architecture conventions"
+id: ADR 0136
+type: adr
+title: Domain ownership and application patterns
+status: accepted
+date: '2026-10-03'
 extends:
-  - 0134-engineering-rules.md
-  - 0135-complete-reads-and-managed-mutation-consistency.md
-relates_to:
-  - 0112-docs-native-project-scoped-backlog.md
-  - 0113-user-defined-substrates.md
-  - 0117-the-write-boundary.md
-  - 0125-consumer-agnostic-core-compose-dependencies.md
+  - ADR 0134
+  - ADR 0135
+description: >-
+  Establishes practical DDD, DRY and SOLID conventions for domain and
+  application ownership. Separates pure policy, orchestration and effects, with
+  explicit capabilities, truthful commit boundaries and staged verification of
+  the refactored flows.
+references:
+  - url: ./0112-docs-native-project-scoped-backlog.md
+    title: 'Historical relates_to: 0112-docs-native-project-scoped-backlog.md'
+  - url: ./0113-user-defined-substrates.md
+    title: 'Historical relates_to: 0113-user-defined-substrates.md'
+  - url: ./0117-the-write-boundary.md
+    title: 'Historical relates_to: 0117-the-write-boundary.md'
+  - url: ./0125-consumer-agnostic-core-compose-dependencies.md
+    title: 'Historical relates_to: 0125-consumer-agnostic-core-compose-dependencies.md'
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted — maintainer authorized
+    implementation and future architecture conventions"
+  - >-
+    Historical frontmatter extends:
+    ["0134-engineering-rules.md","0135-complete-reads-and-managed-mutation-consistency.md"]
+  - >-
+    Historical frontmatter relates_to:
+    ["0112-docs-native-project-scoped-backlog.md","0113-user-defined-substrates.md","0117-the-write-boundary.md","0125-consumer-agnostic-core-compose-dependencies.md"]
 ---
 
 # 0136. Domain ownership and application patterns

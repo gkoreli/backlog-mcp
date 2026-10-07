@@ -1,3 +1,16 @@
+---
+id: ADR 0088
+type: adr
+title: 'Monorepo Structure — Eliminate Type Duplication, Enable Growth'
+status: accepted
+date: '2026-02-21'
+description: >-
+  Moves shared entity and wire types into a dedicated package to remove
+  duplication. Defines package ownership and public imports; later substrate
+  consolidation completes the implementation of the selected direction.
+evidence:
+  - 'Historical body status: "Accepted (completed by ADR 0098, 2026-04-28)"'
+---
 # 0088. Monorepo Structure — Eliminate Type Duplication, Enable Growth
 
 **Date**: 2026-02-21

@@ -1,3 +1,17 @@
+---
+id: ADR 0067
+type: adr
+title: Substrates Backend Integration
+status: accepted
+date: '2026-02-06'
+description: >-
+  Integrates substrate definitions into backend entity operations. Carries the
+  unified model through validation, storage and managed interfaces rather than
+  keeping type declarations as viewer-only metadata.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0255'
+---
 # 0067. Substrates Backend Integration
 
 **Date**: 2026-02-06

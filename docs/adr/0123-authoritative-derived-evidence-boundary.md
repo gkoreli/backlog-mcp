@@ -1,16 +1,36 @@
 ---
-title: "0123 — The Authoritative / Derived / Evidence Boundary"
-date: 2026-07-18
-status: Proposed (builder:boundary-decay; distilling pressure-map §7 Charter D2, Goga GO 2026-07-18)
-author: builder:boundary-decay
-relates_to:
-  - ../proposals/pressure-map-2026-07.md
-  - 0094-transport-agnostic-operation-logging.md
-  - 0101-search-index-reconciliation.md
-  - 0112-docs-native-project-scoped-backlog.md
-  - 0119-agent-substrate-and-derived-correlation.md
-  - 0121-retrieval-evaluation-from-first-principles.md
-  - 0122-substrate-schema-evolution.md
+id: ADR 0123
+type: adr
+title: The Authoritative / Derived / Evidence Boundary
+status: proposed
+date: '2026-07-18'
+description: >-
+  Separates authoritative documents, derived state and evidence. Defines
+  ownership and refresh boundaries so indexes, summaries and journal
+  interpretations cannot quietly become alternative sources of domain truth.
+references:
+  - url: ../proposals/pressure-map-2026-07.md
+    title: 'Historical relates_to: ../proposals/pressure-map-2026-07.md'
+  - url: ./0094-transport-agnostic-operation-logging.md
+    title: 'Historical relates_to: 0094-transport-agnostic-operation-logging.md'
+  - url: ./0101-search-index-reconciliation.md
+    title: 'Historical relates_to: 0101-search-index-reconciliation.md'
+  - url: ./0112-docs-native-project-scoped-backlog.md
+    title: 'Historical relates_to: 0112-docs-native-project-scoped-backlog.md'
+  - url: ./0119-agent-substrate-and-derived-correlation.md
+    title: 'Historical relates_to: 0119-agent-substrate-and-derived-correlation.md'
+  - url: ./0121-retrieval-evaluation-from-first-principles.md
+    title: 'Historical relates_to: 0121-retrieval-evaluation-from-first-principles.md'
+  - url: ./0122-substrate-schema-evolution.md
+    title: 'Historical relates_to: 0122-substrate-schema-evolution.md'
+evidence:
+  - >-
+    Historical frontmatter status: "Proposed (builder:boundary-decay; distilling
+    pressure-map §7 Charter D2, Goga GO 2026-07-18)"
+  - 'Historical frontmatter author: "builder:boundary-decay"'
+  - >-
+    Historical frontmatter relates_to:
+    ["../proposals/pressure-map-2026-07.md","0094-transport-agnostic-operation-logging.md","0101-search-index-reconciliation.md","0112-docs-native-project-scoped-backlog.md","0119-agent-substrate-and-derived-correlation.md","0121-retrieval-evaluation-from-first-principles.md","0122-substrate-schema-evolution.md"]
 ---
 
 # 0123 — The Authoritative / Derived / Evidence Boundary

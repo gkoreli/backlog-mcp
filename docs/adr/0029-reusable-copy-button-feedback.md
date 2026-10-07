@@ -1,3 +1,17 @@
+---
+id: ADR 0029
+type: adr
+title: Reusable Copy Button Feedback System
+status: accepted
+date: '2026-01-26'
+description: >-
+  Centralizes reusable copy-button feedback in the viewer. Shares success and
+  reset behavior across callers so clipboard actions communicate consistently
+  without duplicated component-specific timing and visual logic.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0095'
+---
 # 0029. Reusable Copy Button Feedback System
 
 **Date**: 2026-01-26

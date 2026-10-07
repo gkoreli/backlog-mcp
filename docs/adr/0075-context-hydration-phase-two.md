@@ -1,3 +1,23 @@
+---
+id: ADR 0075
+type: adr
+title: >-
+  Context Hydration Phase Two — Semantic Enrichment, Temporal Overlay, Query
+  Resolution
+status: accepted
+date: '2026-02-14'
+description: >-
+  Implements the second phase of staged context hydration. Records the added
+  context sources and integration work while retaining the earlier focal-entity
+  contract and bounded exploration model.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body supersedes: ADR-0074 Phase 2/3/4 roadmap items'
+  - >-
+    Historical body related: ADR-0074 (Phase 1 — Focal Resolution + Relational
+    Expansion), ADR-0073 (MCP-First Unified Search), ADR-0054 (Operation
+    Logging)
+---
 # 0075. Context Hydration Phase Two — Semantic Enrichment, Temporal Overlay, Query Resolution
 
 **Date**: 2026-02-14

@@ -1,14 +1,35 @@
 ---
-title: "0125 — The Consumer-Agnostic Core: Compose Dependencies, Never Reinvent Them"
-date: 2026-07-18
-status: "Accepted (goga, 2026-07-18 — NORTH-STAR Invariant 10)"
-author: granite (architect)
-relates_to:
-  - ../NORTH-STAR.md
-  - ../references/REF-0016-orama-text-analysis-pipeline-bm25.md
-  - ../evaluation/R8-JUDGING-2026-07-18.md
-  - 0097-agentic-storage-engine.md
-  - 0106-semantic-intent-tools.md
+id: ADR 0125
+type: adr
+title: 'The Consumer-Agnostic Core: Compose Dependencies, Never Reinvent Them'
+status: accepted
+date: '2026-07-18'
+description: >-
+  Requires a consumer-agnostic core to compose established dependencies rather
+  than reinvent them. Connects injected capabilities, library contracts and
+  package ownership with practical rules for keeping adapter and backend policy
+  distinct.
+references:
+  - url: ../NORTH-STAR.md
+    title: 'Historical relates_to: ../NORTH-STAR.md'
+  - url: ./0016-agent-log-streaming-architecture.md
+    title: >-
+      Historical relates_to:
+      ../references/REF-0016-orama-text-analysis-pipeline-bm25.md
+  - url: ../evaluation/R8-JUDGING-2026-07-18.md
+    title: 'Historical relates_to: ../evaluation/R8-JUDGING-2026-07-18.md'
+  - url: ./0097-agentic-storage-engine-positioning.md
+    title: 'Historical relates_to: 0097-agentic-storage-engine.md'
+  - url: ./0106-semantic-intent-tools-at-mcp-boundary.md
+    title: 'Historical relates_to: 0106-semantic-intent-tools.md'
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted (goga, 2026-07-18 — NORTH-STAR
+    Invariant 10)"
+  - 'Historical frontmatter author: "granite (architect)"'
+  - >-
+    Historical frontmatter relates_to:
+    ["../NORTH-STAR.md","../references/REF-0016-orama-text-analysis-pipeline-bm25.md","../evaluation/R8-JUDGING-2026-07-18.md","0097-agentic-storage-engine.md","0106-semantic-intent-tools.md"]
 ---
 
 # 0125 — The Consumer-Agnostic Core

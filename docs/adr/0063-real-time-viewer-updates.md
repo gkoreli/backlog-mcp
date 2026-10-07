@@ -1,3 +1,16 @@
+---
+id: ADR 0063
+type: adr
+title: Real-Time Viewer Updates via Server-Sent Events
+status: accepted
+date: '2026-02-06'
+description: >-
+  Updates the viewer in real time when authoritative documents change. Describes
+  event-driven reconciliation and UI refresh so native or managed edits do not
+  leave the displayed corpus stale.
+evidence:
+  - 'Historical body status: "Accepted"'
+---
 # 0063. Real-Time Viewer Updates via Server-Sent Events
 
 **Date**: 2026-02-06

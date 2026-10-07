@@ -1,3 +1,22 @@
+---
+id: ADR 0077
+type: adr
+title: Context Hydration Phase Four — Cross-Reference Traversal
+status: accepted
+date: '2026-02-15'
+description: >-
+  Implements the fourth phase of context hydration. Records the incremental
+  enrichment and engineering checks that complete another part of the
+  established context pipeline.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - >-
+    Historical body supersedes: ADR-0076 Phase 4 roadmap item (cross-reference
+    traversal)
+  - >-
+    Historical body related: ADR-0074 (Phase 1 — Architecture), ADR-0075 (Phase
+    2 — Semantic + Temporal), ADR-0076 (Phase 3 — Depth 2+ + Session Memory)
+---
 # 0077. Context Hydration Phase Four — Cross-Reference Traversal
 
 **Date**: 2026-02-15

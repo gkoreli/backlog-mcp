@@ -1,3 +1,17 @@
+---
+id: ADR 0055
+type: adr
+title: 'Activity Panel Phase 2: Actor Attribution, diff2html, Badge, Polling'
+status: accepted
+date: '2026-02-02'
+description: >-
+  Extends the activity panel beyond its first implementation. Records the next
+  presentation and browsing capabilities needed to make operation history useful
+  during everyday project work.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0176'
+---
 # 0055. Activity Panel Phase 2: Actor Attribution, diff2html, Badge, Polling
 
 **Date**: 2026-02-02

@@ -1,3 +1,17 @@
+---
+id: ADR 0008
+type: adr
+title: Personal Knowledge Graph with Organic Decay
+status: accepted
+date: '2026-01-22'
+description: >-
+  Frames backlog as an agent context system with multiple organizational
+  dimensions and organic decay. Discusses labels, sprints and pruning to avoid
+  rigid hierarchy and manual migration as requirements evolve.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0064'
+---
 # 0008. Personal Knowledge Graph with Organic Decay
 
 **Date**: 2026-01-22

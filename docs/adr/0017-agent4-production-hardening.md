@@ -1,3 +1,18 @@
+---
+id: ADR 0017
+type: adr
+title: Agent 4 Production Hardening and Testing
+status: accepted
+date: '2026-01-25'
+description: >-
+  Records production hardening work for agent operation and its server
+  integration. Examines robustness and failure handling around existing
+  capabilities, keeping the historical implementation context separate from
+  current architecture contracts.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0079'
+---
 # 0017. Agent 4 Production Hardening and Testing
 
 **Date**: 2026-01-25

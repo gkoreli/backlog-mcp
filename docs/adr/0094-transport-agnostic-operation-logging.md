@@ -1,3 +1,17 @@
+---
+id: ADR 0094
+type: adr
+title: Transport-Agnostic Operation Logging
+status: accepted
+date: '2026-04-29'
+description: >-
+  Makes operation logging transport-agnostic across CLI, MCP and HTTP. Defines
+  shared action records and ownership so journals reflect engine operations
+  rather than adapter-specific descriptions of the same mutation.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body supersedes: ADR-0054 (MCP middleware approach)'
+---
 # 0094. Transport-Agnostic Operation Logging
 
 **Date**: 2026-04-29

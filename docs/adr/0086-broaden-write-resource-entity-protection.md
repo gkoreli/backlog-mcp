@@ -1,3 +1,17 @@
+---
+id: ADR 0086
+type: adr
+title: Broaden write_resource entity file protection to all entity types
+status: accepted
+date: '2026-02-21'
+description: >-
+  Broadens write-resource protection so managed entity files cannot bypass their
+  contract. Aligns generic file writing with entity detection and validates
+  protected document updates at the shared write boundary.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0373 (child of TASK-0355)'
+---
 # 0086. Broaden write_resource entity file protection to all entity types
 
 **Date**: 2026-02-21

@@ -1,3 +1,17 @@
+---
+id: ADR 0064
+type: adr
+title: Fix SSE event handling for resource_changed
+status: accepted
+date: '2026-02-06'
+description: >-
+  Corrects handling of resource-changed SSE events in the viewer. Aligns event
+  payload interpretation with the server notification contract so the affected
+  views refresh consistently after updates.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0252'
+---
 # 0064. Fix SSE event handling for resource_changed
 
 **Date**: 2026-02-06

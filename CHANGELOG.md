@@ -31,6 +31,10 @@ begins at 0.57.0 — earlier history lives in git.
 
 ### Changed
 
+- Repository ADRs now use canonical IDs, lifecycle values, relation fields and
+  short discovery descriptions. Duplicate historical decision IDs are reconciled
+  with provenance preserved; audits and delegation briefs live in `adr-support/`.
+
 - ADR proposals require a short `description` (roughly 50 tokens; maximum 320
   characters). Existing managed ADRs remain readable and retain lifecycle actions
   without backfilling descriptions or timestamps. Compiled ADR definitions can no

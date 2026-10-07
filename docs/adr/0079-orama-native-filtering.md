@@ -1,3 +1,19 @@
+---
+id: ADR 0079
+type: adr
+title: 'ADR-0079: Use Orama Native Filtering and Schema Best Practices'
+status: accepted
+date: '2026-02-16'
+description: >-
+  Uses Orama's native filtering capabilities instead of post-filtering an
+  already ranked page. Aligns selection with retrieval so eligible results are
+  not lost and callers share the backend's filtering contract.
+evidence:
+  - 'Historical body status: "Accepted  "'
+  - >-
+    Historical body related: ADR-0072 (re-ranking pipeline), ADR-0073
+    (server-side snippets)
+---
 # ADR-0079: Use Orama Native Filtering and Schema Best Practices
 
 **Status**: Accepted  

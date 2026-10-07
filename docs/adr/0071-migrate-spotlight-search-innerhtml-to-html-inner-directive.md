@@ -1,3 +1,17 @@
+---
+id: ADR 0071
+type: adr
+title: 'Migrate spotlight-search innerHTML to html:inner directive'
+status: accepted
+date: '2026-02-12'
+description: >-
+  Replaces Spotlight innerHTML handling with the framework's HTML directive.
+  Uses the established rendering pipeline for result markup so updates follow
+  component lifecycle and reactive behavior consistently.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0283'
+---
 # 0071. Migrate spotlight-search innerHTML to html:inner directive
 
 **Date**: 2026-02-12

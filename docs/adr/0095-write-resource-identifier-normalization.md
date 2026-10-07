@@ -1,7 +1,15 @@
 ---
-title: "Write-Resource Identifier Normalization — Core-Layer Approach"
-date: 2026-04-23
-status: Accepted
+id: ADR 0095
+type: adr
+title: Write-Resource Identifier Normalization — Core-Layer Approach
+status: accepted
+date: '2026-04-23'
+description: >-
+  Normalizes identifiers accepted by write_resource before resolving managed
+  documents. Centralizes address interpretation so equivalent IDs do not produce
+  divergent protection or lookup behavior.
+evidence:
+  - 'Historical frontmatter status: "Accepted"'
 ---
 
 # 0095. Write-Resource Identifier Normalization — Core-Layer Approach

@@ -1,13 +1,31 @@
 ---
-title: "0127 — The Uncached Corpus Rescan: docs-native storage re-reads every file on every read"
-date: 2026-07-20
-status: "Accepted (goga) — Proposal 1 (in-adapter memoized snapshot) implemented"
-author: studio-engineer
-relates_to:
-  - 0123-authoritative-derived-evidence-boundary.md
-  - 0124-resilient-daemon.md
-  - ../NORTH-STAR.md
-supersedes_insight_in: []
+id: ADR 0127
+type: adr
+title: >-
+  The Uncached Corpus Rescan: docs-native storage re-reads every file on every
+  read
+status: accepted
+date: '2026-07-20'
+description: >-
+  Fixes repeated docs-native corpus reads through an adapter-owned memoized
+  snapshot. Distinguishes cached display reads from fresh write authority so
+  performance does not weaken identity or mutation checks.
+references:
+  - url: ./0123-authoritative-derived-evidence-boundary.md
+    title: 'Historical relates_to: 0123-authoritative-derived-evidence-boundary.md'
+  - url: ./0124-resilient-daemon.md
+    title: 'Historical relates_to: 0124-resilient-daemon.md'
+  - url: ../NORTH-STAR.md
+    title: 'Historical relates_to: ../NORTH-STAR.md'
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted (goga) — Proposal 1 (in-adapter
+    memoized snapshot) implemented"
+  - 'Historical frontmatter author: "studio-engineer"'
+  - >-
+    Historical frontmatter relates_to:
+    ["0123-authoritative-derived-evidence-boundary.md","0124-resilient-daemon.md","../NORTH-STAR.md"]
+  - 'Historical frontmatter supersedes_insight_in: []'
 ---
 
 # 0127 — The Uncached Corpus Rescan

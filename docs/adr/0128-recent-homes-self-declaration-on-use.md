@@ -1,14 +1,32 @@
 ---
-title: "0128 — Recent Homes: self-declaration on use, observed in core, persisted in composition"
-date: 2026-07-20
-status: "Accepted (goga) — implementing"
-author: studio-engineer
-relates_to:
-  - 0112.4-viewer-home-selector.md
-  - 0124-resilient-daemon.md
-  - 0123-authoritative-derived-evidence-boundary.md
-  - 0125-consumer-agnostic-core-compose-dependencies.md
-  - ../NORTH-STAR.md
+id: ADR 0128
+type: adr
+title: >-
+  Recent Homes: self-declaration on use, observed in core, persisted in
+  composition
+status: accepted
+date: '2026-07-20'
+description: >-
+  Records recent homes on actual use and exposes them for discovery. Separates
+  core observation, persistence and presentation, with explicit failure behavior
+  so convenience state cannot redirect authoritative operations.
+references:
+  - url: ./0112.4-viewer-home-selector.md
+    title: 'Historical relates_to: 0112.4-viewer-home-selector.md'
+  - url: ./0124-resilient-daemon.md
+    title: 'Historical relates_to: 0124-resilient-daemon.md'
+  - url: ./0123-authoritative-derived-evidence-boundary.md
+    title: 'Historical relates_to: 0123-authoritative-derived-evidence-boundary.md'
+  - url: ./0125-consumer-agnostic-core-compose-dependencies.md
+    title: 'Historical relates_to: 0125-consumer-agnostic-core-compose-dependencies.md'
+  - url: ../NORTH-STAR.md
+    title: 'Historical relates_to: ../NORTH-STAR.md'
+evidence:
+  - 'Historical frontmatter status: "Accepted (goga) — implementing"'
+  - 'Historical frontmatter author: "studio-engineer"'
+  - >-
+    Historical frontmatter relates_to:
+    ["0112.4-viewer-home-selector.md","0124-resilient-daemon.md","0123-authoritative-derived-evidence-boundary.md","0125-consumer-agnostic-core-compose-dependencies.md","../NORTH-STAR.md"]
 ---
 
 # 0128 — Recent Homes

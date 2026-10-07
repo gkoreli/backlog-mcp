@@ -1,3 +1,17 @@
+---
+id: ADR 0060
+type: adr
+title: Activity Summary System
+status: accepted
+date: '2026-02-04'
+description: >-
+  Designs activity summaries that help users understand a run of operations.
+  Separates concise historical presentation from the detailed journal so context
+  can be discovered before expanding individual records.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0197, TASK-0198'
+---
 # 0060. Activity Summary System
 
 **Date**: 2026-02-04

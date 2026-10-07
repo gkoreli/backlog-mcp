@@ -1,13 +1,31 @@
 ---
-title: "0122 — Substrate Schema Evolution: Named Versions, Frozen History, Documents That Age Gracefully"
-date: 2026-07-18
-status: Proposed (granite; distilling PROMPT 0011)
-author: granite (architect)
-relates_to:
-  - ../prompts/0011-schema-evolution-versioning.md
-  - 0113-user-defined-substrates.md
-  - 0117-the-write-boundary.md
-  - 0121-retrieval-evaluation-from-first-principles.md
+id: ADR 0122
+type: adr
+title: >-
+  Substrate Schema Evolution: Named Versions, Frozen History, Documents That Age
+  Gracefully
+status: proposed
+date: '2026-07-18'
+description: >-
+  Proposes named schema versions and frozen historical document contracts.
+  Explores how substrates evolve while native Markdown remains readable,
+  preserving compatibility questions and migration responsibilities rather than
+  silently reinterpreting old records.
+references:
+  - url: ./0011-viewer-version-management.md
+    title: 'Historical relates_to: ../prompts/0011-schema-evolution-versioning.md'
+  - url: ./0113-user-defined-substrates.md
+    title: 'Historical relates_to: 0113-user-defined-substrates.md'
+  - url: ./0117-the-write-boundary.md
+    title: 'Historical relates_to: 0117-the-write-boundary.md'
+  - url: ./0121-retrieval-evaluation-from-first-principles.md
+    title: 'Historical relates_to: 0121-retrieval-evaluation-from-first-principles.md'
+evidence:
+  - 'Historical frontmatter status: "Proposed (granite; distilling PROMPT 0011)"'
+  - 'Historical frontmatter author: "granite (architect)"'
+  - >-
+    Historical frontmatter relates_to:
+    ["../prompts/0011-schema-evolution-versioning.md","0113-user-defined-substrates.md","0117-the-write-boundary.md","0121-retrieval-evaluation-from-first-principles.md"]
 ---
 
 # 0122 — Substrate Schema Evolution

@@ -1,3 +1,17 @@
+---
+id: ADR 0039
+type: adr
+title: Spotlight-Style Search UI
+status: accepted
+date: '2026-01-31'
+description: >-
+  Introduces Spotlight-style search in the viewer for rapid navigation. Covers
+  the interaction surface and result presentation that expose the corpus without
+  requiring users to inspect every task or resource.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0144'
+---
 # 0039. Spotlight-Style Search UI
 
 **Date**: 2026-01-31

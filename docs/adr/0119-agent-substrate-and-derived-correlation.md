@@ -1,7 +1,15 @@
 ---
-title: "0119. Agent Substrate — Durable Identity, Derived Work Correlation"
-date: 2026-07-16
-status: Accepted (goga, 2026-07-16)
+id: ADR 0119
+type: adr
+title: 'Agent Substrate — Durable Identity, Derived Work Correlation'
+status: accepted
+date: '2026-07-16'
+description: >-
+  Defines agent identity as a durable declared substrate and derives work
+  correlation from attribution. Keeps track records and orchestration outside
+  stored identity documents, avoiding persisted aggregates or scoring in core.
+evidence:
+  - 'Historical frontmatter status: "Accepted (goga, 2026-07-16)"'
 ---
 
 # 0119. Agent Substrate — Durable Identity, Derived Work Correlation

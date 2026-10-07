@@ -1,3 +1,7 @@
+---
+title: "Step-0 Classification Audit — ADR 0106.4 (`description` → `content`)"
+description: "Historical classification audit for the associated ADR migration. Records pre-edit evidence, semantic categories and source locations; this supporting resource is execution evidence, not a separate architectural decision."
+---
 # Step-0 Classification Audit — ADR 0106.4 (`description` → `content`)
 
 **Task**: TASK-0690

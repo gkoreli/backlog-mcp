@@ -1,17 +1,41 @@
 ---
-title: "0117. The Write Boundary — Native Editing, Diagnostics, and Strict Managed Writes"
-date: 2026-07-16
-status: Accepted (goga, 2026-07-16)
-spawned_by: "PROMPT 0002 item 7 — docs/prompts/0002-operating-principles-directives.md"
+id: ADR 0117
+type: adr
+title: 'The Write Boundary — Native Editing, Diagnostics, and Strict Managed Writes'
+status: accepted
+date: '2026-07-16'
 extends:
-  - 0094-transport-agnostic-operation-logging.md
-  - 0098-unified-substrate-architecture.md
-relates_to:
-  - 0104-local-first-deployment-posture.md
-  - 0106-semantic-intent-tools-at-mcp-boundary.md
-  - 0107-loro-as-truth-local-first-history-substrate.md
-  - 0112-docs-native-project-scoped-backlog.md
-  - 0113-user-defined-substrates.md
+  - ADR 0094
+  - ADR 0098
+spawned_by:
+  - PROMPT 0002
+description: >-
+  Defines native editing and strict managed writing as complementary document
+  paths. Establishes diagnostics, publication guarantees and truthful
+  attribution without treating optional hooks or journals as mutation
+  correctness infrastructure.
+references:
+  - url: ./0104-local-first-deployment-posture.md
+    title: 'Historical relates_to: 0104-local-first-deployment-posture.md'
+  - url: ./0106-semantic-intent-tools-at-mcp-boundary.md
+    title: 'Historical relates_to: 0106-semantic-intent-tools-at-mcp-boundary.md'
+  - url: ./0107-loro-as-truth-local-first-history-substrate.md
+    title: 'Historical relates_to: 0107-loro-as-truth-local-first-history-substrate.md'
+  - url: ./0112-docs-native-project-scoped-backlog.md
+    title: 'Historical relates_to: 0112-docs-native-project-scoped-backlog.md'
+  - url: ./0113-user-defined-substrates.md
+    title: 'Historical relates_to: 0113-user-defined-substrates.md'
+evidence:
+  - 'Historical frontmatter status: "Accepted (goga, 2026-07-16)"'
+  - >-
+    Historical frontmatter spawned_by: "PROMPT 0002 item 7 —
+    docs/prompts/0002-operating-principles-directives.md"
+  - >-
+    Historical frontmatter extends:
+    ["0094-transport-agnostic-operation-logging.md","0098-unified-substrate-architecture.md"]
+  - >-
+    Historical frontmatter relates_to:
+    ["0104-local-first-deployment-posture.md","0106-semantic-intent-tools-at-mcp-boundary.md","0107-loro-as-truth-local-first-history-substrate.md","0112-docs-native-project-scoped-backlog.md","0113-user-defined-substrates.md"]
 ---
 
 # 0117. The Write Boundary — Native Editing, Diagnostics, and Strict Managed Writes

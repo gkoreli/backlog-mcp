@@ -1,3 +1,17 @@
+---
+id: ADR 0082
+type: adr
+title: Surface Child Entities in Viewer
+status: accepted
+date: '2026-02-16'
+description: >-
+  Surfaces child entities in the viewer so nested work is discoverable. Connects
+  document hierarchy with browsing and detail presentation instead of hiding
+  children behind root-only lists.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0305'
+---
 # 0082. Surface Child Entities in Viewer
 
 **Date**: 2026-02-16

@@ -1,16 +1,38 @@
 ---
-title: "0134. Engineering Rules — Layers, Domain Model, Boundaries, and Code Quality"
-date: 2026-09-28
-status: "Accepted (goga, 2026-09-28) — Phases 1 and 3 implemented by 0134.1 and shipped in 0.76.0; Phases 2 (partly), 4 and 5 open"
-author: Claude (for goga)
-relates_to:
-  - 0090-cli-tool-and-core-extraction.md
-  - 0091-runtime-clean-worker-bundle.md
-  - 0104-local-first-deployment-posture.md
-  - 0106.5-intent-write-surface.md
-  - 0112-docs-native-project-scoped-backlog.md
-  - 0117-the-write-boundary.md
-  - 0133-atomic-document-creation.md
+id: ADR 0134
+type: adr
+title: 'Engineering Rules — Layers, Domain Model, Boundaries, and Code Quality'
+status: accepted
+date: '2026-09-28'
+description: >-
+  Defines binding engineering rules for dependency direction, domain ownership
+  and code quality. Requires pure core policy, thin peer adapters, injected
+  capabilities and a shrinking architecture ratchet, with phased cleanup of
+  existing violations.
+references:
+  - url: ./0090-cli-tool-and-core-extraction.md
+    title: 'Historical relates_to: 0090-cli-tool-and-core-extraction.md'
+  - url: ./0091-runtime-clean-worker-bundle.md
+    title: 'Historical relates_to: 0091-runtime-clean-worker-bundle.md'
+  - url: ./0104-local-first-deployment-posture.md
+    title: 'Historical relates_to: 0104-local-first-deployment-posture.md'
+  - url: ./0106.5-intent-write-surface.md
+    title: 'Historical relates_to: 0106.5-intent-write-surface.md'
+  - url: ./0112-docs-native-project-scoped-backlog.md
+    title: 'Historical relates_to: 0112-docs-native-project-scoped-backlog.md'
+  - url: ./0117-the-write-boundary.md
+    title: 'Historical relates_to: 0117-the-write-boundary.md'
+  - url: ./0133-atomic-document-creation.md
+    title: 'Historical relates_to: 0133-atomic-document-creation.md'
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted (goga, 2026-09-28) — Phases 1 and 3
+    implemented by 0134.1 and shipped in 0.76.0; Phases 2 (partly), 4 and 5
+    open"
+  - 'Historical frontmatter author: "Claude (for goga)"'
+  - >-
+    Historical frontmatter relates_to:
+    ["0090-cli-tool-and-core-extraction.md","0091-runtime-clean-worker-bundle.md","0104-local-first-deployment-posture.md","0106.5-intent-write-surface.md","0112-docs-native-project-scoped-backlog.md","0117-the-write-boundary.md","0133-atomic-document-creation.md"]
 ---
 
 # 0134. Engineering Rules

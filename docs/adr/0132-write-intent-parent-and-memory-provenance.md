@@ -1,12 +1,30 @@
 ---
-title: "0132 — Preserve intent parents and registry-defined memory provenance"
-date: 2026-09-08
-status: "Implemented — released in 0.74.1"
-author: Codex
-relates_to:
-  - 0106.5-intent-write-surface.md
-  - 0113-user-defined-substrates.md
-  - 0129.1-one-document-address.md
+id: ADR 0132
+type: adr
+title: Preserve intent parents and registry-defined memory provenance
+status: proposed
+date: '2026-09-08'
+description: >-
+  Preserves supplied intent parents and validates memory provenance through the
+  selected registry. Corrects generic creation routing and custom-type
+  attribution without hard-coding task identity assumptions in managed
+  operations.
+references:
+  - url: ./0106.5-intent-write-surface.md
+    title: 'Historical relates_to: 0106.5-intent-write-surface.md'
+  - url: ./0113-user-defined-substrates.md
+    title: 'Historical relates_to: 0113-user-defined-substrates.md'
+  - url: ./0129.1-one-document-address.md
+    title: 'Historical relates_to: 0129.1-one-document-address.md'
+evidence:
+  - 'Historical frontmatter status: "Implemented — released in 0.74.1"'
+  - 'Historical frontmatter author: "Codex"'
+  - >-
+    Historical frontmatter relates_to:
+    ["0106.5-intent-write-surface.md","0113-user-defined-substrates.md","0129.1-one-document-address.md"]
+  - >-
+    Lifecycle normalization: implementation progress alone does not establish
+    ratification; proposed preserves the unresolved acceptance state.
 ---
 
 # 0132 — Preserve intent parents and registry-defined memory provenance

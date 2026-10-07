@@ -1,3 +1,17 @@
+---
+id: ADR 0004
+type: adr
+title: MCP Resource Viewer Integration - In-Browser File Viewing
+status: accepted
+date: '2026-01-22'
+description: >-
+  Adds in-browser viewing of files referenced by tasks through MCP resources and
+  the viewer. Explains portability, continuity and shared read contracts rather
+  than delegating every file link to an external desktop application.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: EPIC-0002'
+---
 # 0004. MCP Resource Viewer Integration - In-Browser File Viewing
 
 **Date**: 2026-01-22

@@ -1,13 +1,36 @@
 ---
-title: "0133 — Atomic document creation: fresh write authority, cached reads"
-date: 2026-09-08
-status: "Implemented — released in 0.74.1; worktree-family allocation remains open"
-author: Codex
-relates_to:
-  - 0127-storage-read-cache-uncached-corpus-rescan.md
-  - 0129-semantic-filenames-id-plus-slug.md
-  - 0132-write-intent-parent-and-memory-provenance.md
-  - ../proposals/worktree-native-access-lattice-2026-07.md
+id: ADR 0133
+type: adr
+title: 'Atomic document creation: fresh write authority, cached reads'
+status: proposed
+date: '2026-09-08'
+description: >-
+  Makes document creation atomic under fresh, home-local write authority.
+  Separates allocation and exclusive publication from cached reads, with
+  truthful committed outcomes and explicit limits on worktree-family
+  coordination.
+references:
+  - url: ./0127-storage-read-cache-uncached-corpus-rescan.md
+    title: 'Historical relates_to: 0127-storage-read-cache-uncached-corpus-rescan.md'
+  - url: ./0129-semantic-filenames-id-plus-slug.md
+    title: 'Historical relates_to: 0129-semantic-filenames-id-plus-slug.md'
+  - url: ./0132-write-intent-parent-and-memory-provenance.md
+    title: 'Historical relates_to: 0132-write-intent-parent-and-memory-provenance.md'
+  - url: ../proposals/worktree-native-access-lattice-2026-07.md
+    title: >-
+      Historical relates_to:
+      ../proposals/worktree-native-access-lattice-2026-07.md
+evidence:
+  - >-
+    Historical frontmatter status: "Implemented — released in 0.74.1;
+    worktree-family allocation remains open"
+  - 'Historical frontmatter author: "Codex"'
+  - >-
+    Historical frontmatter relates_to:
+    ["0127-storage-read-cache-uncached-corpus-rescan.md","0129-semantic-filenames-id-plus-slug.md","0132-write-intent-parent-and-memory-provenance.md","../proposals/worktree-native-access-lattice-2026-07.md"]
+  - >-
+    Lifecycle normalization: implementation progress alone does not establish
+    ratification; proposed preserves the unresolved acceptance state.
 ---
 
 # 0133 — Atomic document creation

@@ -1,3 +1,17 @@
+---
+id: ADR 0065
+type: adr
+title: Unified Entity Model with Substrates Architecture
+status: accepted
+date: '2025-02-05'
+description: >-
+  Introduces substrates as the shared entity model for multiple document types.
+  Replaces task-centric assumptions with explicit type declarations and shared
+  contracts across storage, tools and presentation.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0243'
+---
 # 0065. Unified Entity Model with Substrates Architecture
 
 **Date**: 2025-02-05

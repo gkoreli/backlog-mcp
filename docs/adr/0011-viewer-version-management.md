@@ -1,3 +1,17 @@
+---
+id: ADR 0011
+type: adr
+title: Viewer Version Management with Detached Process
+status: accepted
+date: '2026-01-24'
+description: >-
+  Separates viewer process lifetime from an individual MCP session so releases
+  can refresh the UI. Covers detached process discovery and version management
+  while keeping agents' existing connections usable.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0071'
+---
 # 0011. Viewer Version Management with Detached Process
 
 **Date**: 2026-01-24

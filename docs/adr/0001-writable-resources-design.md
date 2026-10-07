@@ -1,3 +1,20 @@
+---
+id: ADR 0001
+type: adr
+title: Writable Resources - Efficient Data Manipulation in MCP
+status: superseded
+date: '2026-01-21'
+description: >-
+  Explores efficient partial writes to MCP-managed Markdown through resource
+  URIs. Records the original writable-resource design and its token-cost
+  motivation; later resource consolidation replaces the field and file suffix
+  contract.
+evidence:
+  - >-
+    Historical body status: "Superseded by ADR-0031 (write_resource tool
+    simplified, /description and /file suffixes removed)"
+  - 'Historical body backlog item: TASK-0039'
+---
 # 0001. Writable Resources - Efficient Data Manipulation in MCP
 
 **Date**: 2026-01-21

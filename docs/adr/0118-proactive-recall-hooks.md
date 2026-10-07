@@ -1,12 +1,33 @@
 ---
-title: "0118. Proactive Recall — Hook-Driven Memory Injection at the Client Boundary"
-date: 2026-06-20
-status: PARKED, ONLY EXPLORATION DO NOT IMPLEMENT ANY TIME SOON
-superseded_in_part_by: 0118.1-intent-gated-recall-lifecycle-hooks.md
-backlog_item: TASK-0694
-folder: FLDR-0001
-continues: 0092.5-agentic-memory-landscape-2026.md
-informs: 0092.3-memory-experience-and-substrate.md
+id: ADR 0118
+type: adr
+title: Proactive Recall — Hook-Driven Memory Injection at the Client Boundary
+status: deferred
+date: '2026-06-20'
+description: >-
+  Explores proactive recall through client-owned lifecycle hooks. Preserves the
+  parked design and later partial overrides of every-turn injection and REST
+  routing while retaining the original feasibility evidence.
+references:
+  - url: ./0118.1-intent-gated-recall-lifecycle-hooks.md
+    title: >-
+      Historical superseded_in_part_by:
+      0118.1-intent-gated-recall-lifecycle-hooks.md
+  - url: ./0092.5-agentic-memory-landscape-2026.md
+    title: 'Historical continues: 0092.5-agentic-memory-landscape-2026.md'
+  - url: ./0092.3-memory-experience-and-substrate.md
+    title: 'Historical informs: 0092.3-memory-experience-and-substrate.md'
+evidence:
+  - >-
+    Historical frontmatter status: "PARKED, ONLY EXPLORATION DO NOT IMPLEMENT
+    ANY TIME SOON"
+  - >-
+    Historical frontmatter superseded_in_part_by:
+    "0118.1-intent-gated-recall-lifecycle-hooks.md"
+  - 'Historical frontmatter backlog_item: "TASK-0694"'
+  - 'Historical frontmatter folder: "FLDR-0001"'
+  - 'Historical frontmatter continues: "0092.5-agentic-memory-landscape-2026.md"'
+  - 'Historical frontmatter informs: "0092.3-memory-experience-and-substrate.md"'
 ---
 
 # 0118. Proactive Recall — Hook-Driven Memory Injection at the Client Boundary

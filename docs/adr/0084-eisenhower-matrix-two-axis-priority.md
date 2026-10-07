@@ -1,5 +1,19 @@
 ---
-attention: "awaiting zombie-sweep ruling (report 0009 #7)"
+id: ADR 0084
+type: adr
+title: 'Eisenhower Matrix: Two-Axis Priority Model'
+status: proposed
+date: '2026-02-17'
+description: >-
+  Proposes two-axis Eisenhower priority for work selection. Separates importance
+  from urgency and describes the corresponding entity and viewer implications
+  while preserving the design's proposal state.
+evidence:
+  - >-
+    Historical frontmatter attention: "awaiting zombie-sweep ruling (report 0009
+    #7)"
+  - 'Historical body status: "Proposed"'
+  - 'Historical body backlog item: (to be created)'
 ---
 
 # 0084. Eisenhower Matrix: Two-Axis Priority Model

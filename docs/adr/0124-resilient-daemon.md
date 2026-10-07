@@ -1,13 +1,33 @@
 ---
-title: "0124 — The Resilient Daemon: the Engine's Hand-Rolled Lifecycle Becomes Production-Grade"
-date: 2026-07-18
-status: "Chartered (goga, PROMPT 0016) — Phase A audit delegated; design children follow"
-author: granite (architect)
-relates_to:
-  - ../prompts/0016-resilient-daemon-charter.md
-  - ../prompts/0015-engine-absorption-license.md
-  - ../NORTH-STAR.md (Invariants 7 and 9)
-  - 0123-authoritative-derived-evidence-boundary.md
+id: ADR 0124
+type: adr
+title: >-
+  The Resilient Daemon: the Engine's Hand-Rolled Lifecycle Becomes
+  Production-Grade
+status: draft
+date: '2026-07-18'
+description: >-
+  Charters a resilient daemon design after examining hand-built lifecycle
+  machinery. Records the authorized audit and planned design thread without
+  treating the charter itself as an accepted final implementation architecture.
+references:
+  - url: ./0016-agent-log-streaming-architecture.md
+    title: 'Historical relates_to: ../prompts/0016-resilient-daemon-charter.md'
+  - url: ../prompts/0015-engine-absorption-license.md
+    title: 'Historical relates_to: ../prompts/0015-engine-absorption-license.md'
+  - url: ../NORTH-STAR.md
+    title: 'Historical relates_to: ../NORTH-STAR.md (Invariants 7 and 9)'
+  - url: ./0123-authoritative-derived-evidence-boundary.md
+    title: 'Historical relates_to: 0123-authoritative-derived-evidence-boundary.md'
+evidence:
+  - >-
+    Historical frontmatter status: "Chartered (goga, PROMPT 0016) — Phase A
+    audit delegated; design children follow"
+  - 'Historical frontmatter author: "granite (architect)"'
+  - >-
+    Historical frontmatter relates_to:
+    ["../prompts/0016-resilient-daemon-charter.md","../prompts/0015-engine-absorption-license.md","../NORTH-STAR.md
+    (Invariants 7 and 9)","0123-authoritative-derived-evidence-boundary.md"]
 ---
 
 # 0124 — The Resilient Daemon

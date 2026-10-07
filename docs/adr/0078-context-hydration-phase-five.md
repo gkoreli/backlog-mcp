@@ -1,3 +1,23 @@
+---
+id: ADR 0078
+type: adr
+title: Context Hydration Phase Five — Reverse Cross-References
+status: accepted
+date: '2026-02-15'
+description: >-
+  Implements the fifth phase of context hydration. Preserves the final phase's
+  scope and validation evidence while distinguishing historical implementation
+  stages from the current tool surface.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - >-
+    Historical body supersedes: ADR-0077 Phase 5 roadmap item (reverse
+    cross-references)
+  - >-
+    Historical body related: ADR-0074 (Phase 1 — Architecture), ADR-0075 (Phase
+    2 — Semantic + Temporal), ADR-0076 (Phase 3 — Depth 2+ + Session Memory),
+    ADR-0077 (Phase 4 — Cross-Reference Traversal)
+---
 # 0078. Context Hydration Phase Five — Reverse Cross-References
 
 **Date**: 2026-02-15

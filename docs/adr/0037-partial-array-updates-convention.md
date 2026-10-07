@@ -1,5 +1,19 @@
 ---
-attention: "awaiting zombie-sweep ruling (report 0009 #7)"
+id: ADR 0037
+type: adr
+title: Partial Array Updates with add_/remove_ Convention
+status: proposed
+date: '2026-01-29'
+description: >-
+  Proposes a convention for partial array updates instead of replacing complete
+  collections. Explores additive and removal semantics across managed inputs
+  while preserving proposal status and unresolved review attention.
+evidence:
+  - >-
+    Historical frontmatter attention: "awaiting zombie-sweep ruling (report 0009
+    #7)"
+  - 'Historical body status: "Proposed"'
+  - 'Historical body backlog item: TASK-0135'
 ---
 
 # 0037. Partial Array Updates with add_/remove_ Convention

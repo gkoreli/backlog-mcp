@@ -1,3 +1,18 @@
+---
+id: ADR 0020
+type: adr
+title: 'ADR-0020: Refactor to Fastify with Clean Architecture'
+status: accepted
+date: '2026-01-25'
+description: >-
+  Migrates MCP registration and transport handling to FastMCP to reduce
+  framework boilerplate. Records the selected framework, integration steps and
+  historical tradeoffs without asserting that later runtime architecture remains
+  identical.
+evidence:
+  - 'Historical body status: "Accepted  "'
+  - 'Historical body related: TASK-0090, ADR-0013.2 (stdio bridge)'
+---
 # ADR-0020: Refactor to Fastify with Clean Architecture
 
 **Status**: Accepted  

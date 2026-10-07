@@ -1,3 +1,23 @@
+---
+id: ADR 0074
+type: adr
+title: Agent Context Hydration Architecture
+status: accepted
+date: '2026-02-14'
+description: >-
+  Designs context hydration around a focal entity and its relevant surroundings.
+  Specifies staged expansion of hierarchy, references and activity to provide
+  useful agent context without eagerly loading the entire store.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - >-
+    Historical body supersedes: ADR-0038 Phase 4 vision (backlog_context
+    concept)
+  - >-
+    Historical body related: ADR-0073 (MCP-First Unified Search), ADR-0042
+    (Hybrid Search), ADR-0065 (Unified Entity Model), ADR-0054 (Operation
+    Logging)
+---
 # 0074. Agent Context Hydration Architecture
 
 **Date**: 2026-02-14

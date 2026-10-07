@@ -1,3 +1,17 @@
+---
+id: ADR 0045
+type: adr
+title: Fix Spotlight Snippet Display
+status: accepted
+date: '2026-01-31'
+description: >-
+  Fixes Spotlight snippets so result previews reflect the intended document
+  text. Separates snippet selection from full-content display and records the
+  correction to the existing search presentation flow.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0150'
+---
 # 0045. Fix Spotlight Snippet Display
 
 **Date**: 2026-01-31

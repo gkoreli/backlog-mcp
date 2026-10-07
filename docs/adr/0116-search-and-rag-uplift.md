@@ -1,23 +1,49 @@
 ---
-title: "0116. Search & RAG Uplift — Measure the Corpus, Then Improve the Pressure Point"
-date: 2026-07-16
-status: Proposed
-informs:
-  - 0038-comprehensive-search-capability
-  - 0040-search-storage-decoupling
-  - 0041-hyphen-aware-tokenizer
-  - 0042-hybrid-search-local-embeddings
-  - 0044-search-api-relevance-scores
-  - 0047-unified-search-api
-  - 0049-keep-orama-over-algolia
-  - 0050-search-ranking-title-bonus
-  - 0051-multi-signal-search-ranking
-  - 0081-independent-retrievers-linear-fusion
-  - 0083-search-service-review-and-next-generation
-  - 0092.9-phase-e-usage-feedback-research-and-plan
-  - 0101-search-index-reconciliation
-  - 0112-docs-native-project-scoped-backlog
-  - 0115-memory-experience-uplift
+id: ADR 0116
+type: adr
+title: 'Search & RAG Uplift — Measure the Corpus, Then Improve the Pressure Point'
+status: proposed
+date: '2026-07-16'
+description: >-
+  Proposes measuring retrieval pressure points before changing search and RAG.
+  Connects prior search decisions with corpus evaluation so improvements follow
+  demonstrated failures rather than speculative ranking complexity.
+references:
+  - url: ./0038-comprehensive-search-capability.md
+    title: 'Historical informs: 0038-comprehensive-search-capability'
+  - url: ./0040-search-storage-decoupling.md
+    title: 'Historical informs: 0040-search-storage-decoupling'
+  - url: ./0041-hyphen-aware-tokenizer.md
+    title: 'Historical informs: 0041-hyphen-aware-tokenizer'
+  - url: ./0042-hybrid-search-local-embeddings.md
+    title: 'Historical informs: 0042-hybrid-search-local-embeddings'
+  - url: ./0044-search-api-relevance-scores.md
+    title: 'Historical informs: 0044-search-api-relevance-scores'
+  - url: ./0047-unified-search-api.md
+    title: 'Historical informs: 0047-unified-search-api'
+  - url: ./0049-keep-orama-over-algolia.md
+    title: 'Historical informs: 0049-keep-orama-over-algolia'
+  - url: ./0050-search-ranking-title-bonus.md
+    title: 'Historical informs: 0050-search-ranking-title-bonus'
+  - url: ./0051-multi-signal-search-ranking.md
+    title: 'Historical informs: 0051-multi-signal-search-ranking'
+  - url: ./0081-independent-retrievers-linear-fusion.md
+    title: 'Historical informs: 0081-independent-retrievers-linear-fusion'
+  - url: ./0083-search-service-review-and-next-generation.md
+    title: 'Historical informs: 0083-search-service-review-and-next-generation'
+  - url: ./0092.9-phase-e-usage-feedback-research-and-plan.md
+    title: 'Historical informs: 0092.9-phase-e-usage-feedback-research-and-plan'
+  - url: ./0101-search-index-reconciliation.md
+    title: 'Historical informs: 0101-search-index-reconciliation'
+  - url: ./0112-docs-native-project-scoped-backlog.md
+    title: 'Historical informs: 0112-docs-native-project-scoped-backlog'
+  - url: ./0115-memory-experience-uplift.md
+    title: 'Historical informs: 0115-memory-experience-uplift'
+evidence:
+  - 'Historical frontmatter status: "Proposed"'
+  - >-
+    Historical frontmatter informs:
+    ["0038-comprehensive-search-capability","0040-search-storage-decoupling","0041-hyphen-aware-tokenizer","0042-hybrid-search-local-embeddings","0044-search-api-relevance-scores","0047-unified-search-api","0049-keep-orama-over-algolia","0050-search-ranking-title-bonus","0051-multi-signal-search-ranking","0081-independent-retrievers-linear-fusion","0083-search-service-review-and-next-generation","0092.9-phase-e-usage-feedback-research-and-plan","0101-search-index-reconciliation","0112-docs-native-project-scoped-backlog","0115-memory-experience-uplift"]
 ---
 
 # 0116. Search & RAG Uplift — Measure the Corpus, Then Improve the Pressure Point

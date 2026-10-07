@@ -1,7 +1,21 @@
 ---
-title: "0114. Memory vs Context — Tool-Surface Disposition: Fold Context Into the Memory-Verb Language"
-date: 2026-07-16
-status: Accepted — implemented (shipped 0.59.0, 2026-07-16 — backlog_context removed, relational context folded into backlog_get(context) stubs; CHANGELOG 0.59.0 Removed/Added, tool gone from src); status reconciled 2026-07-17
+id: ADR 0114
+type: adr
+title: >-
+  Memory vs Context — Tool-Surface Disposition: Fold Context Into the
+  Memory-Verb Language
+status: accepted
+date: '2026-07-16'
+description: >-
+  Folds relational context into memory-oriented tool language and get-context
+  stubs. Retires a separate context tool while preserving focused expansion,
+  provenance and semantic distinctions between retrieval and full hydration.
+evidence:
+  - >-
+    Historical frontmatter status: "Accepted — implemented (shipped 0.59.0,
+    2026-07-16 — backlog_context removed, relational context folded into
+    backlog_get(context) stubs; CHANGELOG 0.59.0 Removed/Added, tool gone from
+    src); status reconciled 2026-07-17"
 ---
 
 # 0114. Memory vs Context — Tool-Surface Disposition

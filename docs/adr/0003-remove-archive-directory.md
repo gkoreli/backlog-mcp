@@ -1,3 +1,16 @@
+---
+id: ADR 0003
+type: adr
+title: Remove Archive Directory - Single Source of Truth
+status: accepted
+date: '2026-01-21'
+description: >-
+  Removes the archive directory as a second location for task identities. Keeps
+  status in the authoritative Markdown document and uses one task directory to
+  prevent collisions, duplicate records and unnecessary movement.
+evidence:
+  - 'Historical body status: "Accepted"'
+---
 # 0003. Remove Archive Directory - Single Source of Truth
 
 **Date**: 2026-01-21

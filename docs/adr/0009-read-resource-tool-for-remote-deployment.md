@@ -1,5 +1,19 @@
 ---
-attention: "awaiting zombie-sweep ruling (report 0009 #7)"
+id: ADR 0009
+type: adr
+title: Add read_resource Tool for Remote Deployment
+status: proposed
+date: '2026-01-23'
+description: >-
+  Proposes a resource-reading tool that works for remote clients instead of
+  relying on local file access. Preserves the deployment motivation and
+  unresolved review attention; its proposal status does not imply
+  implementation.
+evidence:
+  - >-
+    Historical frontmatter attention: "awaiting zombie-sweep ruling (report 0009
+    #7)"
+  - 'Historical body status: "Proposed  "'
 ---
 
 # ADR 0009: Add read_resource Tool for Remote Deployment
@@ -117,5 +131,5 @@ When Kiro CLI adds MCP resources protocol support:
 ## References
 
 - [MCP Resources Specification](https://modelcontextprotocol.info/docs/concepts/resources/)
-- [ADR 0008: Task-Attached Resources](./0008-task-attached-resources.md)
+- [ADR 0137 (formerly 0008): Task-Attached Resources](./0137-task-attached-resources.md)
 - Kiro CLI documentation (no resources protocol support as of 2026-01-23)

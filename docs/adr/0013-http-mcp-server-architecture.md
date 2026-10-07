@@ -1,3 +1,17 @@
+---
+id: ADR 0013
+type: adr
+title: HTTP MCP Server Architecture with Built-in stdio Bridge
+status: accepted
+date: '2026-01-24'
+description: >-
+  Adopts an HTTP MCP server shared by multiple clients, with a thin stdio bridge
+  and an integrated viewer. Explains the deployment and consistency problems of
+  independently spawned servers and establishes the transport thread.
+evidence:
+  - 'Historical body status: "Accepted"'
+  - 'Historical body backlog item: TASK-0072'
+---
 # 0013. HTTP MCP Server Architecture with Built-in stdio Bridge
 
 **Date**: 2026-01-24

@@ -1,11 +1,22 @@
 ---
-title: "0107. Loro-as-Truth — A Local-First CRDT History Substrate for backlog-mcp"
-date: 2026-06-17
-status: Proposed
-backlog_item: EPIC-0046
-thread_root: true
-children: [0107.1, 0107.2, 0107.3, 0107.4]
-supersedes_premise_of: [0089, "write_resource design behind 0001/0087"]
+id: ADR 0107
+type: adr
+title: Loro-as-Truth — A Local-First CRDT History Substrate for backlog-mcp
+status: proposed
+date: '2026-06-17'
+description: >-
+  Explores Loro as authoritative local-first history and synchronization
+  substrate. Preserves a proposed design and planned descendants; later
+  docs-native decisions override project-home truth assumptions without erasing
+  the exploration.
+evidence:
+  - 'Historical frontmatter status: "Proposed"'
+  - 'Historical frontmatter backlog_item: "EPIC-0046"'
+  - 'Historical frontmatter thread_root: true'
+  - 'Historical frontmatter children: [107.1,107.2,107.3,107.4]'
+  - >-
+    Historical frontmatter supersedes_premise_of: [89,"write_resource design
+    behind 0001/0087"]
 ---
 
 # 0107. Loro-as-Truth — A Local-First CRDT History Substrate
