@@ -53,9 +53,9 @@ directory.
 Stop the detached server before migrating an existing global backlog:
 
 ```bash
-npx backlog-mcp stop
-npx backlog-mcp --home global migrate docs-native --dry-run
-npx backlog-mcp --home global migrate docs-native
+bunx --bun backlog-mcp stop
+bunx --bun backlog-mcp --home global migrate docs-native --dry-run
+bunx --bun backlog-mcp --home global migrate docs-native
 ```
 
 This routes the old flat `~/.backlog/tasks/` Markdown into
@@ -64,14 +64,14 @@ retired custom root can be supplied for this command only:
 
 ```bash
 BACKLOG_DATA_DIR=/path/to/old/backlog \
-  npx backlog-mcp --home global migrate docs-native
+  bunx --bun backlog-mcp --home global migrate docs-native
 ```
 
 For a project that already has the old control directory, migrate only its
 tool-owned state; committed `docs/` is never touched:
 
 ```bash
-npx backlog-mcp --home project --project-root /path/to/repo \
+bunx --bun backlog-mcp --home project --project-root /path/to/repo \
   migrate docs-native
 ```
 

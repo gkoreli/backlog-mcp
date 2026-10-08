@@ -8,7 +8,8 @@ import {
   resolve,
   sep,
 } from 'node:path';
-import matter from 'gray-matter';
+import { parseMarkdownFrontmatter, type YamlCodec } from '../core/index.js';
+import { bunYamlCodec } from '../storage/local/bun-yaml-codec.js';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Resource } from '@backlog-mcp/memory/search';
 import { discoverDocuments } from '../storage/local/document-discovery.js';
@@ -35,9 +36,9 @@ function extractTitle(content: string, filename: string): string {
  * Lenient by contract: malformed frontmatter or a non-string status simply
  * yields undefined — the document stays indexed, it just declares nothing.
  */
-function extractDeclaredStatus(content: string): string | undefined {
+function extractDeclaredStatus(content: string, yaml: YamlCodec): string | undefined {
   try {
-    const status = matter(content, {}).data?.status;
+    const status = parseMarkdownFrontmatter(content, yaml).data.status;
     return typeof status === 'string' && status.trim() ? status : undefined;
   } catch {
     return undefined;
@@ -87,7 +88,7 @@ export class ResourceManager {
   private readonly rootDir: string;
   private readonly scanDir: string;
   /**
-   * Memoized catalog (ADR 0127). `list()` re-reads and gray-matter-parses the
+   * Memoized catalog (ADR 0127). `list()` re-reads and frontmatter-parses the
    * whole scan tree; on a large home that is seconds of CPU per call, and it
    * is polled by `/api/desk`, `/api/status`, and reconcile. The cache serves
    * warm reads from an already-parsed model; `invalidate()` (called on local
@@ -96,7 +97,7 @@ export class ResourceManager {
    */
   private catalogCache: Resource[] | undefined;
 
-  constructor(rootDir: string, scanDir: string = rootDir) {
+  constructor(rootDir: string, scanDir: string = rootDir, private readonly yaml: YamlCodec = bunYamlCodec) {
     this.rootDir = resolve(rootDir);
     this.scanDir = resolve(scanDir);
   }
@@ -130,7 +131,7 @@ export class ResourceManager {
   }
 
   private buildCatalog(): Resource[] {
-    const discovery = discoverDocuments({ documentsDir: this.scanDir });
+    const discovery = discoverDocuments({ documentsDir: this.scanDir, dependencies: { yaml: this.yaml } });
     const resources: Resource[] = [];
     for (const document of discovery.documents) {
       if (document.content === undefined) {
@@ -143,7 +144,7 @@ export class ResourceManager {
       }
 
       const status = document.format === 'markdown'
-        ? extractDeclaredStatus(document.content)
+        ? extractDeclaredStatus(document.content, this.yaml)
         : undefined;
       resources.push({
         id: uri,
@@ -182,7 +183,7 @@ export class ResourceManager {
         if (!statSync(absolutePath).isFile()) continue;
         if (!isCanonicalPathContained(this.rootDir, absolutePath)) continue;
         const content = readFileSync(absolutePath, 'utf-8');
-        const status = extractDeclaredStatus(content);
+        const status = extractDeclaredStatus(content, this.yaml);
         resources.push({
           id: `mcp://backlog/${name}`,
           path: name,
@@ -284,9 +285,7 @@ export class ResourceManager {
     // and the file is never coerced or rewritten.
     if (ext === 'md' || ext === 'markdown') {
       try {
-        // Options disable gray-matter's content-keyed cache, which would
-        // otherwise replay a pre-error parse for identical malformed content.
-        const parsed = matter(content, {});
+        const parsed = parseMarkdownFrontmatter(content, this.yaml);
         return {
           content: parsed.content,
           frontmatter: Object.keys(parsed.data).length > 0 ? parsed.data : undefined,

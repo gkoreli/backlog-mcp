@@ -7,7 +7,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import matter from 'gray-matter';
+import { stringifyTestMarkdown, parseTestMarkdown } from './helpers/markdown-frontmatter.js';
 import { EntityType, type Entity } from '@backlog-mcp/shared';
 import { describe, expect, it } from 'vitest';
 import { createBacklogHome } from '../storage/local/backlog-home.js';
@@ -58,7 +58,7 @@ function writeRawDocument(
 
 function entityMarkdown(entity: Entity, content = entity.content ?? ''): string {
   const { content: _content, ...frontmatter } = entity;
-  return matter.stringify(content, frontmatter);
+  return stringifyTestMarkdown(content, frontmatter);
 }
 
 describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
@@ -357,7 +357,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     expect(storage.get('ADR 0003')?.content).toContain('Edited body.');
   });
 
-  it('does not mistake body whitespace for frontmatter adoption', function scopesAdoptionToFrontmatter() {
+  it('does not mistake body whitespace for frontmatter adoption', function scopesAdoptionToFrontparseTestMarkdown() {
     const { storage } = createStorage('body-whitespace-is-not-adoption');
     const task = buildEntity({
       id: 'TASK-0001',
@@ -369,10 +369,36 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     const stored = storage.get('TASK-0001');
     if (stored === undefined) throw new Error('expected stored task');
 
-    expect(function saveCanonicalFrontmatter() {
+    expect(function saveCanonicalFrontparseTestMarkdown() {
       storage.save({ ...stored, title: 'Updated task' });
     }).not.toThrow();
     expect(storage.get('TASK-0001')?.title).toBe('Updated task');
+  });
+
+  it('allows old canonical YAML formatting without treating it as adoption', function oldCanonicalYaml() {
+    const { home, storage } = createStorage('old-canonical-yaml-format');
+    const sourcePath = 'adr/0001-old-format.md';
+    const markdown = "---\nstatus: accepted\ntitle: 'Old formatting'\ntype: adr\nid: 'ADR 0001'\ndate: '2026-01-21'\n---\n\nHistorical body  \n";
+    writeRawDocument(home, sourcePath, markdown);
+    const stored = storage.get('ADR 0001');
+    if (stored === undefined) throw new Error('Missing ADR');
+    expect(function updateOldCanonical() { storage.save({ ...stored, description: 'Authored discovery description.' }); }).not.toThrow();
+    expect(storage.get('ADR 0001')?.description).toBe('Authored discovery description.');
+  });
+
+  it('requires explicit adoption for synthesized identity or normalized metadata', function incompleteMetadata() {
+    for (const [name, metadata] of [
+      ['missing-identity', 'type: adr\ntitle: Native\nstatus: accepted'],
+      ['trimmed-description', 'id: ADR 0001\ntype: adr\ntitle: Native\nstatus: accepted\ndescription: "  Native discovery  "'],
+    ]) {
+      const { home, storage } = createStorage('adoption-' + name);
+      const markdown = '---\n' + metadata + '\n---\nRaw body';
+      writeRawDocument(home, 'adr/0001-native.md', markdown);
+      const stored = storage.get('ADR 0001');
+      if (stored === undefined) throw new Error('Missing native ADR');
+      expect(function noImplicitAdoption() { storage.save({ ...stored, content: 'Updated body' }); }).toThrow(/canonical adoption requires separate explicit consent/iu);
+      expect(readFileSync(join(home.documentsDir, 'adr/0001-native.md'), 'utf8')).toBe(markdown);
+    }
   });
 
   it('quarantines duplicate semantic identities after substrate claim', function quarantinesDuplicateClaims() {
@@ -536,7 +562,7 @@ describe('DocsNativeFilesystemStorage', function describeDocsNativeStorage() {
     });
     expect(storage.getFilePath('TASK-0003')).toBe(join(home.documentsDir, ...slugged.split('/')));
     expect(storage.getMaxId(EntityType.Task)).toBe(4);
-    expect(matter(readFileSync(join(home.documentsDir, slugged), 'utf8')).data.id).toBe('TASK-0003');
+    expect(parseTestMarkdown(readFileSync(join(home.documentsDir, slugged), 'utf8')).data.id).toBe('TASK-0003');
 
     // R4: a title edit never renames the file.
     storage.save({ ...task, title: 'Renamed after the fact' });

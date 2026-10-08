@@ -174,3 +174,8 @@ export type {
   MigrateDocsNativeParams,
   PlanDocsNativeMigrationParams,
 } from './migrate-docs-native.types.js';
+
+export { parseMarkdownFrontmatter, stringifyMarkdownFrontmatter, MarkdownFrontmatterError } from './markdown-frontmatter.js';
+export type { MarkdownFrontmatter } from './markdown-frontmatter.js';
+export type { YamlCodec } from './markdown-frontmatter.contract.js';
+export { hasCanonicalDocumentMetadata } from './document-canonical-metadata.js';

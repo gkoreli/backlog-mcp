@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -6,7 +6,7 @@ import { basename, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HELP = `Usage:
-  pnpm qrels:implicit -- \\
+  bun run qrels:implicit -- \\
     --home <backlog-home-control-dir> [--home <another-home>] \\
     --output <candidates.jsonl> \\
     [--session-window-minutes N]

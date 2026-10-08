@@ -1,3 +1,4 @@
+import type { YamlCodec } from './markdown-frontmatter.contract.js';
 import type { DiscoveredDocument } from './document-discovery.types.js';
 import type { BacklogHome } from './backlog-home.types.js';
 import type { ProjectSubstrateRegistry } from './substrates/index.js';
@@ -103,6 +104,7 @@ export interface DocsNativeMigrationDirectoryEntry {
 /** Injectable file operations used by memfs tests and rollback verification. */
 /** Reads required by domain migration planning; no write capability is exposed. */
 export interface DocsNativeMigrationReadPort {
+  yaml: YamlCodec;
   exists(path: string): boolean;
   isSymbolicLink(path: string): boolean;
   realpath(path: string): string;

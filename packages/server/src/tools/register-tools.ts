@@ -1,4 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { CorpusCheckerPort } from '../core/corpus-check.contract.js';
+import { registerBacklogCheckTool } from './backlog-check.js';
 import type { MemoryComposer, MemoryEntry } from '@backlog-mcp/memory';
 import type { Memory } from '@backlog-mcp/shared';
 import type { IBacklogService } from '../core/backlog-service.contract.js';
@@ -43,6 +45,7 @@ export type IntentToolRegistration =
 
 /** Per-request dependencies for the static and registry-declared MCP tools. */
 export interface ToolDeps {
+  corpusChecker?: CorpusCheckerPort;
   clock?: () => number;
   resourceManager?: any;
   operationLogger?: any;
@@ -102,6 +105,7 @@ export function registerTools(
   deps?: ToolDeps,
 ): void {
   const intentRegistration = requireIntentRegistration(deps);
+  if (deps?.corpusChecker !== undefined) registerBacklogCheckTool(server, deps.corpusChecker);
   registerBacklogListTool(server, service);
   registerBacklogGetTool(server, service, deps?.usageTracker
     ? { usageTracker: deps.usageTracker }

@@ -1,15 +1,19 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
+import { pipeline } from '@huggingface/transformers';
+
+vi.mock('@huggingface/transformers', async function mockExternalModel() {
+  const fixture = await import('./helpers/embedding-pipeline-fixture.js');
+  return { pipeline: vi.fn(fixture.fixtureFeatureExtractionPipeline) };
+});
 import type { Entity, TaskEntity } from '@backlog-mcp/shared';
 import { searchDocuments } from './helpers/search-document.js';
 
 /**
- * Semantic/Hybrid search tests.
- * These tests verify that hybrid search finds semantically related content.
- * 
- * Note: First run downloads the embedding model (~23MB), which takes ~5s.
- * Subsequent runs use cached model.
+ * Hybrid retrieval unit tests use known 384-dimensional vectors from a mocked
+ * external model. Real Orama ranking/index/cache paths use the global memfs.
+ * These verify retrieval behavior, not embedding-model semantic quality.
  */
 
 function makeEntity(overrides: Partial<Entity> & { id: string; title: string }): TaskEntity {
@@ -70,7 +74,8 @@ describe('Hybrid Search (Semantic)', () => {
     // Use fresh index to ensure embeddings are generated
     service = new OramaSearchService({ cachePath: TEST_CACHE_PATH, hybridSearch: true });
     await service.index(searchDocuments(tasks));
-  }, 60000); // 60s timeout for model download on first run
+    expect(pipeline).toHaveBeenCalledWith('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { dtype: 'fp32' });
+  });
 
   describe('semantic similarity', () => {
     it('finds "authentication" task when searching "login"', async () => {

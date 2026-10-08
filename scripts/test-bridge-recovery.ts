@@ -1,7 +1,7 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env bun
 /**
  * Integration test for bridge recovery after server restart.
- * Run: npx tsx scripts/test-bridge-recovery.ts
+ * Run: bun scripts/test-bridge-recovery.ts
  */
 
 import { spawn, execSync } from 'node:child_process';
@@ -45,7 +45,7 @@ async function main() {
 
   // 1. Start server
   console.log('1. Starting server on port', TEST_PORT);
-  const server = spawn('node', ['dist/cli/index.mjs', 'serve'], { env: ENV, stdio: 'pipe' });
+  const server = spawn(process.execPath, ['dist/cli/index.mjs', 'serve'], { env: ENV, stdio: 'pipe' });
   server.stdout?.on('data', d => console.log('   [server]', d.toString().trim()));
   server.stderr?.on('data', d => console.log('   [server err]', d.toString().trim()));
   
@@ -58,7 +58,7 @@ async function main() {
 
   // 2. Start bridge
   console.log('2. Starting bridge');
-  const bridge = spawn('node', ['dist/cli/bridge.mjs'], { env: ENV, stdio: ['pipe', 'pipe', 'pipe'] });
+  const bridge = spawn(process.execPath, ['dist/cli/bridge.mjs'], { env: ENV, stdio: ['pipe', 'pipe', 'pipe'] });
   
   bridge.stdout?.on('data', d => console.log('   [bridge out]', d.toString().trim().slice(0, 100)));
   bridge.stderr?.on('data', d => console.log('   [bridge err]', d.toString().trim()));

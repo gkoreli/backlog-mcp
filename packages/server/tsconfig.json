@@ -1,7 +1,9 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "types": ["node"],
+    "types": [
+      "bun-types"
+    ],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "sourceMap": true,
@@ -9,9 +11,17 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "@server/*": ["src/*"]
+      "@server/*": [
+        "src/*"
+      ]
     }
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.test.ts"
+  ]
 }

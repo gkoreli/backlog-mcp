@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { serve } from '@hono/node-server';
 import { readFileSync } from 'node:fs';
 import { paths } from './utils/paths.js';

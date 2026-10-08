@@ -1,5 +1,6 @@
 import type {
   CompiledDisclosureRelation,
+  CompiledSubstrateRelationEdge,
   CompiledSubstrateDisclosure,
   CompiledSubstrateIntent,
   SubstrateIntakeDefinition,
@@ -18,6 +19,8 @@ import type {
   SubstrateDefinitionIssue,
   SubstrateWriteValidationResult,
 } from './types.js';
+import { compileSubstrateRelations } from './compile-substrate-relations.js';
+import { ValidationError } from '../types.js';
 
 type CollisionField =
   | 'disclosure.wakeup.section'
@@ -87,6 +90,18 @@ export class ProjectSubstrateRegistry implements SubstrateStorageCatalog {
         if (fieldOrder !== 0) return fieldOrder;
         return (left.inverse ?? '').localeCompare(right.inverse ?? '');
       });
+  }
+
+  /** Integrity checks consume all relation contracts, including undisclosed ones (ADR 0113.4). */
+  listRelations(): readonly CompiledSubstrateRelationEdge[] {
+    return [...this.#substrates.values()].flatMap(function declaredRelations(substrate) {
+      if (substrate.relations !== undefined) return [...substrate.relations];
+      // Legacy declarative values retain their authoritative declaration.
+      if (substrate.kind === 'declarative') return [...compileSubstrateRelations(substrate.definition)];
+      throw new ValidationError(`Compiled relation metadata is unavailable for ${substrate.type}; rebuild the selected home's substrate registry before checking its corpus.`);
+    }).sort(function compareRelations(left, right) {
+      return left.sourceType.localeCompare(right.sourceType) || left.field.localeCompare(right.field);
+    });
   }
 
   listSubstrates(): readonly RegisteredSubstrate[] {

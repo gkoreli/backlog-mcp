@@ -9,7 +9,7 @@ The posture below summarizes those decisions.
 
 ## Deployment Posture (ADR 0104)
 
-**Local-first is the primary mode.** The Node/local deployment (filesystem
+**Local-first is the primary mode.** The Bun/local deployment (filesystem
 markdown storage, Orama hybrid BM25+vector search with local embeddings, RAG,
 context hydration, agentic memory, live viewer over SSE) is where the product
 grows. The Cloudflare Workers + D1 remote mode lost too many of these
@@ -82,17 +82,20 @@ The server package is published via CI:
 ```yaml
 cd packages/server
 cp ../../README.md README.md    # Root README for npm
-pnpm pack                       # workspace:* → real versions
+bun pm pack                       # workspace:* → real versions
 npm publish backlog-mcp-*.tgz --provenance --access public
 ```
 
-`pnpm pack` resolves `workspace:*` to real version numbers. `npm publish` is used (not `pnpm publish`) for OIDC trusted publishing support.
+`bun pm pack` resolves `workspace:*` to real version numbers. `npm publish` is
+retained only as the registry publication tool for OIDC trusted publishing. CI
+uses Node for that npm command; application build, tests, CLI and daemon use Bun.
+The checked-in `bun.lock` is the single dependency lockfile.
 
 ### tsdown Bundling Config
 
-```
-skipNodeModulesBundle: true          # Externalize all node_modules
-noExternal: ['@backlog-mcp/shared']  # Override: inline shared
-```
-
-Both are needed. Without `noExternal`, `skipNodeModulesBundle` would externalize shared via the pnpm workspace symlink.
+The server uses tsdown's `deps.alwaysBundle` for `@backlog-mcp/shared` and
+`@backlog-mcp/memory`. Their source is inlined into the published server; consumers
+do not install either private workspace package. Other npm dependencies remain
+external. The output preserves modules, targets current JavaScript, and runs
+under Bun. The `platform: 'node'` setting preserves the existing `node:*` imports
+that Bun implements; it does not select Node as the application runtime.

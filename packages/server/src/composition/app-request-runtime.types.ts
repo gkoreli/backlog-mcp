@@ -4,6 +4,7 @@ import type {
 } from '@backlog-mcp/memory';
 import type { Memory } from '@backlog-mcp/shared';
 import type { BacklogHome } from '../core/backlog-home.types.js';
+import type { CorpusCheckerPort } from '../core/corpus-check.contract.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { MemoryUsageTracker } from '../memory/usage-tracker.js';
 import type { OperationLogger } from '../operations/logger.js';
@@ -24,6 +25,7 @@ import type {
 
 /** Runtime-owned services selected for one transport request. */
 export interface AppRequestRuntime {
+  corpusChecker?: CorpusCheckerPort;
   clock?: () => number;
   home?: BacklogHome;
   service: IBacklogService;
@@ -67,3 +69,8 @@ export interface AppRequestRuntimeSelection {
 export type AppRequestRuntimeResolver = (
   selection: AppRequestRuntimeSelection,
 ) => Promise<AppRequestRuntime>;
+
+/** Resolve diagnostic capability without acquiring a managed runtime (ADR 0113.4). */
+export type CorpusCheckerResolver = (
+  selection: AppRequestRuntimeSelection,
+) => CorpusCheckerPort | Promise<CorpusCheckerPort>;

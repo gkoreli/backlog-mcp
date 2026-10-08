@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "module": "ES2022",
     "moduleResolution": "bundler",
     "declaration": true,
@@ -10,6 +12,9 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "noUncheckedIndexedAccess": true,
-    "noEmitOnError": true
+    "noEmitOnError": true,
+    "types": [
+      "bun-types"
+    ]
   }
 }

@@ -1,4 +1,5 @@
 import type { JsonScalar } from './substrate-intent.types.js';
+import type { CompiledSubstrateRelationEdge } from './substrate-relation.types.js';
 
 export interface CompiledSubstrateSearchDisclosure {
   readonly fields: readonly string[];
@@ -34,10 +35,4 @@ export interface CompiledSubstrateDisclosure {
  * The registry owns this resolved edge table so retrieval code never reopens
  * project-authored definitions or hardcodes flagship substrate relations.
  */
-export interface CompiledDisclosureRelation {
-  readonly sourceType: string;
-  readonly field: string;
-  readonly cardinality: 'one' | 'zero-or-one' | 'many';
-  readonly targets: readonly string[];
-  readonly inverse?: string;
-}
+export type CompiledDisclosureRelation = CompiledSubstrateRelationEdge;

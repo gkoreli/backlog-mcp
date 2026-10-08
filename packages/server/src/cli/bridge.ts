@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { spawn, ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -36,8 +36,8 @@ async function runBridge(port: number): Promise<void> {
     supervisor.onStart();
     
     const bridge = spawn(
-      mcpRemotePath,
-      buildMcpRemoteArgs(serverUrl, homeContext),
+      process.execPath,
+      [mcpRemotePath, ...buildMcpRemoteArgs(serverUrl, homeContext)],
       { stdio: ['inherit', 'inherit', 'pipe'] },
     );
     

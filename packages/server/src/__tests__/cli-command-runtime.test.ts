@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import matter from 'gray-matter';
+import { parseTestMarkdown } from './helpers/markdown-frontmatter.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBacklogHome } from '../storage/local/backlog-home.js';
 import { createOperationLogger } from '../operations/logger.js';
@@ -403,7 +403,7 @@ describe('direct CLI command runtime wiring', function describeCommandRuntime() 
       join(home.documentsDir, 'memories', 'MEMO-0001-cloudflare-deployment-note.md'),
       'utf8',
     );
-    expect(matter(markdown).data.distinct_from).toEqual(['MEMO-0002']);
+    expect(parseTestMarkdown(markdown).data.distinct_from).toEqual(['MEMO-0002']);
     expect(await localRuntime.service.get('MEMO-0001')).toMatchObject({
       distinct_from: ['MEMO-0002'],
     });

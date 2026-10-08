@@ -11,9 +11,15 @@
  * 5. `properties` restriction prevents metadata field text matching
  * 6. Combined where + text search works correctly
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { join } from 'node:path';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
+import { pipeline } from '@huggingface/transformers';
+
+vi.mock('@huggingface/transformers', async function mockExternalModel() {
+  const fixture = await import('./helpers/embedding-pipeline-fixture.js');
+  return { pipeline: vi.fn(fixture.fixtureFeatureExtractionPipeline) };
+});
 import type { Entity, TaskEntity } from '@backlog-mcp/shared';
 import type { Resource } from '@backlog-mcp/memory/search';
 import { searchDocument, searchDocuments } from './helpers/search-document.js';
@@ -314,6 +320,7 @@ describe('Invariant: searchResources native filtering (ADR-0079)', () => {
 describe('Invariant: cold-process embeddings parity (write-path lifecycle bug)', () => {
   it('a doc written after loading an already-embedded cache is still vector-searchable', async () => {
     const cachePath = freshCachePath();
+    const initialModelLoads = vi.mocked(pipeline).mock.calls.length;
 
     // Simulate the long-lived server: build + persist an index WITH
     // embeddings, so the cache on disk carries `hasEmbeddings: true`.
@@ -339,13 +346,11 @@ describe('Invariant: cold-process embeddings parity (write-path lifecycle bug)',
       }),
     ));
 
-    // The query shares no literal token (or stem) with TASK-0002's title/
-    // content — findable only through its vector embedding, and picked for a
-    // comfortable margin above Orama's vector-search similarity floor
-    // (measured ~0.41 raw cosine vs. the 0.2 floor) so the assertion isn't a
-    // coin flip on borderline model similarity. If the cold write had
-    // silently skipped the embedding (the bug), this returns empty.
+    // Fixture vectors give this query and the new document cosine similarity 1
+    // while the seed is orthogonal. They share no literal tokens: skipping the
+    // cold-write vector leaves the real Orama retrieval empty.
+    expect(vi.mocked(pipeline).mock.calls.length - initialModelLoads).toBe(2);
     const results = await coldService.search('tropical storm destruction');
     expect(results.some(r => r.id === 'TASK-0002')).toBe(true);
-  }, 60000);
+  });
 });

@@ -261,7 +261,7 @@ describe('ResourceManager', () => {
       const resource = manager.read('mcp://backlog/requirements/REQ-0004-broken.md');
       expect(resource.content).toBe(malformed);          // lossless — never coerced
       expect(resource.frontmatter).toBeUndefined();
-      expect(resource.frontmatterError).toContain('mapping');
+      expect(resource.frontmatterError).toContain('YAML syntax');
       expect(resource.mimeType).toBe('text/markdown');
     });
   });

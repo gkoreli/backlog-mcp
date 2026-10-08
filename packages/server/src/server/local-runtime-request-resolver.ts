@@ -5,6 +5,7 @@ import type { HomeSelectionRequest } from '../core/backlog-home-selection.types.
 import { resolveGitFamily } from '../storage/local/git-family.js';
 import { LocalRuntimeRegistry } from '../storage/local/local-runtime-registry.js';
 import type { LocalRuntime } from '../storage/local/local-runtime.js';
+import type { BacklogHome } from '../core/backlog-home.types.js';
 import type { LocalRuntimeRequestResolverOptions } from './local-runtime-request-resolver.types.js';
 
 /**
@@ -22,6 +23,11 @@ export class LocalRuntimeRequestResolver {
   async resolve(
     selection: HomeSelectionRequest = {},
   ): Promise<LocalRuntime> {
+    return this.registry.get(this.resolveHome(selection));
+  }
+
+  /** Resolve the same request home without starting services (ADR 0113.4). */
+  resolveHome(selection: HomeSelectionRequest = {}): BacklogHome {
     const validated = validateHomeSelection(selection);
     const home = resolveBacklogHome({
       home: validated.home,
@@ -33,6 +39,6 @@ export class LocalRuntimeRequestResolver {
       // else is unchanged.
       deps: { resolveFamily: resolveGitFamily },
     });
-    return this.registry.get(home);
+    return home;
   }
 }

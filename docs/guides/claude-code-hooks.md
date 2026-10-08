@@ -24,7 +24,7 @@ briefing in Claude Code, add a `SessionStart` command hook to
         "hooks": [
           {
             "type": "command",
-            "command": "npx backlog-mcp --home project --project-root \"$CLAUDE_PROJECT_DIR\" wakeup --max-knowledge 0 --max-constraints 3 --max-completions 3 --max-activity 3 | jq -Rs '{hookSpecificOutput:{hookEventName:\"SessionStart\",additionalContext:.}}'",
+            "command": "bunx --bun backlog-mcp --home project --project-root \"$CLAUDE_PROJECT_DIR\" wakeup --max-knowledge 0 --max-constraints 3 --max-completions 3 --max-activity 3 | jq -Rs '{hookSpecificOutput:{hookEventName:\"SessionStart\",additionalContext:.}}'",
             "timeout": 10
           }
         ]
@@ -34,7 +34,7 @@ briefing in Claude Code, add a `SessionStart` command hook to
 }
 ```
 
-The recipe requires `jq` and an available `npx` executable. `--max-knowledge 0`
+The recipe requires `jq` and an available `bunx` executable. `--max-knowledge 0`
 keeps retrieved memory bodies out of session-start context; the agent recalls
 when its intent warrants it. A command hook can run without an MCP connection.
 

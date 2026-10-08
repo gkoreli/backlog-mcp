@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 /**
  * Structural truth suite (ADR 0121 R2).
@@ -55,7 +55,7 @@ import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 
 const HELP = `Usage:
-  pnpm suite:structural -- \\
+  bun run suite:structural -- \\
     --project-root <project> \\
     --output <report.json> \\
     --summary <summary.md> \\
@@ -70,7 +70,7 @@ Optional:
   --modes        Comma-separated search modes (default: bm25,hybrid)
   --help         Show this help
 
-Run "pnpm build" before executing the suite.
+Run "bun run build" before executing the suite.
 `;
 
 const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
@@ -261,7 +261,7 @@ async function loadRuntime(repoRoot) {
   };
   for (const [name, path] of Object.entries(paths)) {
     if (!existsSync(path)) {
-      fail(`Missing ${name} runtime at ${path}; run "pnpm build" first`);
+      fail(`Missing ${name} runtime at ${path}; run "bun run build" first`);
     }
   }
   const [

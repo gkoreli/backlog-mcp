@@ -1,11 +1,11 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { mineUsage } from '../packages/server/src/core/usage-instrument.ts';
 
 const HELP = `Usage:
-  pnpm --silent usage:report -- \\
+  bun run --silent usage:report -- \\
     --operations <operations.jsonl> \\
     --usage <memory-usage.jsonl>
 

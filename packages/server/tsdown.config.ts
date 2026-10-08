@@ -3,8 +3,9 @@ import { defineConfig } from 'tsdown';
 export default defineConfig({
   entry: ['src/**/*.ts', '!src/**/*.test.ts', '!src/__tests__/**'],
   format: ['esm'],
+  // Bun implements these node:* APIs; the bundle executes only under Bun.
   platform: 'node',
-  target: 'node18',
+  target: 'esnext',
   unbundle: true,
   deps: {
     alwaysBundle: ['@backlog-mcp/shared', '@backlog-mcp/memory'],

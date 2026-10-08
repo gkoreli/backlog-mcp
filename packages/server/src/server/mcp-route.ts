@@ -4,14 +4,15 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { homedir } from 'node:os';
 import { registerTools, type ToolDeps } from '../tools/index.js';
-import type { AppRequestRuntime, AppRequestRuntimeResolver } from '../composition/app-request-runtime.types.js';
+import type { AppRequestRuntime, AppRequestRuntimeResolver, CorpusCheckerResolver } from '../composition/app-request-runtime.types.js';
+import { registerBacklogCheckTool } from '../tools/backlog-check.js';
 import { managedWriteDependencies } from '../composition/managed-write-context.js';
 import { createWriteProvenance } from '../composition/write-provenance.js';
 import { createSelectedHomeReadCoordinator } from '../composition/home-read-runtime.js';
 import type { HomeReadCoordinator } from '../core/home-read-coordinator.types.js';
 import { withRequestTelemetrySession } from '../memory/retrieval-telemetry.js';
 import type { SubstrateIntentQuarantineDiagnostic } from '../tools/register-substrate-intents.types.js';
-import { selectMcpRequestRuntime } from './mcp-request-runtime.js';
+import { isCorpusCheckRequest, selectMcpRequestRuntime } from './mcp-request-runtime.js';
 import { selectAppRequestRuntime } from './request-selection.js';
 
 type StaticToolDefaults = Pick<ToolDeps, 'actor' | 'agentIdentity'>;
@@ -20,6 +21,7 @@ type StaticToolDefaults = Pick<ToolDeps, 'actor' | 'agentIdentity'>;
 export interface McpRouteOptions {
   staticRuntime: AppRequestRuntime;
   resolveRuntime?: AppRequestRuntimeResolver;
+  resolveCorpusChecker?: CorpusCheckerResolver;
   defaults?: StaticToolDefaults;
   name?: string;
   version?: string;
@@ -63,6 +65,7 @@ function createRequestToolDeps(
     };
   }
   return {
+    corpusChecker: runtime.corpusChecker,
     ...managedWriteDependencies({ ...runtime, actor: runtime.home === undefined ? deps?.actor : runtime.actor }),
     agentIdentity: runtime.home === undefined
       ? deps?.agentIdentity
@@ -103,7 +106,8 @@ export function registerMcpRoute(app: Hono, options: McpRouteOptions): void {
     // Cross-home tools resolve both homes inside the allSettled coordinator.
     // The static shell is sufficient for tool registration and prevents an
     // unhealthy project or global runtime from aborting the request early.
-    const runtime = selection.home === 'all'
+    const checkOnly = await isCorpusCheckRequest(c.req.raw);
+    const runtime = checkOnly || selection.home === 'all'
       ? staticRuntime
       : await resolveSelectedRuntime(selection);
     const server = new McpServer({ name: options.name ?? 'backlog-mcp', version: options.version ?? '0.0.0' });
@@ -115,15 +119,24 @@ export function registerMcpRoute(app: Hono, options: McpRouteOptions): void {
           resolveSelectedRuntime,
           selection.projectRoot,
         );
-    const toolDeps = createRequestToolDeps(
-      runtime,
-      options.defaults,
-      homeReadCoordinator,
-      reportIntentQuarantine,
-    );
-    registerTools(server, runtime.service, toolDeps);
-    if (runtime.resourceManager) {
-      runtime.resourceManager.registerResource(server);
+    if (checkOnly) {
+      const checker = options.resolveCorpusChecker === undefined
+        ? (options.resolveRuntime === undefined && selection.home === undefined && selection.projectRoot === undefined
+          ? runtime.corpusChecker : undefined)
+        : await options.resolveCorpusChecker(selection);
+      if (checker === undefined) return c.json({ error: 'Corpus checking capability is unavailable in this runtime.' }, 503);
+      registerBacklogCheckTool(server, checker);
+    } else {
+      const toolDeps = createRequestToolDeps(
+        runtime,
+        options.defaults,
+        homeReadCoordinator,
+        reportIntentQuarantine,
+      );
+      registerTools(server, runtime.service, toolDeps);
+      if (runtime.resourceManager) {
+        runtime.resourceManager.registerResource(server);
+      }
     }
 
     const transport = new WebStandardStreamableHTTPServerTransport({

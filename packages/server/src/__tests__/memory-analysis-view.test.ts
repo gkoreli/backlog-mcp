@@ -1,6 +1,5 @@
 /** Supplied-data/time analysis, complete-read reuse and advisory failure contracts. */
 import { describe, expect, it, vi } from 'vitest';
-import matter from 'gray-matter';
 import type { Memory, AnyEntity } from '@backlog-mcp/shared';
 import { createMemoryAnalysisView } from '../core/memory-analysis-view.js';
 import { collisionPairsInView } from '../core/collision-candidates.js';
@@ -50,8 +49,8 @@ describe('memory analysis observation', function observed() {
     expect(view.get('TASK-1')).toBeUndefined();
   });
 
-  it('retains native YAML binary and timestamp fields without making the corpus unreadable', async function nativePayloads() {
-    const parsed = matter('---\ncustom_binary: !!binary SGVsbG8=\ncustom_date: 2026-10-04\ncustom_list:\n  - native\n---\nBody');
+  it('retains supplied binary and timestamp fields without making the corpus unreadable', async function nativePayloads() {
+    const parsed = { data: { custom_binary: new TextEncoder().encode('Hello'), custom_date: new Date('2026-10-04'), custom_list: ['native'] } };
     const focal = memory('MEMO-1', { ...parsed.data, state_key: 'db' });
     const other = memory('MEMO-2', { state_key: 'db' });
     const view = createMemoryAnalysisView([focal, other], NOW);

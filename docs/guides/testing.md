@@ -32,12 +32,17 @@ All tests use **memfs** for in-memory filesystem mocking, with the exception abo
 - **Server:** `packages/server/src/__tests__/*.test.ts` and co-located `*.test.ts`.
 - **Viewer:** `packages/viewer/**/*.test.ts`.
 
-Use the test runner's summary for current counts.
+Use the test runner's summary for current counts. Vitest 4.1.10 runs under Bun;
+its stack-frame recognition preserves relative module mocks on this runtime. With
+Zod transformed rather than externalized, named exports remain intact.
+The global memfs module supplies both Node ESM named and default exports.
+Use `bun run test`: bare `bun test` selects Bun's own runner and does not run
+these Vitest/memfs suites.
 
 ```bash
-pnpm test                                # All workspace tests
-pnpm --filter backlog-mcp test           # Server only
-pnpm --filter @backlog-mcp/viewer test   # Viewer only
+bun run test                                # All workspace tests
+bun run --filter backlog-mcp test           # Server only
+bun run --filter @backlog-mcp/viewer test   # Viewer only
 ```
 
 ### Rules

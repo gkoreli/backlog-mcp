@@ -1,4 +1,5 @@
 /** Local migration capabilities and optional fault-injection overrides. */
+import { bunYamlCodec } from './bun-yaml-codec.js';
 import {
   existsSync,
   lstatSync,
@@ -15,6 +16,7 @@ import { paths } from '../../utils/paths.js';
 import type { DocsNativeMigrationFileSystem } from '../../core/migrate-docs-native.types.js';
 
 const LOCAL_FILE_SYSTEM: DocsNativeMigrationFileSystem = {
+  yaml: bunYamlCodec,
   exists: existsSync,
   canonicalize: function canonicalize(path) { return paths.canonicalizeThroughExistingAncestor(path); },
   isSymbolicLink: function isSymbolicLink(path) {

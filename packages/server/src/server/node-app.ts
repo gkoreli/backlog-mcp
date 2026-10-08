@@ -48,6 +48,8 @@ export function createNodeApp(options: CreateNodeAppOptions): Hono {
     identityPath: runtime.identityPath,
     visionPath: runtime.visionPath,
     resolveRuntime: options.resolveRuntime,
+    resolveCorpusChecker: options.resolveCorpusChecker,
+    corpusChecker: runtime.corpusChecker,
     requestShutdown: options.requestShutdown,
     recentHomes: options.recentHomes,
     readReleaseStatus: options.readReleaseStatus,

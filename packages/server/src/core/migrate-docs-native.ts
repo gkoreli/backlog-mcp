@@ -11,7 +11,7 @@ import {
   resolve,
   sep,
 } from 'node:path';
-import matter from 'gray-matter';
+import { parseMarkdownFrontmatter, stringifyMarkdownFrontmatter } from './markdown-frontmatter.js';
 import { parseEntityId } from '@backlog-mcp/shared';
 import { parseDocumentIdentity } from './document-identity.js';
 import { claimSubstrateDocuments } from './substrates/index.js';
@@ -433,13 +433,13 @@ function planEntity(
   }
 
   try {
-    const markdown = matter(raw.toString('utf-8'), {});
+    const markdown = parseMarkdownFrontmatter(raw.toString('utf-8'), fs.yaml);
     const normalized = normalizeLegacyEntityData(
       markdown.data as Record<string, unknown>,
     );
     const data = normalized.data;
     const targetContent = normalized.changed
-      ? Buffer.from(matter.stringify(markdown.content, data))
+      ? Buffer.from(stringifyMarkdownFrontmatter(data, markdown.content, fs.yaml))
       : raw;
     const filenameId = basename(file.sourcePath, extname(file.sourcePath));
     const id = typeof data.id === 'string' && data.id.trim()

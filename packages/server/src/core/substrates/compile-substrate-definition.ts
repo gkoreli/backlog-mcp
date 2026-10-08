@@ -18,6 +18,7 @@ import type {
 } from './types.js';
 import { compileSubstrateDisclosure } from './compile-substrate-disclosure.js';
 import { compileSubstrateIntents } from './compile-substrate-intents.js';
+import { compileSubstrateRelations } from './compile-substrate-relations.js';
 import { validateRuntimeJsonSchema } from './validate-runtime-json-schema.js';
 
 const MAX_DECLARATION_BYTES = 256 * 1_024;
@@ -341,6 +342,7 @@ export function compileSubstrateDefinition(
       acceptsParent: acceptsParent(definition),
       disclosure: compiledDisclosure.disclosure,
       disclosureRelations: compiledDisclosure.relations,
+      relations: compileSubstrateRelations(definition),
       intents: compiledIntents.intents,
       storageClaim: createStorageClaim(definition),
       validateWrite: createWriteValidator(validate),

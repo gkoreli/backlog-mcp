@@ -14,7 +14,8 @@ import {
 } from 'node:fs';
 import { dirname, posix, resolve } from 'node:path';
 import { paths } from '../../utils/paths.js';
-import matter from 'gray-matter';
+import { parseMarkdownFrontmatter, stringifyMarkdownFrontmatter, hasCanonicalDocumentMetadata, type YamlCodec } from '../../core/index.js';
+import { bunYamlCodec } from './bun-yaml-codec.js';
 import {
   MemorySchema,
   type Memory,
@@ -63,20 +64,22 @@ function isSourcePathUnderFolder(sourcePath: string, folder: string): boolean {
     && !posix.isAbsolute(relativePath);
 }
 
-function serializeEntity(entity: AnyEntity): string {
+function serializeEntity(entity: AnyEntity, yaml: YamlCodec): string {
   const { content, ...frontmatter } = entity;
-  return matter.stringify(typeof content === 'string' ? content : '', frontmatter);
+  return stringifyMarkdownFrontmatter(frontmatter, typeof content === 'string' ? content : '', yaml);
 }
 
 function hasCanonicalFrontmatter(
   document: StoredEntityDocument,
   registry: ProjectSubstrateRegistry,
+  yaml: YamlCodec,
 ): boolean {
   const validation = registry.validateWrite(document.entity);
   if (!validation.ok) return false;
 
-  const canonical = serializeEntity(validation.entity);
-  return matter(document.markdown, {}).matter === matter(canonical, {}).matter;
+  // ADR 0113.4: formatting is not adoption; authored metadata must already be canonical.
+  const authored = parseMarkdownFrontmatter(document.markdown, yaml);
+  return authored.hasFrontmatter && hasCanonicalDocumentMetadata(authored.data, validation.entity);
 }
 
 function normalizeWritableSourcePath(sourcePath: string): string {
@@ -131,6 +134,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   constructor(
     private readonly home: BacklogHome,
     private readonly registry: ProjectSubstrateRegistry,
+    private readonly yaml: YamlCodec = bunYamlCodec,
   ) {}
 
   /**
@@ -154,7 +158,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
   }
 
   private snapshot(): DocumentSnapshot {
-    this.snapshotCache ??= readDocumentSnapshot(this.home, this.registry);
+    this.snapshotCache ??= readDocumentSnapshot(this.home, this.registry, this.yaml);
     return this.snapshotCache;
   }
 
@@ -258,7 +262,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     }
     const target = this.resolveClaimedPath(sourcePath, claim);
     validateWriteIdentity(entity, target.sourcePath, claim);
-    return { entity, absolutePath: target.absolutePath, markdown: serializeEntity(entity), exclusive };
+    return { entity, absolutePath: target.absolutePath, markdown: serializeEntity(entity, this.yaml), exclusive };
   }
 
   private write(candidate: AnyEntity, sourcePath: string, exclusive: boolean): EntityPreimage {
@@ -379,7 +383,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
       const plan = planMemoryCorrection(successor, corpus, now);
       const closures = plan.closures.map(function prepareClosure(closure) {
         const existing = storage.getDocumentById(closure.before.id);
-        if (existing === undefined || !hasCanonicalFrontmatter(existing, storage.registry)) {
+        if (existing === undefined || !hasCanonicalFrontmatter(existing, storage.registry, storage.yaml)) {
           throw new Error(`Canonical adoption requires separate explicit consent: ${closure.before.id}`);
         }
         return { beforeMarkdown: existing.markdown, after: storage.prepareWrite(closure.after, existing.sourcePath, false) };
@@ -437,7 +441,7 @@ export class DocsNativeFilesystemStorage implements DocumentStorageAdapter {
     if (
       existing !== undefined
       && options?.canonicalAdoption !== true
-      && !hasCanonicalFrontmatter(existing, this.registry)
+      && !hasCanonicalFrontmatter(existing, this.registry, this.yaml)
     ) {
       throw new Error(
         `Canonical adoption requires separate explicit consent: ${entity.id}`,

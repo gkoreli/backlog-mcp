@@ -9,7 +9,8 @@ import { registerEventRoutes } from './event-routes.js';
 import { createSelectedHomeReadCoordinator } from '../composition/home-read-runtime.js';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import matter from 'gray-matter';
+import { parseMarkdownFrontmatter, type YamlCodec } from '../core/index.js';
+import { bunYamlCodec } from '../storage/local/bun-yaml-codec.js';
 import type { IBacklogService } from '../core/backlog-service.contract.js';
 import type { IOperationLog, Actor } from '../core/operation-log.contract.js';
 import type { ToolDeps } from '../tools/index.js';
@@ -23,6 +24,7 @@ import {
 import type {
   AppRequestRuntime,
   AppRequestRuntimeResolver,
+  CorpusCheckerResolver,
   AppRequestRuntimeSelection,
 } from '../composition/app-request-runtime.types.js';
 import { getHomeProvenance } from './home-provenance.js';
@@ -40,6 +42,8 @@ import { isLoopbackOrigin } from './loopback-origin.js';
 // name/version and the MCP server wrapper are injected via AppDeps.
 
 export interface AppDeps extends ToolDeps {
+  /** Native document codec supplied by composition; framing remains shared core policy. */
+  yaml?: YamlCodec;
   // Server identity — passed explicitly to avoid importing paths.ts in Workers
   name?: string;
   version?: string;
@@ -76,6 +80,7 @@ export interface AppDeps extends ToolDeps {
   readUsageLines?: () => string[];  // memory-usage.jsonl reader (ADR 0092.14); Node-only, absent in Worker
   db?: any;                // cloud: D1 database — used for mode detection only
   resolveRuntime?: AppRequestRuntimeResolver;
+  resolveCorpusChecker?: CorpusCheckerResolver;
   requestShutdown?: () => void | Promise<void>;
   // Recent-homes registry (ADR 0128); Node-only, absent in Worker.
   recentHomes?: RecentHomesStore;
@@ -89,6 +94,7 @@ function createStaticRequestRuntime(
   deps: AppDeps | undefined,
 ): AppRequestRuntime {
   return {
+    corpusChecker: deps?.corpusChecker,
     service,
     clock: deps?.clock,
     operationLog: deps?.operationLog,
@@ -111,6 +117,7 @@ function errorMessage(error: unknown): string {
 }
 
 export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
+  const yaml = deps?.yaml ?? bunYamlCodec;
   const app = new Hono();
   const staticRuntime = createStaticRequestRuntime(service, deps);
   async function resolveSelectedRuntime(
@@ -157,6 +164,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
   registerMcpRoute(app, {
     staticRuntime,
     resolveRuntime: deps?.resolveRuntime,
+    resolveCorpusChecker: deps?.resolveCorpusChecker,
     defaults: deps,
     name: deps?.name,
     version: deps?.version,
@@ -295,7 +303,7 @@ export function createApp(service: IBacklogService, deps?: AppDeps): Hono {
 
         // Parse frontmatter for markdown files
         if (ext === 'md') {
-          const parsed = matter(content);
+          const parsed = parseMarkdownFrontmatter(content, yaml);
           frontmatter = parsed.data;
           bodyContent = parsed.content;
         }

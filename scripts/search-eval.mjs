@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { createHash } from 'node:crypto';
 import {
@@ -20,7 +20,7 @@ import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 
 const HELP = `Usage:
-  pnpm search:eval -- \\
+  bun run search:eval -- \\
     --project-root <project> \\
     --queries <queries.jsonl> \\
     --qrels <qrels.jsonl> \\
@@ -49,7 +49,7 @@ Optional:
   --repetitions  Measured full-query-set passes (default: 3)
   --help         Show this help
 
-Run "pnpm build" before executing a benchmark.
+Run "bun run build" before executing a benchmark.
 `;
 
 const REQUIRED_ARGUMENTS = ['project-root', 'queries', 'qrels', 'output'];
@@ -588,6 +588,8 @@ function buildEnvironment(repoRoot) {
   const cpus = os.cpus();
   const firstCpu = cpus[0];
   return {
+    runtime: process.versions.bun === undefined ? 'node' : 'bun',
+    bun: process.versions.bun,
     node: process.version,
     platform: process.platform,
     os_release: os.release(),
@@ -853,7 +855,7 @@ async function loadRuntime(repoRoot) {
   };
   for (const [name, path] of Object.entries(paths)) {
     if (!existsSync(path)) {
-      fail(`Missing ${name} runtime at ${path}; run "pnpm build" first`);
+      fail(`Missing ${name} runtime at ${path}; run "bun run build" first`);
     }
   }
   const [

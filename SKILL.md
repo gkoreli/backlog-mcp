@@ -14,8 +14,8 @@ land as plain markdown the user reviews in git like any other diff.
 
 ## 0. Preconditions
 
-- `node --version` must be >= 18. If not, STOP and report — do not install Node uninvited.
-- `npx` must be able to reach the npm registry (it fetches the `backlog-mcp` package).
+- `bun --version` must be >= 1.4.2. If not, report the missing prerequisite.
+- `bunx` must be able to reach the npm registry (it fetches the `backlog-mcp` package).
 - Record `git status --porcelain` before installation so verification can
   distinguish existing changes from installation effects.
 
@@ -38,7 +38,7 @@ unknown, establish it before choosing a registration target:
 ### 2a. Claude Code
 
 ```bash
-claude mcp add --scope user backlog -- npx -y backlog-mcp
+claude mcp add --scope user backlog -- bunx --bun backlog-mcp
 ```
 
 `--scope user` makes it available in every project and leaves the repo
@@ -54,13 +54,13 @@ or `<repo>/.cursor/mcp.json` (this project only), then reload MCP servers in
 Cursor's settings:
 
 ```json
-{ "mcpServers": { "backlog": { "command": "npx", "args": ["-y", "backlog-mcp"] } } }
+{ "mcpServers": { "backlog": { "command": "bunx", "args": ["--bun", "backlog-mcp"] } } }
 ```
 
 ### 2c. Codex CLI
 
 ```bash
-codex mcp add backlog -- npx -y backlog-mcp
+codex mcp add backlog -- bunx --bun backlog-mcp
 ```
 
 If the installed Codex has no `mcp add` subcommand, append to
@@ -68,17 +68,17 @@ If the installed Codex has no `mcp add` subcommand, append to
 
 ```toml
 [mcp_servers.backlog]
-command = "npx"
-args = ["-y", "backlog-mcp"]
+command = "bunx"
+args = ["--bun", "backlog-mcp"]
 ```
 
 If your harness's own `--help` disagrees with this file, trust the `--help`.
 
 ### 2d. Any other MCP client
 
-Stdio transport: command `npx`, args `["-y", "backlog-mcp"]` — same JSON shape
-as 2b. HTTP transport: start the daemon first (`npx -y backlog-mcp` detached,
-or `npx -y backlog-mcp serve` in the foreground) and point the client at
+Stdio transport: command `bunx`, args `["--bun", "backlog-mcp"]` — same JSON shape
+as 2b. HTTP transport: start the daemon first (`bunx --bun backlog-mcp` detached,
+or `bunx --bun backlog-mcp serve` in the foreground) and point the client at
 `http://localhost:3030/mcp`.
 
 ## 3. First contact — wakeup
@@ -86,7 +86,7 @@ or `npx -y backlog-mcp serve` in the foreground) and point the client at
 From the user's repo root:
 
 ```bash
-backlog_briefing=$(npx -y backlog-mcp wakeup --json)
+backlog_briefing=$(bunx --bun backlog-mcp wakeup --json)
 ```
 
 Check that the command succeeded before continuing; retain its JSON for the
@@ -108,7 +108,7 @@ After showing the captured briefing, explain briefly:
   control dir holds configuration, caches and runtime state journals. Runtime
   cache/state paths are ignored; project configuration may be tracked.
 - A live read-only viewer runs at `http://localhost:3030` once an MCP session
-  (or a bare `npx -y backlog-mcp`) has started the daemon.
+  (or a bare `bunx --bun backlog-mcp`) has started the daemon.
 
 ## 4. Verify
 
@@ -121,7 +121,7 @@ Run all three and include the results in your report:
 2. **Briefing budget** — the wire form must be <= 3072 bytes:
 
    ```bash
-   printf '%s' "$backlog_briefing" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const b=Buffer.byteLength(JSON.stringify(JSON.parse(s),null,1));console.log(b+" bytes");process.exit(b<=3072?0:1)})'
+   printf '%s' "$backlog_briefing" | bun -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const b=Buffer.byteLength(JSON.stringify(JSON.parse(s),null,1));console.log(b+" bytes");process.exit(b<=3072?0:1)})'
    ```
 
 3. **Host registration** (if step 2 applied) — after a session reload the
@@ -130,13 +130,13 @@ Run all three and include the results in your report:
 
 ## 5. If something fails — exact fallbacks, never improvise state
 
-- **npx cannot fetch** (offline, registry down): report it and stop. Do not
+- **bunx cannot fetch** (offline, registry down): report it and stop. Do not
   clone the repo or vendor code as a workaround unless the user asks.
 - **Port 3030 taken by an unrelated process**: set `BACKLOG_VIEWER_PORT=<port>`
   in the daemon's environment. CLI verbs need no port at all.
 - **Stale daemon from an older version**: startup replaces it when the
-  installed package is newer. Check `npx -y backlog-mcp version` and
-  `npx -y backlog-mcp status` to
+  installed package is newer. Check `bunx --bun backlog-mcp version` and
+  `bunx --bun backlog-mcp status` to
   distinguish the installed package from the running daemon before retrying.
 - **First recall/search is slow**: a local embedding model downloads once
   (tens of seconds). It is local-first — no cloud call. Wait, and say so.

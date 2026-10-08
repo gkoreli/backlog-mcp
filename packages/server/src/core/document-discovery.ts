@@ -1,5 +1,5 @@
 import { extname, isAbsolute, posix, relative, resolve, sep } from 'node:path';
-import matter from 'gray-matter';
+import { parseMarkdownFrontmatter } from './markdown-frontmatter.js';
 import { parseDocumentIdentity } from './document-identity.js';
 import type {
   DiscoverDocumentsParams,
@@ -300,10 +300,7 @@ function readDocument(
     content = dependencies.readFile(path.absolutePath);
     if (format === 'markdown') {
       try {
-        // Passing options disables gray-matter's content-only cache. Its cache
-        // stores the pre-parse object before a YAML error and would otherwise
-        // make the same malformed content appear valid on subsequent scans.
-        declaredId = matter(content, {}).data.id;
+        declaredId = parseMarkdownFrontmatter(content, dependencies.yaml).data.id;
       } catch (error) {
         diagnostics.push({
           code: 'malformed-frontmatter',

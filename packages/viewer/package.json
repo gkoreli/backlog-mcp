@@ -1,11 +1,11 @@
 {
   "name": "@backlog-mcp/viewer",
-  "version": "0.67.0",
+  "version": "0.68.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "typecheck": "bun --bun tsc --noEmit",
+    "test": "bun --bun vitest run",
     "clean": "rm -rf dist"
   },
   "devDependencies": {

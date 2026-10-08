@@ -110,6 +110,8 @@ export type {
   CompiledSubstrateWakeupDisclosure,
 } from './substrates/substrate-disclosure.types.js';
 
+export type { CompiledSubstrateRelationEdge } from './substrates/substrate-relation.types.js';
+
 export type {
   CompiledFieldBinding,
   CompiledSubstrateIntent,

@@ -6,7 +6,7 @@ import { vi, beforeAll } from 'vitest';
 import { fs, vol } from './virtual-fs.js';
 
 // Mock node:fs with memfs
-vi.mock('node:fs', () => fs);
+vi.mock('node:fs', function mockFilesystemModule() { return { ...fs, default: fs }; });
 
 // Reset filesystem before each TEST FILE (not each test)
 // This preserves state within a file (for beforeAll/afterAll patterns)

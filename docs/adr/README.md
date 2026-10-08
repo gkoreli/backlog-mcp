@@ -172,6 +172,10 @@ Framework (nisli) ADRs live in the [nisli repository](https://github.com/gkoreli
 
 ## Format
 
+[0113.4. Read-only corpus checking](./0113.4-read-only-corpus-checking.md) defines
+the common CLI/MCP checker. [0139. Bun runtime and native YAML](./0139-bun-runtime-and-native-yaml.md)
+records the runtime and parser migration, including scoped amendments to ADR 0134.
+
 Each decision is a native `adr` substrate entity with YAML `id`, `type`,
 `title`, canonical lifecycle `status`, and a short authored `description`.
 Historical dates remain quoted ISO strings; timestamps are not fabricated.

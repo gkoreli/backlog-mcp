@@ -10,6 +10,7 @@ import {
   recentHomesManifestPath,
 } from '../storage/local/recent-homes-store.js';
 import { createLocalAppRequestRuntime } from '../composition/local-app-request-runtime.js';
+import { createCorpusChecker } from '../composition/corpus-checker.js';
 import { LocalRuntimeRequestResolver } from './local-runtime-request-resolver.js';
 import { createNodeApp } from './node-app.js';
 import type {
@@ -88,6 +89,9 @@ export async function createLocalNodeApp(
     app: createNodeApp({
       runtime: bootAppRuntime,
       resolveRuntime,
+      resolveCorpusChecker: function resolveCorpusChecker(selection) {
+        return createCorpusChecker(requestResolver.resolveHome(selection));
+      },
       requestShutdown: options.requestShutdown,
       recentHomes,
       readReleaseStatus: options.readReleaseStatus,

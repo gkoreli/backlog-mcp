@@ -77,6 +77,10 @@ describe('backlog MCP home inputs', function describeHomeInputs() {
     } as unknown as McpServer;
 
     registerTools(server, {} as IBacklogService, {
+      corpusChecker: { check: function check() { return {
+        version: 1, complete: true, valid: true,
+        summary: { documents: 0, entities: 0, resources: 0, errors: 0, warnings: 0 }, diagnostics: [],
+      }; } },
       intentRegistration: {
         mode: 'unavailable',
         reason: 'constrained-runtime',

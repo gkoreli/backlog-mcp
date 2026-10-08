@@ -6,7 +6,8 @@ import { claimSubstrateDocuments, type ClaimedSubstrateDocument, type ProjectSub
 import { formatStorageDisplayId } from '../../core/substrates/storage-identity.js';
 import type { StoredEntityDocument } from '../storage-adapter.js';
 import type { RuntimeEntity } from '@backlog-mcp/shared';
-import matter from 'gray-matter';
+import { parseMarkdownFrontmatter, type YamlCodec } from '../../core/index.js';
+import { bunYamlCodec } from './bun-yaml-codec.js';
 
 /** Derived read projections and authoritative filename claims from one disk scan. */
 export interface DocumentSnapshot {
@@ -54,6 +55,7 @@ function quarantineClaim(
 function parseStoredDocument(
   claimed: ClaimedSubstrateDocument,
   registry: ProjectSubstrateRegistry,
+  yaml: YamlCodec,
 ): ParsedClaimedDocument {
   const document = claimed.document;
   if (document.format !== 'markdown' || document.content === undefined) {
@@ -61,7 +63,7 @@ function parseStoredDocument(
   }
 
   try {
-    const parsedMarkdown = matter(document.content, {});
+    const parsedMarkdown = parseMarkdownFrontmatter(document.content, yaml);
     const data = parsedMarkdown.data as Record<string, unknown>;
     const claim = registry.getStorageClaim(claimed.type);
     if (claim === undefined) return {};
@@ -103,8 +105,9 @@ function parseStoredDocument(
 export function readDocumentSnapshot(
   home: BacklogHome,
   registry: ProjectSubstrateRegistry,
+  yaml: YamlCodec = bunYamlCodec,
 ): DocumentSnapshot {
-  const discovery = discoverDocuments({ documentsDir: home.documentsDir });
+  const discovery = discoverDocuments({ documentsDir: home.documentsDir, dependencies: { yaml } });
   const incompletePaths = discovery.diagnostics.flatMap(function unreadableTree(diagnostic) {
     return diagnostic.code === 'documents-dir-unreadable' || diagnostic.code === 'path-unreadable'
       ? diagnostic.sourcePaths : [];
@@ -122,7 +125,7 @@ export function readDocumentSnapshot(
     identitiesByType.set(claim.type, identities);
     const root = Number.parseInt(claim.storageKey.split('.')[0] ?? '', 10);
     maxIds.set(claim.type, Math.max(maxIds.get(claim.type) ?? 0, root));
-    const parsed = parseStoredDocument(claim, registry);
+    const parsed = parseStoredDocument(claim, registry, yaml);
     if (parsed.document !== undefined) documents.push(parsed.document);
     if (parsed.quarantine !== undefined) quarantines.push(parsed.quarantine);
   }

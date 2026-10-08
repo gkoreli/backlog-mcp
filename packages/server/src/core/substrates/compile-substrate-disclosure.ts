@@ -5,6 +5,7 @@ import type {
   RuntimeSubstrateDefinition,
 } from '@backlog-mcp/shared';
 import type { SubstrateDefinitionIssue } from './types.js';
+import { compileSubstrateRelations } from './compile-substrate-relations.js';
 
 interface CompileSubstrateDisclosureResult {
   disclosure: CompiledSubstrateDisclosure;
@@ -155,13 +156,14 @@ export function compileSubstrateDisclosure(
   }
 
   const relations: CompiledDisclosureRelation[] = [];
+  const declaredRelations = compileSubstrateRelations(definition);
   if (source.get?.context === true) {
     issues.push(...duplicateIssues(
       source.get.relations,
       '/disclosure/get/relations',
     ));
     for (const field of source.get.relations) {
-      const relation = definition.relations?.[field];
+      const relation = declaredRelations.find(function namedRelation(candidate) { return candidate.field === field; });
       if (!relation) {
         issues.push(issue(
           '/disclosure/get/relations',
@@ -169,13 +171,7 @@ export function compileSubstrateDisclosure(
         ));
         continue;
       }
-      relations.push({
-        sourceType: definition.type,
-        field,
-        cardinality: relation.cardinality,
-        targets: relation.targets,
-        ...(relation.inverse === undefined ? {} : { inverse: relation.inverse }),
-      });
+      relations.push(relation);
     }
     disclosure.get = { relations: source.get.relations };
   }

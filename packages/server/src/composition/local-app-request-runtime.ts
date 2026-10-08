@@ -1,4 +1,5 @@
 import { requireLocalManagedRepository } from './local-service-capabilities.js';
+import { createCorpusChecker } from './corpus-checker.js';
 /**
  * Adapt one started local runtime into the per-home service bundle every
  * adapter shares: HTTP, MCP (through `ToolDeps`), and the CLI (ADR 0134.1 R3).
@@ -61,6 +62,7 @@ export function createLocalAppRequestRuntime(
   requireLocalManagedRepository(runtime.service);
   const scopeRoot = resolveContext({ home: runtime.home, env: {} });
   return {
+    corpusChecker: createCorpusChecker(runtime.home),
     home: runtime.home,
     service: runtime.service,
     operationLog: runtime.operationLogger,

@@ -8,7 +8,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import matter from 'gray-matter';
+import { stringifyTestMarkdown, parseTestMarkdown } from './helpers/markdown-frontmatter.js';
 import type { Entity } from '@backlog-mcp/shared';
 import { describe, expect, it } from 'vitest';
 import { createBacklogHome, resolveBacklogHome } from '../storage/local/backlog-home.js';
@@ -82,7 +82,7 @@ function writeLegacyEntity(
   mkdirSync(join(root, 'tasks'), { recursive: true });
   writeFileSync(
     path,
-    matter.stringify(content ?? '', frontmatter),
+    stringifyTestMarkdown(content ?? '', frontmatter),
   );
   return path;
 }
@@ -265,7 +265,7 @@ describe('docs-native global migration', function describeGlobalMigration() {
       registry: registry(),
     });
     const target = join(home.documentsDir, 'tasks', 'TASK-0001.md');
-    const migrated = matter(readFileSync(target, 'utf-8'));
+    const migrated = parseTestMarkdown(readFileSync(target, 'utf-8'));
 
     expect(report.rewritten).toBe(1);
     expect(migrated.data).toMatchObject({
@@ -396,7 +396,7 @@ describe('docs-native global migration', function describeGlobalMigration() {
     mkdirSync(join(home.root, 'tasks'), { recursive: true });
     writeFileSync(
       join(home.root, 'tasks', 'REQ-0001.md'),
-      matter.stringify('The repo owns its truth.', {
+      stringifyTestMarkdown('The repo owns its truth.', {
         id: 'REQ-0001',
         type: 'requirement',
         title: 'Docs are truth',
@@ -467,7 +467,7 @@ describe('docs-native global migration', function describeGlobalMigration() {
     mkdirSync(join(semanticHome.documentsDir, 'tasks'), { recursive: true });
     writeFileSync(
       join(semanticHome.documentsDir, 'tasks', 'TASK-0001-existing.md'),
-      matter.stringify('', entity('TASK-0001', 'task')),
+      stringifyTestMarkdown('', entity('TASK-0001', 'task')),
     );
     const semanticPlan = planDocsNativeMigration({
       home: semanticHome,

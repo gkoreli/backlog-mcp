@@ -6,7 +6,7 @@ calling it. The Markdown body field is `content`.
 
 ## Substrates (Entity Types)
 
-7 built-in substrate types, each declared once and stored as markdown files with YAML frontmatter. New types cost one declaration — the catalog is open-ended by design.
+8 built-in substrate types, stored as Markdown files with YAML frontmatter. Project-defined types join the same registry through a declaration.
 
 - Task (`TASK-`): work items.
 - Epic (`EPIC-`): groups of tasks.
@@ -15,6 +15,7 @@ calling it. The Markdown body field is `content`.
 - Milestone (`MLST-`): time-bound targets.
 - Cron (`CRON-`): intake descriptors executed by an external scheduler.
 - Memory (`MEMO-`): durable knowledge with provenance and correction lineage.
+- ADR (`ADR 0001`, `ADR 0001.1`): architectural decisions, descriptions and focused threads. Core allocates IDs; a proposal can supply `thread` to join an existing decision.
 
 **Built-in work status values:** `open`, `in_progress`, `blocked`, `done`,
 `cancelled`. Status fields and transitions belong to each substrate; project
@@ -27,6 +28,7 @@ Example task file:
 ```markdown
 ---
 id: TASK-0001
+type: task
 title: Fix authentication flow
 status: open
 parent_id: EPIC-0002
@@ -39,6 +41,25 @@ evidence:
 
 The authentication flow has an issue where...
 ```
+
+## Check the document corpus
+
+Run `backlog --home project --project-root . check` for source diagnostics,
+or add `--json` for the versioned report. MCP `backlog_check` returns the same
+report from its selected home. These operations read documents without repairs.
+The CLI check avoids starting search or creating runtime state.
+
+Checks cover authored YAML mappings, required schema fields, lifecycle values,
+filename/ID agreement, duplicate claims and declared relation targets. Supporting
+resources remain resources. Unreadable paths and invalid substrate declarations
+prevent a clean result; missing frozen definition history remains a warning.
+CLI exits 0 for a valid corpus, 1 for violations or incomplete checking, and 2
+when the invocation cannot run. Fix the reported source files with native edits
+or an appropriate declared action, then check again.
+
+Checking validates declared contracts; it does not enforce prose headings or
+judge whether a decision's rationale is complete. See
+[ADR 0113.4](../adr/0113.4-read-only-corpus-checking.md).
 
 ## MCP Tools
 

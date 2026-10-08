@@ -4,6 +4,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** Recognize the read-only diagnostic call before any runtime acquisition. */
+export async function isCorpusCheckRequest(request: Request): Promise<boolean> {
+  if (request.method !== 'POST') return false;
+  let body: unknown;
+  try { body = await request.clone().json(); } catch { return false; }
+  return isRecord(body) && body.method === 'tools/call'
+    && isRecord(body.params) && body.params.name === 'backlog_check';
+}
+
 function toolCallArguments(value: unknown): Record<string, unknown> | undefined {
   if (!isRecord(value) || value.method !== 'tools/call') return undefined;
   if (!isRecord(value.params) || !isRecord(value.params.arguments)) return undefined;

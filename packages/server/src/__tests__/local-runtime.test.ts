@@ -8,7 +8,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, sep } from 'node:path';
-import matter from 'gray-matter';
+import { stringifyTestMarkdown, parseTestMarkdown } from './helpers/markdown-frontmatter.js';
 import { OramaSearchService } from '@backlog-mcp/memory/search';
 import type { Entity, Memory } from '@backlog-mcp/shared';
 import { describe, expect, it, vi } from 'vitest';
@@ -109,7 +109,7 @@ function writeEntity(
   const absolutePath = join(home.documentsDir, ...sourcePath.split('/'));
   mkdirSync(dirname(absolutePath), { recursive: true });
   const { content, ...frontmatter } = entity;
-  writeFileSync(absolutePath, matter.stringify(content ?? '', frontmatter));
+  writeFileSync(absolutePath, stringifyTestMarkdown(content ?? '', frontmatter));
 }
 
 function snapshotFiles(root: string): Map<string, string> {
@@ -535,7 +535,7 @@ describe('LocalRuntime', function describeLocalRuntime() {
     expect(watcher.unsubscribeCount).toBe(1);
   });
 
-  it('keeps global usage summaries in memory frontmatter', async function keepsGlobalFrontmatter() {
+  it('keeps global usage summaries in memory frontmatter', async function keepsGlobalFrontparseTestMarkdown() {
     const home = createGlobalHome('frontmatter-usage');
     const runtime = createLocalRuntime(home, {
       watcher: new FakeDocsTreeWatcher(),

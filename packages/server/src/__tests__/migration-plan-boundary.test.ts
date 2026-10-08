@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, symlinkSync, unlinkSyn
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import matter from 'gray-matter';
+import { stringifyTestMarkdown } from './helpers/markdown-frontmatter.js';
 import { localHome } from './helpers/local-home.js';
 import { buildEntity } from '../storage/entity-factory.js';
 import { planDocsNativeMigration as domainPlan } from '../core/migrate-docs-native.js';
@@ -20,7 +20,7 @@ function migrationFixture(name: string) {
   const source = join(legacyRoot, 'tasks/TASK-0001.md');
   mkdirSync(join(legacyRoot, 'tasks'), { recursive: true });
   const { content, ...frontmatter } = buildEntity({ id: 'TASK-0001', title: 'Legacy work', content: 'Lossless history' });
-  writeFileSync(source, matter.stringify(content, frontmatter));
+  writeFileSync(source, stringifyTestMarkdown(content, frontmatter));
   const params = { home, registry: graph.registry, legacyRoot };
   const fs = createMigrationFileSystem();
   return { ...graph, home, params, fs, source, legacyRoot };
@@ -30,6 +30,7 @@ describe('migration plan boundary', function planBoundary() {
   it('plans deterministically with only a read port and an explicit destination snapshot', function purePlanning() {
     const { params, fs, source, home } = migrationFixture('read-only-planner');
     const reader: DocsNativeMigrationReadPort = {
+      yaml: fs.yaml,
       exists: fs.exists, isSymbolicLink: fs.isSymbolicLink, realpath: fs.realpath,
       canonicalize: fs.canonicalize, readDirectory: fs.readDirectory, readFile: fs.readFile,
     };

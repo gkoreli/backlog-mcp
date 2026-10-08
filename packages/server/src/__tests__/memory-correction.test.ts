@@ -46,10 +46,21 @@ describe('memory correction consistency', function corrections() {
     expect(storage.getMarkdown('MEMO-0001')).toBe(before);
     const path = storage.getFilePath('MEMO-0001');
     if (path === null || before === null) throw new Error('Fixture absent');
-    fs.writeFileSync(path, before.replace('---\n', '---\n# Native formatting\n'));
+    fs.writeFileSync(path, before.replace(/^id:.*\n/mu, '').replace('---\n', '---\n# Missing authored identity\n'));
     await expect(service.correctMemory(draft, NOW)).rejects.toThrow('Canonical adoption');
-    expect(fs.readFileSync(path, 'utf8')).toContain('# Native formatting');
+    expect(fs.readFileSync(path, 'utf8')).toContain('# Missing authored identity');
     expect(await service.scan({ type: 'memory' })).toHaveLength(1);
+  });
+
+  it('allows formatting-only native metadata before coordinated correction', async function formattingIsNotAdoption() {
+    const { storage, service } = fixture('formatting-correction');
+    const before = storage.getMarkdown('MEMO-0001');
+    const path = storage.getFilePath('MEMO-0001');
+    if (path === null || before === null) throw new Error('Fixture absent');
+    const { id: _id, ...draft } = MemorySchema.parse(storage.get('MEMO-0001'));
+    fs.writeFileSync(path, before.replace('---\n', '---\n# Native formatting\n'));
+    await expect(service.correctMemory(draft, NOW)).resolves.toBeDefined();
+    expect(await service.scan({ type: 'memory' })).toHaveLength(2);
   });
 
   it('restores exact predecessors when exclusive successor publication fails', async function recoversSuccessorFailure() {

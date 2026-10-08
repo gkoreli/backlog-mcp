@@ -13,7 +13,18 @@ begins at 0.57.0 — earlier history lives in git.
 
 ## [Unreleased]
 
+## [0.78.0] — 2026-10-08
+
+*Native ADRs and threads bring architectural decisions into progressive discovery.
+The read-only checker exposes document drift, and Bun 1.4.2 becomes the local
+runtime and toolchain. The viewer advances to 0.68.0 with the native ADR catalog.*
+
 ### Added
+
+- Read-only `backlog check` and MCP `backlog_check` validate authored frontmatter,
+  declared substrate schemas, document identities and relation targets. Both
+  return the same deterministic source diagnostics; CLI checking avoids runtime
+  startup and document, index, journal or recent-home writes.
 
 - ADR is a compiled native entity with typed lifecycle, threaded identities and
   authored descriptions. List/search disclose descriptions, real filenames,
@@ -30,6 +41,16 @@ begins at 0.57.0 — earlier history lives in git.
   substrates, ADRs, threads, and adoption of existing documentation.
 
 ### Changed
+
+- Bun 1.4.2 now owns workspace installation, local entrypoints, build, typecheck
+  and Vitest execution. Native Bun YAML replaces gray-matter through one injected
+  codec and shared Markdown framing. YAML 1.2 dates and binary values project as
+  strings; native document bytes remain intact during reads.
+- Vitest 4.1.10 preserves relative mocks under Bun. Search unit tests mock the
+  external embedding model while exercising actual indexing and cache behavior.
+- Managed adoption checks canonical authored metadata structurally, so YAML
+  quoting and key order alone no longer require adoption. Missing, transformed
+  or schema-invalid fields still require explicit correction or adoption.
 
 - Repository ADRs now use canonical IDs, lifecycle values, relation fields and
   short discovery descriptions. Duplicate historical decision IDs are reconciled

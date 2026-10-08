@@ -1,3 +1,4 @@
+import type { YamlCodec } from './markdown-frontmatter.contract.js';
 import type {
   DocumentDateSource,
   DocumentIdentity,
@@ -22,6 +23,7 @@ export interface DocumentDiscoveryStat {
 
 /** Injectable filesystem and chronology dependencies for deterministic discovery. */
 export interface DocumentDiscoveryDependencies {
+  yaml: YamlCodec;
   readDirectory(absolutePath: string): string[];
   readFile(absolutePath: string): string;
   lstat(absolutePath: string): DocumentDiscoveryStat;

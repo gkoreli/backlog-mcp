@@ -13,14 +13,16 @@ when the agent needs it.
 
 ## Install
 
+Requires [Bun](https://bun.sh/docs/installation) 1.4.2 or newer.
+
 Add this to `.mcp.json` or your MCP client configuration:
 
 ```json
 {
   "mcpServers": {
     "backlog": {
-      "command": "npx",
-      "args": ["-y", "backlog-mcp"]
+      "command": "bunx",
+      "args": ["--bun", "backlog-mcp"]
     }
   }
 }
@@ -36,11 +38,11 @@ requests to it. See [installation and server lifecycle](https://github.com/gkore
 From your project directory, explicitly select its home (even without `docs/` yet):
 
 ```bash
-npx backlog-mcp --home project --project-root . wakeup
-npx backlog-mcp --home project --project-root . create "Fix authentication flow" --content "Investigate the failing login."
-npx backlog-mcp --home project --project-root . list --type task
-npx backlog-mcp --home project --project-root . recall "authentication decisions"
-npx backlog-mcp --home project --project-root . remember "Describe one verified durable login convention." --title "Login convention" --layer semantic
+bunx --bun backlog-mcp --home project --project-root . wakeup
+bunx --bun backlog-mcp --home project --project-root . create "Fix authentication flow" --content "Investigate the failing login."
+bunx --bun backlog-mcp --home project --project-root . list --type task
+bunx --bun backlog-mcp --home project --project-root . recall "authentication decisions"
+bunx --bun backlog-mcp --home project --project-root . remember "Describe one verified durable login convention." --title "Login convention" --layer semantic
 ```
 
 For MCP task work, discover and inspect the full schemas of

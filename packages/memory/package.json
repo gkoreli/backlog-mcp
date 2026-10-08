@@ -20,10 +20,10 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "bun --bun tsc",
     "clean": "rm -rf dist tsconfig.tsbuildinfo",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "bun --bun vitest run",
+    "test:watch": "bun --bun vitest"
   },
   "dependencies": {
     "@backlog-mcp/shared": "workspace:*",

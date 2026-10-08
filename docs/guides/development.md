@@ -7,11 +7,12 @@ The architecture sections summarize the linked ADRs; those ADRs remain authorita
 
 ## Quick Start
 
-Development uses Node 24 LTS via mise.
+Development and the local runtime use Bun 1.4.2, pinned in `.mise.toml`.
+Run `mise install` and `mise exec -- bun --version` before installing dependencies.
 
 ```bash
-pnpm install
-pnpm dev  # Starts MCP server + web viewer with hot reload (default port 5173)
+bun install
+bun run dev  # Starts MCP server + web viewer with hot reload (default port 5173)
 ```
 
 ## Monorepo Structure
@@ -34,19 +35,19 @@ The viewer uses [Nisli](https://github.com/gkoreli/nisli), a zero-dependency rea
 ### Workspace-wide
 
 ```bash
-pnpm build               # Build all packages (shared → viewer → server)
-pnpm test                # Run all workspace tests
-pnpm test:watch          # Watch mode (server only)
-pnpm dev                 # Server + viewer with hot reload (default port 5173)
-pnpm clean               # Remove dist/ from all packages
-pnpm typecheck           # Type-check all packages
+bun run build               # Build all packages (shared → viewer → server)
+bun run test                # Run all workspace tests
+bun run test:watch          # Watch mode (server only)
+bun run dev                 # Server + viewer with hot reload (default port 5173)
+bun run clean               # Remove dist/ from all packages
+bun run typecheck           # Type-check all packages
 ```
 
 ### Per-package
 
 ```bash
-pnpm --filter backlog-mcp test          # Server tests only
-pnpm --filter @backlog-mcp/viewer test  # Viewer tests only
+bun run --filter backlog-mcp test          # Server tests only
+bun run --filter @backlog-mcp/viewer test  # Viewer tests only
 ```
 
 ### CLI
@@ -74,7 +75,7 @@ backlog-mcp stop         # Stop the server
 
 ### Production Mode (MCP Clients)
 
-When running via `backlog-mcp` (or `pnpm start`):
+When running via `backlog-mcp` (or `bun run start`):
 
 - **HTTP server** spawns as a detached background process on port 3030
 - **stdio bridge** runs in foreground, connects to HTTP server via `mcp-remote`
@@ -83,7 +84,7 @@ When running via `backlog-mcp` (or `pnpm start`):
 
 ### Development Mode
 
-When running `pnpm dev`:
+When running `bun run dev`:
 
 - Runs Vite as the single dev server on one port (default `:5173`, overridden
   by `VITE_PORT`; Vite may use the next available port if it is occupied)
@@ -122,9 +123,10 @@ Built-in substrates, with ID prefix and folder:
 - **milestone:** `MLST-`, `milestones/`.
 - **cron:** `CRON-`, `crons/`.
 - **memory:** `MEMO-`, `memories/`.
+- **adr:** `ADR `, `adr/` (including engine-allocated `x.n` threads).
 
-Packaged definitions: **adr**, **requirement**, and **prompt** in `adr/`,
-`requirements/`, and `prompts/`, respectively.
+Packaged definitions: **requirement** and **prompt** in `requirements/` and
+`prompts/`, respectively. ADR is a compiled built-in substrate.
 
 A project can declare more under `docs/substrates/` (ADR 0113). Entities link
 through `parent_id` and typed references.
@@ -177,8 +179,8 @@ styling, or filters. It owns the contributor patterns previously listed here.
 ## Testing
 
 ```bash
-pnpm test           # All workspace tests
-pnpm test:watch     # Watch mode (server)
+bun run test           # All workspace tests
+bun run test:watch     # Watch mode (server)
 ```
 
 Read [Testing and memfs](testing.md) when adding, changing, or running

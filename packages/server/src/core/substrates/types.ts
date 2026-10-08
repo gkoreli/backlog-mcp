@@ -1,6 +1,7 @@
 import type {
   AnyEntity,
   CompiledDisclosureRelation,
+  CompiledSubstrateRelationEdge,
   CompiledSubstrateDisclosure,
   CompiledSubstrateIntent,
   RuntimeEntity,
@@ -59,6 +60,7 @@ export type SubstrateWriteValidationResult =
 
 export interface CompiledSubstrateDefinition {
   kind: 'declarative';
+  relations?: readonly CompiledSubstrateRelationEdge[];
   sourcePath: string;
   definition: RuntimeSubstrateDefinition;
   intake?: SubstrateIntakeDefinition;
@@ -72,6 +74,7 @@ export interface CompiledSubstrateDefinition {
 
 export interface CompiledBuiltinSubstrate {
   kind: 'compiled';
+  relations?: readonly CompiledSubstrateRelationEdge[];
   workflow?: SubstrateWorkflowDefinition;
   sourcePath: string;
   type: SubstrateType;

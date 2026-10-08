@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { Command } from 'commander';
 import { paths } from '@server/utils/paths.js';
@@ -10,6 +10,7 @@ import { registerList } from './commands/list.js';
 import { registerGet } from './commands/get.js';
 import { registerCreate } from './commands/create.js';
 import { registerActions } from './commands/actions.js';
+import { registerCheck } from './commands/check.js';
 import { registerUpdate } from './commands/update.js';
 import { registerDelete } from './commands/delete.js';
 import { registerSearch } from './commands/search.js';
@@ -84,6 +85,7 @@ registerList(program);
 registerGet(program);
 registerCreate(program);
 registerActions(program);
+registerCheck(program);
 registerUpdate(program);
 registerDelete(program);
 registerSearch(program);
